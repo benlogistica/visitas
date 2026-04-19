@@ -1271,9 +1271,1085 @@ a {
 }
 
 /* ==========================================================================
-   SCROLLBAR (estilizado)
+   MOBILE APP — Shell, top bar, bottom nav (Sprint 2.2)
    ========================================================================== */
-::-webkit-scrollbar {
+
+.mobile-app {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: var(--neutral-50);
+  position: relative;
+  max-width: 480px;
+  margin: 0 auto;
+  box-shadow: 0 0 0 1px var(--neutral-200);
+}
+
+/* Mobile top bar (navy) */
+.mbar {
+  background: var(--brand-navy);
+  color: var(--neutral-0);
+  padding: calc(env(safe-area-inset-top, 12px) + 12px) 20px 14px;
+  position: sticky;
+  top: 0;
+  z-index: 30;
+}
+
+.mbar__row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 40px;
+}
+
+.mbar__logo {
+  height: 24px;
+  flex: 1;
+  object-fit: contain;
+  object-position: left;
+}
+
+.mbar__title {
+  flex: 1;
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--neutral-0);
+}
+
+.mbar__back {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.08);
+  border: 0;
+  color: var(--neutral-0);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.mbar__back:hover { background: rgba(255,255,255,0.14); }
+
+.mbar__icon-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.08);
+  border: 0;
+  color: var(--neutral-0);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  position: relative;
+}
+.mbar__icon-btn:hover { background: rgba(255,255,255,0.14); }
+
+.mbar__notification-dot {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--brand-lime);
+  border: 2px solid var(--brand-navy);
+}
+
+.mbar__avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--brand-lime);
+  color: var(--neutral-0);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 15px;
+  flex-shrink: 0;
+  letter-spacing: -0.02em;
+  cursor: pointer;
+  border: 0;
+}
+
+.mbar__live-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  background: rgba(139,198,63,0.18);
+  border: 1px solid rgba(139,198,63,0.4);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #C8E68C;
+  font-family: var(--font-body);
+}
+.mbar__live-indicator-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--brand-lime);
+  animation: pulseLime 1.6s infinite;
+}
+
+@keyframes pulseLime {
+  0% { box-shadow: 0 0 0 0 rgba(139,198,63,0.6); }
+  70% { box-shadow: 0 0 0 8px rgba(139,198,63,0); }
+  100% { box-shadow: 0 0 0 0 rgba(139,198,63,0); }
+}
+
+/* Mobile content area (com padding pro bottom nav) */
+.mcontent {
+  flex: 1;
+  padding: 20px 20px 110px;
+  overflow-y: auto;
+}
+
+/* Bottom nav */
+.bnav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  max-width: 480px;
+  margin: 0 auto;
+  background: var(--neutral-0);
+  border-top: 1px solid var(--neutral-200);
+  padding-top: 8px;
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 10px);
+  display: flex;
+  justify-content: space-around;
+  align-items: flex-end;
+  z-index: 40;
+  box-shadow: 0 -4px 16px rgba(10,31,92,0.04);
+}
+
+.bnav__item {
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 4px 6px;
+  min-width: 50px;
+  color: var(--neutral-500);
+  text-decoration: none;
+  transition: color 160ms;
+}
+.bnav__item.is-active {
+  color: var(--brand-navy);
+}
+.bnav__item-label {
+  font-size: 10.5px;
+  font-weight: 500;
+  font-family: var(--font-body);
+  letter-spacing: -0.01em;
+}
+.bnav__item.is-active .bnav__item-label {
+  font-weight: 700;
+}
+
+/* Bottom nav primary item (raised circle) */
+.bnav__primary {
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  margin-top: -22px;
+  text-decoration: none;
+}
+.bnav__primary-circle {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, var(--brand-lime) 0%, #689628 100%);
+  box-shadow: 0 6px 16px rgba(139,198,63,0.45), inset 0 1px 0 rgba(255,255,255,0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--neutral-0);
+}
+.bnav__primary-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #689628;
+  font-family: var(--font-body);
+  letter-spacing: -0.01em;
+}
+
+/* ==========================================================================
+   HOME (Dashboard Nutricionista)
+   ========================================================================== */
+
+.home__greeting {
+  margin-bottom: 18px;
+}
+.home__greeting-title {
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--brand-navy);
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+.home__greeting-date {
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--neutral-500);
+  font-family: var(--font-body);
+  font-weight: 500;
+  text-transform: capitalize;
+}
+
+/* Next visit card */
+.next-visit {
+  background: var(--neutral-0);
+  border: 1px solid #E3E7F1;
+  border-radius: 14px;
+  padding: 16px;
+  margin-bottom: 18px;
+  box-shadow: 0 4px 12px rgba(10,31,92,0.06);
+}
+.next-visit__header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.next-visit__badge {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #689628;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: #F4F9EA;
+}
+.next-visit__time {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--neutral-500);
+}
+.next-visit__body {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+.next-visit__icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--brand-navy);
+  color: var(--neutral-0);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.next-visit__icon .material-symbols-rounded { font-size: 22px; }
+.next-visit__info { flex: 1; min-width: 0; }
+.next-visit__name {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--brand-navy);
+  line-height: 1.25;
+}
+.next-visit__obj {
+  font-size: 12.5px;
+  color: var(--neutral-600);
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.next-visit__obj strong { color: var(--brand-navy); font-weight: 600; }
+.next-visit__footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--neutral-100);
+}
+
+/* CTA gigante check-in */
+.cta-checkin {
+  width: 100%;
+  min-height: 76px;
+  padding: 18px 24px;
+  border-radius: var(--radius-pill);
+  border: 0;
+  background: linear-gradient(180deg, var(--brand-lime) 0%, #689628 100%);
+  color: var(--neutral-0);
+  box-shadow: 0 10px 28px rgba(139,198,63,0.45), inset 0 1.5px 0 rgba(255,255,255,0.35), inset 0 -1px 0 rgba(0,0,0,0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  cursor: pointer;
+  margin-bottom: 22px;
+  font-family: var(--font-display);
+  transition: transform 120ms ease-out;
+  text-decoration: none;
+}
+.cta-checkin:active { transform: scale(0.98); }
+.cta-checkin__icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.cta-checkin__icon .material-symbols-rounded { font-size: 26px; }
+.cta-checkin__label {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+/* KPI grid */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 22px;
+}
+.kpi {
+  background: var(--neutral-0);
+  border-radius: 14px;
+  padding: 14px;
+  box-shadow: 0 2px 8px rgba(10,31,92,0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.kpi__icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--brand-lime);
+  color: var(--neutral-0);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.kpi__icon .material-symbols-rounded { font-size: 18px; }
+.kpi__value {
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--brand-navy);
+  line-height: 1;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.kpi__value--small { font-size: 18px; }
+.kpi__label {
+  font-size: 11px;
+  color: var(--neutral-500);
+  margin-top: 6px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+}
+
+/* Section heading */
+.section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.section-head h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--brand-navy);
+}
+.section-head a, .section-head button {
+  background: none;
+  border: 0;
+  cursor: pointer;
+  color: #689628;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+/* Visits list (recent) */
+.visits-list {
+  background: var(--neutral-0);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(10,31,92,0.05);
+}
+.visits-list__item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--neutral-100);
+  text-decoration: none;
+  color: inherit;
+}
+.visits-list__item:last-child { border-bottom: 0; }
+.visits-list__icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: #F3F5FA;
+  color: var(--brand-navy);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.visits-list__icon .material-symbols-rounded { font-size: 20px; }
+.visits-list__info { flex: 1; min-width: 0; }
+.visits-list__name {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--brand-navy);
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.visits-list__time {
+  font-size: 11.5px;
+  color: var(--neutral-500);
+  margin-top: 2px;
+  font-family: var(--font-mono);
+}
+
+/* Status badge */
+.sbadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 22px;
+  padding: 0 9px;
+  border-radius: var(--radius-pill);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  font-family: var(--font-body);
+  white-space: nowrap;
+}
+.sbadge__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+.sbadge--approved { background: var(--status-success-bg); color: #15803D; }
+.sbadge--approved .sbadge__dot { background: var(--status-success); }
+.sbadge--pending { background: #FEF4E1; color: #B45309; }
+.sbadge--pending .sbadge__dot { background: var(--status-warning); }
+.sbadge--review { background: #E4ECFD; color: #1D4ED8; }
+.sbadge--review .sbadge__dot { background: var(--status-info); }
+.sbadge--rejected { background: var(--status-danger-bg); color: #B91C1C; }
+.sbadge--rejected .sbadge__dot { background: var(--status-danger); }
+.sbadge--draft { background: var(--neutral-100); color: var(--neutral-600); }
+.sbadge--draft .sbadge__dot { background: var(--neutral-400); }
+.sbadge--inprogress { background: #F4F9EA; color: #689628; }
+.sbadge--inprogress .sbadge__dot { background: var(--brand-lime); }
+
+/* ==========================================================================
+   CHECK-IN
+   ========================================================================== */
+
+/* GPS status */
+.gps-status {
+  background: var(--status-success-bg);
+  border: 1px solid rgba(34,160,107,0.2);
+  border-radius: 12px;
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.gps-status--warning {
+  background: #FEF4E1;
+  border-color: rgba(245,158,11,0.3);
+}
+.gps-status--danger {
+  background: var(--status-danger-bg);
+  border-color: rgba(220,38,38,0.2);
+}
+.gps-status__icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--status-success);
+  color: var(--neutral-0);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.gps-status--warning .gps-status__icon { background: var(--status-warning); }
+.gps-status--danger .gps-status__icon { background: var(--status-danger); }
+.gps-status__icon .material-symbols-rounded { font-size: 16px; }
+.gps-status__body { flex: 1; min-width: 0; }
+.gps-status__label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #15803D;
+  font-family: var(--font-body);
+}
+.gps-status--warning .gps-status__label { color: #B45309; }
+.gps-status--danger .gps-status__label { color: #B91C1C; }
+.gps-status__detail {
+  font-size: 11.5px;
+  color: #166534;
+  font-family: var(--font-mono);
+}
+.gps-status--warning .gps-status__detail { color: #92400E; }
+.gps-status--danger .gps-status__detail { color: #991B1B; }
+
+/* Search bar */
+.search-bar {
+  background: var(--neutral-0);
+  border: 1.5px solid var(--neutral-200);
+  border-radius: 12px;
+  height: 48px;
+  padding: 0 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+.search-bar:focus-within {
+  border-color: var(--brand-lime);
+  box-shadow: 0 0 0 3px rgba(139,198,63,0.2);
+}
+.search-bar input {
+  flex: 1;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font-family: var(--font-body);
+  font-size: 15px;
+  color: var(--brand-navy);
+}
+.search-bar__icon {
+  color: var(--neutral-500);
+  font-size: 20px;
+}
+
+/* List label */
+.list-label {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.list-label__title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--neutral-500);
+}
+.list-label__meta {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--neutral-500);
+  font-family: var(--font-mono);
+}
+
+/* Institution list */
+.inst-list {
+  background: var(--neutral-0);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(10,31,92,0.05);
+  margin-bottom: 18px;
+}
+.inst-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  border-bottom: 1px solid var(--neutral-100);
+  cursor: pointer;
+  background: var(--neutral-0);
+  border-left: 3px solid transparent;
+  text-decoration: none;
+  color: inherit;
+  transition: background 140ms;
+}
+.inst-item:last-child { border-bottom: 0; }
+.inst-item:hover { background: #F9FBF5; }
+.inst-item--closest {
+  background: #F4F9EA;
+  border-left-color: var(--brand-lime);
+}
+.inst-item__pin {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--neutral-0);
+}
+.inst-item__pin .material-symbols-rounded { font-size: 22px; }
+.inst-item__pin--in {
+  background: var(--status-success);
+  box-shadow: 0 4px 10px rgba(34,160,107,0.3);
+}
+.inst-item__pin--out {
+  background: var(--status-warning);
+  box-shadow: 0 4px 10px rgba(245,158,11,0.3);
+}
+.inst-item__info { flex: 1; min-width: 0; }
+.inst-item__name {
+  font-family: var(--font-display);
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--brand-navy);
+  line-height: 1.2;
+}
+.inst-item__addr {
+  font-size: 11.5px;
+  color: var(--neutral-500);
+  margin-top: 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.inst-item__right {
+  text-align: right;
+  flex-shrink: 0;
+}
+.inst-item__dist {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 700;
+}
+.inst-item__dist--in { color: var(--status-success); }
+.inst-item__dist--out { color: var(--status-warning); }
+.inst-item__zone-tag {
+  font-size: 9.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-top: 2px;
+  color: var(--status-warning);
+}
+
+/* Empty state */
+.empty-state {
+  background: var(--neutral-0);
+  border: 1px dashed var(--neutral-300);
+  border-radius: 14px;
+  padding: 32px 20px;
+  text-align: center;
+  margin-bottom: 18px;
+}
+.empty-state__icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--neutral-100);
+  color: var(--neutral-500);
+  margin: 0 auto 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.empty-state__icon .material-symbols-rounded { font-size: 28px; }
+.empty-state__title {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--brand-navy);
+  margin-bottom: 6px;
+}
+.empty-state__desc {
+  font-size: 13px;
+  color: var(--neutral-600);
+  margin-bottom: 16px;
+  line-height: 1.45;
+}
+
+/* Mini map (confirmation) */
+.mini-map {
+  height: 180px;
+  border-radius: 14px;
+  overflow: hidden;
+  position: relative;
+  background: linear-gradient(135deg, #E9EEF5 0%, #F3F5FA 100%);
+  margin-bottom: 14px;
+  box-shadow: 0 2px 8px rgba(10,31,92,0.08);
+  border: 1px solid var(--neutral-200);
+}
+
+.mini-map__legend {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  background: rgba(255,255,255,0.92);
+  padding: 6px 10px;
+  border-radius: 8px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--neutral-600);
+  font-family: var(--font-body);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+}
+.mini-map__legend-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.mini-map__legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+/* Confirmation card */
+.confirm-card {
+  background: var(--neutral-0);
+  border-radius: 14px;
+  padding: 18px;
+  margin-bottom: 16px;
+  box-shadow: 0 4px 12px rgba(10,31,92,0.06);
+}
+.confirm-card__top {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  margin-bottom: 14px;
+}
+.confirm-card__icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--brand-navy);
+  color: var(--neutral-0);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.confirm-card__icon .material-symbols-rounded { font-size: 22px; }
+.confirm-card__name {
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--brand-navy);
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+.confirm-card__addr {
+  font-size: 12.5px;
+  color: var(--neutral-600);
+  margin-top: 4px;
+  line-height: 1.4;
+}
+.confirm-card__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  padding-top: 14px;
+  border-top: 1px solid var(--neutral-100);
+}
+.confirm-card__label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--neutral-500);
+}
+.confirm-card__value {
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.confirm-card__dist {
+  font-family: var(--font-mono);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--status-success);
+}
+.confirm-card__dist--out { color: var(--status-warning); }
+.confirm-card__time {
+  font-family: var(--font-mono);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--brand-navy);
+  letter-spacing: -0.02em;
+  margin-top: 2px;
+}
+.confirm-card__hint {
+  font-size: 10.5px;
+  color: var(--neutral-500);
+  margin-top: 2px;
+}
+
+/* Select objective */
+.objective-select {
+  background: var(--neutral-0);
+  border-radius: 14px;
+  padding: 16px;
+  margin-bottom: 16px;
+  box-shadow: 0 4px 12px rgba(10,31,92,0.06);
+}
+.objective-select__label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--neutral-700);
+  margin-bottom: 8px;
+  display: block;
+}
+.objective-select select {
+  width: 100%;
+  height: 48px;
+  padding: 0 14px;
+  border: 1.5px solid var(--neutral-300);
+  border-radius: 10px;
+  font-family: var(--font-body);
+  font-size: 15px;
+  color: var(--brand-navy);
+  background: var(--neutral-0);
+  outline: 0;
+  cursor: pointer;
+}
+.objective-select select:focus {
+  border-color: var(--brand-lime);
+  box-shadow: 0 0 0 3px rgba(139,198,63,0.2);
+}
+.objective-select textarea {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1.5px solid var(--neutral-300);
+  border-radius: 10px;
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--brand-navy);
+  background: var(--neutral-0);
+  outline: 0;
+  resize: vertical;
+  min-height: 80px;
+  margin-top: 8px;
+}
+.objective-select textarea:focus {
+  border-color: var(--brand-lime);
+  box-shadow: 0 0 0 3px rgba(139,198,63,0.2);
+}
+
+/* Confirm giant button */
+.btn-confirm {
+  width: 100%;
+  min-height: 64px;
+  padding: 16px 24px;
+  border-radius: var(--radius-pill);
+  border: 0;
+  background: linear-gradient(180deg, var(--brand-lime) 0%, #689628 100%);
+  color: var(--neutral-0);
+  box-shadow: 0 10px 28px rgba(139,198,63,0.4), inset 0 1.5px 0 rgba(255,255,255,0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  cursor: pointer;
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin-bottom: 12px;
+  transition: transform 120ms ease-out;
+}
+.btn-confirm:active:not(:disabled) { transform: scale(0.98); }
+.btn-confirm:disabled {
+  background: var(--neutral-300);
+  color: var(--neutral-500);
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+/* Danger giant button */
+.btn-danger-giant {
+  width: 100%;
+  min-height: 64px;
+  padding: 16px 24px;
+  border-radius: var(--radius-pill);
+  border: 0;
+  background: linear-gradient(180deg, #E94B4B 0%, var(--status-danger) 100%);
+  color: var(--neutral-0);
+  box-shadow: 0 10px 28px rgba(220,38,38,0.35), inset 0 1.5px 0 rgba(255,255,255,0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  cursor: pointer;
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  transition: transform 120ms ease-out;
+}
+.btn-danger-giant:active { transform: scale(0.98); }
+
+/* Cancel link */
+.btn-cancel-link {
+  background: none;
+  border: 0;
+  cursor: pointer;
+  color: var(--neutral-600);
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  padding: 10px 20px;
+  display: block;
+  margin: 0 auto;
+  width: fit-content;
+}
+.btn-cancel-link:hover { color: var(--status-danger); }
+
+/* Active visit card */
+.active-card {
+  background: var(--neutral-0);
+  border-radius: 14px;
+  padding: 14px;
+  box-shadow: 0 4px 12px rgba(10,31,92,0.06);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  border-left: 4px solid var(--brand-lime);
+}
+.active-card__icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: #F4F9EA;
+  color: #689628;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.active-card__icon .material-symbols-rounded { font-size: 20px; }
+.active-card__info { flex: 1; min-width: 0; }
+.active-card__name {
+  font-family: var(--font-display);
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--brand-navy);
+  line-height: 1.25;
+}
+.active-card__started {
+  font-size: 12px;
+  color: var(--neutral-500);
+  margin-top: 2px;
+  font-family: var(--font-body);
+}
+.active-card__time {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  color: var(--brand-navy);
+}
+
+/* Timer (giant) */
+.timer {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 20px 0;
+}
+.timer__label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--neutral-500);
+}
+.timer__value {
+  font-family: var(--font-mono);
+  font-size: 72px;
+  font-weight: 700;
+  color: var(--brand-navy);
+  letter-spacing: -0.04em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 2px 0 rgba(10,31,92,0.04);
+}
+.timer__status {
+  margin-top: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: var(--radius-pill);
+  background: #F4F9EA;
+  color: #689628;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  font-family: var(--font-body);
+}
+.timer__status--out {
+  background: #FEF4E1;
+  color: #B45309;
+}
+.timer__status .material-symbols-rounded { font-size: 15px; }
+
+/* Screen content (when mobile content needs flex for vertical fill) */
+.mcontent--flex {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ==========================================================================
+   FAB (Floating Action Button) — seed de instituições
+   ========================================================================== */
+.seed-helper {
+  position: fixed;
+  bottom: 90px;
+  right: 16px;
+  max-width: 480px;
+  z-index: 35;
+}
+
+
   width: 8px;
   height: 8px;
 }
@@ -1739,6 +2815,412 @@ const LOGO_WHITE_SVG = `
 </svg>
 `;
 
+/* ==========================================================================
+   SPRINT 2.2 — Geolocalização + CRUD Instituições/Visitas
+   ========================================================================== */
+
+// Geolocation (promise)
+function getGeolocation(opts = {}) {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) {
+      reject(new Error('Geolocalização não suportada neste navegador'));
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => resolve({
+        lat: pos.coords.latitude,
+        lng: pos.coords.longitude,
+        accuracy: pos.coords.accuracy,
+        timestamp: pos.timestamp,
+      }),
+      (err) => reject(new Error(
+        err.code === 1 ? 'Permissão de localização negada' :
+        err.code === 2 ? 'Posição indisponível' :
+        err.code === 3 ? 'Tempo esgotado. Tente novamente' :
+        'Erro ao obter localização'
+      )),
+      {
+        enableHighAccuracy: true,
+        timeout: opts.timeout || 10000,
+        maximumAge: opts.maximumAge || 60000,
+      }
+    );
+  });
+}
+
+// Haversine (em metros)
+function calcularDistanciaMetros(lat1, lng1, lat2, lng2) {
+  const R = 6371000; // raio Terra em metros
+  const toRad = (d) => d * Math.PI / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a = Math.sin(dLat/2) ** 2 +
+            Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+            Math.sin(dLng/2) ** 2;
+  return Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
+}
+
+// Formatar distância pra display
+function formatarDistancia(metros) {
+  if (metros < 1000) return `${metros}m`;
+  return `${(metros / 1000).toFixed(1)}km`;
+}
+
+// Listar instituições ativas
+async function listarInstituicoes() {
+  if (!db) throw new Error('Banco não conectado');
+  const { data, error } = await db
+    .from('instituicoes')
+    .select('*')
+    .eq('ativo', true)
+    .order('nome');
+  if (error) throw new Error(error.message);
+  return data || [];
+}
+
+// Ordenar instituições por proximidade
+function ordenarPorProximidade(instituicoes, userLat, userLng, raio = 500) {
+  return instituicoes.map(inst => {
+    const dist = calcularDistanciaMetros(userLat, userLng, inst.latitude, inst.longitude);
+    return {
+      ...inst,
+      distancia: dist,
+      distanciaFmt: formatarDistancia(dist),
+      dentroDoRaio: dist <= raio,
+    };
+  }).sort((a, b) => a.distancia - b.distancia);
+}
+
+// CRUD de visitas
+async function criarCheckin({ institucaoId, userPos, objetivoId, observacoes, checkinManual }) {
+  if (!db) throw new Error('Banco não conectado');
+  const user = getCurrentUser();
+  if (!user) throw new Error('Usuário não logado');
+
+  const agora = new Date().toISOString();
+  const novaVisita = {
+    nutricionista_id: user.id,
+    instituicao_id: institucaoId,
+    data_visita: agora.split('T')[0],
+    horario_inicio: agora.split('T')[1].substring(0, 8),
+    checkin_timestamp: agora,
+    checkin_latitude: userPos ? userPos.lat : null,
+    checkin_longitude: userPos ? userPos.lng : null,
+    checkin_precisao_metros: userPos ? Math.round(userPos.accuracy) : null,
+    checkin_manual: !!checkinManual,
+    status: 'rascunho',
+    resumo: observacoes || null,
+  };
+
+  const { data, error } = await db
+    .from('visitas')
+    .insert(novaVisita)
+    .select()
+    .single();
+
+  if (error) throw new Error(error.message);
+
+  // Adiciona o objetivo primário
+  if (objetivoId) {
+    await db.from('visitas_objetivos').insert({
+      visita_id: data.id,
+      objetivo_id: objetivoId,
+    });
+  }
+
+  return data;
+}
+
+async function getVisitaAtiva() {
+  if (!db) return null;
+  const user = getCurrentUser();
+  if (!user) return null;
+
+  const { data, error } = await db
+    .from('visitas')
+    .select('*, instituicoes(nome, razao_social, logradouro, bairro, cidade, estado, latitude, longitude)')
+    .eq('nutricionista_id', user.id)
+    .eq('status', 'rascunho')
+    .is('checkout_timestamp', null)
+    .order('checkin_timestamp', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    console.warn('Erro ao buscar visita ativa:', error.message);
+    return null;
+  }
+  return data;
+}
+
+async function finalizarCheckin(visitaId, userPos) {
+  if (!db) throw new Error('Banco não conectado');
+  const agora = new Date().toISOString();
+  const { error } = await db
+    .from('visitas')
+    .update({
+      checkout_timestamp: agora,
+      horario_termino: agora.split('T')[1].substring(0, 8),
+      checkout_latitude: userPos ? userPos.lat : null,
+      checkout_longitude: userPos ? userPos.lng : null,
+    })
+    .eq('id', visitaId);
+  if (error) throw new Error(error.message);
+}
+
+async function cancelarVisita(visitaId) {
+  if (!db) throw new Error('Banco não conectado');
+  const { error } = await db
+    .from('visitas')
+    .delete()
+    .eq('id', visitaId);
+  if (error) throw new Error(error.message);
+}
+
+// Listar últimas visitas do nutricionista
+async function listarMinhasVisitas(limit = 5) {
+  if (!db) return [];
+  const user = getCurrentUser();
+  if (!user) return [];
+
+  const { data, error } = await db
+    .from('visitas')
+    .select('id, data_visita, horario_inicio, status, instituicoes(nome)')
+    .eq('nutricionista_id', user.id)
+    .order('checkin_timestamp', { ascending: false, nullsFirst: false })
+    .limit(limit);
+
+  if (error) {
+    console.warn('Erro ao buscar visitas:', error.message);
+    return [];
+  }
+  return data || [];
+}
+
+async function contarVisitasDoMes() {
+  if (!db) return 0;
+  const user = getCurrentUser();
+  if (!user) return 0;
+  const hoje = new Date();
+  const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1).toISOString().split('T')[0];
+
+  const { count, error } = await db
+    .from('visitas')
+    .select('*', { count: 'exact', head: true })
+    .eq('nutricionista_id', user.id)
+    .gte('data_visita', inicioMes);
+  if (error) return 0;
+  return count || 0;
+}
+
+// Objetivos
+async function listarObjetivos() {
+  if (!db) return [];
+  const { data, error } = await db
+    .from('objetivos_visita')
+    .select('*')
+    .eq('ativo', true)
+    .order('ordem');
+  if (error) return [];
+  return data || [];
+}
+
+// Saudação baseada na hora
+function getSaudacao() {
+  const h = new Date().getHours();
+  if (h < 12) return 'Bom dia';
+  if (h < 18) return 'Boa tarde';
+  return 'Boa noite';
+}
+
+// Data formatada pt-BR
+function formatarDataPtBr(date) {
+  const d = date instanceof Date ? date : new Date(date);
+  const diasSemana = ['domingo','segunda-feira','terça-feira','quarta-feira','quinta-feira','sexta-feira','sábado'];
+  const meses = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+  return `${diasSemana[d.getDay()]}, ${d.getDate()} ${meses[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+function formatarDataCurta(date) {
+  const d = date instanceof Date ? date : new Date(date);
+  const meses = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+  return `${d.getDate()} ${meses[d.getMonth()]} · ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+
+// Formatar tempo relativo (hoje, ontem, etc)
+function formatarTempoRelativo(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  const agora = new Date();
+  const hoje = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate());
+  const dataD = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const diffDias = Math.round((hoje - dataD) / (1000 * 60 * 60 * 24));
+  const hora = `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+
+  if (diffDias === 0) return `Hoje · ${hora}`;
+  if (diffDias === 1) return `Ontem · ${hora}`;
+  if (diffDias < 7) return `${diffDias}d atrás · ${hora}`;
+  return formatarDataCurta(d);
+}
+
+// Iniciais do nome (pra avatar)
+function iniciais(nome) {
+  if (!nome) return 'N';
+  const partes = nome.trim().split(/\s+/);
+  if (partes.length === 1) return partes[0].slice(0, 2).toUpperCase();
+  return (partes[0][0] + partes[partes.length - 1][0]).toUpperCase();
+}
+
+// Cache temporário de estado do check-in (entre navegações)
+const CheckinFlow = {
+  userPos: null,
+  instituicoes: [],
+  instituicaoSelecionada: null,
+  objetivoId: null,
+  observacoes: '',
+  manual: false,
+};
+
+// Estado do timer (visita ativa)
+const TimerState = {
+  interval: null,
+  startTime: null,
+};
+
+function startTimer(startTime) {
+  TimerState.startTime = new Date(startTime);
+  if (TimerState.interval) clearInterval(TimerState.interval);
+  const tick = () => {
+    const el = document.getElementById('timerValue');
+    if (!el) {
+      clearInterval(TimerState.interval);
+      return;
+    }
+    const diff = Math.floor((Date.now() - TimerState.startTime) / 1000);
+    const h = String(Math.floor(diff / 3600)).padStart(2, '0');
+    const m = String(Math.floor((diff % 3600) / 60)).padStart(2, '0');
+    const s = String(diff % 60).padStart(2, '0');
+    el.textContent = `${h}:${m}:${s}`;
+  };
+  tick();
+  TimerState.interval = setInterval(tick, 1000);
+}
+
+function stopTimer() {
+  if (TimerState.interval) {
+    clearInterval(TimerState.interval);
+    TimerState.interval = null;
+  }
+}
+
+/* ==========================================================================
+   MOBILE SHELL — Header + bottom nav reutilizáveis
+   ========================================================================== */
+
+function mobileTopBar(opts = {}) {
+  const { title, showLogo, showNotification, showAvatar, showBack, liveIndicator } = opts;
+  const user = getCurrentUser();
+
+  if (liveIndicator) {
+    return `
+      <header class="mbar">
+        <div class="mbar__row">
+          <button class="mbar__back" onclick="history.back()">
+            <span class="material-symbols-rounded" style="font-size:18px">arrow_back_ios_new</span>
+          </button>
+          <span class="mbar__live-indicator">
+            <span class="mbar__live-indicator-dot"></span>
+            Em visita
+          </span>
+        </div>
+      </header>
+    `;
+  }
+
+  if (showBack) {
+    return `
+      <header class="mbar">
+        <div class="mbar__row">
+          <button class="mbar__back" onclick="history.back()">
+            <span class="material-symbols-rounded" style="font-size:18px">arrow_back_ios_new</span>
+          </button>
+          <div class="mbar__title">${title || ''}</div>
+        </div>
+      </header>
+    `;
+  }
+
+  // Default: logo + bell + avatar
+  return `
+    <header class="mbar">
+      <div class="mbar__row">
+        ${showLogo ? `
+          <div style="flex:1;">
+            <div style="height:24px;display:inline-flex;align-items:center;gap:8px;color:#fff;">
+              <svg viewBox="0 0 64 52" style="height:22px;width:auto;fill:#FFFFFF">
+                <path d="M32 8 C28 8 25 11 25 15 C25 10 22 8 18 8 C13 8 10 12 10 17 C10 28 32 44 32 44 C32 44 54 28 54 17 C54 12 51 8 46 8 C42 8 39 11 39 15 C39 11 36 8 32 8 Z"/>
+              </svg>
+              <span style="font-family:var(--font-display);font-weight:700;font-size:15px;letter-spacing:0.5px;">NUTRICIONAIS</span>
+            </div>
+          </div>
+        ` : `<div class="mbar__title">${title || ''}</div>`}
+        ${showNotification ? `
+          <button class="mbar__icon-btn" title="Notificações">
+            <span class="material-symbols-rounded" style="font-size:22px">notifications</span>
+            <span class="mbar__notification-dot"></span>
+          </button>
+        ` : ''}
+        ${showAvatar && user ? `
+          <a href="#/logout" class="mbar__avatar" title="Sair (${user.nome})">${iniciais(user.nome)}</a>
+        ` : ''}
+      </div>
+    </header>
+  `;
+}
+
+function bottomNav(active) {
+  const items = [
+    { id: 'home',    icon: 'home',           label: 'Início',  href: '#/inicio' },
+    { id: 'visits',  icon: 'list_alt',       label: 'Visitas', href: '#/visitas' },
+    { id: 'checkin', icon: 'my_location',    label: 'Check-in', href: '#/checkin', primary: true },
+    { id: 'agenda',  icon: 'calendar_month', label: 'Agenda',  href: '#/agenda' },
+    { id: 'billing', icon: 'payments',       label: 'Faturar', href: '#/faturamento' },
+  ];
+  return `
+    <nav class="bnav">
+      ${items.map(it => {
+        const isActive = it.id === active;
+        if (it.primary) {
+          return `
+            <a href="${it.href}" class="bnav__primary">
+              <div class="bnav__primary-circle">
+                <span class="material-symbols-rounded" style="font-size:26px">${it.icon}</span>
+              </div>
+              <span class="bnav__primary-label">${it.label}</span>
+            </a>
+          `;
+        }
+        return `
+          <a href="${it.href}" class="bnav__item${isActive ? ' is-active' : ''}">
+            <span class="material-symbols-rounded" style="font-size:22px;font-variation-settings: 'FILL' ${isActive ? 1 : 0}">${it.icon}</span>
+            <span class="bnav__item-label">${it.label}</span>
+          </a>
+        `;
+      }).join('')}
+    </nav>
+  `;
+}
+
+function sbadgeForStatus(status) {
+  const map = {
+    'rascunho':            { cls: 'draft',      label: 'Rascunho' },
+    'completa':            { cls: 'approved',   label: 'Concluída' },
+    'em_revisao':          { cls: 'review',     label: 'Em revisão' },
+    'aprovada_pos_revisao':{ cls: 'approved',   label: 'Aprovada' },
+  };
+  const s = map[status] || map.rascunho;
+  return `<span class="sbadge sbadge--${s.cls}"><span class="sbadge__dot"></span>${s.label}</span>`;
+}
 
 const routes = {
   '#/':             { title: 'Diagnóstico', icon: 'verified', render: renderDiagnostico },
@@ -1749,7 +3231,9 @@ const routes = {
   '#/recuperar':    { title: 'Recuperar senha', icon: 'lock_reset', render: renderRecuperar },
   '#/inicio':       { title: 'Início', icon: 'home', render: renderInicio },
   '#/checkin':      { title: 'Check-in', icon: 'location_on', render: renderCheckin },
-  '#/visitas':      { title: 'Visitas', icon: 'assignment', render: renderVisitas },
+  '#/checkin/confirmar': { title: 'Confirmar check-in', icon: 'check_circle', render: renderCheckinConfirmar },
+  '#/checkin/ativo':     { title: 'Em visita', icon: 'schedule', render: renderCheckinAtivo },
+  '#/visitas':      { title: 'Minhas visitas', icon: 'list_alt', render: renderVisitas },
   '#/agenda':       { title: 'Agenda', icon: 'calendar_month', render: renderAgenda },
   '#/faturamento':  { title: 'Faturamento', icon: 'payments', render: renderFaturamento },
   '#/admin':        { title: 'Dashboard Admin', icon: 'dashboard', render: renderAdminDashboard },
@@ -2556,17 +4040,647 @@ window.handleNovaSenha = async function(ev) {
 function renderInicio() {
   const user = requireAuth();
   if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
-  return loggedPlaceholderScreen(user, 'home', 'Início do Nutricionista', 'Dashboard pessoal mobile-first. CTA de check-in em destaque. (Sprint 2.2)', '#/inicio');
+
+  stopTimer(); // limpa timer se veio de tela de visita ativa
+
+  // Renderiza shell com placeholder e carrega dados async
+  setTimeout(async () => {
+    try {
+      const [visitaAtiva, visitas, totalMes] = await Promise.all([
+        getVisitaAtiva(),
+        listarMinhasVisitas(5),
+        contarVisitasDoMes(),
+      ]);
+
+      // Se tem visita ativa, redireciona pra tela ativa
+      if (visitaAtiva) {
+        window.location.hash = '#/checkin/ativo';
+        return;
+      }
+
+      // Atualiza KPIs
+      const kpiMes = document.getElementById('kpiMes');
+      if (kpiMes) kpiMes.textContent = String(totalMes);
+
+      // Atualiza lista de visitas
+      const lista = document.getElementById('recentVisitsList');
+      if (lista) {
+        if (visitas.length === 0) {
+          lista.innerHTML = `
+            <div class="empty-state" style="margin:0;">
+              <div class="empty-state__icon">
+                <span class="material-symbols-rounded">explore</span>
+              </div>
+              <div class="empty-state__title">Nenhuma visita ainda</div>
+              <div class="empty-state__desc">Suas visitas aparecerão aqui após o primeiro check-in.</div>
+            </div>
+          `;
+        } else {
+          lista.innerHTML = visitas.map(v => `
+            <a href="#/visitas" class="visits-list__item">
+              <div class="visits-list__icon">
+                <span class="material-symbols-rounded">local_hospital</span>
+              </div>
+              <div class="visits-list__info">
+                <div class="visits-list__name">${(v.instituicoes?.nome || 'Instituição').replace(/"/g,'&quot;')}</div>
+                <div class="visits-list__time">${formatarTempoRelativo(v.data_visita + 'T' + (v.horario_inicio || '00:00:00'))}</div>
+              </div>
+              ${sbadgeForStatus(v.status)}
+            </a>
+          `).join('');
+        }
+      }
+    } catch (err) {
+      console.error('[Home] Erro ao carregar dados:', err);
+    }
+  }, 0);
+
+  const primeiroNome = user.nome.split(' ')[0];
+
+  return `
+    <div class="mobile-app">
+      ${mobileTopBar({ showLogo: true, showNotification: true, showAvatar: true })}
+      <main class="mcontent">
+        <div class="home__greeting">
+          <div class="home__greeting-title">${getSaudacao()}, ${primeiroNome}</div>
+          <div class="home__greeting-date">${formatarDataPtBr(new Date())}</div>
+        </div>
+
+        <a href="#/checkin" class="cta-checkin">
+          <span class="cta-checkin__icon">
+            <span class="material-symbols-rounded">my_location</span>
+          </span>
+          <span class="cta-checkin__label">Fazer check-in</span>
+        </a>
+
+        <div class="kpi-grid">
+          <div class="kpi">
+            <div class="kpi__icon">
+              <span class="material-symbols-rounded">check_circle</span>
+            </div>
+            <div>
+              <div class="kpi__value" id="kpiMes">—</div>
+              <div class="kpi__label">Visitas este mês</div>
+            </div>
+          </div>
+          <div class="kpi">
+            <div class="kpi__icon" style="background:var(--brand-navy);">
+              <span class="material-symbols-rounded">business</span>
+            </div>
+            <div>
+              <div class="kpi__value">
+                <a href="#/visitas" style="color:var(--brand-navy);text-decoration:none;font-size:14px;font-weight:600;">Ver todas</a>
+              </div>
+              <div class="kpi__label">Minhas visitas</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section-head">
+          <h2>Visitas recentes</h2>
+          <a href="#/visitas">Ver todas</a>
+        </div>
+
+        <div class="visits-list" id="recentVisitsList">
+          <div style="padding:20px;text-align:center;color:var(--neutral-500);font-size:13px;">Carregando...</div>
+        </div>
+      </main>
+      ${bottomNav('home')}
+    </div>
+  `;
 }
+
 function renderCheckin() {
   const user = requireAuth();
   if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
-  return loggedPlaceholderScreen(user, 'location_on', 'Check-in GPS', 'Ação principal: 3 estados (seleção, confirmação, em visita). (Sprint 2.2)', '#/checkin');
+
+  // Reseta fluxo
+  CheckinFlow.instituicaoSelecionada = null;
+  CheckinFlow.manual = false;
+
+  // Async: pega GPS + lista instituições + ordena
+  setTimeout(async () => {
+    const listEl = document.getElementById('instList');
+    const gpsEl = document.getElementById('gpsStatus');
+
+    try {
+      // Pega instituições primeiro (essa operação não depende de GPS)
+      const instituicoes = await listarInstituicoes();
+
+      if (instituicoes.length === 0) {
+        if (listEl) {
+          listEl.innerHTML = `
+            <div class="empty-state" style="margin:0;">
+              <div class="empty-state__icon">
+                <span class="material-symbols-rounded">local_hospital</span>
+              </div>
+              <div class="empty-state__title">Nenhuma instituição cadastrada</div>
+              <div class="empty-state__desc">O administrador precisa cadastrar instituições antes de você fazer check-in.</div>
+              ${user.perfil === 'admin' ? '<a href="#/admin/instituicoes" class="btn-auth btn-auth--secondary" style="display:inline-flex;text-decoration:none;width:auto;padding:10px 20px;min-height:auto;">Cadastrar agora</a>' : ''}
+            </div>
+          `;
+        }
+        if (gpsEl) {
+          gpsEl.outerHTML = `
+            <div class="gps-status gps-status--warning" id="gpsStatus">
+              <span class="gps-status__icon"><span class="material-symbols-rounded">info</span></span>
+              <div class="gps-status__body">
+                <div class="gps-status__label">Sem instituições</div>
+                <div class="gps-status__detail">Cadastre instituições primeiro</div>
+              </div>
+            </div>
+          `;
+        }
+        return;
+      }
+
+      // Tenta pegar GPS
+      let userPos = null;
+      try {
+        userPos = await getGeolocation();
+        CheckinFlow.userPos = userPos;
+        if (gpsEl) {
+          gpsEl.className = 'gps-status';
+          gpsEl.innerHTML = `
+            <span class="gps-status__icon"><span class="material-symbols-rounded">gps_fixed</span></span>
+            <div class="gps-status__body">
+              <div class="gps-status__label">GPS ativo</div>
+              <div class="gps-status__detail">precisão ±${Math.round(userPos.accuracy)}m · atualizado agora</div>
+            </div>
+          `;
+        }
+      } catch (gpsErr) {
+        if (gpsEl) {
+          gpsEl.className = 'gps-status gps-status--warning';
+          gpsEl.innerHTML = `
+            <span class="gps-status__icon"><span class="material-symbols-rounded">gps_off</span></span>
+            <div class="gps-status__body">
+              <div class="gps-status__label">GPS indisponível</div>
+              <div class="gps-status__detail">${gpsErr.message}</div>
+            </div>
+          `;
+        }
+      }
+
+      // Ordena
+      const instComDist = userPos
+        ? ordenarPorProximidade(instituicoes, userPos.lat, userPos.lng, CONFIG.GPS_RADIUS_METERS)
+        : instituicoes.map(i => ({ ...i, distancia: null, distanciaFmt: '—', dentroDoRaio: false }));
+
+      CheckinFlow.instituicoes = instComDist;
+
+      // Renderiza lista
+      if (listEl) {
+        listEl.innerHTML = instComDist.map((inst, i) => {
+          const isClosest = i === 0 && userPos;
+          const zone = inst.dentroDoRaio ? 'in' : 'out';
+          const enderecoCurto = `${inst.logradouro}${inst.bairro ? ' · ' + inst.bairro : ''}`;
+          return `
+            <a href="#" onclick="selectInstitution('${inst.id}'); return false;" class="inst-item${isClosest ? ' inst-item--closest' : ''}">
+              <div class="inst-item__pin inst-item__pin--${zone}">
+                <span class="material-symbols-rounded">location_on</span>
+              </div>
+              <div class="inst-item__info">
+                <div class="inst-item__name">${inst.nome.replace(/"/g,'&quot;')}</div>
+                <div class="inst-item__addr">${enderecoCurto.replace(/"/g,'&quot;')}</div>
+              </div>
+              <div class="inst-item__right">
+                <div class="inst-item__dist inst-item__dist--${zone}">${inst.distanciaFmt}</div>
+                ${!inst.dentroDoRaio && userPos ? '<div class="inst-item__zone-tag">fora do raio</div>' : ''}
+              </div>
+            </a>
+          `;
+        }).join('');
+      }
+    } catch (err) {
+      console.error('[Checkin] Erro:', err);
+      if (listEl) {
+        listEl.innerHTML = `
+          <div class="empty-state" style="margin:0;">
+            <div class="empty-state__icon" style="background:var(--status-danger-bg);color:var(--status-danger);">
+              <span class="material-symbols-rounded">error</span>
+            </div>
+            <div class="empty-state__title">Erro ao carregar</div>
+            <div class="empty-state__desc">${err.message}</div>
+          </div>
+        `;
+      }
+    }
+  }, 0);
+
+  return `
+    <div class="mobile-app">
+      ${mobileTopBar({ title: 'Check-in', showBack: true })}
+      <main class="mcontent">
+        <div class="gps-status gps-status--warning" id="gpsStatus">
+          <span class="gps-status__icon"><span class="material-symbols-rounded">gps_not_fixed</span></span>
+          <div class="gps-status__body">
+            <div class="gps-status__label">Obtendo localização...</div>
+            <div class="gps-status__detail">aguarde um momento</div>
+          </div>
+        </div>
+
+        <div class="search-bar">
+          <span class="material-symbols-rounded search-bar__icon">search</span>
+          <input type="text" placeholder="Buscar instituição..." oninput="filterInstitutions(this.value)" />
+        </div>
+
+        <div class="list-label">
+          <span class="list-label__title">Instituições cadastradas</span>
+          <span class="list-label__meta">raio ${CONFIG.GPS_RADIUS_METERS}m</span>
+        </div>
+
+        <div class="inst-list" id="instList">
+          <div style="padding:20px;text-align:center;color:var(--neutral-500);font-size:13px;">Carregando...</div>
+        </div>
+
+        <button class="btn-auth btn-auth--secondary" onclick="startManualCheckin()">
+          <span class="material-symbols-rounded" style="font-size:20px">edit_location_alt</span>
+          Check-in manual (sem GPS)
+        </button>
+      </main>
+      ${bottomNav('checkin')}
+    </div>
+  `;
 }
+
+window.filterInstitutions = function(query) {
+  const q = query.toLowerCase().trim();
+  const listEl = document.getElementById('instList');
+  if (!listEl) return;
+
+  const filtered = q
+    ? CheckinFlow.instituicoes.filter(i => i.nome.toLowerCase().includes(q) || (i.bairro || '').toLowerCase().includes(q))
+    : CheckinFlow.instituicoes;
+
+  if (filtered.length === 0) {
+    listEl.innerHTML = `
+      <div style="padding:30px 20px;text-align:center;color:var(--neutral-500);">
+        <span class="material-symbols-rounded" style="font-size:32px;color:var(--neutral-400);">search_off</span>
+        <div style="margin-top:8px;font-size:13px;">Nenhuma instituição encontrada</div>
+      </div>
+    `;
+    return;
+  }
+
+  listEl.innerHTML = filtered.map((inst, i) => {
+    const zone = inst.dentroDoRaio ? 'in' : 'out';
+    const enderecoCurto = `${inst.logradouro}${inst.bairro ? ' · ' + inst.bairro : ''}`;
+    return `
+      <a href="#" onclick="selectInstitution('${inst.id}'); return false;" class="inst-item">
+        <div class="inst-item__pin inst-item__pin--${zone}">
+          <span class="material-symbols-rounded">location_on</span>
+        </div>
+        <div class="inst-item__info">
+          <div class="inst-item__name">${inst.nome.replace(/"/g,'&quot;')}</div>
+          <div class="inst-item__addr">${enderecoCurto.replace(/"/g,'&quot;')}</div>
+        </div>
+        <div class="inst-item__right">
+          <div class="inst-item__dist inst-item__dist--${zone}">${inst.distanciaFmt}</div>
+          ${!inst.dentroDoRaio && inst.distancia !== null ? '<div class="inst-item__zone-tag">fora do raio</div>' : ''}
+        </div>
+      </a>
+    `;
+  }).join('');
+};
+
+window.selectInstitution = function(id) {
+  const inst = CheckinFlow.instituicoes.find(i => i.id === id);
+  if (!inst) return;
+  CheckinFlow.instituicaoSelecionada = inst;
+  CheckinFlow.manual = false;
+  window.location.hash = '#/checkin/confirmar';
+};
+
+window.startManualCheckin = function() {
+  // Fluxo manual: seleciona sem GPS
+  if (!CheckinFlow.instituicoes || CheckinFlow.instituicoes.length === 0) {
+    alert('Ainda não há instituições cadastradas.');
+    return;
+  }
+  CheckinFlow.manual = true;
+  // Se só tem uma, já seleciona
+  if (CheckinFlow.instituicoes.length === 1) {
+    CheckinFlow.instituicaoSelecionada = CheckinFlow.instituicoes[0];
+    window.location.hash = '#/checkin/confirmar';
+  } else {
+    // Mostra modal simples pra escolher (pra MVP vamos só fazer alert)
+    const nome = prompt('Qual instituição? (digite parte do nome)');
+    if (!nome) return;
+    const inst = CheckinFlow.instituicoes.find(i => i.nome.toLowerCase().includes(nome.toLowerCase()));
+    if (!inst) {
+      alert('Nenhuma instituição encontrada com esse nome.');
+      return;
+    }
+    CheckinFlow.instituicaoSelecionada = inst;
+    window.location.hash = '#/checkin/confirmar';
+  }
+};
+
+function renderCheckinConfirmar() {
+  const user = requireAuth();
+  if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
+
+  if (!CheckinFlow.instituicaoSelecionada) {
+    setTimeout(() => { window.location.hash = '#/checkin'; }, 0);
+    return '<div class="splash"><div class="splash__spinner"></div></div>';
+  }
+
+  const inst = CheckinFlow.instituicaoSelecionada;
+  const userPos = CheckinFlow.userPos;
+  const dist = userPos ? calcularDistanciaMetros(userPos.lat, userPos.lng, inst.latitude, inst.longitude) : null;
+  const dentro = dist !== null && dist <= CONFIG.GPS_RADIUS_METERS;
+  const agora = new Date();
+  const horaFmt = `${String(agora.getHours()).padStart(2,'0')}:${String(agora.getMinutes()).padStart(2,'0')}`;
+  const dataFmt = `${['dom','seg','ter','qua','qui','sex','sáb'][agora.getDay()]} · ${agora.getDate()} ${['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'][agora.getMonth()]}`;
+
+  // Carrega objetivos async
+  setTimeout(async () => {
+    const sel = document.getElementById('objSelect');
+    if (!sel) return;
+    try {
+      const objs = await listarObjetivos();
+      sel.innerHTML = `<option value="">Selecione um objetivo...</option>` +
+        objs.map(o => `<option value="${o.id}">${o.nome}</option>`).join('');
+    } catch (err) {
+      sel.innerHTML = `<option>Erro ao carregar objetivos</option>`;
+    }
+  }, 0);
+
+  const endereco = `${inst.logradouro}${inst.bairro ? ', ' + inst.bairro : ''}`;
+  const cidadeUf = `${inst.cidade || ''} · SP`;
+
+  return `
+    <div class="mobile-app">
+      ${mobileTopBar({ title: 'Confirmar check-in', showBack: true })}
+      <main class="mcontent">
+        <div class="mini-map">
+          <svg width="100%" height="100%" style="position:absolute;inset:0;" preserveAspectRatio="none" viewBox="0 0 358 180">
+            <path d="M -10 120 Q 80 100, 180 130 T 370 110" stroke="#fff" stroke-width="22" fill="none" opacity="0.9"/>
+            <path d="M 60 -10 Q 80 80, 140 140 T 220 190" stroke="#fff" stroke-width="14" fill="none" opacity="0.8"/>
+            <path d="M 300 -10 L 260 180" stroke="#fff" stroke-width="10" fill="none" opacity="0.8"/>
+            <rect x="20" y="55" width="38" height="38" rx="3" fill="#DDE4EF" />
+            <rect x="160" y="20" width="52" height="42" rx="3" fill="#DDE4EF" />
+            <rect x="240" y="80" width="42" height="30" rx="3" fill="#DDE4EF" />
+            <rect x="70" y="150" width="40" height="35" rx="3" fill="#DDE4EF" />
+            <circle cx="220" cy="95" r="54" fill="rgba(139,198,63,0.16)" stroke="#8BC63F" stroke-width="1.5" stroke-dasharray="4 4" />
+            <path d="M 174 117 Q 195 100, 221 79" stroke="#0A1F5C" stroke-width="1.5" stroke-dasharray="3 3" fill="none" opacity="0.5"/>
+          </svg>
+          ${userPos ? `
+            <div style="position:absolute;top:108px;left:165px;">
+              <div style="width:18px;height:18px;border-radius:50%;background:#2563EB;border:3px solid #fff;box-shadow:0 0 0 6px rgba(37,99,235,0.2),0 2px 4px rgba(0,0,0,0.2);"></div>
+            </div>
+          ` : ''}
+          <div style="position:absolute;top:62px;left:210px;">
+            <div style="width:34px;height:34px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:#22A06B;border:2.5px solid #fff;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 10px rgba(34,160,107,0.35);">
+              <span class="material-symbols-rounded" style="font-size:16px;color:#fff;transform:rotate(45deg);">local_hospital</span>
+            </div>
+          </div>
+          <div class="mini-map__legend">
+            ${userPos ? `<span class="mini-map__legend-item"><span class="mini-map__legend-dot" style="background:#2563EB;"></span> Você</span>` : ''}
+            <span class="mini-map__legend-item"><span class="mini-map__legend-dot" style="background:#22A06B;"></span> Local</span>
+          </div>
+        </div>
+
+        <div class="confirm-card">
+          <div class="confirm-card__top">
+            <div class="confirm-card__icon">
+              <span class="material-symbols-rounded">local_hospital</span>
+            </div>
+            <div style="flex:1;min-width:0;">
+              <div class="confirm-card__name">${inst.nome.replace(/"/g,'&quot;')}</div>
+              <div class="confirm-card__addr">${endereco.replace(/"/g,'&quot;')}<br>${cidadeUf}</div>
+            </div>
+          </div>
+
+          <div class="confirm-card__grid">
+            <div>
+              <div class="confirm-card__label">Distância</div>
+              <div class="confirm-card__value">
+                <span class="confirm-card__dist${dentro ? '' : ' confirm-card__dist--out'}">${dist !== null ? formatarDistancia(dist) : '—'}</span>
+                ${dentro ? '<span class="material-symbols-rounded" style="color:var(--status-success);font-size:16px;">check_circle</span>' : ''}
+              </div>
+              <div class="confirm-card__hint">${dist === null ? 'sem GPS · check-in manual' : dentro ? 'do local cadastrado' : 'fora do raio de 500m'}</div>
+            </div>
+            <div>
+              <div class="confirm-card__label">Horário</div>
+              <div class="confirm-card__time">${horaFmt}</div>
+              <div class="confirm-card__hint">${dataFmt}</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="objective-select">
+          <label class="objective-select__label" for="objSelect">Objetivo planejado</label>
+          <select id="objSelect">
+            <option>Carregando...</option>
+          </select>
+          <textarea id="obsArea" placeholder="Observações iniciais (opcional)..."></textarea>
+        </div>
+
+        ${!dentro && dist !== null ? `
+          <div class="flash flash--info">
+            <span class="material-symbols-rounded" style="font-size:18px">info</span>
+            <span>Você está a ${formatarDistancia(dist)} do local. O check-in será registrado com a flag "GPS divergente" para revisão do admin.</span>
+          </div>
+        ` : ''}
+
+        <button class="btn-confirm" id="btnConfirmCheckin" onclick="handleConfirmCheckin()">
+          <span class="material-symbols-rounded" style="font-size:24px">check_circle</span>
+          Confirmar check-in
+        </button>
+
+        <button class="btn-cancel-link" onclick="window.location.hash='#/checkin'">Cancelar</button>
+      </main>
+    </div>
+  `;
+}
+
+window.handleConfirmCheckin = async function() {
+  const btn = document.getElementById('btnConfirmCheckin');
+  const objId = document.getElementById('objSelect')?.value || null;
+  const obs = document.getElementById('obsArea')?.value?.trim() || null;
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="material-symbols-rounded" style="font-size:24px">hourglass_empty</span> Registrando...';
+
+  try {
+    const visita = await criarCheckin({
+      institucaoId: CheckinFlow.instituicaoSelecionada.id,
+      userPos: CheckinFlow.userPos,
+      objetivoId: objId || null,
+      observacoes: obs,
+      checkinManual: CheckinFlow.manual,
+    });
+
+    setFlash('success', 'Check-in registrado!');
+    window.location.hash = '#/checkin/ativo';
+  } catch (err) {
+    alert('Erro ao registrar check-in: ' + err.message);
+    btn.disabled = false;
+    btn.innerHTML = '<span class="material-symbols-rounded" style="font-size:24px">check_circle</span> Confirmar check-in';
+  }
+};
+
+function renderCheckinAtivo() {
+  const user = requireAuth();
+  if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
+
+  setTimeout(async () => {
+    const visita = await getVisitaAtiva();
+    if (!visita) {
+      window.location.hash = '#/inicio';
+      return;
+    }
+
+    // Atualiza dados do card
+    const nameEl = document.getElementById('activeInstName');
+    const startEl = document.getElementById('activeInstStart');
+    if (nameEl) nameEl.textContent = visita.instituicoes?.nome || 'Instituição';
+    if (startEl) {
+      const d = new Date(visita.checkin_timestamp);
+      startEl.textContent = `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+    }
+
+    // Inicia timer
+    startTimer(visita.checkin_timestamp);
+
+    // Guarda ID
+    window._activeVisitaId = visita.id;
+  }, 0);
+
+  return `
+    <div class="mobile-app">
+      ${mobileTopBar({ liveIndicator: true })}
+      <main class="mcontent mcontent--flex">
+        <div class="active-card">
+          <div class="active-card__icon">
+            <span class="material-symbols-rounded">local_hospital</span>
+          </div>
+          <div class="active-card__info">
+            <div class="active-card__name" id="activeInstName">Carregando...</div>
+            <div class="active-card__started">Iniciada às <span class="active-card__time" id="activeInstStart">—</span></div>
+          </div>
+        </div>
+
+        <div class="timer">
+          <div class="timer__label">Tempo de visita</div>
+          <div class="timer__value" id="timerValue">00:00:00</div>
+          <div class="timer__status">
+            <span class="material-symbols-rounded">bolt</span>
+            VISITA EM ANDAMENTO
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <button class="btn-danger-giant" onclick="handleCheckoutAtivo()">
+            <span class="material-symbols-rounded" style="font-size:24px">stop_circle</span>
+            Fazer check-out
+          </button>
+
+          <button class="btn-cancel-link" onclick="handleCancelarVisita()">
+            Cancelar visita (sem salvar)
+          </button>
+        </div>
+      </main>
+    </div>
+  `;
+}
+
+window.handleCheckoutAtivo = async function() {
+  if (!confirm('Finalizar a visita agora?')) return;
+  const visitaId = window._activeVisitaId;
+  if (!visitaId) {
+    alert('Erro: não encontrei a visita ativa');
+    return;
+  }
+
+  try {
+    // Pega posição de checkout (opcional)
+    let checkoutPos = null;
+    try {
+      checkoutPos = await getGeolocation({ timeout: 5000 });
+    } catch (e) {
+      // continua sem GPS de checkout
+    }
+
+    await finalizarCheckin(visitaId, checkoutPos);
+    stopTimer();
+    setFlash('success', 'Check-out realizado. Você pode fazer o relatório depois (Sprint 2.3).');
+    window.location.hash = '#/visitas';
+  } catch (err) {
+    alert('Erro ao fazer check-out: ' + err.message);
+  }
+};
+
+window.handleCancelarVisita = async function() {
+  if (!confirm('Cancelar a visita? Os dados não serão salvos.')) return;
+  const visitaId = window._activeVisitaId;
+  if (!visitaId) return;
+
+  try {
+    await cancelarVisita(visitaId);
+    stopTimer();
+    setFlash('info', 'Visita cancelada.');
+    window.location.hash = '#/inicio';
+  } catch (err) {
+    alert('Erro ao cancelar: ' + err.message);
+  }
+};
+
 function renderVisitas() {
   const user = requireAuth();
   if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
-  return loggedPlaceholderScreen(user, 'assignment', 'Minhas visitas', 'Lista de visitas com filtros e relatórios. (Sprint 2.3)', '#/visitas');
+
+  setTimeout(async () => {
+    const listEl = document.getElementById('visitasList');
+    if (!listEl) return;
+    try {
+      const visitas = await listarMinhasVisitas(50);
+      if (visitas.length === 0) {
+        listEl.innerHTML = `
+          <div class="empty-state" style="margin:0;">
+            <div class="empty-state__icon">
+              <span class="material-symbols-rounded">assignment</span>
+            </div>
+            <div class="empty-state__title">Nenhuma visita ainda</div>
+            <div class="empty-state__desc">Faça seu primeiro check-in pra começar.</div>
+            <a href="#/checkin" class="btn-auth btn-auth--primary" style="display:inline-flex;text-decoration:none;width:auto;padding:12px 24px;min-height:auto;">
+              <span class="material-symbols-rounded" style="font-size:20px">my_location</span>
+              Fazer check-in
+            </a>
+          </div>
+        `;
+      } else {
+        listEl.innerHTML = visitas.map(v => `
+          <div class="visits-list__item">
+            <div class="visits-list__icon">
+              <span class="material-symbols-rounded">local_hospital</span>
+            </div>
+            <div class="visits-list__info">
+              <div class="visits-list__name">${(v.instituicoes?.nome || 'Instituição').replace(/"/g,'&quot;')}</div>
+              <div class="visits-list__time">${formatarTempoRelativo(v.data_visita + 'T' + (v.horario_inicio || '00:00:00'))}</div>
+            </div>
+            ${sbadgeForStatus(v.status)}
+          </div>
+        `).join('');
+      }
+    } catch (err) {
+      listEl.innerHTML = `<div style="padding:20px;text-align:center;color:var(--status-danger);">Erro: ${err.message}</div>`;
+    }
+  }, 0);
+
+  return `
+    <div class="mobile-app">
+      ${mobileTopBar({ title: 'Minhas visitas', showBack: true })}
+      <main class="mcontent">
+        <div class="visits-list" id="visitasList" style="background:var(--neutral-0);">
+          <div style="padding:20px;text-align:center;color:var(--neutral-500);font-size:13px;">Carregando...</div>
+        </div>
+      </main>
+      ${bottomNav('visits')}
+    </div>
+  `;
 }
 function renderAgenda() {
   const user = requireAuth();
@@ -2596,8 +4710,182 @@ function renderAdminEquipe() {
 function renderAdminInstituicoes() {
   const user = requireAdmin();
   if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
-  return loggedPlaceholderScreen(user, 'local_hospital', 'Instituições', 'CRUD de hospitais e clínicas.', '#/admin/instituicoes');
+
+  setTimeout(async () => {
+    const listEl = document.getElementById('admInstList');
+    if (!listEl) return;
+    try {
+      const insts = await listarInstituicoes();
+      if (insts.length === 0) {
+        listEl.innerHTML = `
+          <div class="empty-state" style="margin:0;">
+            <div class="empty-state__icon">
+              <span class="material-symbols-rounded">local_hospital</span>
+            </div>
+            <div class="empty-state__title">Nenhuma instituição cadastrada</div>
+            <div class="empty-state__desc">Use o botão abaixo pra popular rapidamente com 5 hospitais de SP usando sua localização atual como referência. Ótimo pra testar o fluxo de check-in.</div>
+            <button class="btn-auth btn-auth--primary" onclick="seedInstituicoesTeste()" style="display:inline-flex;text-decoration:none;width:auto;padding:12px 24px;min-height:auto;margin-top:8px;">
+              <span class="material-symbols-rounded" style="font-size:20px">auto_awesome</span>
+              Popular instituições de teste
+            </button>
+          </div>
+        `;
+      } else {
+        listEl.innerHTML = `
+          <div style="margin-bottom:16px;font-size:13px;color:var(--neutral-600);">
+            <strong>${insts.length}</strong> instituição(ões) cadastrada(s)
+          </div>
+          ${insts.map(inst => `
+            <div class="visits-list__item">
+              <div class="visits-list__icon">
+                <span class="material-symbols-rounded">local_hospital</span>
+              </div>
+              <div class="visits-list__info">
+                <div class="visits-list__name">${inst.nome.replace(/"/g,'&quot;')}</div>
+                <div class="visits-list__time" style="font-family:var(--font-body);">
+                  ${(inst.bairro || '').replace(/"/g,'&quot;')}${inst.bairro && inst.cidade ? ' · ' : ''}${(inst.cidade || '').replace(/"/g,'&quot;')}
+                </div>
+              </div>
+              <span style="font-family:var(--font-mono);font-size:11px;color:var(--neutral-500);">${inst.cnpj}</span>
+            </div>
+          `).join('')}
+        `;
+      }
+    } catch (err) {
+      listEl.innerHTML = `<div style="padding:20px;color:var(--status-danger);">Erro: ${err.message}</div>`;
+    }
+  }, 0);
+
+  return `
+    <div class="mobile-app">
+      ${mobileTopBar({ title: 'Instituições', showBack: true })}
+      <main class="mcontent">
+        <div class="visits-list" id="admInstList" style="background:var(--neutral-0);">
+          <div style="padding:20px;text-align:center;color:var(--neutral-500);font-size:13px;">Carregando...</div>
+        </div>
+
+        <div style="margin-top:20px;padding:14px;background:var(--status-info-bg);border-radius:12px;font-size:13px;color:var(--status-info);line-height:1.5;">
+          <strong>📝 Sprint 2.2 em andamento</strong><br>
+          CRUD completo de instituições vem no Sprint 3 (admin). Por enquanto use o seed pra testar.
+        </div>
+      </main>
+    </div>
+  `;
 }
+
+// Seed de instituições de teste — cria 5 hospitais reais de São Paulo
+// Coordenadas reais obtidas de fontes públicas
+window.seedInstituicoesTeste = async function() {
+  if (!confirm('Cadastrar 5 hospitais de teste em São Paulo?')) return;
+
+  const supervisorTeste = {
+    supervisor_nome: 'Supervisor Teste',
+    supervisor_telefone: '(11) 99999-9999',
+    supervisor_email: 'supervisor@teste.com.br',
+  };
+
+  const hospitaisSP = [
+    {
+      nome: 'Hospital Israelita Albert Einstein',
+      razao_social: 'Sociedade Beneficente Israelita Brasileira Albert Einstein',
+      cnpj: '60.765.823/0001-30',
+      logradouro: 'Av. Albert Einstein, 627',
+      bairro: 'Morumbi',
+      cep: '05652-900',
+      cidade: 'São Paulo',
+      estado: 'SP',
+      latitude: -23.5998,
+      longitude: -46.7166,
+      leitos_total: 684,
+      leitos_uti_adulto: 82,
+      leitos_uti_pediatrica: 12,
+      hospital_cirurgico: true,
+      salas_cirurgicas: 24,
+      ...supervisorTeste,
+    },
+    {
+      nome: 'Hospital Sírio-Libanês',
+      razao_social: 'Sociedade Beneficente de Senhoras - Hospital Sírio Libanês',
+      cnpj: '61.590.410/0001-24',
+      logradouro: 'R. Dona Adma Jafet, 91',
+      bairro: 'Bela Vista',
+      cep: '01308-050',
+      cidade: 'São Paulo',
+      estado: 'SP',
+      latitude: -23.5555,
+      longitude: -46.6536,
+      leitos_total: 425,
+      leitos_uti_adulto: 65,
+      leitos_uti_pediatrica: 8,
+      hospital_cirurgico: true,
+      salas_cirurgicas: 18,
+      ...supervisorTeste,
+    },
+    {
+      nome: 'Hospital São Luiz Morumbi',
+      razao_social: 'Rede D Or São Luiz S.A.',
+      cnpj: '06.047.087/0001-39',
+      logradouro: 'R. Eng. Oscar Americano, 840',
+      bairro: 'Morumbi',
+      cep: '05622-000',
+      cidade: 'São Paulo',
+      estado: 'SP',
+      latitude: -23.6003,
+      longitude: -46.7217,
+      leitos_total: 280,
+      leitos_uti_adulto: 40,
+      leitos_uti_pediatrica: 6,
+      hospital_cirurgico: true,
+      salas_cirurgicas: 12,
+      ...supervisorTeste,
+    },
+    {
+      nome: 'Hospital Samaritano Higienópolis',
+      razao_social: 'Hospital Samaritano S/A',
+      cnpj: '60.742.616/0001-60',
+      logradouro: 'R. Conselheiro Brotero, 1486',
+      bairro: 'Higienópolis',
+      cep: '01232-010',
+      cidade: 'São Paulo',
+      estado: 'SP',
+      latitude: -23.5393,
+      longitude: -46.6622,
+      leitos_total: 319,
+      leitos_uti_adulto: 45,
+      leitos_uti_pediatrica: 8,
+      hospital_cirurgico: true,
+      salas_cirurgicas: 10,
+      ...supervisorTeste,
+    },
+    {
+      nome: 'Hospital 9 de Julho',
+      razao_social: 'Hospital Nove de Julho S.A.',
+      cnpj: '60.921.637/0001-86',
+      logradouro: 'R. Peixoto Gomide, 545',
+      bairro: 'Jardim Paulista',
+      cep: '01409-001',
+      cidade: 'São Paulo',
+      estado: 'SP',
+      latitude: -23.5578,
+      longitude: -46.6528,
+      leitos_total: 295,
+      leitos_uti_adulto: 38,
+      leitos_uti_pediatrica: 4,
+      hospital_cirurgico: true,
+      salas_cirurgicas: 8,
+      ...supervisorTeste,
+    },
+  ];
+
+  try {
+    const { error } = await db.from('instituicoes').insert(hospitaisSP);
+    if (error) throw new Error(error.message);
+    setFlash('success', `${hospitaisSP.length} instituições cadastradas!`);
+    router(); // re-renderiza a página
+  } catch (err) {
+    alert('Erro ao cadastrar: ' + err.message);
+  }
+};
 function renderAdminProfissionais() {
   const user = requireAdmin();
   if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
