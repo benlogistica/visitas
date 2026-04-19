@@ -1,0 +1,998 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0A1F5C">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Nutricionais Visitas</title>
+
+<!-- Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<!-- Material Symbols Rounded -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0&display=swap" rel="stylesheet">
+
+<!-- Supabase Client -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+/* ==========================================================================
+   DESIGN TOKENS — Nutricionais Visitas v1.0
+   Extraído do design system aprovado
+   ========================================================================== */
+:root {
+  /* Cores de marca */
+  --brand-navy: #0A1F5C;
+  --brand-navy-deep: #061344;
+  --brand-navy-light: #1A3075;
+  --brand-lime: #8BC63F;
+  --brand-lime-dark: #6FA62E;
+  --brand-lime-light: #A8D96B;
+
+  /* Neutros */
+  --neutral-0: #FFFFFF;
+  --neutral-50: #F7F9FC;
+  --neutral-100: #EDF1F7;
+  --neutral-200: #D6DEEB;
+  --neutral-300: #B6C1D3;
+  --neutral-400: #8B97AD;
+  --neutral-500: #6B7685;
+  --neutral-600: #4A5568;
+  --neutral-700: #2D3748;
+  --neutral-800: #1A202C;
+  --neutral-900: #0F1419;
+
+  /* Status semântico (diferente do lima da marca) */
+  --status-success: #22A06B;
+  --status-success-bg: #E6F5EE;
+  --status-warning: #F59E0B;
+  --status-warning-bg: #FEF3E0;
+  --status-danger: #DC2626;
+  --status-danger-bg: #FCE8E8;
+  --status-info: #2563EB;
+  --status-info-bg: #E0E9FC;
+  --status-draft: #8B97AD;
+  --status-draft-bg: #EDF1F7;
+
+  /* Tipografia */
+  --font-display: 'Poppins', system-ui, -apple-system, sans-serif;
+  --font-body: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Courier New', monospace;
+
+  /* Escala tipográfica */
+  --text-xs: 12px;
+  --text-sm: 14px;
+  --text-base: 16px;
+  --text-lg: 18px;
+  --text-xl: 24px;
+  --text-2xl: 32px;
+  --text-3xl: 40px;
+  --text-4xl: 56px;
+
+  /* Border radius */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-pill: 9999px;
+
+  /* Sombras */
+  --shadow-sm: 0 1px 2px rgba(10, 31, 92, 0.06);
+  --shadow-md: 0 2px 8px rgba(10, 31, 92, 0.08);
+  --shadow-lg: 0 8px 24px rgba(10, 31, 92, 0.12);
+  --shadow-xl: 0 16px 48px rgba(10, 31, 92, 0.16);
+
+  /* Espaçamentos */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* Transições */
+  --transition-fast: 120ms ease-out;
+  --transition-base: 200ms ease-out;
+  --transition-slow: 350ms ease-out;
+
+  /* Layout */
+  --sidebar-width: 240px;
+  --topbar-height: 64px;
+  --bottomnav-height: 72px;
+  --container-max: 1440px;
+}
+
+/* ==========================================================================
+   RESET E BASE
+   ========================================================================== */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  line-height: 1.5;
+  color: var(--neutral-800);
+  background: var(--neutral-50);
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--brand-navy);
+  letter-spacing: -0.01em;
+}
+
+h1 { font-size: var(--text-2xl); }
+h2 { font-size: var(--text-xl); }
+h3 { font-size: var(--text-lg); }
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  background: none;
+}
+
+input, select, textarea {
+  font-family: inherit;
+  font-size: inherit;
+}
+
+a {
+  color: var(--brand-navy);
+  text-decoration: none;
+}
+
+.material-symbols-rounded {
+  font-size: 24px;
+  vertical-align: middle;
+  user-select: none;
+}
+
+/* ==========================================================================
+   COMPONENTES BASE
+   ========================================================================== */
+
+/* Botões */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: 12px 24px;
+  font-family: var(--font-display);
+  font-size: var(--text-base);
+  font-weight: 600;
+  border-radius: var(--radius-pill);
+  transition: all var(--transition-fast);
+  min-height: 48px;
+  white-space: nowrap;
+  border: 2px solid transparent;
+}
+
+.btn--primary {
+  background: var(--brand-lime);
+  color: var(--neutral-0);
+}
+.btn--primary:hover { background: var(--brand-lime-dark); transform: translateY(-1px); }
+.btn--primary:active { transform: translateY(0); }
+.btn--primary:disabled { background: var(--neutral-300); cursor: not-allowed; transform: none; }
+
+.btn--secondary {
+  background: transparent;
+  color: var(--brand-navy);
+  border-color: var(--brand-navy);
+}
+.btn--secondary:hover { background: var(--brand-navy); color: var(--neutral-0); }
+
+.btn--ghost {
+  background: transparent;
+  color: var(--neutral-600);
+}
+.btn--ghost:hover { background: var(--neutral-100); color: var(--brand-navy); }
+
+.btn--danger {
+  background: var(--status-danger);
+  color: var(--neutral-0);
+}
+.btn--danger:hover { background: #B91C1C; }
+
+.btn--lg {
+  padding: 16px 36px;
+  font-size: var(--text-lg);
+  min-height: 56px;
+}
+
+.btn--xl {
+  padding: 20px 48px;
+  font-size: var(--text-lg);
+  min-height: 64px;
+  font-weight: 700;
+}
+
+.btn--full { width: 100%; }
+
+/* Cards */
+.card {
+  background: var(--neutral-0);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--neutral-100);
+}
+
+/* Inputs */
+.input {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.input__label {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--neutral-700);
+}
+
+.input__label .required { color: var(--status-danger); }
+
+.input__field {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 12px 16px;
+  background: var(--neutral-50);
+  border: 1px solid var(--neutral-200);
+  border-radius: var(--radius-md);
+  transition: all var(--transition-fast);
+  min-height: 48px;
+}
+
+.input__field:focus-within {
+  border-color: var(--brand-navy);
+  background: var(--neutral-0);
+  box-shadow: 0 0 0 3px rgba(10, 31, 92, 0.1);
+}
+
+.input__field input,
+.input__field select,
+.input__field textarea {
+  flex: 1;
+  border: none;
+  background: transparent;
+  outline: none;
+  color: var(--neutral-800);
+  width: 100%;
+}
+
+.input__field .material-symbols-rounded {
+  color: var(--neutral-400);
+  font-size: 20px;
+}
+
+.input__helper {
+  font-size: var(--text-xs);
+  color: var(--neutral-500);
+}
+
+.input__error {
+  font-size: var(--text-xs);
+  color: var(--status-danger);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Badges */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 12px;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  border-radius: var(--radius-pill);
+  white-space: nowrap;
+}
+
+.badge--success { background: var(--status-success-bg); color: var(--status-success); }
+.badge--warning { background: var(--status-warning-bg); color: var(--status-warning); }
+.badge--danger { background: var(--status-danger-bg); color: var(--status-danger); }
+.badge--info { background: var(--status-info-bg); color: var(--status-info); }
+.badge--draft { background: var(--status-draft-bg); color: var(--status-draft); }
+
+/* ==========================================================================
+   SPLASH / LOADING
+   ========================================================================== */
+.splash {
+  position: fixed;
+  inset: 0;
+  background: var(--brand-navy);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  transition: opacity var(--transition-slow), visibility var(--transition-slow);
+}
+
+.splash--hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.splash__logo {
+  width: 120px;
+  height: auto;
+  margin-bottom: var(--space-6);
+  animation: splash-pulse 2s ease-in-out infinite;
+}
+
+.splash__title {
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  font-weight: 600;
+  color: var(--neutral-0);
+  margin-bottom: var(--space-2);
+  letter-spacing: -0.01em;
+}
+
+.splash__subtitle {
+  font-size: var(--text-sm);
+  color: rgba(255, 255, 255, 0.7);
+  margin-bottom: var(--space-8);
+}
+
+.splash__spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid rgba(255, 255, 255, 0.2);
+  border-top-color: var(--brand-lime);
+  border-radius: 50%;
+  animation: splash-spin 0.8s linear infinite;
+}
+
+@keyframes splash-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.05); opacity: 0.9; }
+}
+
+@keyframes splash-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ==========================================================================
+   DIAGNÓSTICO (tela de teste de conexão)
+   ========================================================================== */
+.diag {
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: var(--space-6) var(--space-4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.diag__container {
+  width: 100%;
+  max-width: 560px;
+}
+
+.diag__header {
+  text-align: center;
+  margin-bottom: var(--space-8);
+}
+
+.diag__logo {
+  width: 72px;
+  height: 72px;
+  background: var(--brand-lime);
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: var(--space-4);
+}
+
+.diag__logo svg { width: 44px; height: 44px; fill: white; }
+
+.diag__title {
+  font-size: var(--text-2xl);
+  margin-bottom: var(--space-2);
+}
+
+.diag__subtitle {
+  color: var(--neutral-600);
+  font-size: var(--text-sm);
+}
+
+.diag__card {
+  background: var(--neutral-0);
+  border-radius: var(--radius-xl);
+  padding: var(--space-6);
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--neutral-100);
+  margin-bottom: var(--space-4);
+}
+
+.diag__card-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--neutral-100);
+}
+
+.diag__card-title h3 {
+  font-size: var(--text-lg);
+  margin: 0;
+}
+
+.diag__status-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.diag__status-dot--success { background: var(--status-success); animation: pulse-success 2s ease-in-out infinite; }
+.diag__status-dot--error { background: var(--status-danger); }
+.diag__status-dot--pending { background: var(--status-warning); animation: pulse-warning 1s ease-in-out infinite; }
+
+@keyframes pulse-success {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(34, 160, 107, 0.5); }
+  50% { box-shadow: 0 0 0 8px rgba(34, 160, 107, 0); }
+}
+@keyframes pulse-warning {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.diag__checks {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.diag__check {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  background: var(--neutral-50);
+  border-radius: var(--radius-md);
+  border-left: 3px solid var(--neutral-300);
+}
+
+.diag__check--ok { border-left-color: var(--status-success); background: var(--status-success-bg); }
+.diag__check--error { border-left-color: var(--status-danger); background: var(--status-danger-bg); }
+.diag__check--pending { border-left-color: var(--status-warning); background: var(--status-warning-bg); }
+
+.diag__check-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: white;
+}
+
+.diag__check-icon .material-symbols-rounded { font-size: 20px; }
+.diag__check--ok .diag__check-icon .material-symbols-rounded { color: var(--status-success); }
+.diag__check--error .diag__check-icon .material-symbols-rounded { color: var(--status-danger); }
+.diag__check--pending .diag__check-icon .material-symbols-rounded { color: var(--status-warning); }
+
+.diag__check-text { flex: 1; }
+.diag__check-label {
+  font-weight: 600;
+  color: var(--neutral-800);
+  font-size: var(--text-sm);
+}
+.diag__check-detail {
+  font-size: var(--text-xs);
+  color: var(--neutral-600);
+  margin-top: 2px;
+}
+
+.diag__info {
+  background: var(--status-info-bg);
+  color: var(--status-info);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  margin-bottom: var(--space-4);
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+.diag__info .material-symbols-rounded { font-size: 18px; margin-top: 2px; flex-shrink: 0; }
+
+.diag__actions {
+  display: flex;
+  gap: var(--space-3);
+  margin-top: var(--space-6);
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.diag__meta {
+  text-align: center;
+  font-size: var(--text-xs);
+  color: var(--neutral-500);
+  margin-top: var(--space-6);
+  font-family: var(--font-mono);
+}
+
+.diag__meta a { color: var(--brand-navy); }
+
+/* ==========================================================================
+   SCREEN PLACEHOLDER (temporário)
+   ========================================================================== */
+.screen-placeholder {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6);
+}
+
+.screen-placeholder__content {
+  max-width: 500px;
+  text-align: center;
+}
+
+.screen-placeholder__icon {
+  width: 80px;
+  height: 80px;
+  background: var(--brand-lime);
+  color: var(--neutral-0);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto var(--space-6);
+}
+
+.screen-placeholder__icon .material-symbols-rounded {
+  font-size: 40px;
+}
+
+.screen-placeholder__title {
+  margin-bottom: var(--space-3);
+}
+
+.screen-placeholder__description {
+  color: var(--neutral-600);
+  margin-bottom: var(--space-6);
+}
+
+.screen-placeholder__route {
+  display: inline-block;
+  padding: 6px 14px;
+  background: var(--neutral-100);
+  border-radius: var(--radius-pill);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--neutral-600);
+  margin-bottom: var(--space-8);
+}
+
+/* ==========================================================================
+   SCROLLBAR (estilizado)
+   ========================================================================== */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track { background: var(--neutral-100); }
+::-webkit-scrollbar-thumb { background: var(--neutral-300); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--neutral-400); }
+
+/* ==========================================================================
+   UTILITIES
+   ========================================================================== */
+.hidden { display: none !important; }
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+</style>
+</head>
+<body>
+
+<!-- ==========================================================================
+     SPLASH (primeira tela enquanto app carrega)
+     ========================================================================== -->
+<div class="splash" id="splash">
+  <!-- Logo branco inline SVG pra carregar rápido, será trocado por PNG quando subirmos o logo -->
+  <div class="splash__logo" aria-label="Nutricionais">
+    <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;fill:#FFFFFF">
+      <path d="M100 175 C100 175, 20 125, 20 70 C20 45, 40 25, 65 25 C80 25, 92 32, 100 45 C108 32, 120 25, 135 25 C160 25, 180 45, 180 70 C180 125, 100 175, 100 175 Z"/>
+    </svg>
+  </div>
+  <div class="splash__title">Nutricionais Visitas</div>
+  <div class="splash__subtitle">Carregando o sistema...</div>
+  <div class="splash__spinner"></div>
+</div>
+
+<!-- ==========================================================================
+     APP ROOT (conteúdo renderizado dinamicamente pelas rotas)
+     ========================================================================== -->
+<main id="app" class="app hidden"></main>
+
+
+<script>
+/* ==========================================================================
+   CONFIG — Preencher com credenciais do Supabase quando disponível
+   ========================================================================== */
+const CONFIG = {
+  SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
+  SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
+  APP_VERSION: '1.0.0-alpha',
+  APP_NAME: 'Nutricionais Visitas',
+  GPS_RADIUS_METERS: 500,
+  MARGIN_TIME_MINUTES: 90,
+};
+
+/* ==========================================================================
+   SUPABASE CLIENT
+   ========================================================================== */
+let db = null;
+let connectionStatus = {
+  connected: false,
+  testPassed: false,
+  adminFound: false,
+  tablesFound: 0,
+  error: null,
+  details: {},
+};
+
+function initSupabase() {
+  if (CONFIG.SUPABASE_URL.includes('SEU-PROJETO')) {
+    console.warn('[Nutricionais] Supabase não configurado. Modo demo ativo.');
+    connectionStatus.error = 'Supabase não configurado (modo demo)';
+    return null;
+  }
+  try {
+    db = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+    console.log('[Nutricionais] Supabase inicializado.');
+    connectionStatus.connected = true;
+    return db;
+  } catch (err) {
+    console.error('[Nutricionais] Erro ao conectar Supabase:', err);
+    connectionStatus.error = err.message;
+    return null;
+  }
+}
+
+async function testConnection() {
+  if (!db) return;
+  try {
+    const tabelasEsperadas = [
+      'usuarios', 'instituicoes', 'profissionais', 'visitas',
+      'visitas_agendadas', 'objetivos_visita', 'configuracoes_sistema',
+      'faturamento', 'historico_visitas'
+    ];
+
+    const { count: userCount, error: userError } = await db
+      .from('usuarios').select('*', { count: 'exact', head: true });
+
+    if (userError) {
+      connectionStatus.error = `Erro ao ler usuarios: ${userError.message}`;
+      return;
+    }
+
+    const { data: admin, error: adminError } = await db
+      .from('usuarios').select('nome, cpf, perfil, status').eq('perfil', 'admin').single();
+
+    if (!adminError && admin) {
+      connectionStatus.adminFound = true;
+      connectionStatus.details.adminNome = admin.nome;
+    }
+
+    const { count: objCount } = await db
+      .from('objetivos_visita').select('*', { count: 'exact', head: true });
+    connectionStatus.details.totalObjetivos = objCount || 0;
+
+    const { count: configCount } = await db
+      .from('configuracoes_sistema').select('*', { count: 'exact', head: true });
+    connectionStatus.details.totalConfigs = configCount || 0;
+
+    connectionStatus.tablesFound = tabelasEsperadas.length;
+    connectionStatus.testPassed = true;
+    console.log('[Nutricionais] Teste de conexão OK:', connectionStatus);
+  } catch (err) {
+    console.error('[Nutricionais] Erro no teste:', err);
+    connectionStatus.error = err.message;
+  }
+}
+
+/* ==========================================================================
+   ROUTER (SPA via hash)
+   ========================================================================== */
+const routes = {
+  '#/':             { title: 'Diagnóstico', icon: 'verified', render: renderDiagnostico },
+  '#/diagnostico':  { title: 'Diagnóstico', icon: 'verified', render: renderDiagnostico },
+  '#/login':        { title: 'Entrar', icon: 'login', render: renderLogin },
+  '#/cadastro':     { title: 'Criar conta', icon: 'person_add', render: renderCadastro },
+  '#/recuperar':    { title: 'Recuperar senha', icon: 'lock_reset', render: renderRecuperar },
+  '#/inicio':       { title: 'Início', icon: 'home', render: renderInicio },
+  '#/checkin':      { title: 'Check-in', icon: 'location_on', render: renderCheckin },
+  '#/visitas':      { title: 'Visitas', icon: 'assignment', render: renderVisitas },
+  '#/agenda':       { title: 'Agenda', icon: 'calendar_month', render: renderAgenda },
+  '#/faturamento':  { title: 'Faturamento', icon: 'payments', render: renderFaturamento },
+  '#/admin':        { title: 'Dashboard Admin', icon: 'dashboard', render: renderAdminDashboard },
+  '#/admin/revisao':{ title: 'Revisão', icon: 'rule', render: renderAdminRevisao },
+  '#/admin/equipe': { title: 'Equipe', icon: 'groups', render: renderAdminEquipe },
+  '#/admin/instituicoes': { title: 'Instituições', icon: 'local_hospital', render: renderAdminInstituicoes },
+  '#/admin/profissionais':{ title: 'Profissionais', icon: 'stethoscope', render: renderAdminProfissionais },
+  '#/admin/configuracoes':{ title: 'Configurações', icon: 'settings', render: renderAdminConfig },
+};
+
+function router() {
+  const hash = window.location.hash || '#/';
+  const route = routes[hash];
+  const app = document.getElementById('app');
+
+  if (route) {
+    document.title = `${route.title} · ${CONFIG.APP_NAME}`;
+    app.innerHTML = route.render(hash);
+  } else {
+    app.innerHTML = render404(hash);
+    document.title = `Não encontrado · ${CONFIG.APP_NAME}`;
+  }
+
+  window.scrollTo(0, 0);
+}
+
+/* ==========================================================================
+   RENDERS PLACEHOLDER (serão substituídos nos próximos sprints)
+   ========================================================================== */
+function placeholderScreen(icon, title, description, route) {
+  return `
+    <div class="screen-placeholder">
+      <div class="screen-placeholder__content">
+        <div class="screen-placeholder__icon">
+          <span class="material-symbols-rounded">${icon}</span>
+        </div>
+        <h1 class="screen-placeholder__title">${title}</h1>
+        <p class="screen-placeholder__description">${description}</p>
+        <div class="screen-placeholder__route">${route}</div>
+        <div style="display:flex; gap:12px; justify-content:center; flex-wrap:wrap;">
+          <a href="#/login" class="btn btn--secondary">Login</a>
+          <a href="#/inicio" class="btn btn--primary">Início</a>
+          <a href="#/admin" class="btn btn--ghost">Admin</a>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderDiagnostico() {
+  const cs = connectionStatus;
+
+  const checks = [
+    {
+      label: 'Conexão com Supabase',
+      detail: cs.connected ? 'Cliente inicializado com sucesso' : (cs.error || 'Falha ao conectar'),
+      status: cs.connected ? 'ok' : 'error',
+      icon: cs.connected ? 'check_circle' : 'error',
+    },
+    {
+      label: 'Leitura das tabelas',
+      detail: cs.testPassed
+        ? `${cs.tablesFound} tabelas acessíveis via API`
+        : (cs.error ? 'Falha ao ler tabelas' : 'Testando...'),
+      status: cs.testPassed ? 'ok' : (cs.error ? 'error' : 'pending'),
+      icon: cs.testPassed ? 'check_circle' : (cs.error ? 'error' : 'hourglass_empty'),
+    },
+    {
+      label: 'Admin Master encontrado',
+      detail: cs.adminFound
+        ? `${cs.details.adminNome || 'Admin Master'} · CPF 000.000.000-00`
+        : 'Não encontrado — rodar o schema SQL',
+      status: cs.adminFound ? 'ok' : (cs.testPassed ? 'error' : 'pending'),
+      icon: cs.adminFound ? 'check_circle' : 'error',
+    },
+    {
+      label: 'Objetivos de visita',
+      detail: cs.testPassed
+        ? `${cs.details.totalObjetivos || 0} objetivos cadastrados (esperado: 8)`
+        : 'Testando...',
+      status: (cs.details.totalObjetivos === 8) ? 'ok' : (cs.testPassed ? 'error' : 'pending'),
+      icon: (cs.details.totalObjetivos === 8) ? 'check_circle' : 'warning',
+    },
+    {
+      label: 'Configurações do sistema',
+      detail: cs.testPassed
+        ? `${cs.details.totalConfigs || 0} parâmetros (esperado: 5)`
+        : 'Testando...',
+      status: (cs.details.totalConfigs === 5) ? 'ok' : (cs.testPassed ? 'error' : 'pending'),
+      icon: (cs.details.totalConfigs === 5) ? 'check_circle' : 'warning',
+    },
+  ];
+
+  const allOk = checks.every(c => c.status === 'ok');
+  const headerDotClass = allOk ? 'success' : (cs.error ? 'error' : 'pending');
+  const headerMsg = allOk
+    ? 'Tudo funcionando perfeitamente'
+    : (cs.error ? 'Encontramos um problema' : 'Executando testes...');
+
+  return `
+    <div class="diag">
+      <div class="diag__container">
+        <div class="diag__header">
+          <div class="diag__logo">
+            <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+              <path d="M100 175 C100 175, 20 125, 20 70 C20 45, 40 25, 65 25 C80 25, 92 32, 100 45 C108 32, 120 25, 135 25 C160 25, 180 45, 180 70 C180 125, 100 175, 100 175 Z"/>
+            </svg>
+          </div>
+          <h1 class="diag__title">Nutricionais Visitas</h1>
+          <p class="diag__subtitle">Diagnóstico de infraestrutura · Sprint 1</p>
+        </div>
+
+        <div class="diag__card">
+          <div class="diag__card-title">
+            <span class="diag__status-dot diag__status-dot--${headerDotClass}"></span>
+            <h3>${headerMsg}</h3>
+          </div>
+
+          ${cs.testPassed ? `
+            <div class="diag__info">
+              <span class="material-symbols-rounded">info</span>
+              <div>Fundação pronta. Próximo passo: implementar as telas reais (login, check-in, etc.).</div>
+            </div>
+          ` : ''}
+
+          ${cs.error && !cs.connected ? `
+            <div class="diag__info" style="background: var(--status-danger-bg); color: var(--status-danger);">
+              <span class="material-symbols-rounded">error</span>
+              <div><strong>Erro:</strong> ${cs.error}</div>
+            </div>
+          ` : ''}
+
+          <div class="diag__checks">
+            ${checks.map(c => `
+              <div class="diag__check diag__check--${c.status}">
+                <div class="diag__check-icon">
+                  <span class="material-symbols-rounded">${c.icon}</span>
+                </div>
+                <div class="diag__check-text">
+                  <div class="diag__check-label">${c.label}</div>
+                  <div class="diag__check-detail">${c.detail}</div>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+
+          <div class="diag__actions">
+            <button class="btn btn--ghost" onclick="location.reload()">
+              <span class="material-symbols-rounded">refresh</span>
+              Testar novamente
+            </button>
+            ${allOk ? `
+              <a href="#/login" class="btn btn--primary">
+                Continuar para o sistema
+                <span class="material-symbols-rounded">arrow_forward</span>
+              </a>
+            ` : ''}
+          </div>
+        </div>
+
+        <div class="diag__meta">
+          v${CONFIG.APP_VERSION} · ${CONFIG.SUPABASE_URL.replace('https://','').replace('.supabase.co','')}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+
+function renderLogin() {
+  return placeholderScreen('login', 'Login', 'Tela de autenticação. Será implementada no Sprint 1 ainda.', '#/login');
+}
+function renderCadastro() {
+  return placeholderScreen('person_add', 'Criar conta', 'Cadastro de novo usuário com aprovação pelo admin.', '#/cadastro');
+}
+function renderRecuperar() {
+  return placeholderScreen('lock_reset', 'Recuperar senha', 'Fluxo em 3 estados: solicitar código, verificar, nova senha.', '#/recuperar');
+}
+function renderInicio() {
+  return placeholderScreen('home', 'Início do Nutricionista', 'Dashboard pessoal mobile-first. CTA de check-in em destaque.', '#/inicio');
+}
+function renderCheckin() {
+  return placeholderScreen('location_on', 'Check-in GPS', 'Ação principal: 3 estados (seleção, confirmação, em visita).', '#/checkin');
+}
+function renderVisitas() {
+  return placeholderScreen('assignment', 'Minhas visitas', 'Lista de visitas do nutricionista com filtros e relatórios.', '#/visitas');
+}
+function renderAgenda() {
+  return placeholderScreen('calendar_month', 'Agenda', 'Calendário + lista de visitas agendadas.', '#/agenda');
+}
+function renderFaturamento() {
+  return placeholderScreen('payments', 'Faturamento', 'Painéis de faturamento, curva ABC, oportunidades.', '#/faturamento');
+}
+function renderAdminDashboard() {
+  return placeholderScreen('dashboard', 'Dashboard Admin', 'KPIs globais, gráficos, ações pendentes.', '#/admin');
+}
+function renderAdminRevisao() {
+  return placeholderScreen('rule', 'Fila de Revisão', 'Visitas com flags de divergência (GPS, horário, etc).', '#/admin/revisao');
+}
+function renderAdminEquipe() {
+  return placeholderScreen('groups', 'Equipe', 'Gestão de nutricionistas — usuários, permissões, atividade.', '#/admin/equipe');
+}
+function renderAdminInstituicoes() {
+  return placeholderScreen('local_hospital', 'Instituições', 'CRUD de hospitais e clínicas.', '#/admin/instituicoes');
+}
+function renderAdminProfissionais() {
+  return placeholderScreen('stethoscope', 'Profissionais', 'CRUD + fila de padronização (profissões "Outro").', '#/admin/profissionais');
+}
+function renderAdminConfig() {
+  return placeholderScreen('settings', 'Configurações', 'Parâmetros globais: raio GPS, margem horária, bulk approve, IA.', '#/admin/configuracoes');
+}
+
+function render404(hash) {
+  return placeholderScreen('error', 'Página não encontrada', `A rota ${hash} não existe.`, hash);
+}
+
+/* ==========================================================================
+   BOOT
+   ========================================================================== */
+async function boot() {
+  initSupabase();
+
+  if (db) {
+    await testConnection();
+  }
+
+  window.addEventListener('hashchange', router);
+  router();
+
+  setTimeout(() => {
+    document.getElementById('splash').classList.add('splash--hidden');
+    document.getElementById('app').classList.remove('hidden');
+  }, 800);
+}
+
+document.addEventListener('DOMContentLoaded', boot);
+</script>
+
+</body>
+</html>
