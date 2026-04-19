@@ -2349,7 +2349,830 @@ a {
   z-index: 35;
 }
 
+/* ==========================================================================
+   RELATÓRIO DE VISITA (Sprint 2.3)
+   ========================================================================== */
 
+/* Indicador de auto-save no header */
+.save-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  background: rgba(255,255,255,0.08);
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.8);
+  font-family: var(--font-body);
+  white-space: nowrap;
+  transition: opacity 300ms, background 300ms;
+}
+.save-indicator .material-symbols-rounded { font-size: 14px; }
+.save-indicator--saving { background: rgba(245,158,11,0.2); color: #FCD34D; }
+.save-indicator--saved  { background: rgba(139,198,63,0.2); color: #C8E68C; }
+.save-indicator--error  { background: rgba(220,38,38,0.2); color: #FCA5A5; }
+
+/* Card de info da visita (readonly no topo do relatório) */
+.report-info {
+  background: linear-gradient(135deg, #F3F5FA 0%, #E3E7F1 100%);
+  border: 1px solid #E3E7F1;
+  border-radius: 14px;
+  padding: 14px 16px;
+  margin-bottom: 18px;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+.report-info__icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: var(--brand-navy);
+  color: var(--neutral-0);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.report-info__icon .material-symbols-rounded { font-size: 22px; }
+.report-info__body { flex: 1; min-width: 0; }
+.report-info__name {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--brand-navy);
+  line-height: 1.25;
+}
+.report-info__meta {
+  font-size: 12px;
+  color: var(--neutral-600);
+  margin-top: 4px;
+  font-family: var(--font-mono);
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.report-info__meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.report-info__meta-item .material-symbols-rounded {
+  font-size: 13px;
+  color: var(--neutral-500);
+}
+
+/* Aviso de 24h */
+.report-lock-warning {
+  background: #FEF4E1;
+  border: 1px solid rgba(245,158,11,0.3);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 16px;
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  font-size: 12.5px;
+  color: #92400E;
+  line-height: 1.4;
+}
+.report-lock-warning .material-symbols-rounded {
+  font-size: 20px;
+  color: var(--status-warning);
+  flex-shrink: 0;
+}
+.report-lock-warning strong { font-weight: 700; }
+
+/* Seção do relatório */
+.report-section {
+  background: var(--neutral-0);
+  border-radius: 14px;
+  padding: 16px;
+  margin-bottom: 14px;
+  box-shadow: 0 2px 8px rgba(10,31,92,0.05);
+}
+.report-section__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--brand-navy);
+  margin-bottom: 12px;
+  letter-spacing: -0.01em;
+}
+.report-section__title .material-symbols-rounded {
+  font-size: 18px;
+  color: #689628;
+}
+.report-section__required {
+  color: var(--status-danger);
+  font-weight: 700;
+  margin-left: 2px;
+}
+.report-section__help {
+  font-size: 11.5px;
+  color: var(--neutral-500);
+  margin-bottom: 10px;
+  line-height: 1.4;
+}
+
+/* Linha de dois inputs (horários) */
+.report-row-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.report-field label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--neutral-500);
+  margin-bottom: 4px;
+}
+.report-field input[type="time"],
+.report-field input[type="date"],
+.report-field input[type="text"],
+.report-field select {
+  width: 100%;
+  height: 44px;
+  padding: 0 12px;
+  border: 1.5px solid var(--neutral-300);
+  border-radius: 10px;
+  font-family: var(--font-body);
+  font-size: 15px;
+  color: var(--brand-navy);
+  background: var(--neutral-0);
+  outline: 0;
+}
+.report-field input[type="time"] {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-size: 16px;
+}
+.report-field input:focus,
+.report-field select:focus,
+.report-field textarea:focus {
+  border-color: var(--brand-lime);
+  box-shadow: 0 0 0 3px rgba(139,198,63,0.2);
+}
+.report-field textarea {
+  width: 100%;
+  padding: 12px;
+  border: 1.5px solid var(--neutral-300);
+  border-radius: 10px;
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--brand-navy);
+  background: var(--neutral-0);
+  outline: 0;
+  resize: vertical;
+  min-height: 100px;
+  line-height: 1.5;
+}
+
+/* Aviso de margem de horário divergente */
+.time-warning {
+  background: var(--status-danger-bg);
+  border: 1px solid rgba(220,38,38,0.2);
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin-top: 10px;
+  font-size: 11.5px;
+  color: #991B1B;
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+  line-height: 1.4;
+}
+.time-warning .material-symbols-rounded {
+  font-size: 16px;
+  flex-shrink: 0;
+  color: var(--status-danger);
+}
+
+/* Toggle Sim/Não */
+.toggle-group {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.toggle-btn {
+  padding: 12px;
+  border: 1.5px solid var(--neutral-300);
+  border-radius: 12px;
+  background: var(--neutral-0);
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--neutral-600);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 140ms;
+}
+.toggle-btn .material-symbols-rounded { font-size: 18px; }
+.toggle-btn:hover { background: var(--neutral-50); }
+.toggle-btn.is-selected {
+  background: var(--brand-lime);
+  border-color: var(--brand-lime);
+  color: var(--neutral-0);
+  box-shadow: 0 4px 10px rgba(139,198,63,0.35);
+}
+.toggle-btn.is-selected--no {
+  background: var(--status-danger);
+  border-color: var(--status-danger);
+  box-shadow: 0 4px 10px rgba(220,38,38,0.25);
+}
+
+/* Profissionais (tags removíveis) */
+.prof-search {
+  position: relative;
+  margin-bottom: 10px;
+}
+.prof-search-input {
+  width: 100%;
+  height: 44px;
+  padding: 0 12px 0 40px;
+  border: 1.5px solid var(--neutral-300);
+  border-radius: 10px;
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--brand-navy);
+  background: var(--neutral-0);
+  outline: 0;
+}
+.prof-search-input:focus {
+  border-color: var(--brand-lime);
+  box-shadow: 0 0 0 3px rgba(139,198,63,0.2);
+}
+.prof-search__icon {
+  position: absolute;
+  top: 50%;
+  left: 12px;
+  transform: translateY(-50%);
+  color: var(--neutral-500);
+  font-size: 18px;
+  pointer-events: none;
+}
+.prof-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: var(--neutral-0);
+  border: 1px solid var(--neutral-200);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(10,31,92,0.12);
+  max-height: 240px;
+  overflow-y: auto;
+  z-index: 20;
+  margin-top: 4px;
+}
+.prof-dropdown-item {
+  padding: 10px 12px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--neutral-100);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.prof-dropdown-item:last-child { border-bottom: 0; }
+.prof-dropdown-item:hover { background: #F4F9EA; }
+.prof-dropdown-item__avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #F3F5FA;
+  color: var(--brand-navy);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.prof-dropdown-item__info { flex: 1; min-width: 0; }
+.prof-dropdown-item__name {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--brand-navy);
+  line-height: 1.2;
+}
+.prof-dropdown-item__role {
+  font-size: 11.5px;
+  color: var(--neutral-500);
+  margin-top: 2px;
+}
+.prof-dropdown__empty {
+  padding: 16px;
+  text-align: center;
+  font-size: 12.5px;
+  color: var(--neutral-500);
+}
+.prof-dropdown__add-new {
+  padding: 10px 12px;
+  background: #F4F9EA;
+  color: #689628;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.prof-dropdown__add-new:hover { background: #E7F3D4; }
+
+.prof-selected {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+.prof-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px 6px 10px;
+  background: #F4F9EA;
+  border: 1px solid rgba(139,198,63,0.3);
+  border-radius: var(--radius-pill);
+  font-size: 12.5px;
+  color: #689628;
+  font-weight: 600;
+}
+.prof-chip__role {
+  font-size: 10.5px;
+  color: #8BA764;
+  font-weight: 500;
+  margin-left: -2px;
+}
+.prof-chip__remove {
+  background: rgba(104,150,40,0.2);
+  border: 0;
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #689628;
+}
+.prof-chip__remove:hover { background: rgba(104,150,40,0.35); }
+.prof-chip__remove .material-symbols-rounded { font-size: 12px; }
+
+/* Objetivos (checkboxes) */
+.objective-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 6px;
+}
+.objective-check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1.5px solid var(--neutral-200);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 140ms;
+}
+.objective-check:hover { background: var(--neutral-50); }
+.objective-check.is-selected {
+  background: #F4F9EA;
+  border-color: var(--brand-lime);
+}
+.objective-check__box {
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--neutral-300);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 140ms;
+}
+.objective-check.is-selected .objective-check__box {
+  background: var(--brand-lime);
+  border-color: var(--brand-lime);
+  color: var(--neutral-0);
+}
+.objective-check__box .material-symbols-rounded {
+  font-size: 16px;
+  opacity: 0;
+}
+.objective-check.is-selected .objective-check__box .material-symbols-rounded { opacity: 1; }
+.objective-check__label {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--brand-navy);
+}
+
+/* ==========================================================================
+   MODAL (post-checkout choice + mini-cadastro profissional)
+   ========================================================================== */
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(10,31,92,0.5);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: fadeIn 160ms ease-out;
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.modal-card {
+  background: var(--neutral-0);
+  border-radius: 18px;
+  max-width: 420px;
+  width: 100%;
+  box-shadow: 0 20px 60px rgba(10,31,92,0.3);
+  overflow: hidden;
+  animation: slideUp 220ms cubic-bezier(0.22,0.61,0.36,1);
+}
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+.modal-card__header {
+  padding: 22px 22px 0;
+  text-align: center;
+}
+.modal-card__icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: #F4F9EA;
+  color: #689628;
+  margin: 0 auto 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.modal-card__icon .material-symbols-rounded { font-size: 32px; }
+.modal-card__icon--success {
+  background: var(--status-success-bg);
+  color: var(--status-success);
+}
+.modal-card__title {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--brand-navy);
+  letter-spacing: -0.02em;
+}
+.modal-card__subtitle {
+  font-size: 13.5px;
+  color: var(--neutral-600);
+  margin-top: 6px;
+  line-height: 1.45;
+}
+.modal-card__body { padding: 18px 22px; }
+.modal-card__footer {
+  padding: 0 22px 22px;
+  display: flex;
+  gap: 10px;
+  flex-direction: column;
+}
+.modal-btn {
+  width: 100%;
+  padding: 14px 18px;
+  border-radius: var(--radius-pill);
+  border: 0;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 15px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: transform 120ms;
+}
+.modal-btn:active { transform: scale(0.98); }
+.modal-btn--primary {
+  background: linear-gradient(180deg, var(--brand-lime) 0%, #689628 100%);
+  color: var(--neutral-0);
+  box-shadow: 0 6px 16px rgba(139,198,63,0.35);
+}
+.modal-btn--secondary {
+  background: var(--neutral-0);
+  color: var(--brand-navy);
+  border: 1.5px solid var(--neutral-300);
+}
+
+/* Mini-stats cards no modal */
+.modal-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 4px;
+}
+.modal-stat {
+  background: #F3F5FA;
+  border-radius: 10px;
+  padding: 10px 12px;
+  text-align: center;
+}
+.modal-stat__label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--neutral-500);
+}
+.modal-stat__value {
+  font-family: var(--font-mono);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--brand-navy);
+  margin-top: 4px;
+  letter-spacing: -0.02em;
+}
+
+/* Completa (readonly view) */
+.readonly-value {
+  padding: 10px 12px;
+  background: var(--neutral-50);
+  border: 1px solid var(--neutral-100);
+  border-radius: 8px;
+  font-size: 14px;
+  color: var(--brand-navy);
+  white-space: pre-wrap;
+  line-height: 1.5;
+}
+.readonly-value--empty {
+  color: var(--neutral-400);
+  font-style: italic;
+}
+
+/* Link em visita ativa "Adicionar detalhes" */
+.btn-add-details {
+  width: 100%;
+  padding: 12px 20px;
+  background: var(--neutral-0);
+  border: 1.5px solid var(--brand-navy);
+  border-radius: var(--radius-pill);
+  color: var(--brand-navy);
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-decoration: none;
+}
+.btn-add-details:hover { background: var(--neutral-50); }
+
+/* ==========================================================================
+   CONFIGURAÇÕES (Admin — Sprint 2.3+)
+   ========================================================================== */
+
+.config-group {
+  margin-bottom: 20px;
+}
+.config-group__header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 4px;
+  margin-bottom: 10px;
+}
+.config-group__icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--brand-lime);
+  color: var(--neutral-0);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.config-group__icon .material-symbols-rounded { font-size: 18px; }
+.config-group__icon--navy { background: var(--brand-navy); }
+.config-group__icon--warning { background: var(--status-warning); }
+.config-group__icon--info { background: var(--status-info); }
+
+.config-group__title {
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--brand-navy);
+  letter-spacing: -0.01em;
+}
+
+.config-group__list {
+  background: var(--neutral-0);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(10,31,92,0.05);
+}
+
+.config-item {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--neutral-100);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.config-item:last-child { border-bottom: 0; }
+
+.config-item__text {
+  flex: 1;
+  min-width: 0;
+  min-width: 180px;
+}
+.config-item__title {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--brand-navy);
+  line-height: 1.3;
+}
+.config-item__desc {
+  font-size: 12px;
+  color: var(--neutral-500);
+  margin-top: 3px;
+  line-height: 1.4;
+}
+.config-item__meta {
+  font-size: 10.5px;
+  color: var(--neutral-400);
+  margin-top: 4px;
+  font-family: var(--font-mono);
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.config-item__control {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+/* Input numérico com sufixo */
+.config-number-group {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.config-number {
+  width: 110px;
+  height: 40px;
+  padding: 0 30px 0 12px;
+  border: 1.5px solid var(--neutral-300);
+  border-radius: 10px;
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--brand-navy);
+  text-align: left;
+  background: var(--neutral-0);
+  outline: 0;
+  /* remove spinners do Chrome/Edge */
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+.config-number::-webkit-outer-spin-button,
+.config-number::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.config-number:focus {
+  border-color: var(--brand-lime);
+  box-shadow: 0 0 0 3px rgba(139,198,63,0.2);
+}
+.config-number-suffix {
+  position: absolute;
+  right: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--neutral-500);
+  pointer-events: none;
+  font-family: var(--font-body);
+}
+
+/* Select */
+.config-select {
+  min-width: 160px;
+  height: 40px;
+  padding: 0 12px;
+  border: 1.5px solid var(--neutral-300);
+  border-radius: 10px;
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--brand-navy);
+  background: var(--neutral-0);
+  outline: 0;
+  cursor: pointer;
+}
+.config-select:focus {
+  border-color: var(--brand-lime);
+  box-shadow: 0 0 0 3px rgba(139,198,63,0.2);
+}
+
+/* Toggle (iOS style) */
+.config-toggle {
+  position: relative;
+  width: 48px;
+  height: 28px;
+  background: var(--neutral-300);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 200ms;
+  border: 0;
+  padding: 0;
+  flex-shrink: 0;
+}
+.config-toggle::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 24px;
+  height: 24px;
+  background: var(--neutral-0);
+  border-radius: 50%;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+  transition: transform 200ms;
+}
+.config-toggle.is-on {
+  background: var(--brand-lime);
+}
+.config-toggle.is-on::after {
+  transform: translateX(20px);
+}
+
+/* Indicador de salvo */
+.config-saved-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: var(--radius-pill);
+  background: var(--status-success-bg);
+  color: #15803D;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-family: var(--font-body);
+  opacity: 0;
+  transition: opacity 200ms;
+  pointer-events: none;
+}
+.config-saved-badge.is-visible { opacity: 1; }
+.config-saved-badge .material-symbols-rounded { font-size: 12px; }
+
+/* Aviso no topo da tela */
+.config-warning {
+  background: rgba(37,99,235,0.06);
+  border: 1px solid rgba(37,99,235,0.2);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 18px;
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  font-size: 12.5px;
+  color: #1D4ED8;
+  line-height: 1.45;
+}
+.config-warning .material-symbols-rounded {
+  font-size: 20px;
+  color: var(--status-info);
+  flex-shrink: 0;
+}
+
+/* ==========================================================================
+   SCROLLBAR (estilizado)
+   ========================================================================== */
+::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
@@ -3211,6 +4034,352 @@ function bottomNav(active) {
   `;
 }
 
+/* ==========================================================================
+   SPRINT 2.3 — CRUD de profissionais + relatório
+   ========================================================================== */
+
+// Listar profissionais de uma instituição
+async function listarProfissionaisDaInstituicao(institucaoId) {
+  if (!db) return [];
+  const { data, error } = await db
+    .from('profissionais')
+    .select('*')
+    .eq('instituicao_id', institucaoId)
+    .eq('ativo', true)
+    .order('nome');
+  if (error) {
+    console.warn('Erro ao buscar profissionais:', error.message);
+    return [];
+  }
+  return data || [];
+}
+
+// Criar profissional novo
+async function criarProfissional({ institucaoId, nome, profissao, telefone, email }) {
+  if (!db) throw new Error('Banco não conectado');
+  const user = getCurrentUser();
+  const { data, error } = await db
+    .from('profissionais')
+    .insert({
+      instituicao_id: institucaoId,
+      nome: nome.trim(),
+      profissao: profissao || 'Outro',
+      profissao_outro: profissao === 'Outro' ? 'Sem especificação' : null,
+      telefone: telefone || null,
+      email: email || null,
+      criado_por: user?.id || null,
+      ativo: true,
+    })
+    .select()
+    .single();
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+// Obter visita completa (com tudo do relatório)
+async function getVisitaCompleta(visitaId) {
+  if (!db) throw new Error('Banco não conectado');
+  const { data: visita, error } = await db
+    .from('visitas')
+    .select('*, instituicoes(id, nome, razao_social, logradouro, bairro, cidade, estado, latitude, longitude)')
+    .eq('id', visitaId)
+    .single();
+  if (error) throw new Error(error.message);
+
+  // Carrega objetivos selecionados
+  const { data: vObj } = await db
+    .from('visitas_objetivos')
+    .select('objetivo_id')
+    .eq('visita_id', visitaId);
+  visita.objetivos_selecionados = (vObj || []).map(v => v.objetivo_id);
+
+  // Carrega profissionais selecionados (com dados do profissional)
+  const { data: vProf } = await db
+    .from('visitas_profissionais')
+    .select('profissional_id, profissionais(id, nome, profissao, profissao_outro)')
+    .eq('visita_id', visitaId);
+  visita.profissionais_selecionados = (vProf || []).map(v => v.profissionais).filter(Boolean);
+
+  return visita;
+}
+
+// Atualizar campos do relatório (parcial)
+async function atualizarRelatorio(visitaId, campos) {
+  if (!db) throw new Error('Banco não conectado');
+  const payload = { ...campos, atualizado_em: new Date().toISOString() };
+  const { error } = await db
+    .from('visitas')
+    .update(payload)
+    .eq('id', visitaId);
+  if (error) throw new Error(error.message);
+}
+
+// Sync objetivos da visita (N:N) — substitui tudo
+async function syncObjetivosVisita(visitaId, objetivoIds) {
+  if (!db) throw new Error('Banco não conectado');
+  await db.from('visitas_objetivos').delete().eq('visita_id', visitaId);
+  if (objetivoIds.length > 0) {
+    const rows = objetivoIds.map(oid => ({ visita_id: visitaId, objetivo_id: oid }));
+    const { error } = await db.from('visitas_objetivos').insert(rows);
+    if (error) throw new Error(error.message);
+  }
+}
+
+// Sync profissionais da visita (N:N)
+async function syncProfissionaisVisita(visitaId, profissionaisIds) {
+  if (!db) throw new Error('Banco não conectado');
+  await db.from('visitas_profissionais').delete().eq('visita_id', visitaId);
+  if (profissionaisIds.length > 0) {
+    const rows = profissionaisIds.map(pid => ({ visita_id: visitaId, profissional_id: pid }));
+    const { error } = await db.from('visitas_profissionais').insert(rows);
+    if (error) throw new Error(error.message);
+  }
+}
+
+// Validar e finalizar relatório (rascunho → completa)
+async function finalizarRelatorio(visitaId, dados) {
+  if (!db) throw new Error('Banco não conectado');
+
+  // Validação
+  const erros = [];
+  if (!dados.horario_inicio) erros.push('Horário de início da visita');
+  if (!dados.horario_termino) erros.push('Horário de término');
+  if (dados.visita_realizada === null || dados.visita_realizada === undefined)
+    erros.push('Indicar se a visita foi realizada');
+
+  if (dados.visita_realizada === false) {
+    if (!dados.motivo_nao_realizada?.trim()) erros.push('Motivo de não-realização');
+  } else {
+    if (!dados.profissionais_ids?.length) erros.push('Ao menos 1 profissional conversado');
+    if (!dados.objetivos_ids?.length) erros.push('Ao menos 1 objetivo');
+    if (!dados.resumo?.trim()) erros.push('Resumo da visita');
+    if (!dados.proximos_passos?.trim()) erros.push('Próximos passos');
+  }
+
+  if (erros.length > 0) {
+    throw new Error('Campos obrigatórios faltando:\n• ' + erros.join('\n• '));
+  }
+
+  // Calcula flag_horario_fora_margem
+  // Usa a margem configurada no sistema (default: 90min)
+  const margemMin = await getConfig('margem_horario_minutos', 90);
+  let flagHorarioForaMargem = false;
+  if (dados.checkin_timestamp && dados.horario_inicio) {
+    const checkinTs = new Date(dados.checkin_timestamp);
+    const [h, m] = dados.horario_inicio.split(':');
+    const declaradoInicio = new Date(checkinTs);
+    declaradoInicio.setHours(parseInt(h), parseInt(m), 0, 0);
+    const diffMin = Math.abs((declaradoInicio - checkinTs) / 60000);
+    if (diffMin > margemMin) flagHorarioForaMargem = true;
+  }
+
+  // Atualização final
+  const payload = {
+    horario_inicio: dados.horario_inicio,
+    horario_termino: dados.horario_termino,
+    visita_realizada: dados.visita_realizada,
+    motivo_nao_realizada: dados.motivo_nao_realizada || null,
+    resumo: dados.resumo || null,
+    proximos_passos: dados.proximos_passos || null,
+    proxima_visita_programada: dados.proxima_visita_programada || null,
+    flag_horario_fora_margem: flagHorarioForaMargem,
+    status: 'completa',
+    atualizado_em: new Date().toISOString(),
+  };
+
+  await atualizarRelatorio(visitaId, payload);
+  await syncObjetivosVisita(visitaId, dados.objetivos_ids || []);
+  await syncProfissionaisVisita(visitaId, dados.profissionais_ids || []);
+}
+
+// Verifica se visita pode ser editada (regra das 24h)
+// Regra: dentro de 24h do check-in, editável (rascunho OU completa)
+// Depois de 24h, travada. em_revisao sempre travada (admin decide).
+// aprovada_pos_revisao também sempre travada (histórico imutável).
+function visitaPodeSerEditada(visita) {
+  if (visita.status === 'aprovada_pos_revisao') {
+    return { pode: false, motivo: 'Visita aprovada pelo administrador. Histórico imutável.' };
+  }
+  if (visita.status === 'em_revisao') {
+    return { pode: false, motivo: 'Visita em revisão pelo administrador.' };
+  }
+  // rascunho ou completa — checa 24h
+  if (visita.checkin_timestamp) {
+    const checkin = new Date(visita.checkin_timestamp);
+    const agora = new Date();
+    const horasPassadas = (agora - checkin) / (1000 * 60 * 60);
+    if (horasPassadas > 24) {
+      return { pode: false, motivo: 'Janela de edição de 24h expirada. Solicite revisão ao administrador.' };
+    }
+    return { pode: true, horasRestantes: 24 - horasPassadas };
+  }
+  return { pode: true, horasRestantes: null };
+}
+
+// Calcula duração em minutos entre 2 timestamps
+function calcularDuracaoMin(inicio, fim) {
+  if (!inicio || !fim) return null;
+  const diff = (new Date(fim) - new Date(inicio)) / 60000;
+  return Math.max(0, Math.round(diff));
+}
+
+function formatarDuracao(min) {
+  if (min === null || min === undefined) return '—';
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  if (h === 0) return `${m}min`;
+  return `${h}h ${m.toString().padStart(2,'0')}min`;
+}
+
+// Estado compartilhado do formulário (pra debounce do auto-save)
+const ReportState = {
+  visitaId: null,
+  visita: null,
+  profissionaisInstituicao: [],
+  profissionaisSelecionados: [], // array de {id, nome, profissao}
+  objetivos: [],
+  objetivosSelecionados: new Set(),
+  autoSaveTimer: null,
+  pendingChanges: {},
+  lastSavedAt: null,
+  saveCounter: 0,
+};
+
+/* ==========================================================================
+   CONFIGURAÇÕES — Helpers globais com cache
+   ========================================================================== */
+
+// Cache em memória das configurações (invalida ao atualizar)
+const ConfigCache = {
+  data: null,
+  loadedAt: null,
+  ttlMs: 5 * 60 * 1000, // 5min
+};
+
+// Metadata das configs (pra UI entender como editar)
+const ConfigMeta = {
+  raio_gps_metros: {
+    titulo: 'Raio do GPS',
+    descricao: 'Distância máxima do hospital para considerar check-in como "dentro do raio". Se o nutricionista estiver além desse raio, a visita é marcada com flag de GPS divergente.',
+    categoria: 'gps',
+    tipo: 'number',
+    min: 50,
+    max: 5000,
+    step: 50,
+    sufixo: 'm',
+  },
+  margem_horario_minutos: {
+    titulo: 'Margem de horário',
+    descricao: 'Quantos minutos o horário declarado pode ficar fora do check-in/out antes de receber flag de divergência. Cobre tempo de espera, estacionamento, etc.',
+    categoria: 'tolerancia',
+    tipo: 'number',
+    min: 10,
+    max: 720,
+    step: 15,
+    sufixo: 'min',
+  },
+  permitir_bulk_approve: {
+    titulo: 'Aprovar visitas em lote',
+    descricao: 'Permite que o admin aprove várias visitas da fila de revisão de uma vez só (apenas com flags leves; visitas sem check-in/out ficam fora).',
+    categoria: 'admin',
+    tipo: 'boolean',
+  },
+  analise_ia_habilitada: {
+    titulo: 'Análise por IA',
+    descricao: 'Quando uma visita entra em revisão com divergências, o sistema gera automaticamente uma análise de possíveis causas usando IA.',
+    categoria: 'ia',
+    tipo: 'boolean',
+  },
+  analise_ia_modelo: {
+    titulo: 'Modelo de IA',
+    descricao: 'Qual modelo é usado para gerar análises automáticas. Modelos maiores têm resultados melhores mas custam mais.',
+    categoria: 'ia',
+    tipo: 'select',
+    opcoes: [
+      { valor: 'claude-opus-4-7', label: 'Claude Opus 4.7 (mais capaz)' },
+      { valor: 'claude-sonnet-4-6', label: 'Claude Sonnet 4.6 (equilibrado)' },
+      { valor: 'claude-haiku-4-5', label: 'Claude Haiku 4.5 (mais rápido)' },
+    ],
+  },
+};
+
+const ConfigCategorias = {
+  gps:        { titulo: 'GPS & Localização', icone: 'my_location',   cor: 'brand-lime' },
+  tolerancia: { titulo: 'Margens & Tolerâncias', icone: 'schedule',  cor: 'navy' },
+  admin:      { titulo: 'Fluxo Administrativo', icone: 'admin_panel_settings', cor: 'info' },
+  ia:         { titulo: 'Inteligência Artificial', icone: 'smart_toy', cor: 'warning' },
+};
+
+// Carrega todas as configs (com cache)
+async function carregarConfigs(forcarReload = false) {
+  const agora = Date.now();
+  const cacheValido = ConfigCache.data && ConfigCache.loadedAt && (agora - ConfigCache.loadedAt) < ConfigCache.ttlMs;
+
+  if (cacheValido && !forcarReload) return ConfigCache.data;
+
+  if (!db) {
+    console.warn('[Config] Banco não conectado, usando defaults');
+    return {};
+  }
+
+  const { data, error } = await db.from('configuracoes_sistema').select('*');
+  if (error) {
+    console.warn('[Config] Erro ao carregar:', error.message);
+    return ConfigCache.data || {};
+  }
+
+  const map = {};
+  (data || []).forEach(row => {
+    map[row.chave] = {
+      valor: row.valor,
+      descricao: row.descricao,
+      atualizado_em: row.atualizado_em,
+      atualizado_por: row.atualizado_por,
+    };
+  });
+
+  ConfigCache.data = map;
+  ConfigCache.loadedAt = agora;
+  return map;
+}
+
+// Lê um valor específico (com fallback se não existir)
+async function getConfig(chave, fallback = null) {
+  const configs = await carregarConfigs();
+  if (!configs[chave]) return fallback;
+  return configs[chave].valor;
+}
+
+// Versão síncrona (lê do cache — útil em UI depois que já carregou)
+function getConfigSync(chave, fallback = null) {
+  if (!ConfigCache.data || !ConfigCache.data[chave]) return fallback;
+  return ConfigCache.data[chave].valor;
+}
+
+// Atualiza uma configuração (admin-only)
+async function atualizarConfig(chave, novoValor) {
+  if (!db) throw new Error('Banco não conectado');
+  const user = getCurrentUser();
+  if (!user || user.perfil !== 'admin') throw new Error('Apenas admin pode alterar configurações');
+
+  const { error } = await db
+    .from('configuracoes_sistema')
+    .update({
+      valor: novoValor,
+      atualizado_em: new Date().toISOString(),
+      atualizado_por: user.id,
+    })
+    .eq('chave', chave);
+
+  if (error) throw new Error(error.message);
+
+  // Invalida cache
+  ConfigCache.data = null;
+  ConfigCache.loadedAt = null;
+
+  return true;
+}
+
 function sbadgeForStatus(status) {
   const map = {
     'rascunho':            { cls: 'draft',      label: 'Rascunho' },
@@ -3234,6 +4403,7 @@ const routes = {
   '#/checkin/confirmar': { title: 'Confirmar check-in', icon: 'check_circle', render: renderCheckinConfirmar },
   '#/checkin/ativo':     { title: 'Em visita', icon: 'schedule', render: renderCheckinAtivo },
   '#/visitas':      { title: 'Minhas visitas', icon: 'list_alt', render: renderVisitas },
+  '#/visitas/relatorio': { title: 'Relatório', icon: 'edit_note', render: renderRelatorio },
   '#/agenda':       { title: 'Agenda', icon: 'calendar_month', render: renderAgenda },
   '#/faturamento':  { title: 'Faturamento', icon: 'payments', render: renderFaturamento },
   '#/admin':        { title: 'Dashboard Admin', icon: 'dashboard', render: renderAdminDashboard },
@@ -3245,7 +4415,18 @@ const routes = {
 };
 
 function router() {
-  const hash = window.location.hash || '#/';
+  const fullHash = window.location.hash || '#/';
+  // Separa hash e query (ex: #/visitas/relatorio?id=abc)
+  const [hash, queryString] = fullHash.split('?');
+  const params = {};
+  if (queryString) {
+    queryString.split('&').forEach(p => {
+      const [k, v] = p.split('=');
+      params[k] = decodeURIComponent(v || '');
+    });
+  }
+  window._routeParams = params; // disponível nas telas
+
   const route = routes[hash];
   const app = document.getElementById('app');
 
@@ -4573,6 +5754,11 @@ function renderCheckinAtivo() {
         </div>
 
         <div style="display:flex;flex-direction:column;gap:12px;">
+          <button class="btn-add-details" onclick="abrirRelatorioDaVisitaAtiva()">
+            <span class="material-symbols-rounded" style="font-size:20px">edit_note</span>
+            Adicionar detalhes agora
+          </button>
+
           <button class="btn-danger-giant" onclick="handleCheckoutAtivo()">
             <span class="material-symbols-rounded" style="font-size:24px">stop_circle</span>
             Fazer check-out
@@ -4587,13 +5773,22 @@ function renderCheckinAtivo() {
   `;
 }
 
+window.abrirRelatorioDaVisitaAtiva = function() {
+  const visitaId = window._activeVisitaId;
+  if (!visitaId) return;
+  window.location.hash = `#/visitas/relatorio?id=${visitaId}`;
+};
+
 window.handleCheckoutAtivo = async function() {
-  if (!confirm('Finalizar a visita agora?')) return;
   const visitaId = window._activeVisitaId;
   if (!visitaId) {
     alert('Erro: não encontrei a visita ativa');
     return;
   }
+
+  // Modal de confirmação de checkout
+  const confirmou = await showConfirmCheckoutModal();
+  if (!confirmou) return;
 
   try {
     // Pega posição de checkout (opcional)
@@ -4606,12 +5801,110 @@ window.handleCheckoutAtivo = async function() {
 
     await finalizarCheckin(visitaId, checkoutPos);
     stopTimer();
-    setFlash('success', 'Check-out realizado. Você pode fazer o relatório depois (Sprint 2.3).');
-    window.location.hash = '#/visitas';
+
+    // Calcula duração pra mostrar no modal
+    const visita = await getVisitaCompleta(visitaId);
+    const duracao = calcularDuracaoMin(visita.checkin_timestamp, visita.checkout_timestamp);
+    const instName = visita.instituicoes?.nome || 'Instituição';
+
+    // Modal: "Preencher agora ou depois?"
+    const escolha = await showPostCheckoutModal({
+      instName,
+      duracao: formatarDuracao(duracao),
+    });
+
+    if (escolha === 'agora') {
+      window.location.hash = `#/visitas/relatorio?id=${visitaId}`;
+    } else {
+      setFlash('success', 'Visita finalizada. Você pode preencher o relatório quando quiser (até 24h).');
+      window.location.hash = '#/visitas';
+    }
   } catch (err) {
     alert('Erro ao fazer check-out: ' + err.message);
   }
 };
+
+// Modal de confirmação de checkout
+function showConfirmCheckoutModal() {
+  return new Promise((resolve) => {
+    const backdrop = document.createElement('div');
+    backdrop.className = 'modal-backdrop';
+    backdrop.innerHTML = `
+      <div class="modal-card">
+        <div class="modal-card__header">
+          <div class="modal-card__icon" style="background:var(--status-danger-bg);color:var(--status-danger);">
+            <span class="material-symbols-rounded">logout</span>
+          </div>
+          <div class="modal-card__title">Finalizar visita?</div>
+          <div class="modal-card__subtitle">O cronômetro será parado e o horário de saída registrado.</div>
+        </div>
+        <div class="modal-card__footer">
+          <button class="modal-btn modal-btn--primary" id="mcConfirm">
+            <span class="material-symbols-rounded">check_circle</span>Sim, finalizar
+          </button>
+          <button class="modal-btn modal-btn--secondary" id="mcCancel">
+            Voltar
+          </button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(backdrop);
+
+    const cleanup = () => backdrop.remove();
+    backdrop.querySelector('#mcConfirm').onclick = () => { cleanup(); resolve(true); };
+    backdrop.querySelector('#mcCancel').onclick = () => { cleanup(); resolve(false); };
+    backdrop.onclick = (e) => {
+      if (e.target === backdrop) { cleanup(); resolve(false); }
+    };
+  });
+}
+
+// Modal "Preencher agora ou depois?"
+function showPostCheckoutModal({ instName, duracao }) {
+  return new Promise((resolve) => {
+    const backdrop = document.createElement('div');
+    backdrop.className = 'modal-backdrop';
+    backdrop.innerHTML = `
+      <div class="modal-card">
+        <div class="modal-card__header">
+          <div class="modal-card__icon modal-card__icon--success">
+            <span class="material-symbols-rounded">check_circle</span>
+          </div>
+          <div class="modal-card__title">Visita finalizada!</div>
+          <div class="modal-card__subtitle">Quer preencher o relatório agora ou depois?</div>
+        </div>
+        <div class="modal-card__body">
+          <div class="modal-stats">
+            <div class="modal-stat">
+              <div class="modal-stat__label">Duração</div>
+              <div class="modal-stat__value">${duracao}</div>
+            </div>
+            <div class="modal-stat">
+              <div class="modal-stat__label">Local</div>
+              <div class="modal-stat__value" style="font-size:12px;font-family:var(--font-body);">${instName.replace(/"/g,'&quot;').substring(0, 18)}${instName.length > 18 ? '…' : ''}</div>
+            </div>
+          </div>
+          <div style="margin-top:12px;font-size:12px;color:var(--neutral-500);text-align:center;line-height:1.4;">
+            Você pode preencher em até <strong>24h</strong> após o check-in.
+          </div>
+        </div>
+        <div class="modal-card__footer">
+          <button class="modal-btn modal-btn--primary" id="mpcAgora">
+            <span class="material-symbols-rounded">edit_note</span>Preencher agora
+          </button>
+          <button class="modal-btn modal-btn--secondary" id="mpcDepois">
+            Deixar pra depois
+          </button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(backdrop);
+
+    const cleanup = () => backdrop.remove();
+    backdrop.querySelector('#mpcAgora').onclick = () => { cleanup(); resolve('agora'); };
+    backdrop.querySelector('#mpcDepois').onclick = () => { cleanup(); resolve('depois'); };
+  });
+}
 
 window.handleCancelarVisita = async function() {
   if (!confirm('Cancelar a visita? Os dados não serão salvos.')) return;
@@ -4653,7 +5946,7 @@ function renderVisitas() {
         `;
       } else {
         listEl.innerHTML = visitas.map(v => `
-          <div class="visits-list__item">
+          <a href="#/visitas/relatorio?id=${v.id}" class="visits-list__item">
             <div class="visits-list__icon">
               <span class="material-symbols-rounded">local_hospital</span>
             </div>
@@ -4662,7 +5955,7 @@ function renderVisitas() {
               <div class="visits-list__time">${formatarTempoRelativo(v.data_visita + 'T' + (v.horario_inicio || '00:00:00'))}</div>
             </div>
             ${sbadgeForStatus(v.status)}
-          </div>
+          </a>
         `).join('');
       }
     } catch (err) {
@@ -4682,6 +5975,735 @@ function renderVisitas() {
     </div>
   `;
 }
+
+/* ==========================================================================
+   Sprint 2.3 — RELATÓRIO DA VISITA
+   ========================================================================== */
+
+function renderRelatorio() {
+  const user = requireAuth();
+  if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
+
+  const visitaId = window._routeParams?.id;
+  if (!visitaId) {
+    setTimeout(() => { window.location.hash = '#/visitas'; }, 0);
+    return '<div class="splash"><div class="splash__spinner"></div></div>';
+  }
+
+  // Limpa estado
+  ReportState.visitaId = visitaId;
+  ReportState.visita = null;
+  ReportState.profissionaisInstituicao = [];
+  ReportState.profissionaisSelecionados = [];
+  ReportState.objetivos = [];
+  ReportState.objetivosSelecionados = new Set();
+  if (ReportState.autoSaveTimer) clearTimeout(ReportState.autoSaveTimer);
+  ReportState.pendingChanges = {};
+
+  // Carrega dados async
+  setTimeout(async () => {
+    try {
+      const [visita, objetivos] = await Promise.all([
+        getVisitaCompleta(visitaId),
+        listarObjetivos(),
+      ]);
+
+      ReportState.visita = visita;
+      ReportState.objetivos = objetivos;
+      ReportState.objetivosSelecionados = new Set(visita.objetivos_selecionados || []);
+      ReportState.profissionaisSelecionados = visita.profissionais_selecionados || [];
+
+      // Carrega profissionais da instituição
+      const profs = await listarProfissionaisDaInstituicao(visita.instituicao_id);
+      ReportState.profissionaisInstituicao = profs;
+
+      hydrateReportForm();
+    } catch (err) {
+      document.getElementById('reportBody').innerHTML = `
+        <div class="empty-state" style="margin:0;">
+          <div class="empty-state__icon" style="background:var(--status-danger-bg);color:var(--status-danger);">
+            <span class="material-symbols-rounded">error</span>
+          </div>
+          <div class="empty-state__title">Erro ao carregar</div>
+          <div class="empty-state__desc">${err.message}</div>
+        </div>
+      `;
+    }
+  }, 0);
+
+  return `
+    <div class="mobile-app">
+      <header class="mbar">
+        <div class="mbar__row">
+          <button class="mbar__back" onclick="history.back()">
+            <span class="material-symbols-rounded" style="font-size:18px">arrow_back_ios_new</span>
+          </button>
+          <div class="mbar__title">Relatório</div>
+          <span class="save-indicator" id="saveIndicator">
+            <span class="material-symbols-rounded">cloud_done</span>
+            <span id="saveIndicatorText">Pronto</span>
+          </span>
+        </div>
+      </header>
+      <main class="mcontent" id="reportBody">
+        <div style="padding:40px 20px;text-align:center;color:var(--neutral-500);font-size:13px;">
+          <span class="material-symbols-rounded" style="font-size:32px;color:var(--neutral-400);">hourglass_empty</span>
+          <div style="margin-top:8px;">Carregando relatório...</div>
+        </div>
+      </main>
+    </div>
+  `;
+}
+
+function hydrateReportForm() {
+  const v = ReportState.visita;
+  const body = document.getElementById('reportBody');
+  if (!v || !body) return;
+
+  const editabilidade = visitaPodeSerEditada(v);
+  const readonly = !editabilidade.pode;
+
+  // Cálculos iniciais
+  const duracao = calcularDuracaoMin(v.checkin_timestamp, v.checkout_timestamp);
+  const checkinFmt = v.checkin_timestamp ? new Date(v.checkin_timestamp).toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' }) : '—';
+  const checkoutFmt = v.checkout_timestamp ? new Date(v.checkout_timestamp).toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' }) : '—';
+
+  // Valores iniciais pros campos (preenchidos com check-in/out se vazios)
+  const horaInicioInicial = v.horario_inicio || (v.checkin_timestamp ? new Date(v.checkin_timestamp).toTimeString().substring(0,5) : '');
+  const horaTerminoInicial = v.horario_termino || (v.checkout_timestamp ? new Date(v.checkout_timestamp).toTimeString().substring(0,5) : '');
+
+  // Visita realizada (toggle)
+  const realizada = v.visita_realizada;
+
+  body.innerHTML = `
+    <div class="report-info">
+      <div class="report-info__icon">
+        <span class="material-symbols-rounded">local_hospital</span>
+      </div>
+      <div class="report-info__body">
+        <div class="report-info__name">${(v.instituicoes?.nome || '').replace(/"/g,'&quot;')}</div>
+        <div class="report-info__meta">
+          <span class="report-info__meta-item">
+            <span class="material-symbols-rounded">login</span>${checkinFmt}
+          </span>
+          <span class="report-info__meta-item">
+            <span class="material-symbols-rounded">logout</span>${checkoutFmt}
+          </span>
+          <span class="report-info__meta-item">
+            <span class="material-symbols-rounded">schedule</span>${formatarDuracao(duracao)}
+          </span>
+          <span class="report-info__meta-item">
+            ${sbadgeForStatus(v.status)}
+          </span>
+        </div>
+      </div>
+    </div>
+
+    ${readonly ? `
+      <div class="report-lock-warning">
+        <span class="material-symbols-rounded">lock</span>
+        <div><strong>Visita bloqueada.</strong><br>
+        ${editabilidade.motivo}</div>
+      </div>
+    ` : v.status === 'completa' ? `
+      <div class="report-lock-warning" style="background:#E6F6EF;border-color:rgba(34,160,107,0.25);color:#166534;">
+        <span class="material-symbols-rounded" style="color:var(--status-success);">check_circle</span>
+        <div><strong>Visita finalizada.</strong><br>
+        Você pode editar por mais ${Math.round(editabilidade.horasRestantes)}h. Depois disso, só o administrador poderá alterar.</div>
+      </div>
+    ` : editabilidade.horasRestantes !== null && editabilidade.horasRestantes < 6 ? `
+      <div class="report-lock-warning">
+        <span class="material-symbols-rounded">schedule</span>
+        <div><strong>Atenção:</strong> faltam ${Math.round(editabilidade.horasRestantes)}h pra janela de edição expirar. Finalize logo.</div>
+      </div>
+    ` : ''}
+
+    <!-- SEÇÃO 1: Horários declarados -->
+    <section class="report-section">
+      <div class="report-section__title">
+        <span class="material-symbols-rounded">schedule</span>
+        Horários da visita
+        <span class="report-section__required">*</span>
+      </div>
+      <div class="report-section__help">Horário real da visita (pode ser diferente do check-in/out se esperou ou estendeu).</div>
+      <div class="report-row-2">
+        <div class="report-field">
+          <label for="fHoraInicio">Início</label>
+          <input type="time" id="fHoraInicio" value="${horaInicioInicial}" ${readonly ? 'disabled' : ''} oninput="handleReportChange('horario_inicio', this.value)" />
+        </div>
+        <div class="report-field">
+          <label for="fHoraTermino">Término</label>
+          <input type="time" id="fHoraTermino" value="${horaTerminoInicial}" ${readonly ? 'disabled' : ''} oninput="handleReportChange('horario_termino', this.value)" />
+        </div>
+      </div>
+      <div id="timeWarning" style="display:none;" class="time-warning">
+        <span class="material-symbols-rounded">warning</span>
+        <span id="timeWarningText"></span>
+      </div>
+    </section>
+
+    <!-- SEÇÃO 2: Visita realizada? -->
+    <section class="report-section">
+      <div class="report-section__title">
+        <span class="material-symbols-rounded">task_alt</span>
+        A visita foi realizada?
+        <span class="report-section__required">*</span>
+      </div>
+      <div class="toggle-group">
+        <button type="button" class="toggle-btn ${realizada === true ? 'is-selected' : ''}" ${readonly ? 'disabled' : ''} onclick="setRealizada(true)" id="btnRealizadaSim">
+          <span class="material-symbols-rounded">check_circle</span>Sim
+        </button>
+        <button type="button" class="toggle-btn ${realizada === false ? 'is-selected is-selected--no' : ''}" ${readonly ? 'disabled' : ''} onclick="setRealizada(false)" id="btnRealizadaNao">
+          <span class="material-symbols-rounded">cancel</span>Não realizada
+        </button>
+      </div>
+      <div id="motivoNaoRealizada" style="display:${realizada === false ? 'block' : 'none'};margin-top:12px;">
+        <div class="report-field">
+          <label for="fMotivo">Motivo <span class="report-section__required">*</span></label>
+          <textarea id="fMotivo" ${readonly ? 'disabled' : ''} placeholder="Ex: supervisora em reunião, não conseguiu atendimento..." oninput="handleReportChange('motivo_nao_realizada', this.value)">${(v.motivo_nao_realizada || '').replace(/</g,'&lt;')}</textarea>
+        </div>
+      </div>
+    </section>
+
+    <div id="realizadaSections" style="display:${realizada === false ? 'none' : 'block'};">
+      <!-- SEÇÃO 3: Profissionais -->
+      <section class="report-section">
+        <div class="report-section__title">
+          <span class="material-symbols-rounded">groups</span>
+          Profissionais conversados
+          <span class="report-section__required">*</span>
+        </div>
+        <div class="report-section__help">Busque pelo nome ou cadastre um novo no hospital.</div>
+        <div class="prof-search">
+          <span class="material-symbols-rounded prof-search__icon">search</span>
+          <input type="text" class="prof-search-input" id="profSearchInput" ${readonly ? 'disabled' : ''} placeholder="Buscar profissional..." oninput="handleProfSearch(this.value)" onfocus="showProfDropdown()" onblur="setTimeout(hideProfDropdown, 200)" />
+          <div class="prof-dropdown" id="profDropdown" style="display:none;"></div>
+        </div>
+        <div class="prof-selected" id="profSelected"></div>
+      </section>
+
+      <!-- SEÇÃO 4: Objetivos -->
+      <section class="report-section">
+        <div class="report-section__title">
+          <span class="material-symbols-rounded">flag</span>
+          Objetivos realizados
+          <span class="report-section__required">*</span>
+        </div>
+        <div class="report-section__help">Marque todos os objetivos que foram trabalhados nessa visita.</div>
+        <div class="objective-grid" id="objectiveGrid"></div>
+      </section>
+
+      <!-- SEÇÃO 5: Resumo -->
+      <section class="report-section">
+        <div class="report-section__title">
+          <span class="material-symbols-rounded">description</span>
+          Resumo da visita
+          <span class="report-section__required">*</span>
+        </div>
+        <div class="report-field">
+          <textarea id="fResumo" ${readonly ? 'disabled' : ''} placeholder="O que aconteceu? O que foi discutido?" oninput="handleReportChange('resumo', this.value)">${(v.resumo || '').replace(/</g,'&lt;')}</textarea>
+        </div>
+      </section>
+
+      <!-- SEÇÃO 6: Próximos passos -->
+      <section class="report-section">
+        <div class="report-section__title">
+          <span class="material-symbols-rounded">arrow_forward</span>
+          Próximos passos
+          <span class="report-section__required">*</span>
+        </div>
+        <div class="report-field">
+          <textarea id="fProximos" ${readonly ? 'disabled' : ''} placeholder="O que precisa ser feito agora? Entrega, follow-up, novo contato..." oninput="handleReportChange('proximos_passos', this.value)">${(v.proximos_passos || '').replace(/</g,'&lt;')}</textarea>
+        </div>
+      </section>
+
+      <!-- SEÇÃO 7: Programar próxima -->
+      <section class="report-section">
+        <div class="report-section__title">
+          <span class="material-symbols-rounded">event</span>
+          Programar próxima visita
+        </div>
+        <div class="report-section__help">Opcional. Selecione uma data sugerida.</div>
+        <div class="report-field">
+          <input type="date" id="fProxData" ${readonly ? 'disabled' : ''} value="${v.proxima_visita_programada || ''}" oninput="handleReportChange('proxima_visita_programada', this.value || null)" />
+        </div>
+      </section>
+    </div>
+
+    ${readonly ? '' : `
+      <div class="report-footer">
+        <button class="btn-confirm" id="btnFinalizar" onclick="handleFinalizarRelatorio()">
+          <span class="material-symbols-rounded" style="font-size:24px">${v.status === 'completa' ? 'save' : 'check_circle'}</span>
+          ${v.status === 'completa' ? 'Salvar alterações' : 'Finalizar relatório'}
+        </button>
+      </div>
+    `}
+  `;
+
+  renderObjetivos();
+  renderProfSelected();
+  updateTimeWarning();
+}
+
+function renderObjetivos() {
+  const grid = document.getElementById('objectiveGrid');
+  if (!grid) return;
+  grid.innerHTML = ReportState.objetivos.map(o => `
+    <div class="objective-check ${ReportState.objetivosSelecionados.has(o.id) ? 'is-selected' : ''}" onclick="toggleObjetivo(${o.id})">
+      <div class="objective-check__box">
+        <span class="material-symbols-rounded">check</span>
+      </div>
+      <span class="objective-check__label">${o.nome}</span>
+    </div>
+  `).join('');
+}
+
+function renderProfSelected() {
+  const el = document.getElementById('profSelected');
+  if (!el) return;
+  if (ReportState.profissionaisSelecionados.length === 0) {
+    el.innerHTML = '<span style="font-size:12px;color:var(--neutral-500);">Nenhum profissional selecionado ainda.</span>';
+    return;
+  }
+  el.innerHTML = ReportState.profissionaisSelecionados.map(p => `
+    <span class="prof-chip">
+      ${p.nome.replace(/"/g,'&quot;')}
+      <span class="prof-chip__role">· ${p.profissao === 'Outro' ? (p.profissao_outro || 'Outro') : p.profissao}</span>
+      <button class="prof-chip__remove" onclick="removeProfissional('${p.id}')" title="Remover">
+        <span class="material-symbols-rounded">close</span>
+      </button>
+    </span>
+  `).join('');
+}
+
+window.handleProfSearch = function(query) {
+  const q = query.toLowerCase().trim();
+  const dropdown = document.getElementById('profDropdown');
+  if (!dropdown) return;
+
+  dropdown.style.display = 'block';
+
+  const selectedIds = new Set(ReportState.profissionaisSelecionados.map(p => p.id));
+  const available = ReportState.profissionaisInstituicao.filter(p => !selectedIds.has(p.id));
+  const filtered = q
+    ? available.filter(p => p.nome.toLowerCase().includes(q) || (p.profissao || '').toLowerCase().includes(q))
+    : available;
+
+  if (filtered.length === 0 && !q) {
+    dropdown.innerHTML = `
+      <div class="prof-dropdown__empty">Nenhum profissional cadastrado neste hospital.</div>
+      <div class="prof-dropdown__add-new" onclick="handleAddNewProf('')">
+        <span class="material-symbols-rounded">person_add</span>
+        Cadastrar novo profissional
+      </div>
+    `;
+    return;
+  }
+
+  let html = filtered.slice(0, 8).map(p => {
+    const profText = p.profissao === 'Outro' ? (p.profissao_outro || 'Outro') : p.profissao;
+    return `
+      <div class="prof-dropdown-item" onclick="addProfissional('${p.id}')">
+        <div class="prof-dropdown-item__avatar">${iniciais(p.nome)}</div>
+        <div class="prof-dropdown-item__info">
+          <div class="prof-dropdown-item__name">${p.nome.replace(/"/g,'&quot;')}</div>
+          <div class="prof-dropdown-item__role">${profText}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  if (q && !ReportState.profissionaisInstituicao.some(p => p.nome.toLowerCase() === q)) {
+    html += `
+      <div class="prof-dropdown__add-new" onclick="handleAddNewProf('${q.replace(/'/g, '')}')">
+        <span class="material-symbols-rounded">person_add</span>
+        Cadastrar "${q}" como novo profissional
+      </div>
+    `;
+  }
+
+  dropdown.innerHTML = html || `
+    <div class="prof-dropdown__empty">Nenhum resultado encontrado.</div>
+    <div class="prof-dropdown__add-new" onclick="handleAddNewProf('${q.replace(/'/g, '')}')">
+      <span class="material-symbols-rounded">person_add</span>
+      Cadastrar "${q}" como novo profissional
+    </div>
+  `;
+};
+
+window.showProfDropdown = function() {
+  const inp = document.getElementById('profSearchInput');
+  if (inp) window.handleProfSearch(inp.value || '');
+};
+
+window.hideProfDropdown = function() {
+  const dropdown = document.getElementById('profDropdown');
+  if (dropdown) dropdown.style.display = 'none';
+};
+
+window.addProfissional = function(id) {
+  const p = ReportState.profissionaisInstituicao.find(x => x.id === id);
+  if (!p) return;
+  if (ReportState.profissionaisSelecionados.some(x => x.id === id)) return;
+  ReportState.profissionaisSelecionados.push(p);
+  renderProfSelected();
+  const inp = document.getElementById('profSearchInput');
+  if (inp) inp.value = '';
+  window.hideProfDropdown();
+  scheduleSyncProfissionais();
+};
+
+window.removeProfissional = function(id) {
+  ReportState.profissionaisSelecionados = ReportState.profissionaisSelecionados.filter(p => p.id !== id);
+  renderProfSelected();
+  scheduleSyncProfissionais();
+};
+
+window.handleAddNewProf = async function(nomeInicial) {
+  try {
+    const dados = await showNewProfissionalModal(nomeInicial);
+    if (!dados) return; // cancelado
+
+    const novo = await criarProfissional({
+      institucaoId: ReportState.visita.instituicao_id,
+      nome: dados.nome,
+      profissao: dados.profissao,
+      telefone: dados.telefone,
+      email: dados.email,
+    });
+    ReportState.profissionaisInstituicao.push(novo);
+    ReportState.profissionaisSelecionados.push(novo);
+    renderProfSelected();
+    const inp = document.getElementById('profSearchInput');
+    if (inp) inp.value = '';
+    window.hideProfDropdown();
+    scheduleSyncProfissionais();
+    setFlash('success', `Profissional "${novo.nome}" cadastrado!`);
+  } catch (err) {
+    alert('Erro ao cadastrar profissional: ' + err.message);
+  }
+};
+
+// Modal bonito pra cadastro de profissional
+function showNewProfissionalModal(nomeInicial) {
+  return new Promise((resolve) => {
+    const instName = ReportState.visita?.instituicoes?.nome || 'Instituição';
+    const backdrop = document.createElement('div');
+    backdrop.className = 'modal-backdrop';
+    backdrop.innerHTML = `
+      <div class="modal-card" style="max-width:440px;">
+        <div class="modal-card__header">
+          <div class="modal-card__icon">
+            <span class="material-symbols-rounded">person_add</span>
+          </div>
+          <div class="modal-card__title">Novo profissional</div>
+          <div class="modal-card__subtitle">${instName.replace(/"/g,'&quot;')}</div>
+        </div>
+        <div class="modal-card__body">
+          <div class="report-field" style="margin-bottom:12px;">
+            <label for="mnpNome">Nome completo <span class="report-section__required">*</span></label>
+            <input type="text" id="mnpNome" placeholder="Ex: Dra. Ana Silva" value="${(nomeInicial || '').replace(/"/g,'&quot;')}" autocomplete="off" />
+          </div>
+          <div class="report-field" style="margin-bottom:12px;">
+            <label for="mnpProfissao">Profissão <span class="report-section__required">*</span></label>
+            <select id="mnpProfissao">
+              <option value="Nutricionista">Nutricionista</option>
+              <option value="Medico">Médico(a)</option>
+              <option value="Farmaceutico">Farmacêutico(a)</option>
+              <option value="Enfermeiro">Enfermeiro(a)</option>
+              <option value="Comprador">Comprador(a)</option>
+              <option value="Outro">Outro</option>
+            </select>
+          </div>
+          <div class="report-row-2" style="margin-bottom:4px;">
+            <div class="report-field">
+              <label for="mnpTelefone">Telefone</label>
+              <input type="text" id="mnpTelefone" placeholder="(11) 99999-9999" autocomplete="off" />
+            </div>
+            <div class="report-field">
+              <label for="mnpEmail">E-mail</label>
+              <input type="text" id="mnpEmail" placeholder="nome@email.com" autocomplete="off" />
+            </div>
+          </div>
+          <div style="font-size:11px;color:var(--neutral-500);margin-top:4px;">
+            Telefone e e-mail são opcionais.
+          </div>
+        </div>
+        <div class="modal-card__footer">
+          <button class="modal-btn modal-btn--primary" id="mnpConfirm">
+            <span class="material-symbols-rounded">check_circle</span>Cadastrar profissional
+          </button>
+          <button class="modal-btn modal-btn--secondary" id="mnpCancel">
+            Cancelar
+          </button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(backdrop);
+
+    // Foca no nome se vazio, ou na profissão se nome já preenchido
+    setTimeout(() => {
+      const nomeInput = backdrop.querySelector('#mnpNome');
+      const profInput = backdrop.querySelector('#mnpProfissao');
+      if (nomeInput && !nomeInput.value.trim()) {
+        nomeInput.focus();
+      } else if (profInput) {
+        profInput.focus();
+      }
+    }, 150);
+
+    // Máscara simples pra telefone
+    const telInput = backdrop.querySelector('#mnpTelefone');
+    telInput.addEventListener('input', (e) => {
+      let v = e.target.value.replace(/\D/g, '');
+      if (v.length > 11) v = v.slice(0, 11);
+      if (v.length > 10) {
+        v = v.replace(/^(\d{2})(\d{5})(\d{0,4}).*/, '($1) $2-$3');
+      } else if (v.length > 6) {
+        v = v.replace(/^(\d{2})(\d{4})(\d{0,4}).*/, '($1) $2-$3');
+      } else if (v.length > 2) {
+        v = v.replace(/^(\d{2})(\d{0,5}).*/, '($1) $2');
+      } else if (v.length > 0) {
+        v = v.replace(/^(\d{0,2}).*/, '($1');
+      }
+      e.target.value = v;
+    });
+
+    const cleanup = () => backdrop.remove();
+
+    backdrop.querySelector('#mnpConfirm').onclick = () => {
+      const nome = backdrop.querySelector('#mnpNome').value.trim();
+      const profissao = backdrop.querySelector('#mnpProfissao').value;
+      const telefone = backdrop.querySelector('#mnpTelefone').value.trim();
+      const email = backdrop.querySelector('#mnpEmail').value.trim();
+
+      if (!nome) {
+        alert('Nome é obrigatório.');
+        backdrop.querySelector('#mnpNome').focus();
+        return;
+      }
+      if (email && !/\S+@\S+\.\S+/.test(email)) {
+        alert('E-mail inválido.');
+        backdrop.querySelector('#mnpEmail').focus();
+        return;
+      }
+
+      cleanup();
+      resolve({ nome, profissao, telefone: telefone || null, email: email || null });
+    };
+
+    backdrop.querySelector('#mnpCancel').onclick = () => {
+      cleanup();
+      resolve(null);
+    };
+
+    // Enter no nome/telefone/email confirma
+    backdrop.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && e.target.tagName === 'INPUT') {
+        e.preventDefault();
+        backdrop.querySelector('#mnpConfirm').click();
+      }
+      if (e.key === 'Escape') {
+        cleanup();
+        resolve(null);
+      }
+    });
+
+    // Clicar fora do card fecha
+    backdrop.onclick = (e) => {
+      if (e.target === backdrop) {
+        cleanup();
+        resolve(null);
+      }
+    };
+  });
+}
+
+window.toggleObjetivo = function(objId) {
+  if (ReportState.objetivosSelecionados.has(objId)) {
+    ReportState.objetivosSelecionados.delete(objId);
+  } else {
+    ReportState.objetivosSelecionados.add(objId);
+  }
+  renderObjetivos();
+  scheduleSyncObjetivos();
+};
+
+window.setRealizada = function(valor) {
+  ReportState.pendingChanges.visita_realizada = valor;
+  // Atualiza visual
+  document.getElementById('btnRealizadaSim').classList.toggle('is-selected', valor === true);
+  document.getElementById('btnRealizadaNao').classList.toggle('is-selected', valor === false);
+  document.getElementById('btnRealizadaNao').classList.toggle('is-selected--no', valor === false);
+  document.getElementById('motivoNaoRealizada').style.display = valor === false ? 'block' : 'none';
+  document.getElementById('realizadaSections').style.display = valor === false ? 'none' : 'block';
+
+  // Salva no estado local
+  if (ReportState.visita) ReportState.visita.visita_realizada = valor;
+  scheduleAutoSave();
+};
+
+window.handleReportChange = function(campo, valor) {
+  ReportState.pendingChanges[campo] = valor;
+  if (ReportState.visita) ReportState.visita[campo] = valor;
+
+  // Atualiza aviso de margem se for horário
+  if (campo === 'horario_inicio' || campo === 'horario_termino') {
+    updateTimeWarning();
+  }
+
+  scheduleAutoSave();
+};
+
+function updateTimeWarning() {
+  const v = ReportState.visita;
+  if (!v || !v.checkin_timestamp) return;
+
+  const warnEl = document.getElementById('timeWarning');
+  const textEl = document.getElementById('timeWarningText');
+  if (!warnEl || !textEl) return;
+
+  const hi = v.horario_inicio;
+  if (!hi) {
+    warnEl.style.display = 'none';
+    return;
+  }
+
+  const checkinTs = new Date(v.checkin_timestamp);
+  const [h, m] = hi.split(':');
+  const declaradoInicio = new Date(checkinTs);
+  declaradoInicio.setHours(parseInt(h), parseInt(m), 0, 0);
+  const diffMin = Math.abs((declaradoInicio - checkinTs) / 60000);
+
+  const margemMin = getConfigSync('margem_horario_minutos', 90);
+  if (diffMin > margemMin) {
+    warnEl.style.display = 'flex';
+    textEl.textContent = `Horário declarado está ${Math.round(diffMin)}min fora do check-in (>${margemMin}min). Vai ser marcado com flag pra revisão.`;
+  } else {
+    warnEl.style.display = 'none';
+  }
+}
+
+// Auto-save com debounce de 2s
+function scheduleAutoSave() {
+  if (ReportState.autoSaveTimer) clearTimeout(ReportState.autoSaveTimer);
+  setSaveIndicator('saving', 'Digitando...');
+  ReportState.autoSaveTimer = setTimeout(() => {
+    executeAutoSave();
+  }, 2000);
+}
+
+async function executeAutoSave() {
+  if (Object.keys(ReportState.pendingChanges).length === 0) {
+    setSaveIndicator('saved', 'Pronto');
+    return;
+  }
+  setSaveIndicator('saving', 'Salvando...');
+  try {
+    const changes = { ...ReportState.pendingChanges };
+    ReportState.pendingChanges = {};
+    await atualizarRelatorio(ReportState.visitaId, changes);
+    ReportState.lastSavedAt = new Date();
+    ReportState.saveCounter++;
+    setSaveIndicator('saved', 'Salvo');
+  } catch (err) {
+    console.error('[AutoSave] Erro:', err);
+    // Recoloca mudanças em pending pra retry
+    Object.assign(ReportState.pendingChanges, { _failedOnce: true });
+    setSaveIndicator('error', 'Erro');
+  }
+}
+
+// Sync profissionais (timer separado pro N:N)
+function scheduleSyncProfissionais() {
+  if (ReportState._profTimer) clearTimeout(ReportState._profTimer);
+  setSaveIndicator('saving', 'Atualizando...');
+  ReportState._profTimer = setTimeout(async () => {
+    try {
+      await syncProfissionaisVisita(
+        ReportState.visitaId,
+        ReportState.profissionaisSelecionados.map(p => p.id)
+      );
+      setSaveIndicator('saved', 'Salvo');
+    } catch (err) {
+      setSaveIndicator('error', 'Erro');
+    }
+  }, 800);
+}
+
+function scheduleSyncObjetivos() {
+  if (ReportState._objTimer) clearTimeout(ReportState._objTimer);
+  setSaveIndicator('saving', 'Atualizando...');
+  ReportState._objTimer = setTimeout(async () => {
+    try {
+      await syncObjetivosVisita(
+        ReportState.visitaId,
+        Array.from(ReportState.objetivosSelecionados)
+      );
+      setSaveIndicator('saved', 'Salvo');
+    } catch (err) {
+      setSaveIndicator('error', 'Erro');
+    }
+  }, 500);
+}
+
+function setSaveIndicator(state, text) {
+  const el = document.getElementById('saveIndicator');
+  if (!el) return;
+  el.classList.remove('save-indicator--saving', 'save-indicator--saved', 'save-indicator--error');
+  if (state === 'saving') el.classList.add('save-indicator--saving');
+  else if (state === 'saved') el.classList.add('save-indicator--saved');
+  else if (state === 'error') el.classList.add('save-indicator--error');
+
+  const icon = state === 'saving' ? 'sync' : state === 'error' ? 'cloud_off' : 'cloud_done';
+  el.innerHTML = `
+    <span class="material-symbols-rounded">${icon}</span>
+    <span id="saveIndicatorText">${text}</span>
+  `;
+}
+
+window.handleFinalizarRelatorio = async function() {
+  const btn = document.getElementById('btnFinalizar');
+
+  // Força o auto-save antes de finalizar
+  if (ReportState.autoSaveTimer) {
+    clearTimeout(ReportState.autoSaveTimer);
+    await executeAutoSave();
+  }
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="material-symbols-rounded" style="font-size:24px">hourglass_empty</span> Finalizando...';
+
+  const v = ReportState.visita;
+  const dados = {
+    horario_inicio: document.getElementById('fHoraInicio')?.value || v.horario_inicio,
+    horario_termino: document.getElementById('fHoraTermino')?.value || v.horario_termino,
+    visita_realizada: v.visita_realizada,
+    motivo_nao_realizada: document.getElementById('fMotivo')?.value,
+    resumo: document.getElementById('fResumo')?.value,
+    proximos_passos: document.getElementById('fProximos')?.value,
+    proxima_visita_programada: document.getElementById('fProxData')?.value || null,
+    profissionais_ids: ReportState.profissionaisSelecionados.map(p => p.id),
+    objetivos_ids: Array.from(ReportState.objetivosSelecionados),
+    checkin_timestamp: v.checkin_timestamp,
+  };
+
+  const eraCompleta = v.status === 'completa';
+
+  try {
+    await finalizarRelatorio(ReportState.visitaId, dados);
+    setFlash('success', eraCompleta ? 'Alterações salvas!' : 'Relatório finalizado com sucesso!');
+    window.location.hash = '#/visitas';
+  } catch (err) {
+    alert(err.message);
+    btn.disabled = false;
+    btn.innerHTML = eraCompleta
+      ? '<span class="material-symbols-rounded" style="font-size:24px">save</span> Salvar alterações'
+      : '<span class="material-symbols-rounded" style="font-size:24px">check_circle</span> Finalizar relatório';
+  }
+};
+
+
 function renderAgenda() {
   const user = requireAuth();
   if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
@@ -4695,7 +6717,62 @@ function renderFaturamento() {
 function renderAdminDashboard() {
   const user = requireAdmin();
   if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
-  return loggedPlaceholderScreen(user, 'dashboard', 'Dashboard Admin', 'KPIs globais, gráficos, ações pendentes. (Sprint 3)', '#/admin');
+
+  const items = [
+    { href: '#/admin/instituicoes',   icon: 'local_hospital',          cor: 'navy',  titulo: 'Instituições',    desc: 'Hospitais e clínicas cadastrados',     pronto: true },
+    { href: '#/admin/profissionais',  icon: 'stethoscope',             cor: 'lime',  titulo: 'Profissionais',   desc: 'Contatos nas instituições',             pronto: true },
+    { href: '#/admin/configuracoes',  icon: 'settings',                cor: 'info',  titulo: 'Configurações',   desc: 'Parâmetros globais do sistema',         pronto: true },
+    { href: '#/admin/revisao',        icon: 'rule',                    cor: 'warn',  titulo: 'Fila de Revisão', desc: 'Visitas com divergências',              pronto: false },
+    { href: '#/admin/equipe',         icon: 'groups',                  cor: 'navy',  titulo: 'Equipe',          desc: 'Nutricionistas + aprovar pendentes',    pronto: false },
+  ];
+
+  const corMap = {
+    'navy': 'var(--brand-navy)',
+    'lime': 'var(--brand-lime)',
+    'info': 'var(--status-info)',
+    'warn': 'var(--status-warning)',
+  };
+
+  return `
+    <div class="mobile-app">
+      ${mobileTopBar({ showLogo: true, showNotification: false, showAvatar: true })}
+      <main class="mcontent">
+        <div class="home__greeting">
+          <div class="home__greeting-title">Painel Admin</div>
+          <div class="home__greeting-date">${user.nome} · ${formatarDataPtBr(new Date())}</div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:22px;">
+          ${items.map(it => `
+            <a href="${it.href}" style="background:var(--neutral-0);border-radius:14px;padding:16px;box-shadow:0 2px 8px rgba(10,31,92,0.05);display:flex;flex-direction:column;gap:10px;text-decoration:none;color:inherit;position:relative;${it.pronto ? '' : 'opacity:0.65;'}">
+              <div style="width:40px;height:40px;border-radius:10px;background:${corMap[it.cor]};color:#fff;display:flex;align-items:center;justify-content:center;">
+                <span class="material-symbols-rounded" style="font-size:22px">${it.icon}</span>
+              </div>
+              <div>
+                <div style="font-family:var(--font-display);font-size:14px;font-weight:700;color:var(--brand-navy);line-height:1.25;">${it.titulo}</div>
+                <div style="font-size:11.5px;color:var(--neutral-500);margin-top:4px;line-height:1.3;">${it.desc}</div>
+              </div>
+              ${!it.pronto ? `<span style="position:absolute;top:10px;right:10px;font-size:9px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;padding:3px 7px;border-radius:999px;background:var(--neutral-100);color:var(--neutral-500);">Em breve</span>` : ''}
+            </a>
+          `).join('')}
+        </div>
+
+        <div class="section-head">
+          <h2>Status do sistema</h2>
+        </div>
+        <div style="background:var(--neutral-0);border-radius:14px;padding:16px;box-shadow:0 2px 8px rgba(10,31,92,0.05);font-size:13px;color:var(--neutral-600);line-height:1.6;">
+          <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
+            <span class="material-symbols-rounded" style="font-size:18px;color:var(--status-success);">check_circle</span>
+            <strong style="color:var(--brand-navy);">Sistema operacional</strong>
+          </div>
+          <div style="font-size:12px;color:var(--neutral-500);">
+            KPIs globais, gráficos e fila de revisão chegam no <strong>Sprint 3</strong>.<br>
+            Por enquanto use os módulos acima.
+          </div>
+        </div>
+      </main>
+    </div>
+  `;
 }
 function renderAdminRevisao() {
   const user = requireAdmin();
@@ -4889,12 +6966,375 @@ window.seedInstituicoesTeste = async function() {
 function renderAdminProfissionais() {
   const user = requireAdmin();
   if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
-  return loggedPlaceholderScreen(user, 'stethoscope', 'Profissionais', 'CRUD + fila de padronização.', '#/admin/profissionais');
+
+  setTimeout(async () => {
+    const listEl = document.getElementById('admProfList');
+    if (!listEl) return;
+    try {
+      // Busca todas as instituições e depois profissionais
+      const insts = await listarInstituicoes();
+      if (insts.length === 0) {
+        listEl.innerHTML = `
+          <div class="empty-state" style="margin:0;">
+            <div class="empty-state__icon">
+              <span class="material-symbols-rounded">local_hospital</span>
+            </div>
+            <div class="empty-state__title">Cadastre instituições primeiro</div>
+            <div class="empty-state__desc">Profissionais precisam estar vinculados a uma instituição.</div>
+            <a href="#/admin/instituicoes" class="btn-auth btn-auth--primary" style="display:inline-flex;text-decoration:none;width:auto;padding:10px 20px;min-height:auto;">
+              Ir para instituições
+            </a>
+          </div>
+        `;
+        return;
+      }
+
+      // Conta total de profissionais
+      const { count, error: countErr } = await db
+        .from('profissionais')
+        .select('*', { count: 'exact', head: true })
+        .eq('ativo', true);
+
+      if (countErr) throw new Error(countErr.message);
+
+      if (count === 0) {
+        listEl.innerHTML = `
+          <div class="empty-state" style="margin:0;">
+            <div class="empty-state__icon">
+              <span class="material-symbols-rounded">stethoscope</span>
+            </div>
+            <div class="empty-state__title">Nenhum profissional cadastrado</div>
+            <div class="empty-state__desc">Use o botão abaixo pra popular rapidamente com ~15 profissionais distribuídos entre os ${insts.length} hospitais. Ótimo pra testar o relatório de visita.</div>
+            <button class="btn-auth btn-auth--primary" onclick="seedProfissionaisTeste()" style="display:inline-flex;text-decoration:none;width:auto;padding:12px 24px;min-height:auto;margin-top:8px;">
+              <span class="material-symbols-rounded" style="font-size:20px">auto_awesome</span>
+              Popular profissionais de teste
+            </button>
+          </div>
+        `;
+        return;
+      }
+
+      // Lista por instituição
+      const { data: profs } = await db
+        .from('profissionais')
+        .select('*, instituicoes(nome)')
+        .eq('ativo', true)
+        .order('nome');
+
+      const profsPorInst = {};
+      (profs || []).forEach(p => {
+        const instName = p.instituicoes?.nome || 'Sem instituição';
+        if (!profsPorInst[instName]) profsPorInst[instName] = [];
+        profsPorInst[instName].push(p);
+      });
+
+      listEl.innerHTML = `
+        <div style="margin-bottom:16px;font-size:13px;color:var(--neutral-600);">
+          <strong>${count}</strong> profissional(is) em <strong>${Object.keys(profsPorInst).length}</strong> instituição(ões)
+        </div>
+        ${Object.keys(profsPorInst).sort().map(instName => `
+          <div style="margin-bottom:16px;">
+            <div style="font-family:var(--font-display);font-weight:700;font-size:13px;color:var(--brand-navy);padding:8px 12px;background:var(--neutral-100);border-radius:8px;margin-bottom:6px;">
+              ${instName.replace(/"/g,'&quot;')} · ${profsPorInst[instName].length}
+            </div>
+            ${profsPorInst[instName].map(p => `
+              <div class="visits-list__item" style="padding:10px 12px;">
+                <div class="prof-dropdown-item__avatar">${iniciais(p.nome)}</div>
+                <div class="visits-list__info">
+                  <div class="visits-list__name">${p.nome.replace(/"/g,'&quot;')}</div>
+                  <div class="visits-list__time" style="font-family:var(--font-body);">
+                    ${p.profissao === 'Outro' ? (p.profissao_outro || 'Outro') : p.profissao}
+                  </div>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        `).join('')}
+      `;
+    } catch (err) {
+      listEl.innerHTML = `<div style="padding:20px;color:var(--status-danger);">Erro: ${err.message}</div>`;
+    }
+  }, 0);
+
+  return `
+    <div class="mobile-app">
+      ${mobileTopBar({ title: 'Profissionais', showBack: true })}
+      <main class="mcontent">
+        <div id="admProfList">
+          <div style="padding:20px;text-align:center;color:var(--neutral-500);font-size:13px;">Carregando...</div>
+        </div>
+      </main>
+    </div>
+  `;
 }
+
+// Seed de profissionais de teste — distribui ~15 profissionais pelos 5 hospitais
+window.seedProfissionaisTeste = async function() {
+  if (!confirm('Cadastrar ~15 profissionais de teste distribuídos pelos hospitais?')) return;
+
+  try {
+    // Busca as instituições cadastradas
+    const insts = await listarInstituicoes();
+    if (insts.length === 0) {
+      alert('Cadastre instituições primeiro.');
+      return;
+    }
+
+    // Template de profissionais por instituição (3 por hospital)
+    const templates = [
+      [
+        { nome: 'Dra. Mariana Costa', profissao: 'Nutricionista' },
+        { nome: 'Dr. Rafael Menezes', profissao: 'Medico' },
+        { nome: 'Paulo Henrique Silva', profissao: 'Comprador' },
+      ],
+      [
+        { nome: 'Dra. Camila Rocha', profissao: 'Nutricionista' },
+        { nome: 'Dra. Patricia Lima', profissao: 'Farmaceutico' },
+        { nome: 'Enfermeira Juliana Alves', profissao: 'Enfermeiro' },
+      ],
+      [
+        { nome: 'Dra. Beatriz Santana', profissao: 'Nutricionista' },
+        { nome: 'Dr. Leonardo Pereira', profissao: 'Medico' },
+        { nome: 'Fernanda Dias', profissao: 'Comprador' },
+      ],
+      [
+        { nome: 'Dra. Larissa Mendes', profissao: 'Nutricionista' },
+        { nome: 'Sr. André Ferreira', profissao: 'Comprador' },
+        { nome: 'Dr. Gustavo Oliveira', profissao: 'Farmaceutico' },
+      ],
+      [
+        { nome: 'Dra. Carolina Martins', profissao: 'Nutricionista' },
+        { nome: 'Enfermeira Vanessa Souza', profissao: 'Enfermeiro' },
+        { nome: 'Dr. Ricardo Teixeira', profissao: 'Medico' },
+      ],
+    ];
+
+    const user = getCurrentUser();
+    const toInsert = [];
+
+    insts.slice(0, 5).forEach((inst, idx) => {
+      const template = templates[idx] || templates[0];
+      template.forEach(t => {
+        toInsert.push({
+          instituicao_id: inst.id,
+          nome: t.nome,
+          profissao: t.profissao,
+          profissao_outro: t.profissao === 'Outro' ? 'N/A' : null,
+          ativo: true,
+          criado_por: user?.id || null,
+        });
+      });
+    });
+
+    const { error } = await db.from('profissionais').insert(toInsert);
+    if (error) throw new Error(error.message);
+
+    setFlash('success', `${toInsert.length} profissionais cadastrados!`);
+    router();
+  } catch (err) {
+    alert('Erro ao cadastrar profissionais: ' + err.message);
+  }
+};
 function renderAdminConfig() {
   const user = requireAdmin();
   if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
-  return loggedPlaceholderScreen(user, 'settings', 'Configurações', 'Parâmetros globais.', '#/admin/configuracoes');
+
+  setTimeout(async () => {
+    const bodyEl = document.getElementById('configBody');
+    if (!bodyEl) return;
+
+    try {
+      const configs = await carregarConfigs(true);
+
+      // Agrupa configs por categoria
+      const grupos = {};
+      Object.keys(ConfigMeta).forEach(chave => {
+        const meta = ConfigMeta[chave];
+        const cat = meta.categoria;
+        if (!grupos[cat]) grupos[cat] = [];
+        grupos[cat].push({ chave, meta, atual: configs[chave] });
+      });
+
+      // Renderiza grupos na ordem definida em ConfigCategorias
+      let html = `
+        <div class="config-warning">
+          <span class="material-symbols-rounded">info</span>
+          <div>Alterações aqui afetam <strong>todo o sistema</strong>. Mudanças nos limites (raio GPS, margem de horário) passam a valer imediatamente para novas visitas.</div>
+        </div>
+      `;
+
+      Object.keys(ConfigCategorias).forEach(catKey => {
+        const cat = ConfigCategorias[catKey];
+        const items = grupos[catKey];
+        if (!items || items.length === 0) return;
+
+        const iconClass = {
+          'brand-lime': 'config-group__icon',
+          'navy': 'config-group__icon config-group__icon--navy',
+          'warning': 'config-group__icon config-group__icon--warning',
+          'info': 'config-group__icon config-group__icon--info',
+        }[cat.cor] || 'config-group__icon';
+
+        html += `
+          <div class="config-group">
+            <div class="config-group__header">
+              <div class="${iconClass}">
+                <span class="material-symbols-rounded">${cat.icone}</span>
+              </div>
+              <div class="config-group__title">${cat.titulo}</div>
+            </div>
+            <div class="config-group__list">
+              ${items.map(item => renderConfigItem(item)).join('')}
+            </div>
+          </div>
+        `;
+      });
+
+      bodyEl.innerHTML = html;
+    } catch (err) {
+      bodyEl.innerHTML = `
+        <div class="empty-state" style="margin:0;">
+          <div class="empty-state__icon" style="background:var(--status-danger-bg);color:var(--status-danger);">
+            <span class="material-symbols-rounded">error</span>
+          </div>
+          <div class="empty-state__title">Erro ao carregar configurações</div>
+          <div class="empty-state__desc">${err.message}</div>
+        </div>
+      `;
+    }
+  }, 0);
+
+  return `
+    <div class="mobile-app">
+      ${mobileTopBar({ title: 'Configurações', showBack: true })}
+      <main class="mcontent">
+        <div id="configBody">
+          <div style="padding:40px 20px;text-align:center;color:var(--neutral-500);font-size:13px;">
+            <span class="material-symbols-rounded" style="font-size:32px;color:var(--neutral-400);">settings</span>
+            <div style="margin-top:8px;">Carregando configurações...</div>
+          </div>
+        </div>
+      </main>
+    </div>
+  `;
+}
+
+function renderConfigItem({ chave, meta, atual }) {
+  const valor = atual ? atual.valor : null;
+  const metaInfo = atual?.atualizado_em
+    ? `<span class="material-symbols-rounded" style="font-size:12px">history</span> atualizado ${formatarTempoRelativo(atual.atualizado_em)}`
+    : '<span class="material-symbols-rounded" style="font-size:12px">fiber_new</span> valor original';
+
+  let controlHtml = '';
+
+  if (meta.tipo === 'number') {
+    controlHtml = `
+      <div class="config-number-group">
+        <input
+          type="number"
+          class="config-number"
+          id="cfg_${chave}"
+          value="${valor !== null && valor !== undefined ? valor : ''}"
+          min="${meta.min || 0}"
+          max="${meta.max || 999999}"
+          step="${meta.step || 1}"
+          onchange="handleConfigChange('${chave}', this.value, 'number')"
+        />
+        ${meta.sufixo ? `<span class="config-number-suffix">${meta.sufixo}</span>` : ''}
+      </div>
+      <span class="config-saved-badge" id="cfgSaved_${chave}">
+        <span class="material-symbols-rounded">check</span>Salvo
+      </span>
+    `;
+  } else if (meta.tipo === 'boolean') {
+    const isOn = valor === true || valor === 'true';
+    controlHtml = `
+      <span class="config-saved-badge" id="cfgSaved_${chave}">
+        <span class="material-symbols-rounded">check</span>Salvo
+      </span>
+      <button
+        type="button"
+        class="config-toggle ${isOn ? 'is-on' : ''}"
+        id="cfg_${chave}"
+        onclick="handleConfigToggle('${chave}', this)"
+        aria-label="${isOn ? 'Desativar' : 'Ativar'} ${meta.titulo}"
+      ></button>
+    `;
+  } else if (meta.tipo === 'select') {
+    const opcoesHtml = (meta.opcoes || []).map(o => {
+      const selected = valor === o.valor ? 'selected' : '';
+      return `<option value="${o.valor}" ${selected}>${o.label}</option>`;
+    }).join('');
+    controlHtml = `
+      <select class="config-select" id="cfg_${chave}" onchange="handleConfigChange('${chave}', this.value, 'string')">
+        ${opcoesHtml}
+      </select>
+      <span class="config-saved-badge" id="cfgSaved_${chave}">
+        <span class="material-symbols-rounded">check</span>Salvo
+      </span>
+    `;
+  }
+
+  return `
+    <div class="config-item">
+      <div class="config-item__text">
+        <div class="config-item__title">${meta.titulo}</div>
+        <div class="config-item__desc">${meta.descricao}</div>
+        <div class="config-item__meta">${metaInfo}</div>
+      </div>
+      <div class="config-item__control">${controlHtml}</div>
+    </div>
+  `;
+}
+
+window.handleConfigChange = async function(chave, valor, tipo) {
+  let valorConvertido = valor;
+  if (tipo === 'number') {
+    valorConvertido = Number(valor);
+    const meta = ConfigMeta[chave];
+    if (meta) {
+      if (meta.min !== undefined && valorConvertido < meta.min) {
+        valorConvertido = meta.min;
+        document.getElementById(`cfg_${chave}`).value = meta.min;
+      }
+      if (meta.max !== undefined && valorConvertido > meta.max) {
+        valorConvertido = meta.max;
+        document.getElementById(`cfg_${chave}`).value = meta.max;
+      }
+    }
+  }
+
+  try {
+    await atualizarConfig(chave, valorConvertido);
+    // Sincroniza CONFIG global se for uma das chaves cacheadas
+    if (chave === 'raio_gps_metros') CONFIG.GPS_RADIUS_METERS = valorConvertido;
+    if (chave === 'margem_horario_minutos') CONFIG.MARGIN_TIME_MINUTES = valorConvertido;
+    showSavedBadge(chave);
+  } catch (err) {
+    alert('Erro ao salvar: ' + err.message);
+  }
+};
+
+window.handleConfigToggle = async function(chave, btn) {
+  const isOn = btn.classList.contains('is-on');
+  const novoValor = !isOn;
+  btn.classList.toggle('is-on');
+
+  try {
+    await atualizarConfig(chave, novoValor);
+    showSavedBadge(chave);
+  } catch (err) {
+    // Reverte visualmente em caso de erro
+    btn.classList.toggle('is-on');
+    alert('Erro ao salvar: ' + err.message);
+  }
+};
+
+function showSavedBadge(chave) {
+  const badge = document.getElementById(`cfgSaved_${chave}`);
+  if (!badge) return;
+  badge.classList.add('is-visible');
+  setTimeout(() => badge.classList.remove('is-visible'), 2000);
 }
 
 // Placeholder com header de usuário logado (mostra quem está logado + logout)
@@ -4933,6 +7373,16 @@ async function boot() {
 
   if (db) {
     await testConnection();
+    // Pré-carrega configurações do sistema e sincroniza com CONFIG global
+    try {
+      await carregarConfigs(true);
+      const raio = getConfigSync('raio_gps_metros', 500);
+      const margem = getConfigSync('margem_horario_minutos', 90);
+      if (typeof raio === 'number') CONFIG.GPS_RADIUS_METERS = raio;
+      if (typeof margem === 'number') CONFIG.MARGIN_TIME_MINUTES = margem;
+    } catch (e) {
+      console.warn('[Boot] Não foi possível carregar configs, usando defaults.', e);
+    }
   }
 
   window.addEventListener('hashchange', router);
