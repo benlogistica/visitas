@@ -1497,6 +1497,241 @@ a {
    HOME (Dashboard Nutricionista)
    ========================================================================== */
 
+/* ========================================================================
+   DASHBOARD ADMIN
+   ======================================================================== */
+.dash-period-selector {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+  margin-bottom: 14px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.dash-period-selector::-webkit-scrollbar { display: none; }
+.dash-period-btn {
+  flex-shrink: 0;
+  padding: 7px 14px;
+  border: 1.5px solid var(--neutral-200);
+  background: var(--neutral-0);
+  border-radius: 999px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--neutral-600);
+  cursor: pointer;
+  transition: all 140ms;
+}
+.dash-period-btn:hover { background: var(--neutral-50); }
+.dash-period-btn.is-active {
+  background: var(--brand-navy);
+  border-color: var(--brand-navy);
+  color: #fff;
+}
+
+.dash-kpi-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.dash-kpi-card {
+  background: var(--neutral-0);
+  border-radius: 12px;
+  padding: 14px;
+  box-shadow: 0 2px 6px rgba(10,31,92,0.04);
+  border: 1px solid var(--neutral-100);
+}
+.dash-kpi-card__label {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--neutral-500);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 6px;
+}
+.dash-kpi-card__value {
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--brand-navy);
+  line-height: 1.1;
+}
+.dash-kpi-card__hint {
+  font-size: 10.5px;
+  color: var(--neutral-500);
+  margin-top: 6px;
+  min-height: 13px;
+  line-height: 1.3;
+}
+
+.dash-card {
+  background: var(--neutral-0);
+  border-radius: 12px;
+  padding: 14px;
+  box-shadow: 0 2px 6px rgba(10,31,92,0.04);
+  border: 1px solid var(--neutral-100);
+  margin-bottom: 12px;
+  min-width: 0;
+  overflow: hidden;
+}
+.dash-card__title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 13.5px;
+  color: var(--brand-navy);
+  margin-bottom: 12px;
+}
+
+.dash-rankings-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  margin-bottom: 0;
+}
+@media (min-width: 560px) {
+  .dash-rankings-grid { grid-template-columns: 1fr 1fr; }
+}
+
+.dash-rank-row {
+  display: grid;
+  grid-template-columns: 22px 1fr auto;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--neutral-100);
+  font-size: 12.5px;
+}
+.dash-rank-row:last-child { border-bottom: none; }
+.dash-rank-row__pos {
+  font-weight: 700;
+  font-family: var(--font-mono);
+  color: var(--neutral-400);
+  font-size: 11px;
+}
+.dash-rank-row__body {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.dash-rank-row__name {
+  color: var(--brand-navy);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dash-rank-row__count {
+  color: var(--neutral-500);
+  font-weight: 700;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  flex-shrink: 0;
+}
+.dash-rank-bar {
+  height: 5px;
+  background: var(--neutral-100);
+  border-radius: 3px;
+  overflow: hidden;
+  width: 100%;
+}
+.dash-rank-bar__fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--brand-lime), #A8D154);
+  border-radius: 3px;
+}
+
+.dash-pies-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+/* Drawer lateral do admin */
+.admin-drawer {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  pointer-events: none;
+}
+.admin-drawer.is-open { pointer-events: auto; }
+.admin-drawer__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(10,31,92,0.45);
+  opacity: 0;
+  transition: opacity 220ms ease;
+}
+.admin-drawer.is-open .admin-drawer__backdrop { opacity: 1; }
+.admin-drawer__panel {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 82%;
+  max-width: 320px;
+  background: var(--neutral-0);
+  box-shadow: 2px 0 16px rgba(10,31,92,0.12);
+  transform: translateX(-100%);
+  transition: transform 260ms cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  flex-direction: column;
+}
+.admin-drawer.is-open .admin-drawer__panel { transform: translateX(0); }
+.admin-drawer__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--neutral-100);
+}
+.admin-drawer__nav {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px 0;
+}
+.admin-drawer__item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 18px;
+  text-decoration: none;
+  color: inherit;
+  transition: background 120ms;
+}
+.admin-drawer__item:hover { background: var(--neutral-50); }
+.admin-drawer__item-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--neutral-100);
+  color: var(--brand-navy);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.admin-drawer__item-body { flex: 1; min-width: 0; }
+.admin-drawer__item-title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 13.5px;
+  color: var(--brand-navy);
+  line-height: 1.2;
+}
+.admin-drawer__item-desc {
+  font-size: 11px;
+  color: var(--neutral-500);
+  margin-top: 2px;
+  line-height: 1.3;
+}
+
 .home__greeting {
   margin-bottom: 18px;
 }
@@ -4112,6 +4347,334 @@ async function listarInstituicoesPendentes() {
   return data || [];
 }
 
+/* ========================================================================
+   DASHBOARD ADMIN — cálculo de KPIs, rankings e gráficos
+   ======================================================================== */
+
+// Converte período em data de início (ISO)
+function calcularDataInicio(periodo) {
+  const hoje = new Date();
+  const inicio = new Date(hoje);
+  switch (periodo) {
+    case '7':   inicio.setDate(hoje.getDate() - 7); break;
+    case '30':  inicio.setDate(hoje.getDate() - 30); break;
+    case 'mes': inicio.setDate(1); break;
+    case 'tri':
+      // primeiro dia do trimestre atual
+      const tri = Math.floor(hoje.getMonth() / 3);
+      inicio.setMonth(tri * 3, 1);
+      break;
+    case 'all':
+    default:
+      return null; // sem filtro
+  }
+  inicio.setHours(0, 0, 0, 0);
+  return inicio.toISOString();
+}
+
+async function carregarDashboardData(periodo) {
+  if (!db) return;
+  const dataInicio = calcularDataInicio(periodo);
+
+  // Query base de visitas no período
+  let query = db.from('visitas').select(`
+    id, status, data_visita, checkin_timestamp, checkin_manual,
+    flag_gps_divergente, visita_realizada,
+    nutricionista_id, instituicao_id,
+    usuarios:nutricionista_id(nome),
+    instituicoes(nome)
+  `);
+  if (dataInicio) query = query.gte('checkin_timestamp', dataInicio);
+  const { data: visitas, error } = await query;
+  if (error) {
+    console.warn('[dashboard] erro:', error.message);
+    return;
+  }
+  const v = visitas || [];
+
+  // ===== KPIs =====
+  const total = v.length;
+  const realizadas = v.filter(x => x.visita_realizada === true).length;
+  const canceladas = v.filter(x => x.visita_realizada === false).length;
+  const naoPreenchida = v.filter(x => x.visita_realizada === null || x.visita_realizada === undefined).length;
+  const taxaRealiz = total > 0 ? Math.round((realizadas / total) * 100) : 0;
+
+  // Pendências (contagens das outras tabelas)
+  const [instPendRes, objPendRes] = await Promise.all([
+    db.from('instituicoes').select('*', { count: 'exact', head: true }).eq('pendente_aprovacao', true).eq('ativo', true),
+    db.from('objetivos_visita').select('*', { count: 'exact', head: true }).eq('pendente_aprovacao', true),
+  ]);
+  const pendInst = instPendRes.count || 0;
+  const pendObj = objPendRes.count || 0;
+  const pendTotal = pendInst + pendObj;
+
+  // Qualidade GPS
+  const comGps = v.filter(x => !x.checkin_manual).length;
+  const divergentes = v.filter(x => x.flag_gps_divergente === true).length;
+  const manuais = v.filter(x => x.checkin_manual === true).length;
+  const gpsValidos = comGps - divergentes;
+  const qualidadeGps = total > 0 ? Math.round((gpsValidos / total) * 100) : 0;
+
+  // Atualiza cards KPI
+  const set = (id, html) => { const el = document.getElementById(id); if (el) el.innerHTML = html; };
+  set('kpiTotalVisitas', total);
+  set('kpiTotalHint', `${realizadas} realizadas · ${canceladas} canceladas${naoPreenchida > 0 ? ` · ${naoPreenchida} sem status` : ''}`);
+  set('kpiTaxaRealiz', total > 0 ? `${taxaRealiz}%` : '—');
+  set('kpiTaxaHint', total > 0 ? `${realizadas} de ${total} visitas` : 'sem dados no período');
+  set('kpiPendencias', pendTotal);
+  set('kpiPendHint', pendTotal === 0 ? 'nada pra revisar' : `${pendInst} inst · ${pendObj} obj`);
+  set('kpiQualidadeGps', total > 0 ? `${qualidadeGps}%` : '—');
+  set('kpiGpsHint', total > 0 ? `${divergentes} divergentes · ${manuais} manuais` : 'sem dados');
+
+  // ===== Gráfico de linha — visitas por dia =====
+  renderDashChartLine(v, dataInicio);
+
+  // ===== Rankings =====
+  renderDashRanking(v, 'nutricionista_id', 'usuarios', 'dashRankProf', 5);
+  renderDashRanking(v, 'instituicao_id', 'instituicoes', 'dashRankInst', 5);
+
+  // ===== Pizzas =====
+  renderDashPieStatus(v);
+  renderDashPieCheckin(v);
+  await renderDashBarsObjetivos(dataInicio);
+}
+
+function renderDashChartLine(visitas, dataInicio) {
+  const container = document.getElementById('dashChartLine');
+  if (!container) return;
+  if (visitas.length === 0) {
+    container.innerHTML = '<div style="padding:30px;text-align:center;color:var(--neutral-400);font-size:12px;">Sem visitas no período selecionado</div>';
+    return;
+  }
+
+  // Agrupa por dia (yyyy-mm-dd)
+  const porDia = {};
+  visitas.forEach(v => {
+    if (!v.checkin_timestamp) return;
+    const d = new Date(v.checkin_timestamp);
+    const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    porDia[key] = (porDia[key] || 0) + 1;
+  });
+
+  // Determina range de datas (inicio -> hoje)
+  const hoje = new Date(); hoje.setHours(23,59,59,999);
+  const inicio = dataInicio ? new Date(dataInicio) : (() => {
+    // Se período = 'all', usa a data da visita mais antiga
+    const datas = visitas.map(x => new Date(x.checkin_timestamp)).filter(x => !isNaN(x));
+    return datas.length > 0 ? new Date(Math.min(...datas)) : hoje;
+  })();
+  inicio.setHours(0,0,0,0);
+
+  const dias = [];
+  const iter = new Date(inicio);
+  while (iter <= hoje) {
+    const key = `${iter.getFullYear()}-${String(iter.getMonth()+1).padStart(2,'0')}-${String(iter.getDate()).padStart(2,'0')}`;
+    dias.push({ key, date: new Date(iter), count: porDia[key] || 0 });
+    iter.setDate(iter.getDate() + 1);
+  }
+
+  const maxCount = Math.max(...dias.map(d => d.count), 1);
+  const W = 600, H = 150, PAD_L = 30, PAD_R = 10, PAD_T = 14, PAD_B = 22;
+  const innerW = W - PAD_L - PAD_R;
+  const innerH = H - PAD_T - PAD_B;
+
+  const x = (i) => PAD_L + (dias.length > 1 ? (i / (dias.length - 1)) * innerW : innerW / 2);
+  const y = (n) => PAD_T + innerH - (n / maxCount) * innerH;
+
+  // Path da linha
+  const pathPts = dias.map((d, i) => `${i === 0 ? 'M' : 'L'} ${x(i).toFixed(1)} ${y(d.count).toFixed(1)}`).join(' ');
+  // Path da área (linha + base pra fechar)
+  const areaPts = pathPts + ` L ${x(dias.length-1).toFixed(1)} ${(PAD_T + innerH).toFixed(1)} L ${x(0).toFixed(1)} ${(PAD_T + innerH).toFixed(1)} Z`;
+
+  // Ticks horizontais: mostra só 4-5 labels distribuídas
+  const labelsIdx = [];
+  const nLabels = Math.min(5, dias.length);
+  for (let i = 0; i < nLabels; i++) {
+    labelsIdx.push(Math.round((i / (nLabels - 1 || 1)) * (dias.length - 1)));
+  }
+  const labelsHtml = labelsIdx.map(i => {
+    const d = dias[i].date;
+    const lbl = `${d.getDate()}/${String(d.getMonth()+1).padStart(2,'0')}`;
+    return `<text x="${x(i).toFixed(1)}" y="${H - 6}" text-anchor="${i === 0 ? 'start' : i === dias.length - 1 ? 'end' : 'middle'}" fill="var(--neutral-500)" font-size="9" font-family="var(--font-mono)">${lbl}</text>`;
+  }).join('');
+
+  // Ticks verticais (eixo Y): 0, meio, máx
+  const yTicks = [0, Math.round(maxCount / 2), maxCount];
+  const yLabelsHtml = yTicks.map(t => `
+    <line x1="${PAD_L}" y1="${y(t)}" x2="${W - PAD_R}" y2="${y(t)}" stroke="var(--neutral-100)" stroke-width="1"/>
+    <text x="${PAD_L - 4}" y="${y(t) + 3}" text-anchor="end" fill="var(--neutral-400)" font-size="9" font-family="var(--font-mono)">${t}</text>
+  `).join('');
+
+  // Pontos (só se tiver poucos dias, senão fica poluído)
+  const pontosHtml = dias.length <= 35 ? dias.map((d, i) => d.count > 0
+    ? `<circle cx="${x(i).toFixed(1)}" cy="${y(d.count).toFixed(1)}" r="2.5" fill="var(--status-info)"/>`
+    : '').join('') : '';
+
+  container.innerHTML = `
+    <svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;display:block;">
+      ${yLabelsHtml}
+      <path d="${areaPts}" fill="rgba(37,99,235,0.08)" />
+      <path d="${pathPts}" stroke="var(--status-info)" stroke-width="2" fill="none" stroke-linejoin="round" stroke-linecap="round"/>
+      ${pontosHtml}
+      ${labelsHtml}
+    </svg>
+    <div style="text-align:right;font-size:10.5px;color:var(--neutral-500);margin-top:4px;">
+      <strong style="color:var(--brand-navy);">${visitas.length}</strong> visitas · média
+      <strong style="color:var(--brand-navy);">${(() => {
+        const media = visitas.length / dias.length;
+        if (media >= 1) return media.toFixed(1);
+        if (media >= 0.1) return media.toFixed(1);
+        // menos de 0.1/dia: mostra 1 a cada X dias pra fazer mais sentido
+        return `1 a cada ${Math.round(1 / media)}`;
+      })()}</strong>${(visitas.length / dias.length) >= 0.1 ? '/dia' : ' dias'} ·
+      pico <strong style="color:var(--brand-navy);">${maxCount}</strong>/dia
+    </div>
+  `;
+}
+
+function renderDashRanking(visitas, foreignKey, joinKey, containerId, topN) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  const contagem = {};
+  const nomes = {};
+  visitas.forEach(v => {
+    const id = v[foreignKey];
+    if (!id) return;
+    contagem[id] = (contagem[id] || 0) + 1;
+    if (v[joinKey]?.nome) nomes[id] = v[joinKey].nome;
+  });
+  const ranked = Object.entries(contagem)
+    .map(([id, count]) => ({ id, count, nome: nomes[id] || '(sem nome)' }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, topN);
+  if (ranked.length === 0) {
+    container.innerHTML = '<div style="padding:20px;text-align:center;color:var(--neutral-400);font-size:12px;">Sem dados</div>';
+    return;
+  }
+  const maxCount = ranked[0].count;
+  container.innerHTML = ranked.map((r, i) => `
+    <div class="dash-rank-row">
+      <span class="dash-rank-row__pos">#${i + 1}</span>
+      <div class="dash-rank-row__body">
+        <span class="dash-rank-row__name" title="${r.nome.replace(/"/g,'&quot;')}">${r.nome}</span>
+        <div class="dash-rank-bar"><div class="dash-rank-bar__fill" style="width:${(r.count / maxCount * 100).toFixed(1)}%"></div></div>
+      </div>
+      <span class="dash-rank-row__count">${r.count}</span>
+    </div>
+  `).join('');
+}
+
+// SVG pizza genérico. Recebe [{label, count, color}] e um containerId.
+// options.large = true → SVG maior (110px), pra cards solos com mais espaço
+function renderDashPie(containerId, dados, options = {}) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  const total = dados.reduce((s, d) => s + d.count, 0);
+  if (total === 0) {
+    container.innerHTML = '<div style="padding:15px;text-align:center;color:var(--neutral-400);font-size:11px;">Sem dados</div>';
+    return;
+  }
+  const size = options.large ? 110 : 70, cx = size / 2, cy = size / 2, r = size / 2 - 2;
+  let ang = -Math.PI / 2; // começa no topo
+  const slices = dados.map(d => {
+    const pct = d.count / total;
+    const angEnd = ang + pct * Math.PI * 2;
+    const x1 = cx + r * Math.cos(ang), y1 = cy + r * Math.sin(ang);
+    const x2 = cx + r * Math.cos(angEnd), y2 = cy + r * Math.sin(angEnd);
+    const large = pct > 0.5 ? 1 : 0;
+    const path = pct >= 1
+      ? `M ${cx - r} ${cy} A ${r} ${r} 0 1 1 ${cx + r} ${cy} A ${r} ${r} 0 1 1 ${cx - r} ${cy}` // círculo completo
+      : `M ${cx} ${cy} L ${x1.toFixed(2)} ${y1.toFixed(2)} A ${r} ${r} 0 ${large} 1 ${x2.toFixed(2)} ${y2.toFixed(2)} Z`;
+    ang = angEnd;
+    return `<path d="${path}" fill="${d.color}" stroke="#fff" stroke-width="1"/>`;
+  }).join('');
+  const legenda = dados.map(d => `
+    <div style="display:flex;align-items:center;gap:6px;font-size:${options.large ? '12.5px' : '11px'};color:var(--neutral-600);padding:${options.large ? '3px' : '2px'} 0;">
+      <span style="width:${options.large ? '11px' : '10px'};height:${options.large ? '11px' : '10px'};border-radius:2px;background:${d.color};flex-shrink:0;"></span>
+      <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${d.label.replace(/"/g,'&quot;')}">${d.label}</span>
+      <strong style="color:var(--brand-navy);font-family:var(--font-mono);font-size:${options.large ? '12px' : '10.5px'};">${Math.round(d.count / total * 100)}%</strong>
+    </div>
+  `).join('');
+  container.innerHTML = `
+    <div style="display:flex;gap:${options.large ? '16px' : '10px'};align-items:center;min-width:0;">
+      <svg viewBox="0 0 ${size} ${size}" style="width:${size}px;height:${size}px;flex-shrink:0;">${slices}</svg>
+      <div style="flex:1;min-width:0;overflow:hidden;">${legenda}</div>
+    </div>
+  `;
+}
+
+function renderDashPieStatus(visitas) {
+  const contagem = { completa: 0, rascunho: 0, aprovada: 0, emRev: 0 };
+  visitas.forEach(v => {
+    if (v.status === 'completa') contagem.completa++;
+    else if (v.status === 'aprovada_pos_revisao') contagem.aprovada++;
+    else if (v.status === 'em_revisao') contagem.emRev++;
+    else contagem.rascunho++;
+  });
+  const dados = [
+    { label: 'Completa', count: contagem.completa, color: 'var(--status-success)' },
+    { label: 'Aprovada pós-rev', count: contagem.aprovada, color: '#16A34A' },
+    { label: 'Rascunho', count: contagem.rascunho, color: 'var(--neutral-400)' },
+    { label: 'Em revisão', count: contagem.emRev, color: 'var(--status-warning)' },
+  ].filter(d => d.count > 0);
+  renderDashPie('dashPieStatus', dados);
+}
+
+function renderDashPieCheckin(visitas) {
+  const validos = visitas.filter(v => !v.checkin_manual && !v.flag_gps_divergente).length;
+  const divergente = visitas.filter(v => v.flag_gps_divergente === true).length;
+  const manual = visitas.filter(v => v.checkin_manual === true).length;
+  const dados = [
+    { label: 'GPS válido', count: validos, color: 'var(--status-success)' },
+    { label: 'GPS divergente', count: divergente, color: 'var(--status-warning)' },
+    { label: 'Manual', count: manual, color: 'var(--neutral-400)' },
+  ].filter(d => d.count > 0);
+  renderDashPie('dashPieCheckin', dados);
+}
+
+async function renderDashBarsObjetivos(dataInicio) {
+  const container = document.getElementById('dashPieObj');
+  if (!container) return;
+  // Junta visitas_objetivos com visitas e filtra pelo período
+  let query = db.from('visitas_objetivos').select('objetivo_id, objetivos_visita(nome), visitas!inner(checkin_timestamp)');
+  if (dataInicio) query = query.gte('visitas.checkin_timestamp', dataInicio);
+  const { data, error } = await query;
+  if (error || !data || data.length === 0) {
+    container.innerHTML = '<div style="padding:20px;text-align:center;color:var(--neutral-400);font-size:12px;">Sem dados no período</div>';
+    return;
+  }
+  const contagem = {};
+  data.forEach(vo => {
+    const nome = vo.objetivos_visita?.nome || '(sem nome)';
+    contagem[nome] = (contagem[nome] || 0) + 1;
+  });
+  const total = Object.values(contagem).reduce((s, n) => s + n, 0);
+  const ranked = Object.entries(contagem)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 8)
+    .map(([label, count]) => ({ label, count, pct: Math.round(count / total * 100) }));
+  const maxCount = ranked[0]?.count || 1;
+
+  container.innerHTML = ranked.map(r => `
+    <div style="padding:8px 0;border-bottom:1px solid var(--neutral-100);">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:5px;">
+        <span style="color:var(--brand-navy);font-weight:600;font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;" title="${r.label.replace(/"/g,'&quot;')}">${r.label}</span>
+        <span style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+          <span style="color:var(--neutral-500);font-family:var(--font-mono);font-size:11px;font-weight:700;">${r.pct}%</span>
+          <span style="color:var(--brand-navy);font-family:var(--font-mono);font-size:12px;font-weight:700;min-width:18px;text-align:right;">${r.count}</span>
+        </span>
+      </div>
+      <div style="height:6px;background:var(--neutral-100);border-radius:3px;overflow:hidden;">
+        <div style="height:100%;width:${(r.count / maxCount * 100).toFixed(1)}%;background:linear-gradient(90deg,var(--brand-lime),#A8D154);border-radius:3px;"></div>
+      </div>
+    </div>
+  `).join('') + `
+    <div style="padding-top:10px;text-align:right;font-size:11px;color:var(--neutral-500);">
+      <strong style="color:var(--brand-navy);">${total}</strong> objetivos trabalhados em ${Object.keys(contagem).length} categoria${Object.keys(contagem).length === 1 ? '' : 's'}
+    </div>
+  `;
+}
+
 // Cria uma instituição minimamente cadastrada pelo nutri — marcada como pendente
 async function criarInstituicaoSugerida(dados) {
   if (!db) throw new Error('Banco não conectado');
@@ -4534,7 +5097,7 @@ function stopTimer() {
    ========================================================================== */
 
 function mobileTopBar(opts = {}) {
-  const { title, showLogo, showNotification, showAvatar, showBack, liveIndicator } = opts;
+  const { title, showLogo, showNotification, showAvatar, showBack, liveIndicator, showMenu } = opts;
   const user = getCurrentUser();
 
   if (liveIndicator) {
@@ -4566,10 +5129,15 @@ function mobileTopBar(opts = {}) {
     `;
   }
 
-  // Default: logo + bell + avatar
+  // Default: logo + bell + avatar (+ menu opcional)
   return `
     <header class="mbar">
       <div class="mbar__row">
+        ${showMenu ? `
+          <button class="mbar__icon-btn" onclick="openAdminDrawer()" title="Menu" style="background:transparent;border:none;color:#fff;padding:6px;cursor:pointer;">
+            <span class="material-symbols-rounded" style="font-size:26px">menu</span>
+          </button>
+        ` : ''}
         ${showLogo ? `
           <div style="flex:1;">
             <div style="height:24px;display:inline-flex;align-items:center;gap:8px;color:#fff;">
@@ -8083,25 +8651,22 @@ function renderAdminDashboard() {
     }
   }, 0);
 
-  const items = [
-    { href: '#/admin/instituicoes',   icon: 'local_hospital',          cor: 'navy',  titulo: 'Instituições',    desc: 'Hospitais e clínicas cadastrados',     pronto: true },
-    { href: '#/admin/profissionais',  icon: 'stethoscope',             cor: 'lime',  titulo: 'Profissionais',   desc: 'Contatos nas instituições',             pronto: true },
-    { href: '#/admin/configuracoes',  icon: 'settings',                cor: 'info',  titulo: 'Configurações',   desc: 'Parâmetros globais do sistema',         pronto: true },
-    { href: '#/admin/revisao',        icon: 'rule',                    cor: 'warn',  titulo: 'Fila de Revisão', desc: 'Visitas com divergências',              pronto: true },
-    { href: '#/admin/pendentes',      icon: 'hourglass_top',           cor: 'info',  titulo: 'Pendências',      desc: 'Aprovar instituições e objetivos',      pronto: true },
-    { href: '#/admin/equipe',         icon: 'groups',                  cor: 'navy',  titulo: 'Equipe',          desc: 'Nutricionistas + aprovar pendentes',    pronto: false },
-  ];
-
-  const corMap = {
-    'navy': 'var(--brand-navy)',
-    'lime': 'var(--brand-lime)',
-    'info': 'var(--status-info)',
-    'warn': 'var(--status-warning)',
-  };
+  // Dispara carregamento dos dados do dashboard
+  setTimeout(() => {
+    carregarDashboardData(30);
+    // Liga seletor de período
+    document.querySelectorAll('#dashPeriodSelector .dash-period-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('#dashPeriodSelector .dash-period-btn').forEach(b => b.classList.remove('is-active'));
+        btn.classList.add('is-active');
+        carregarDashboardData(btn.dataset.period);
+      });
+    });
+  }, 0);
 
   return `
     <div class="mobile-app">
-      ${mobileTopBar({ showLogo: true, showNotification: false, showAvatar: true })}
+      ${mobileTopBar({ showLogo: true, showNotification: false, showAvatar: true, showMenu: true })}
       <main class="mcontent">
         <div class="home__greeting">
           <div class="home__greeting-title">Painel Admin</div>
@@ -8126,38 +8691,142 @@ function renderAdminDashboard() {
           <span class="material-symbols-rounded" style="font-size:20px;color:var(--status-warning);">arrow_forward</span>
         </button>
 
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:22px;">
-          ${items.map(it => `
-            <a href="${it.href}" style="background:var(--neutral-0);border-radius:14px;padding:16px;box-shadow:0 2px 8px rgba(10,31,92,0.05);display:flex;flex-direction:column;gap:10px;text-decoration:none;color:inherit;position:relative;${it.pronto ? '' : 'opacity:0.65;'}">
-              <div style="width:40px;height:40px;border-radius:10px;background:${corMap[it.cor]};color:#fff;display:flex;align-items:center;justify-content:center;">
-                <span class="material-symbols-rounded" style="font-size:22px">${it.icon}</span>
-              </div>
-              <div>
-                <div style="font-family:var(--font-display);font-size:14px;font-weight:700;color:var(--brand-navy);line-height:1.25;">${it.titulo}</div>
-                <div style="font-size:11.5px;color:var(--neutral-500);margin-top:4px;line-height:1.3;">${it.desc}</div>
-              </div>
-              ${!it.pronto ? `<span style="position:absolute;top:10px;right:10px;font-size:9px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;padding:3px 7px;border-radius:999px;background:var(--neutral-100);color:var(--neutral-500);">Em breve</span>` : ''}
-            </a>
-          `).join('')}
+        <!-- Seletor de período -->
+        <div class="dash-period-selector" id="dashPeriodSelector">
+          <button class="dash-period-btn" data-period="7">7 dias</button>
+          <button class="dash-period-btn is-active" data-period="30">30 dias</button>
+          <button class="dash-period-btn" data-period="mes">Mês</button>
+          <button class="dash-period-btn" data-period="tri">Trimestre</button>
+          <button class="dash-period-btn" data-period="all">Tudo</button>
         </div>
 
-        <div class="section-head">
-          <h2>Status do sistema</h2>
-        </div>
-        <div style="background:var(--neutral-0);border-radius:14px;padding:16px;box-shadow:0 2px 8px rgba(10,31,92,0.05);font-size:13px;color:var(--neutral-600);line-height:1.6;">
-          <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
-            <span class="material-symbols-rounded" style="font-size:18px;color:var(--status-success);">check_circle</span>
-            <strong style="color:var(--brand-navy);">Sistema operacional</strong>
+        <!-- Seção 1: KPIs Gerais (4 cards) -->
+        <div class="dash-kpi-grid" id="dashKpiGrid">
+          <div class="dash-kpi-card">
+            <div class="dash-kpi-card__label">Total de visitas</div>
+            <div class="dash-kpi-card__value" id="kpiTotalVisitas">—</div>
+            <div class="dash-kpi-card__hint" id="kpiTotalHint">&nbsp;</div>
           </div>
-          <div style="font-size:12px;color:var(--neutral-500);">
-            KPIs globais, gráficos e fila de revisão chegam no <strong>Sprint 3</strong>.<br>
-            Por enquanto use os módulos acima.
+          <div class="dash-kpi-card">
+            <div class="dash-kpi-card__label">Taxa de realização</div>
+            <div class="dash-kpi-card__value" id="kpiTaxaRealiz">—</div>
+            <div class="dash-kpi-card__hint" id="kpiTaxaHint">&nbsp;</div>
+          </div>
+          <div class="dash-kpi-card">
+            <div class="dash-kpi-card__label">Pendências</div>
+            <div class="dash-kpi-card__value" id="kpiPendencias">—</div>
+            <div class="dash-kpi-card__hint" id="kpiPendHint">&nbsp;</div>
+          </div>
+          <div class="dash-kpi-card">
+            <div class="dash-kpi-card__label">Qualidade GPS</div>
+            <div class="dash-kpi-card__value" id="kpiQualidadeGps">—</div>
+            <div class="dash-kpi-card__hint" id="kpiGpsHint">&nbsp;</div>
           </div>
         </div>
+
+        <!-- Seção 2: Gráfico de linha - visitas no tempo -->
+        <div class="dash-card">
+          <div class="dash-card__title">
+            <span class="material-symbols-rounded" style="font-size:18px;color:var(--status-info);">trending_up</span>
+            Visitas no período
+          </div>
+          <div id="dashChartLine" style="min-height:150px;display:flex;align-items:center;justify-content:center;color:var(--neutral-400);font-size:12px;">
+            Carregando...
+          </div>
+        </div>
+
+        <!-- Seção 3: Rankings (profissionais + instituições) -->
+        <div class="dash-rankings-grid">
+          <div class="dash-card">
+            <div class="dash-card__title">
+              <span class="material-symbols-rounded" style="font-size:18px;color:var(--brand-lime);">stethoscope</span>
+              Top profissionais
+            </div>
+            <div id="dashRankProf" style="min-height:120px;font-size:12px;color:var(--neutral-400);">Carregando...</div>
+          </div>
+          <div class="dash-card">
+            <div class="dash-card__title">
+              <span class="material-symbols-rounded" style="font-size:18px;color:var(--brand-navy);">local_hospital</span>
+              Top instituições
+            </div>
+            <div id="dashRankInst" style="min-height:120px;font-size:12px;color:var(--neutral-400);">Carregando...</div>
+          </div>
+        </div>
+
+        <!-- Seção 4: Distribuições -->
+        <!-- Linha 1: Status + Check-in lado a lado -->
+        <div class="dash-pies-grid">
+          <div class="dash-card">
+            <div class="dash-card__title" style="font-size:12px;">Status das visitas</div>
+            <div id="dashPieStatus" style="min-height:100px;font-size:11px;color:var(--neutral-400);">—</div>
+          </div>
+          <div class="dash-card">
+            <div class="dash-card__title" style="font-size:12px;">Tipo de check-in</div>
+            <div id="dashPieCheckin" style="min-height:100px;font-size:11px;color:var(--neutral-400);">—</div>
+          </div>
+        </div>
+        <!-- Linha 2: Top objetivos sozinho, com mais espaço -->
+        <div class="dash-card">
+          <div class="dash-card__title">
+            <span class="material-symbols-rounded" style="font-size:18px;color:var(--brand-lime);">flag</span>
+            Top objetivos
+          </div>
+          <div id="dashPieObj" style="min-height:120px;font-size:12px;color:var(--neutral-400);">—</div>
+        </div>
+
       </main>
+      ${renderAdminDrawer()}
     </div>
   `;
 }
+
+// Drawer lateral com atalhos de admin
+function renderAdminDrawer() {
+  const items = [
+    { href: '#/admin/instituicoes',   icon: 'local_hospital',          titulo: 'Instituições',    desc: 'Hospitais e clínicas cadastrados' },
+    { href: '#/admin/profissionais',  icon: 'stethoscope',             titulo: 'Profissionais',   desc: 'Contatos nas instituições' },
+    { href: '#/admin/revisao',        icon: 'rule',                    titulo: 'Fila de Revisão', desc: 'Visitas com divergências' },
+    { href: '#/admin/pendentes',      icon: 'hourglass_top',           titulo: 'Pendências',      desc: 'Aprovar instituições e objetivos' },
+    { href: '#/admin/configuracoes',  icon: 'settings',                titulo: 'Configurações',   desc: 'Parâmetros globais do sistema' },
+    { href: '#/logout',               icon: 'logout',                  titulo: 'Sair',            desc: 'Encerrar sessão' },
+  ];
+  return `
+    <div class="admin-drawer" id="adminDrawer">
+      <div class="admin-drawer__backdrop" onclick="closeAdminDrawer()"></div>
+      <aside class="admin-drawer__panel">
+        <div class="admin-drawer__header">
+          <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:15px;">Menu admin</div>
+          <button onclick="closeAdminDrawer()" style="background:none;border:none;padding:6px;cursor:pointer;color:var(--neutral-500);">
+            <span class="material-symbols-rounded">close</span>
+          </button>
+        </div>
+        <nav class="admin-drawer__nav">
+          ${items.map(it => `
+            <a href="${it.href}" class="admin-drawer__item" onclick="closeAdminDrawer()">
+              <span class="admin-drawer__item-icon">
+                <span class="material-symbols-rounded" style="font-size:20px;">${it.icon}</span>
+              </span>
+              <div class="admin-drawer__item-body">
+                <div class="admin-drawer__item-title">${it.titulo}</div>
+                <div class="admin-drawer__item-desc">${it.desc}</div>
+              </div>
+              <span class="material-symbols-rounded" style="font-size:16px;color:var(--neutral-300);">chevron_right</span>
+            </a>
+          `).join('')}
+        </nav>
+      </aside>
+    </div>
+  `;
+}
+
+window.openAdminDrawer = function() {
+  const drawer = document.getElementById('adminDrawer');
+  if (drawer) drawer.classList.add('is-open');
+};
+window.closeAdminDrawer = function() {
+  const drawer = document.getElementById('adminDrawer');
+  if (drawer) drawer.classList.remove('is-open');
+};
 function renderAdminRevisao() {
   const user = requireAdmin();
   if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
