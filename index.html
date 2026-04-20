@@ -4119,7 +4119,7 @@ async function criarInstituicaoSugerida(dados) {
   if (!user) throw new Error('Usuário não logado');
   // Aceita tanto string (backward-compat do fluxo de objetivo) quanto objeto
   const payload = (typeof dados === 'string') ? { nome: dados } : dados;
-  const { nome, logradouro = null, bairro = null, cidade = null } = payload || {};
+  const { nome, logradouro = null, bairro = null, cidade = null, latitude = null, longitude = null } = payload || {};
   if (!nome || !nome.trim()) throw new Error('Nome da instituição é obrigatório');
   const nomeClean = nome.trim();
   // Verifica duplicidade case-insensitive
@@ -4130,7 +4130,7 @@ async function criarInstituicaoSugerida(dados) {
     .maybeSingle();
   if (existente) return existente;
   // Cadastro rápido — nome + endereço do profissional. Admin completa o resto em #/admin/pendentes.
-  // Requer migration_16_instituicoes_nullable.sql rodado no Supabase.
+  // Se o profissional tinha GPS ativo, latitude/longitude vêm preenchidos como coords iniciais.
   const { data, error } = await db
     .from('instituicoes')
     .insert({
@@ -4138,6 +4138,8 @@ async function criarInstituicaoSugerida(dados) {
       logradouro: logradouro ? logradouro.trim() : null,
       bairro: bairro ? bairro.trim() : null,
       cidade: cidade ? cidade.trim() : null,
+      latitude: latitude,
+      longitude: longitude,
       ativo: true,
       pendente_aprovacao: true,
       cadastrada_por: user.id,
@@ -4148,17 +4150,39 @@ async function criarInstituicaoSugerida(dados) {
   return data;
 }
 
-// Ordenar instituições por proximidade
+// Ordenar instituições por proximidade.
+// Instituições sem coordenadas (recém cadastradas pelo profissional,
+// aguardando admin completar) NÃO podem ser comparadas — vão com distancia=null
+// e dentroDoRaio=false. Vão pro final da lista.
 function ordenarPorProximidade(instituicoes, userLat, userLng, raio = 500) {
   return instituicoes.map(inst => {
+    const temCoords = inst.latitude !== null && inst.latitude !== undefined
+                   && inst.longitude !== null && inst.longitude !== undefined
+                   && !(inst.latitude === 0 && inst.longitude === 0); // (0,0) = placeholder inválido
+    if (!temCoords) {
+      return {
+        ...inst,
+        distancia: null,
+        distanciaFmt: 'Sem coords',
+        dentroDoRaio: false,
+        semCoords: true,
+      };
+    }
     const dist = calcularDistanciaMetros(userLat, userLng, inst.latitude, inst.longitude);
     return {
       ...inst,
       distancia: dist,
       distanciaFmt: formatarDistancia(dist),
       dentroDoRaio: dist <= raio,
+      semCoords: false,
     };
-  }).sort((a, b) => a.distancia - b.distancia);
+  }).sort((a, b) => {
+    // instituições sem coords vão pro final
+    if (a.distancia === null && b.distancia === null) return 0;
+    if (a.distancia === null) return 1;
+    if (b.distancia === null) return -1;
+    return a.distancia - b.distancia;
+  });
 }
 
 // CRUD de visitas
@@ -6173,19 +6197,22 @@ function renderCheckin() {
         return;
       }
 
-      // Tenta pegar GPS
+      // Tenta pegar GPS FRESH (sem cache)
       let userPos = null;
       try {
-        userPos = await getGeolocation();
+        userPos = await getGeolocation({ maximumAge: 0, timeout: 15000 });
         CheckinFlow.userPos = userPos;
         if (gpsEl) {
           gpsEl.className = 'gps-status';
           gpsEl.innerHTML = `
             <span class="gps-status__icon"><span class="material-symbols-rounded">gps_fixed</span></span>
             <div class="gps-status__body">
-              <div class="gps-status__label">GPS ativo</div>
-              <div class="gps-status__detail">precisão ±${Math.round(userPos.accuracy)}m · atualizado agora</div>
+              <div class="gps-status__label">GPS ativo · ±${Math.round(userPos.accuracy)}m</div>
+              <div class="gps-status__detail" style="font-family:var(--font-mono);font-size:10.5px;">${userPos.lat.toFixed(5)}, ${userPos.lng.toFixed(5)}</div>
             </div>
+            <button type="button" onclick="atualizarGPSManual()" title="Atualizar GPS" style="background:none;border:none;padding:6px;border-radius:50%;cursor:pointer;color:var(--brand-navy);">
+              <span class="material-symbols-rounded" style="font-size:18px;">refresh</span>
+            </button>
           `;
         }
       } catch (gpsErr) {
@@ -6288,14 +6315,73 @@ function renderCheckin() {
   `;
 }
 
+// Força nova leitura do GPS na tela de check-in (botão refresh).
+// Útil quando o profissional acabou de chegar no local e o GPS ainda não atualizou.
+window.atualizarGPSManual = async function() {
+  const gpsEl = document.getElementById('gpsStatus');
+  if (gpsEl) {
+    gpsEl.className = 'gps-status';
+    gpsEl.innerHTML = `
+      <span class="gps-status__icon"><span class="material-symbols-rounded">hourglass_empty</span></span>
+      <div class="gps-status__body">
+        <div class="gps-status__label">Atualizando GPS...</div>
+        <div class="gps-status__detail">aguarde alguns segundos</div>
+      </div>
+    `;
+  }
+  try {
+    const userPos = await getGeolocation({ maximumAge: 0, timeout: 20000, enableHighAccuracy: true });
+    CheckinFlow.userPos = userPos;
+    // Reordena a lista de instituições com a nova posição
+    const reord = ordenarPorProximidade(CheckinFlow.instituicoes, userPos.lat, userPos.lng, CONFIG.GPS_RADIUS_METERS);
+    CheckinFlow.instituicoes = reord;
+    if (typeof window.filterInstitutions === 'function') {
+      const searchEl = document.querySelector('.search-input input, #searchInput');
+      window.filterInstitutions(searchEl ? searchEl.value : '');
+    }
+    if (gpsEl) {
+      gpsEl.innerHTML = `
+        <span class="gps-status__icon"><span class="material-symbols-rounded">gps_fixed</span></span>
+        <div class="gps-status__body">
+          <div class="gps-status__label">GPS ativo · ±${Math.round(userPos.accuracy)}m</div>
+          <div class="gps-status__detail" style="font-family:var(--font-mono);font-size:10.5px;">${userPos.lat.toFixed(5)}, ${userPos.lng.toFixed(5)}</div>
+        </div>
+        <button type="button" onclick="atualizarGPSManual()" title="Atualizar GPS" style="background:none;border:none;padding:6px;border-radius:50%;cursor:pointer;color:var(--brand-navy);">
+          <span class="material-symbols-rounded" style="font-size:18px;">refresh</span>
+        </button>
+      `;
+    }
+  } catch (err) {
+    if (gpsEl) {
+      gpsEl.className = 'gps-status gps-status--warning';
+      gpsEl.innerHTML = `
+        <span class="gps-status__icon"><span class="material-symbols-rounded">gps_off</span></span>
+        <div class="gps-status__body">
+          <div class="gps-status__label">GPS indisponível</div>
+          <div class="gps-status__detail">${err.message}</div>
+        </div>
+        <button type="button" onclick="atualizarGPSManual()" title="Tentar novamente" style="background:none;border:none;padding:6px;border-radius:50%;cursor:pointer;color:var(--brand-navy);">
+          <span class="material-symbols-rounded" style="font-size:18px;">refresh</span>
+        </button>
+      `;
+    }
+  }
+};
+
 // Cadastra nova instituição direto da tela de check-in (antes mesmo de entrar no modal manual)
 window.cadastrarInstituicaoECheckin = async function() {
   const dados = await showModalInstituicaoNova();
   if (!dados) return;
+  // Se o profissional tem GPS ativo agora, usa essa posição como coords iniciais da instituição.
+  // Admin ajusta depois se necessário (geocoding + revisão manual).
+  if (CheckinFlow.userPos) {
+    dados.latitude = CheckinFlow.userPos.lat;
+    dados.longitude = CheckinFlow.userPos.lng;
+  }
   try {
     const nova = await criarInstituicaoSugerida(dados);
-    // Segue o fluxo: seleciona essa instituição e manda pro confirm (modo manual porque nova sem GPS cadastrado)
-    CheckinFlow.manual = true;
+    // Se a instituição ficou com coords (GPS do profissional), não precisa ser manual
+    CheckinFlow.manual = !nova.latitude;
     CheckinFlow.instituicaoSelecionada = nova;
     window.location.hash = '#/checkin/confirmar';
   } catch (err) {
@@ -6569,7 +6655,13 @@ function renderCheckinConfirmar() {
 
   const inst = CheckinFlow.instituicaoSelecionada;
   const userPos = CheckinFlow.userPos;
-  const dist = userPos ? calcularDistanciaMetros(userPos.lat, userPos.lng, inst.latitude, inst.longitude) : null;
+  // Instituição sem coords (recém cadastrada aguardando admin completar) não pode ser comparada
+  const instTemCoords = inst.latitude !== null && inst.latitude !== undefined
+                     && inst.longitude !== null && inst.longitude !== undefined
+                     && !(inst.latitude === 0 && inst.longitude === 0);
+  const dist = (userPos && instTemCoords)
+    ? calcularDistanciaMetros(userPos.lat, userPos.lng, inst.latitude, inst.longitude)
+    : null;
   const dentro = dist !== null && dist <= CONFIG.GPS_RADIUS_METERS;
   const agora = new Date();
   const horaFmt = `${String(agora.getHours()).padStart(2,'0')}:${String(agora.getMinutes()).padStart(2,'0')}`;
@@ -6645,7 +6737,12 @@ function renderCheckinConfirmar() {
                 <span class="confirm-card__dist${dentro ? '' : ' confirm-card__dist--out'}">${dist !== null ? formatarDistancia(dist) : '—'}</span>
                 ${dentro ? '<span class="material-symbols-rounded" style="color:var(--status-success);font-size:16px;">check_circle</span>' : ''}
               </div>
-              <div class="confirm-card__hint">${dist === null ? 'sem GPS · check-in manual' : dentro ? 'do local cadastrado' : 'fora do raio de 500m'}</div>
+              <div class="confirm-card__hint">${
+                !instTemCoords ? 'instituição sem coords — aguardando admin' :
+                !userPos ? 'sem GPS · check-in manual' :
+                dentro ? 'do local cadastrado' :
+                'fora do raio de 500m'
+              }</div>
             </div>
             <div>
               <div class="confirm-card__label">Horário</div>
@@ -6654,6 +6751,18 @@ function renderCheckinConfirmar() {
             </div>
           </div>
         </div>
+
+        ${userPos ? `
+          <div style="background:#E6F6EF;border:1px solid rgba(34,160,107,0.3);border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:12px;color:#166534;display:flex;align-items:flex-start;gap:8px;">
+            <span class="material-symbols-rounded" style="font-size:18px;color:var(--status-success);flex-shrink:0;">gps_fixed</span>
+            <div style="flex:1;">
+              <strong>Sua localização atual</strong> — lat ${userPos.lat.toFixed(5)}, lng ${userPos.lng.toFixed(5)} · precisão ±${Math.round(userPos.accuracy)}m
+              <div style="margin-top:2px;">
+                <a href="https://www.google.com/maps?q=${userPos.lat},${userPos.lng}" target="_blank" rel="noopener" style="color:var(--status-info);text-decoration:none;font-size:11px;font-weight:600;">Ver no Google Maps →</a>
+              </div>
+            </div>
+          </div>
+        ` : ''}
 
         <div class="objective-select">
           <label class="objective-select__label" for="objSelect">Objetivo planejado</label>
@@ -6673,7 +6782,12 @@ function renderCheckinConfirmar() {
           <textarea id="obsArea" placeholder="Observações iniciais (opcional)..." style="margin-top:10px;"></textarea>
         </div>
 
-        ${!dentro && dist !== null ? `
+        ${!instTemCoords ? `
+          <div class="flash flash--info" style="background:#FEF4E1;color:#92400E;border-color:rgba(245,158,11,0.25);">
+            <span class="material-symbols-rounded" style="font-size:18px">info</span>
+            <span>Esta instituição foi cadastrada agora e ainda não tem coordenadas para validar o GPS. O check-in será registrado normalmente — admin completará os dados depois.</span>
+          </div>
+        ` : !dentro && dist !== null ? `
           <div class="flash flash--info">
             <span class="material-symbols-rounded" style="font-size:18px">info</span>
             <span>Você está a ${formatarDistancia(dist)} do local. O check-in será registrado com a flag "GPS divergente" para revisão do admin.</span>
@@ -6805,12 +6919,13 @@ window.handleCheckoutAtivo = async function() {
   if (!confirmou) return;
 
   try {
-    // Pega posição de checkout (opcional)
+    // Pega posição de checkout FRESH (ignora cache, força leitura atual)
     let checkoutPos = null;
     try {
-      checkoutPos = await getGeolocation({ timeout: 5000 });
+      checkoutPos = await getGeolocation({ timeout: 10000, maximumAge: 0 });
     } catch (e) {
       // continua sem GPS de checkout
+      console.warn('[checkout] GPS falhou:', e.message);
     }
 
     await finalizarCheckin(visitaId, checkoutPos);
@@ -7122,12 +7237,29 @@ function hydrateReportForm() {
     </div>
 
     ${(v.checkin_latitude || v.checkout_latitude) ? `
-      <div style="background:var(--neutral-0);border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:12px;color:var(--neutral-600);display:flex;align-items:center;gap:8px;border:1px solid var(--neutral-200);">
-        <span class="material-symbols-rounded" style="font-size:18px;color:var(--status-success);">gps_fixed</span>
-        <div style="flex:1;">
-          <strong style="color:var(--brand-navy);">Localização registrada</strong> —
-          ${v.checkin_latitude ? `check-in ${v.checkin_latitude.toFixed(4)}, ${v.checkin_longitude.toFixed(4)}` : 'sem check-in GPS'}${v.checkout_latitude ? ` · check-out ${v.checkout_latitude.toFixed(4)}, ${v.checkout_longitude.toFixed(4)}` : ''}
+      <div style="background:var(--neutral-0);border-radius:10px;padding:12px;margin-bottom:12px;font-size:12px;color:var(--neutral-700);border:1px solid var(--neutral-200);">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:${(v.checkin_latitude && v.checkout_latitude) ? '8' : '0'}px;">
+          <span class="material-symbols-rounded" style="font-size:18px;color:var(--status-success);">gps_fixed</span>
+          <strong style="color:var(--brand-navy);font-size:12.5px;">Localização registrada</strong>
         </div>
+        ${v.checkin_latitude ? `
+          <div style="display:flex;align-items:center;gap:6px;padding:4px 0;">
+            <span style="min-width:60px;color:var(--neutral-500);font-size:11.5px;">Check-in:</span>
+            <a href="https://www.google.com/maps?q=${v.checkin_latitude},${v.checkin_longitude}" target="_blank" rel="noopener" style="color:var(--status-info);text-decoration:none;font-family:var(--font-mono);font-size:11.5px;display:inline-flex;align-items:center;gap:4px;">
+              ${v.checkin_latitude.toFixed(5)}, ${v.checkin_longitude.toFixed(5)}
+              <span class="material-symbols-rounded" style="font-size:13px;">open_in_new</span>
+            </a>
+          </div>
+        ` : ''}
+        ${v.checkout_latitude ? `
+          <div style="display:flex;align-items:center;gap:6px;padding:4px 0;">
+            <span style="min-width:60px;color:var(--neutral-500);font-size:11.5px;">Check-out:</span>
+            <a href="https://www.google.com/maps?q=${v.checkout_latitude},${v.checkout_longitude}" target="_blank" rel="noopener" style="color:var(--status-info);text-decoration:none;font-family:var(--font-mono);font-size:11.5px;display:inline-flex;align-items:center;gap:4px;">
+              ${v.checkout_latitude.toFixed(5)}, ${v.checkout_longitude.toFixed(5)}
+              <span class="material-symbols-rounded" style="font-size:13px;">open_in_new</span>
+            </a>
+          </div>
+        ` : ''}
       </div>
     ` : v.checkin_manual ? `
       <div style="background:#FEF4E1;border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:12px;color:#92400E;display:flex;align-items:center;gap:8px;border:1px solid rgba(245,158,11,0.25);">
@@ -8700,6 +8832,15 @@ function showModalInstituicaoNova({ valorInicialNome = '' } = {}) {
   return new Promise((resolve) => {
     const backdrop = document.createElement('div');
     backdrop.className = 'modal-backdrop';
+    const temGPS = !!(window.CheckinFlow && CheckinFlow.userPos);
+    const gpsInfoHtml = temGPS ? `
+      <div style="background:#E6F6EF;border:1px solid rgba(34,160,107,0.3);border-radius:8px;padding:10px;font-size:11.5px;color:#166534;display:flex;gap:8px;align-items:flex-start;">
+        <span class="material-symbols-rounded" style="font-size:16px;color:var(--status-success);flex-shrink:0;margin-top:1px;">gps_fixed</span>
+        <div>
+          <strong>GPS ativo</strong> — sua localização atual (${CheckinFlow.userPos.lat.toFixed(5)}, ${CheckinFlow.userPos.lng.toFixed(5)}) será usada como coordenadas iniciais. O admin ajusta depois se necessário.
+        </div>
+      </div>
+    ` : '';
     backdrop.innerHTML = `
       <div class="modal-card" style="max-width:440px;">
         <div class="modal-card__header">
@@ -8710,6 +8851,7 @@ function showModalInstituicaoNova({ valorInicialNome = '' } = {}) {
           <div class="modal-card__subtitle">Preencha nome e endereço. O admin completará os demais dados (CNPJ, coordenadas, etc.) ao aprovar.</div>
         </div>
         <div class="modal-card__body" style="display:flex;flex-direction:column;gap:12px;">
+          ${gpsInfoHtml}
           <div class="report-field">
             <label>Nome da instituição <span style="color:var(--status-danger)">*</span></label>
             <input type="text" id="mniNome" placeholder="Ex: Hospital São Camilo Pompeia" value="${valorInicialNome.replace(/"/g,'&quot;')}" style="width:100%;padding:10px 12px;border:1.5px solid var(--neutral-200);border-radius:10px;font-size:14px;font-family:inherit;" />
@@ -9072,8 +9214,16 @@ function showModalEdicaoInstituicao(inst) {
               <input type="number" step="any" id="meiLng" placeholder="-46.633308" value="${v('longitude')}" />
             </div>
           </div>
+          <button type="button" id="meiGeocode" style="
+            width:100%;padding:10px 12px;border-radius:10px;border:1.5px dashed var(--status-info);
+            background:#E4ECFD;color:#1E40AF;font-weight:700;font-size:13px;font-family:inherit;
+            cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;
+          ">
+            <span class="material-symbols-rounded" style="font-size:18px;">travel_explore</span>
+            <span id="meiGeocodeLabel">Buscar coordenadas pelo endereço</span>
+          </button>
           <div style="background:#E4ECFD;border-radius:8px;padding:10px;font-size:11.5px;color:#1E40AF;">
-            <strong>💡 Dica:</strong> Para obter as coordenadas, abra o endereço no Google Maps, clique com o botão direito no local exato e copie as coordenadas. Isso permite validar o GPS dos check-ins.
+            <strong>💡 Dica:</strong> Clique no botão acima pra buscar automaticamente as coordenadas pelo endereço (OpenStreetMap). Ou, para maior precisão, abra o endereço no Google Maps, clique com o botão direito no local exato e copie as coordenadas manualmente.
           </div>
         </div>
         <div class="modal-card__footer" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
@@ -9121,6 +9271,43 @@ function showModalEdicaoInstituicao(inst) {
       }
       cleanup();
       resolve({ dados: d, aprovar: true });
+    };
+    // Geocoding via OpenStreetMap (Nominatim) — busca lat/lng pelo endereço
+    get('#meiGeocode').onclick = async () => {
+      const btn = get('#meiGeocode');
+      const lbl = get('#meiGeocodeLabel');
+      const logradouro = get('#meiLogr').value.trim();
+      const bairro = get('#meiBairro').value.trim();
+      const cidade = get('#meiCidade').value.trim();
+      const uf = get('#meiUf').value.trim();
+      if (!logradouro || !cidade) {
+        alert('Preencha pelo menos Endereço e Cidade antes de buscar.');
+        return;
+      }
+      btn.disabled = true;
+      lbl.textContent = 'Buscando...';
+      try {
+        const partes = [logradouro, bairro, cidade, uf, 'Brasil'].filter(Boolean);
+        const query = encodeURIComponent(partes.join(', '));
+        const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${query}`;
+        const resp = await fetch(url, { headers: { 'Accept-Language': 'pt-BR' } });
+        if (!resp.ok) throw new Error('Serviço indisponível');
+        const results = await resp.json();
+        if (!results || results.length === 0) {
+          alert('Endereço não encontrado. Tente ajustar os dados ou preencher manualmente.');
+          return;
+        }
+        const r = results[0];
+        get('#meiLat').value = parseFloat(r.lat).toFixed(6);
+        get('#meiLng').value = parseFloat(r.lon).toFixed(6);
+        lbl.textContent = '✓ Encontrado!';
+        setTimeout(() => { lbl.textContent = 'Buscar novamente'; }, 2000);
+      } catch (err) {
+        alert('Erro ao buscar: ' + err.message + '\n\nPreencha manualmente usando Google Maps.');
+        lbl.textContent = 'Buscar coordenadas pelo endereço';
+      } finally {
+        btn.disabled = false;
+      }
     };
     get('#meiCancel').onclick = () => { cleanup(); resolve(null); };
     backdrop.onclick = (e) => { if (e.target === backdrop) { cleanup(); resolve(null); } };
