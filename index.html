@@ -1772,6 +1772,8 @@ a {
 .sbadge--pending .sbadge__dot { background: var(--status-warning); }
 .sbadge--review { background: #E4ECFD; color: #1D4ED8; }
 .sbadge--review .sbadge__dot { background: var(--status-info); }
+.sbadge--review-req { background: #FEF4E1; color: #B45309; }
+.sbadge--review-req .sbadge__dot { background: var(--status-warning); }
 .sbadge--rejected { background: var(--status-danger-bg); color: #B91C1C; }
 .sbadge--rejected .sbadge__dot { background: var(--status-danger); }
 .sbadge--draft { background: var(--neutral-100); color: var(--neutral-600); }
@@ -2497,6 +2499,7 @@ a {
 .report-field input[type="time"],
 .report-field input[type="date"],
 .report-field input[type="text"],
+.report-field input[type="number"],
 .report-field select {
   width: 100%;
   height: 44px;
@@ -2771,6 +2774,12 @@ a {
   opacity: 0;
 }
 .objective-check.is-selected .objective-check__box .material-symbols-rounded { opacity: 1; }
+.objective-check.is-disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  pointer-events: none;
+}
+.objective-check.is-disabled:hover { background: transparent; }
 .objective-check__label {
   font-size: 13.5px;
   font-weight: 600;
@@ -2942,6 +2951,355 @@ a {
   text-decoration: none;
 }
 .btn-add-details:hover { background: var(--neutral-50); }
+
+/* ==========================================================================
+   FILA DE REVISÃO (Admin — Sprint 3)
+   ========================================================================== */
+
+/* Tabs de filtro (Todas / Flags / Em revisão / Resolvidas) */
+.review-tabs {
+  display: flex;
+  gap: 4px;
+  background: var(--neutral-100);
+  padding: 4px;
+  border-radius: 12px;
+  margin-bottom: 16px;
+}
+.review-tab {
+  flex: 1;
+  background: transparent;
+  border: 0;
+  padding: 8px 10px;
+  border-radius: 9px;
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--neutral-600);
+  cursor: pointer;
+  transition: all 140ms;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+.review-tab:hover:not(.is-active) { background: var(--neutral-0); color: var(--brand-navy); }
+.review-tab.is-active {
+  background: var(--neutral-0);
+  color: var(--brand-navy);
+  box-shadow: 0 2px 6px rgba(10,31,92,0.08);
+}
+.review-tab__count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--neutral-200);
+  color: var(--neutral-600);
+  font-size: 10px;
+  font-weight: 700;
+}
+.review-tab.is-active .review-tab__count {
+  background: var(--brand-lime);
+  color: var(--neutral-0);
+}
+
+/* Filtros secundários (nutricionista, instituição) */
+.review-filters {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+.review-filter-select {
+  flex: 1;
+  min-width: 120px;
+  height: 40px;
+  padding: 0 12px;
+  border: 1.5px solid var(--neutral-200);
+  border-radius: 10px;
+  background: var(--neutral-0);
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--brand-navy);
+  outline: 0;
+  cursor: pointer;
+}
+.review-filter-select:focus {
+  border-color: var(--brand-lime);
+  box-shadow: 0 0 0 3px rgba(139,198,63,0.2);
+}
+
+/* Card de visita na fila */
+.review-card {
+  background: var(--neutral-0);
+  border-radius: 14px;
+  padding: 14px 16px;
+  margin-bottom: 10px;
+  box-shadow: 0 2px 8px rgba(10,31,92,0.05);
+  cursor: pointer;
+  transition: transform 140ms, box-shadow 140ms;
+  border-left: 4px solid transparent;
+  text-decoration: none;
+  color: inherit;
+  display: block;
+}
+.review-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(10,31,92,0.1);
+}
+.review-card--critical { border-left-color: var(--status-danger); }
+.review-card--warning  { border-left-color: var(--status-warning); }
+.review-card--info     { border-left-color: var(--status-info); }
+.review-card--in-review { border-left-color: var(--status-info); background: linear-gradient(90deg, rgba(37,99,235,0.04) 0%, var(--neutral-0) 100%); }
+
+.review-card__header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.review-card__icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: #F3F5FA;
+  color: var(--brand-navy);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.review-card__icon .material-symbols-rounded { font-size: 22px; }
+.review-card__info { flex: 1; min-width: 0; }
+.review-card__inst {
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--brand-navy);
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.review-card__meta {
+  font-size: 12px;
+  color: var(--neutral-500);
+  margin-top: 3px;
+  font-family: var(--font-body);
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.review-card__meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.review-card__meta-item .material-symbols-rounded {
+  font-size: 13px;
+  color: var(--neutral-400);
+}
+
+/* Grupo de flags */
+.review-flags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+.review-flag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: var(--radius-pill);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  font-family: var(--font-body);
+  white-space: nowrap;
+}
+.review-flag .material-symbols-rounded { font-size: 12px; }
+.review-flag--critical { background: var(--status-danger-bg); color: #B91C1C; }
+.review-flag--warning  { background: #FEF4E1; color: #B45309; }
+.review-flag--info     { background: #E4ECFD; color: #1D4ED8; }
+
+/* Badge de contagem de flags (no canto direito do card) */
+.review-card__flag-count {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+}
+.review-card__flag-count--critical { background: var(--status-danger-bg); color: var(--status-danger); }
+.review-card__flag-count--warning  { background: #FEF4E1; color: var(--status-warning); }
+
+/* Detalhe de visita na revisão (modal ou tela) */
+.review-detail {
+  padding: 0;
+}
+.review-detail__section {
+  background: var(--neutral-0);
+  border-radius: 14px;
+  padding: 16px;
+  margin-bottom: 12px;
+  box-shadow: 0 2px 8px rgba(10,31,92,0.05);
+}
+.review-detail__section-title {
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--neutral-500);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.review-detail__section-title .material-symbols-rounded { font-size: 16px; }
+
+.review-detail__row {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--neutral-100);
+  font-size: 13px;
+  gap: 10px;
+}
+.review-detail__row:last-child { border-bottom: 0; }
+.review-detail__label {
+  color: var(--neutral-500);
+  font-weight: 500;
+  flex-shrink: 0;
+}
+.review-detail__value {
+  color: var(--brand-navy);
+  font-weight: 600;
+  text-align: right;
+  font-family: var(--font-body);
+  word-break: break-word;
+}
+.review-detail__value--mono { font-family: var(--font-mono); }
+.review-detail__value--multiline {
+  text-align: left;
+  width: 100%;
+  margin-top: 4px;
+  font-weight: 400;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--neutral-700);
+  white-space: pre-wrap;
+}
+
+/* Action bar fixa no fundo */
+.review-actions {
+  position: sticky;
+  bottom: 0;
+  background: var(--neutral-0);
+  padding: 14px 16px calc(env(safe-area-inset-bottom, 0px) + 14px);
+  margin: 0 -20px -20px;
+  border-top: 1px solid var(--neutral-200);
+  box-shadow: 0 -4px 16px rgba(10,31,92,0.06);
+  display: flex;
+  gap: 8px;
+  flex-direction: column;
+}
+
+.review-action-btn {
+  width: 100%;
+  min-height: 48px;
+  padding: 12px 20px;
+  border-radius: var(--radius-pill);
+  border: 0;
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: transform 120ms;
+}
+.review-action-btn:active { transform: scale(0.98); }
+.review-action-btn--approve {
+  background: linear-gradient(180deg, var(--status-success) 0%, #1E8559 100%);
+  color: var(--neutral-0);
+  box-shadow: 0 6px 16px rgba(34,160,107,0.35);
+}
+.review-action-btn--return {
+  background: var(--neutral-0);
+  color: var(--status-warning);
+  border: 1.5px solid var(--status-warning);
+}
+.review-action-btn--review {
+  background: var(--neutral-0);
+  color: var(--status-info);
+  border: 1.5px solid var(--status-info);
+}
+.review-action-btn--ghost {
+  background: transparent;
+  color: var(--neutral-600);
+}
+
+/* Alerta de visita em revisão (topo da tela do relatório pro nutri) */
+.review-notice-nutri {
+  background: linear-gradient(135deg, #E4ECFD 0%, #F3F5FA 100%);
+  border: 1px solid rgba(37,99,235,0.3);
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+.review-notice-nutri__icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--status-info);
+  color: var(--neutral-0);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.review-notice-nutri__icon .material-symbols-rounded { font-size: 18px; }
+.review-notice-nutri__body { flex: 1; min-width: 0; }
+.review-notice-nutri__title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1D4ED8;
+  margin-bottom: 2px;
+}
+.review-notice-nutri__text {
+  font-size: 12.5px;
+  color: #1E3A8A;
+  line-height: 1.45;
+}
+.review-notice-nutri__motivo {
+  background: var(--neutral-0);
+  border: 1px solid rgba(37,99,235,0.15);
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin-top: 8px;
+  font-size: 12.5px;
+  color: var(--brand-navy);
+  font-style: italic;
+  line-height: 1.45;
+}
 
 /* ==========================================================================
    CONFIGURAÇÕES (Admin — Sprint 2.3+)
@@ -3228,7 +3586,7 @@ a {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha',
+  APP_VERSION: '1.0.0-alpha.flags2',
   APP_NAME: 'Nutricionais Visitas',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -3362,6 +3720,18 @@ function clearSession() {
   localStorage.removeItem(AUTH_KEY);
 }
 function getCurrentUser() {
+  const user = getSession();
+  if (!user) return null;
+  // Modo simulação: admin pode testar como nutri (botão no home admin)
+  // NÃO afeta o user.id — só o perfil, pra passar pelos requireAuth() de telas do nutri
+  if (user.perfil === 'admin' && sessionStorage.getItem('SIMULAR_NUTRI') === '1') {
+    return { ...user, perfil: 'nutricionista', _simulando: true };
+  }
+  return user;
+}
+
+// Retorna o user real (sem considerar modo simulação) — útil pra toggle do modo
+function getCurrentUserReal() {
   return getSession();
 }
 
@@ -3445,9 +3815,32 @@ async function cadastrar(dados) {
 
 // Logout
 function logout() {
+  sessionStorage.removeItem('SIMULAR_NUTRI');
   clearSession();
   window.location.hash = '#/login';
 }
+
+// === Modo simulação nutricionista (admin testando fluxo do nutri) ===
+window.entrarModoSimulacaoNutri = function() {
+  const user = getCurrentUserReal();
+  if (!user || user.perfil !== 'admin') {
+    alert('Apenas administradores podem usar o modo simulação.');
+    return;
+  }
+  sessionStorage.setItem('SIMULAR_NUTRI', '1');
+  setFlash('info', 'Modo simulação ativo — você está navegando como nutricionista.');
+  window.location.hash = '#/inicio';
+  // Força re-render pra mostrar a barra de simulação
+  setTimeout(() => window.dispatchEvent(new HashChangeEvent('hashchange')), 10);
+};
+
+window.sairModoSimulacaoNutri = function() {
+  sessionStorage.removeItem('SIMULAR_NUTRI');
+  setFlash('success', 'Modo simulação encerrado.');
+  window.location.hash = '#/admin';
+  setTimeout(() => window.dispatchEvent(new HashChangeEvent('hashchange')), 10);
+};
+
 
 // Guards de rota
 function requireAuth() {
@@ -3460,8 +3853,13 @@ function requireAuth() {
   return user;
 }
 function requireAdmin() {
-  const user = requireAuth();
-  if (!user) return null;
+  // Usa user real para não ser afetado pelo modo simulação
+  const user = getCurrentUserReal();
+  if (!user) {
+    setFlash('info', 'Faça login para acessar essa área');
+    window.location.hash = '#/login';
+    return null;
+  }
   if (user.perfil !== 'admin') {
     setFlash('error', 'Apenas administradores podem acessar');
     window.location.hash = '#/inicio';
@@ -3701,6 +4099,55 @@ async function listarInstituicoes() {
   return data || [];
 }
 
+// Lista só instituições pendentes de aprovação (cadastradas pelo nutri no check-in manual)
+async function listarInstituicoesPendentes() {
+  if (!db) return [];
+  const { data, error } = await db
+    .from('instituicoes')
+    .select('*, cadastrada_por_user:cadastrada_por(id, nome)')
+    .eq('pendente_aprovacao', true)
+    .eq('ativo', true)
+    .order('criado_em', { ascending: false });
+  if (error) return [];
+  return data || [];
+}
+
+// Cria uma instituição minimamente cadastrada pelo nutri — marcada como pendente
+async function criarInstituicaoSugerida(dados) {
+  if (!db) throw new Error('Banco não conectado');
+  const user = getCurrentUser();
+  if (!user) throw new Error('Usuário não logado');
+  // Aceita tanto string (backward-compat do fluxo de objetivo) quanto objeto
+  const payload = (typeof dados === 'string') ? { nome: dados } : dados;
+  const { nome, logradouro = null, bairro = null, cidade = null } = payload || {};
+  if (!nome || !nome.trim()) throw new Error('Nome da instituição é obrigatório');
+  const nomeClean = nome.trim();
+  // Verifica duplicidade case-insensitive
+  const { data: existente } = await db
+    .from('instituicoes')
+    .select('id, nome')
+    .ilike('nome', nomeClean)
+    .maybeSingle();
+  if (existente) return existente;
+  // Cadastro rápido — nome + endereço do profissional. Admin completa o resto em #/admin/pendentes.
+  // Requer migration_16_instituicoes_nullable.sql rodado no Supabase.
+  const { data, error } = await db
+    .from('instituicoes')
+    .insert({
+      nome: nomeClean,
+      logradouro: logradouro ? logradouro.trim() : null,
+      bairro: bairro ? bairro.trim() : null,
+      cidade: cidade ? cidade.trim() : null,
+      ativo: true,
+      pendente_aprovacao: true,
+      cadastrada_por: user.id,
+    })
+    .select()
+    .single();
+  if (error) throw new Error(error.message);
+  return data;
+}
+
 // Ordenar instituições por proximidade
 function ordenarPorProximidade(instituicoes, userLat, userLng, raio = 500) {
   return instituicoes.map(inst => {
@@ -3716,32 +4163,102 @@ function ordenarPorProximidade(instituicoes, userLat, userLng, raio = 500) {
 
 // CRUD de visitas
 async function criarCheckin({ institucaoId, userPos, objetivoId, observacoes, checkinManual }) {
+  console.log('[criarCheckin] INICIO - versão com flags, institucao:', institucaoId, 'manual:', checkinManual, 'temGPS:', !!userPos);
   if (!db) throw new Error('Banco não conectado');
   const user = getCurrentUser();
   if (!user) throw new Error('Usuário não logado');
 
-  const agora = new Date().toISOString();
+  const d = new Date();
+  const agoraISO = d.toISOString(); // timestamp global correto (UTC)
+  // Data e horário locais (corrige bug de UTC deslocando 3h em SP)
+  const dataLocal = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  const horaLocal = `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
+
+  // Calcula flag_gps_divergente: se temos coords do usuário e da instituição, mede distância;
+  // se > raio configurado, marca divergente. Sem coords (check-in manual ou instituição nova), deixa false.
+  let flagGpsDivergente = false;
+  if (userPos && !checkinManual) {
+    try {
+      const { data: inst } = await db
+        .from('instituicoes')
+        .select('latitude, longitude')
+        .eq('id', institucaoId)
+        .single();
+      if (inst && inst.latitude && inst.longitude) {
+        const dist = calcularDistanciaMetros(userPos.lat, userPos.lng, inst.latitude, inst.longitude);
+        flagGpsDivergente = dist > (CONFIG.GPS_RADIUS_METERS || 500);
+      }
+    } catch (e) {
+      // se falhar, deixa false (não bloqueia o check-in)
+    }
+  }
+
+  // Tentativa 1: insert completo com flags (funciona se PostgREST tiver schema atualizado)
   const novaVisita = {
     nutricionista_id: user.id,
     instituicao_id: institucaoId,
-    data_visita: agora.split('T')[0],
-    horario_inicio: agora.split('T')[1].substring(0, 8),
-    checkin_timestamp: agora,
+    data_visita: dataLocal,
+    horario_inicio: horaLocal,
+    checkin_timestamp: agoraISO,
     checkin_latitude: userPos ? userPos.lat : null,
     checkin_longitude: userPos ? userPos.lng : null,
     checkin_precisao_metros: userPos ? Math.round(userPos.accuracy) : null,
-    checkin_manual: !!checkinManual,
+    checkin_manual: Boolean(checkinManual),
+    flag_gps_divergente: Boolean(flagGpsDivergente),
+    flag_horario_fora_margem: false,
+    flag_sem_checkin: false,
+    flag_sem_checkout: false,
     status: 'rascunho',
     resumo: observacoes || null,
   };
 
-  const { data, error } = await db
+  console.log('[criarCheckin] payload:', novaVisita);
+
+  let { data, error } = await db
     .from('visitas')
     .insert(novaVisita)
     .select()
     .single();
 
-  if (error) throw new Error(error.message);
+  // Tentativa 2: se falhou por flag NOT NULL, manda via SQL direto (ignora cache do PostgREST)
+  if (error && error.message && error.message.includes('flag_') && error.message.includes('not-null')) {
+    console.warn('[criarCheckin] Fallback: usando RPC direto por cache do PostgREST');
+    // Faz insert mínimo que CERTAMENTE funciona, depois atualiza
+    const minimoPayload = {
+      nutricionista_id: user.id,
+      instituicao_id: institucaoId,
+      data_visita: dataLocal,
+      horario_inicio: horaLocal,
+      checkin_timestamp: agoraISO,
+      status: 'rascunho',
+    };
+    const r2 = await db.from('visitas').insert(minimoPayload).select().single();
+    if (r2.error) {
+      console.error('[criarCheckin] Fallback também falhou:', r2.error);
+      throw new Error(r2.error.message);
+    }
+    // Atualiza os demais campos via update
+    const updatePayload = {
+      checkin_latitude: userPos ? userPos.lat : null,
+      checkin_longitude: userPos ? userPos.lng : null,
+      checkin_precisao_metros: userPos ? Math.round(userPos.accuracy) : null,
+      checkin_manual: Boolean(checkinManual),
+      flag_gps_divergente: Boolean(flagGpsDivergente),
+      flag_horario_fora_margem: false,
+      flag_sem_checkin: false,
+      flag_sem_checkout: false,
+      resumo: observacoes || null,
+    };
+    await db.from('visitas').update(updatePayload).eq('id', r2.data.id);
+    data = r2.data;
+    error = null;
+  }
+
+  if (error) {
+    console.error('[criarCheckin] ERRO DO SUPABASE:', error);
+    console.error('[criarCheckin] Payload enviado foi:', novaVisita);
+    throw new Error(error.message);
+  }
 
   // Adiciona o objetivo primário
   if (objetivoId) {
@@ -3778,12 +4295,14 @@ async function getVisitaAtiva() {
 
 async function finalizarCheckin(visitaId, userPos) {
   if (!db) throw new Error('Banco não conectado');
-  const agora = new Date().toISOString();
+  const d = new Date();
+  const agoraISO = d.toISOString();
+  const horaLocal = `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
   const { error } = await db
     .from('visitas')
     .update({
-      checkout_timestamp: agora,
-      horario_termino: agora.split('T')[1].substring(0, 8),
+      checkout_timestamp: agoraISO,
+      horario_termino: horaLocal,
       checkout_latitude: userPos ? userPos.lat : null,
       checkout_longitude: userPos ? userPos.lng : null,
     })
@@ -3808,7 +4327,7 @@ async function listarMinhasVisitas(limit = 5) {
 
   const { data, error } = await db
     .from('visitas')
-    .select('id, data_visita, horario_inicio, status, instituicoes(nome)')
+    .select('id, data_visita, horario_inicio, status, revisao_motivo, revisao_solicitada_em, revisao_resolvida_em, instituicoes(nome)')
     .eq('nutricionista_id', user.id)
     .order('checkin_timestamp', { ascending: false, nullsFirst: false })
     .limit(limit);
@@ -3839,6 +4358,7 @@ async function contarVisitasDoMes() {
 // Objetivos
 async function listarObjetivos() {
   if (!db) return [];
+  // Inclui ativos e pendentes de aprovação (nutri precisa ver os que sugeriu)
   const { data, error } = await db
     .from('objetivos_visita')
     .select('*')
@@ -3846,6 +4366,55 @@ async function listarObjetivos() {
     .order('ordem');
   if (error) return [];
   return data || [];
+}
+
+// Lista só objetivos pendentes de aprovação (pra fila do admin)
+async function listarObjetivosPendentes() {
+  if (!db) return [];
+  const { data, error } = await db
+    .from('objetivos_visita')
+    .select('*, sugerido_por_user:sugerido_por(id, nome)')
+    .eq('pendente_aprovacao', true)
+    .order('criado_em', { ascending: false });
+  if (error) return [];
+  return data || [];
+}
+
+// Cria um objetivo sugerido pelo nutri (entra como ativo+pendente)
+async function criarObjetivoSugerido(nome) {
+  if (!db) throw new Error('Banco não conectado');
+  const user = getCurrentUser();
+  if (!user) throw new Error('Usuário não logado');
+  if (!nome || !nome.trim()) throw new Error('Nome do objetivo é obrigatório');
+  const nomeClean = nome.trim();
+  // Verifica se já existe (case-insensitive)
+  const { data: existente } = await db
+    .from('objetivos_visita')
+    .select('id, nome')
+    .ilike('nome', nomeClean)
+    .maybeSingle();
+  if (existente) return existente; // reaproveita
+  // Busca próximo valor de ordem
+  const { data: max } = await db
+    .from('objetivos_visita')
+    .select('ordem')
+    .order('ordem', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const novaOrdem = (max?.ordem || 0) + 1;
+  const { data, error } = await db
+    .from('objetivos_visita')
+    .insert({
+      nome: nomeClean,
+      ativo: true,
+      ordem: novaOrdem,
+      pendente_aprovacao: true,
+      sugerido_por: user.id,
+    })
+    .select()
+    .single();
+  if (error) throw new Error(error.message);
+  return data;
 }
 
 // Saudação baseada na hora
@@ -4187,15 +4756,25 @@ async function finalizarRelatorio(visitaId, dados) {
     atualizado_em: new Date().toISOString(),
   };
 
+  // Se era uma visita devolvida (rascunho com motivo de revisão),
+  // limpa os campos de devolução ao refinalizar para fechar o ciclo
+  if (dados.foiDevolvida) {
+    payload.revisao_motivo = null;
+    payload.revisao_solicitada_por = null;
+    payload.revisao_solicitada_em = null;
+  }
+
   await atualizarRelatorio(visitaId, payload);
   await syncObjetivosVisita(visitaId, dados.objetivos_ids || []);
   await syncProfissionaisVisita(visitaId, dados.profissionais_ids || []);
 }
 
-// Verifica se visita pode ser editada (regra das 24h)
-// Regra: dentro de 24h do check-in, editável (rascunho OU completa)
-// Depois de 24h, travada. em_revisao sempre travada (admin decide).
-// aprovada_pos_revisao também sempre travada (histórico imutável).
+// Verifica se visita pode ser editada
+// Regras:
+// - aprovada_pos_revisao: sempre travada (histórico imutável)
+// - em_revisao: travada (admin decide)
+// - rascunho devolvido pelo admin (tem revisao_solicitada_em): 24h a partir da devolução
+// - rascunho / completa normal: 24h a partir do check-in
 function visitaPodeSerEditada(visita) {
   if (visita.status === 'aprovada_pos_revisao') {
     return { pode: false, motivo: 'Visita aprovada pelo administrador. Histórico imutável.' };
@@ -4203,15 +4782,21 @@ function visitaPodeSerEditada(visita) {
   if (visita.status === 'em_revisao') {
     return { pode: false, motivo: 'Visita em revisão pelo administrador.' };
   }
-  // rascunho ou completa — checa 24h
-  if (visita.checkin_timestamp) {
-    const checkin = new Date(visita.checkin_timestamp);
+  // Detecta devolução: rascunho com revisao_solicitada_em preenchido
+  const foiDevolvida = visita.status === 'rascunho' && !!visita.revisao_solicitada_em;
+  // Marco temporal: devolução (se foi devolvida) ou check-in original
+  const marcoTs = foiDevolvida ? visita.revisao_solicitada_em : visita.checkin_timestamp;
+  if (marcoTs) {
+    const marco = new Date(marcoTs);
     const agora = new Date();
-    const horasPassadas = (agora - checkin) / (1000 * 60 * 60);
+    const horasPassadas = (agora - marco) / (1000 * 60 * 60);
     if (horasPassadas > 24) {
-      return { pode: false, motivo: 'Janela de edição de 24h expirada. Solicite revisão ao administrador.' };
+      const motivo = foiDevolvida
+        ? 'A janela de 24h para corrigir esta visita expirou. Solicite nova revisão ao administrador.'
+        : 'Janela de edição de 24h expirada. Solicite revisão ao administrador.';
+      return { pode: false, motivo };
     }
-    return { pode: true, horasRestantes: 24 - horasPassadas };
+    return { pode: true, horasRestantes: 24 - horasPassadas, devolvida: foiDevolvida };
   }
   return { pode: true, horasRestantes: null };
 }
@@ -4380,7 +4965,174 @@ async function atualizarConfig(chave, novoValor) {
   return true;
 }
 
-function sbadgeForStatus(status) {
+/* ==========================================================================
+   SPRINT 3 — Admin: Fila de Revisão
+   ========================================================================== */
+
+// Metadata das flags
+const FlagsMeta = {
+  flag_sem_checkin: {
+    titulo: 'Sem check-in',
+    icone: 'location_off',
+    nivel: 'critical',
+    descricao: 'Nutricionista não registrou check-in GPS.',
+  },
+  flag_sem_checkout: {
+    titulo: 'Sem check-out',
+    icone: 'logout',
+    nivel: 'critical',
+    descricao: 'Nutricionista não registrou check-out da visita.',
+  },
+  flag_gps_divergente: {
+    titulo: 'GPS divergente',
+    icone: 'wrong_location',
+    nivel: 'warning',
+    descricao: 'Check-in foi feito fora do raio do hospital.',
+  },
+  flag_horario_fora_margem: {
+    titulo: 'Horário fora da margem',
+    icone: 'schedule',
+    nivel: 'warning',
+    descricao: 'Horário declarado está fora da janela de tolerância do check-in.',
+  },
+  checkin_manual: {
+    titulo: 'Check-in manual',
+    icone: 'edit_location_alt',
+    nivel: 'info',
+    descricao: 'Check-in feito sem GPS (modo manual).',
+  },
+};
+
+// Extrai flags ativas de uma visita
+function getFlagsAtivas(v) {
+  if (!v) return [];
+  const flags = [];
+  Object.keys(FlagsMeta).forEach(key => {
+    if (v[key] === true) flags.push({ key, ...FlagsMeta[key] });
+  });
+  return flags;
+}
+
+// Nível mais crítico das flags (pra borda do card)
+function getNivelCritico(flags) {
+  if (flags.some(f => f.nivel === 'critical')) return 'critical';
+  if (flags.some(f => f.nivel === 'warning')) return 'warning';
+  if (flags.some(f => f.nivel === 'info')) return 'info';
+  return null;
+}
+
+// Lista visitas pra fila de revisão
+// filtro: 'todas' | 'com_flags' | 'em_revisao' | 'resolvidas'
+//   em_revisao aqui = visitas devolvidas pro profissional, aguardando a correção.
+//   (status='rascunho' + revisao_motivo preenchido + ainda não resolvida)
+async function listarVisitasAdmin(filtro = 'com_flags') {
+  if (!db) return [];
+
+  let query = db.from('visitas').select(
+    '*, instituicoes(id, nome, cidade), usuarios:nutricionista_id(id, nome)'
+  );
+
+  if (filtro === 'com_flags') {
+    // Apenas visitas com alguma flag ativa, status rascunho ou completa
+    query = query.or('flag_sem_checkin.eq.true,flag_sem_checkout.eq.true,flag_gps_divergente.eq.true,flag_horario_fora_margem.eq.true,checkin_manual.eq.true');
+  } else if (filtro === 'em_revisao') {
+    // Rascunhos que o admin devolveu pro profissional (aguardando correção)
+    query = query.eq('status', 'rascunho').not('revisao_motivo', 'is', null).is('revisao_resolvida_em', null);
+  } else if (filtro === 'resolvidas') {
+    query = query.eq('status', 'aprovada_pos_revisao');
+  }
+  // 'todas' = sem filtro
+
+  query = query.order('checkin_timestamp', { ascending: false, nullsFirst: false }).limit(100);
+
+  const { data, error } = await query;
+  if (error) {
+    console.warn('[AdminRevisao] Erro:', error.message);
+    return [];
+  }
+  return data || [];
+}
+
+// Conta visitas por tipo de filtro (pra mostrar nos tabs)
+async function contarVisitasPorFiltro() {
+  if (!db) return { todas: 0, com_flags: 0, em_revisao: 0, resolvidas: 0 };
+
+  const promises = [
+    db.from('visitas').select('*', { count: 'exact', head: true }),
+    db.from('visitas').select('*', { count: 'exact', head: true })
+      .or('flag_sem_checkin.eq.true,flag_sem_checkout.eq.true,flag_gps_divergente.eq.true,flag_horario_fora_margem.eq.true,checkin_manual.eq.true'),
+    db.from('visitas').select('*', { count: 'exact', head: true })
+      .eq('status', 'rascunho').not('revisao_motivo', 'is', null).is('revisao_resolvida_em', null),
+    db.from('visitas').select('*', { count: 'exact', head: true }).eq('status', 'aprovada_pos_revisao'),
+  ];
+
+  try {
+    const results = await Promise.all(promises);
+    return {
+      todas: results[0].count || 0,
+      com_flags: results[1].count || 0,
+      em_revisao: results[2].count || 0,
+      resolvidas: results[3].count || 0,
+    };
+  } catch {
+    return { todas: 0, com_flags: 0, em_revisao: 0, resolvidas: 0 };
+  }
+}
+
+// Obter detalhes completos de uma visita (com tudo que admin precisa ver)
+async function getVisitaAdmin(visitaId) {
+  if (!db) throw new Error('Banco não conectado');
+  const { data: visita, error } = await db
+    .from('visitas')
+    .select(`
+      *,
+      instituicoes(id, nome, razao_social, logradouro, bairro, cidade, estado, latitude, longitude),
+      nutricionista:usuarios!nutricionista_id(id, nome, email, cpf),
+      revisor_solicitou:usuarios!revisao_solicitada_por(id, nome),
+      revisor_resolveu:usuarios!revisao_resolvida_por(id, nome)
+    `)
+    .eq('id', visitaId)
+    .single();
+
+  if (error) throw new Error(error.message);
+
+  // Carrega objetivos
+  const { data: vObj } = await db
+    .from('visitas_objetivos')
+    .select('objetivos_visita(id, nome)')
+    .eq('visita_id', visitaId);
+  visita.objetivos = (vObj || []).map(v => v.objetivos_visita).filter(Boolean);
+
+  // Carrega profissionais
+  const { data: vProf } = await db
+    .from('visitas_profissionais')
+    .select('profissionais(id, nome, profissao, profissao_outro)')
+    .eq('visita_id', visitaId);
+  visita.profissionais = (vProf || []).map(v => v.profissionais).filter(Boolean);
+
+  return visita;
+}
+
+// Aceita `status` (string) ou a visita inteira. Quando recebe a visita,
+// detecta o caso especial "rascunho devolvido pelo admin aguardando correção"
+// e mostra um badge dedicado ("Revisão solicitada") em vez de "Rascunho".
+function sbadgeForStatus(statusOrVisita) {
+  let status, visita;
+  if (typeof statusOrVisita === 'string') {
+    status = statusOrVisita;
+  } else if (statusOrVisita && typeof statusOrVisita === 'object') {
+    visita = statusOrVisita;
+    status = visita.status;
+  }
+
+  // Caso especial: rascunho com revisão solicitada pelo admin (devolução)
+  const ehRevisaoSolicitada = status === 'rascunho'
+    && visita && !!visita.revisao_motivo && !!visita.revisao_solicitada_em
+    && !visita.revisao_resolvida_em;
+  if (ehRevisaoSolicitada) {
+    return `<span class="sbadge sbadge--review-req"><span class="sbadge__dot"></span>Revisão solicitada</span>`;
+  }
+
   const map = {
     'rascunho':            { cls: 'draft',      label: 'Rascunho' },
     'completa':            { cls: 'approved',   label: 'Concluída' },
@@ -4408,10 +5160,12 @@ const routes = {
   '#/faturamento':  { title: 'Faturamento', icon: 'payments', render: renderFaturamento },
   '#/admin':        { title: 'Dashboard Admin', icon: 'dashboard', render: renderAdminDashboard },
   '#/admin/revisao':{ title: 'Revisão', icon: 'rule', render: renderAdminRevisao },
+  '#/admin/revisao/detalhe':{ title: 'Detalhes da visita', icon: 'rule', render: renderAdminRevisaoDetalhe },
   '#/admin/equipe': { title: 'Equipe', icon: 'groups', render: renderAdminEquipe },
   '#/admin/instituicoes': { title: 'Instituições', icon: 'local_hospital', render: renderAdminInstituicoes },
   '#/admin/profissionais':{ title: 'Profissionais', icon: 'stethoscope', render: renderAdminProfissionais },
   '#/admin/configuracoes':{ title: 'Configurações', icon: 'settings', render: renderAdminConfig },
+  '#/admin/pendentes':{ title: 'Pendências de aprovação', icon: 'hourglass_top', render: renderAdminPendentes },
 };
 
 function router() {
@@ -4448,7 +5202,53 @@ function router() {
   const fNewPwd = document.getElementById('fNewPwd');
   if (fNewPwd) fNewPwd.addEventListener('input', window.updateNewPwdMeter);
 
+  // Barra fixa de "modo simulação nutri" (admin testando como nutri)
+  renderSimulacaoBar();
+
   window.scrollTo(0, 0);
+}
+
+// Injeta/remove a barra superior de "modo simulação" dependendo do estado
+function renderSimulacaoBar() {
+  const existing = document.getElementById('simulacaoBar');
+  const realUser = getCurrentUserReal();
+  const simulando = realUser && realUser.perfil === 'admin' && sessionStorage.getItem('SIMULAR_NUTRI') === '1';
+  if (!simulando) {
+    if (existing) existing.remove();
+    document.body.style.paddingTop = '';
+    return;
+  }
+  if (existing) return; // já renderizada
+  const bar = document.createElement('div');
+  bar.id = 'simulacaoBar';
+  bar.style.cssText = `
+    position:fixed;top:0;left:0;right:0;z-index:9999;
+    background:linear-gradient(135deg,#B45309 0%,#92400E 100%);
+    color:#FFF8E5;padding:8px 14px;display:flex;align-items:center;gap:10px;
+    font-family:var(--font-sans);font-size:12.5px;font-weight:600;
+    box-shadow:0 2px 8px rgba(180,83,9,0.3);
+  `;
+  bar.innerHTML = `
+    <span class="material-symbols-rounded" style="font-size:18px;">visibility</span>
+    <div style="flex:1;line-height:1.3;">
+      <strong>Modo simulação</strong> — você (admin) está vendo o app como nutricionista.
+    </div>
+    <button onclick="sairModoSimulacaoNutri()" style="
+      background:rgba(255,248,229,0.2);border:1px solid rgba(255,248,229,0.4);
+      color:#FFF8E5;padding:5px 10px;border-radius:6px;cursor:pointer;
+      font-size:11.5px;font-weight:700;font-family:inherit;
+      display:flex;align-items:center;gap:4px;transition:background 140ms;
+    " onmouseover="this.style.background='rgba(255,248,229,0.35)'" onmouseout="this.style.background='rgba(255,248,229,0.2)'">
+      <span class="material-symbols-rounded" style="font-size:14px;">logout</span>
+      Sair
+    </button>
+  `;
+  document.body.appendChild(bar);
+  // Compensa altura da barra pro conteúdo não ficar escondido atrás
+  setTimeout(() => {
+    const h = bar.offsetHeight || 38;
+    document.body.style.paddingTop = h + 'px';
+  }, 0);
 }
 
 /* ==========================================================================
@@ -4503,10 +5303,10 @@ function renderDiagnostico() {
     {
       label: 'Objetivos de visita',
       detail: cs.testPassed
-        ? `${cs.details.totalObjetivos || 0} objetivos cadastrados (esperado: 8)`
+        ? `${cs.details.totalObjetivos || 0} objetivos cadastrados`
         : 'Testando...',
-      status: (cs.details.totalObjetivos === 8) ? 'ok' : (cs.testPassed ? 'error' : 'pending'),
-      icon: (cs.details.totalObjetivos === 8) ? 'check_circle' : 'warning',
+      status: (cs.details.totalObjetivos >= 8) ? 'ok' : (cs.testPassed ? 'error' : 'pending'),
+      icon: (cs.details.totalObjetivos >= 8) ? 'check_circle' : 'warning',
     },
     {
       label: 'Configurações do sistema',
@@ -4576,12 +5376,10 @@ function renderDiagnostico() {
               <span class="material-symbols-rounded">refresh</span>
               Testar novamente
             </button>
-            ${allOk ? `
-              <a href="#/login" class="btn btn--primary">
-                Continuar para o sistema
-                <span class="material-symbols-rounded">arrow_forward</span>
-              </a>
-            ` : ''}
+            <a href="#/login" class="btn btn--primary">
+              Entrar no sistema
+              <span class="material-symbols-rounded">arrow_forward</span>
+            </a>
           </div>
         </div>
 
@@ -5266,7 +6064,7 @@ function renderInicio() {
                 <div class="visits-list__name">${(v.instituicoes?.nome || 'Instituição').replace(/"/g,'&quot;')}</div>
                 <div class="visits-list__time">${formatarTempoRelativo(v.data_visita + 'T' + (v.horario_inicio || '00:00:00'))}</div>
               </div>
-              ${sbadgeForStatus(v.status)}
+              ${sbadgeForStatus(v)}
             </a>
           `).join('');
         }
@@ -5415,7 +6213,7 @@ function renderCheckin() {
         listEl.innerHTML = instComDist.map((inst, i) => {
           const isClosest = i === 0 && userPos;
           const zone = inst.dentroDoRaio ? 'in' : 'out';
-          const enderecoCurto = `${inst.logradouro}${inst.bairro ? ' · ' + inst.bairro : ''}`;
+          const enderecoCurto = [inst.logradouro, inst.bairro].filter(Boolean).join(' · ') || 'Endereço não informado';
           return `
             <a href="#" onclick="selectInstitution('${inst.id}'); return false;" class="inst-item${isClosest ? ' inst-item--closest' : ''}">
               <div class="inst-item__pin inst-item__pin--${zone}">
@@ -5475,6 +6273,11 @@ function renderCheckin() {
           <div style="padding:20px;text-align:center;color:var(--neutral-500);font-size:13px;">Carregando...</div>
         </div>
 
+        <button class="btn-auth btn-auth--secondary" onclick="cadastrarInstituicaoECheckin()" style="margin-bottom:10px;">
+          <span class="material-symbols-rounded" style="font-size:20px;color:var(--brand-lime);">add_location_alt</span>
+          Cadastrar nova instituição
+        </button>
+
         <button class="btn-auth btn-auth--secondary" onclick="startManualCheckin()">
           <span class="material-symbols-rounded" style="font-size:20px">edit_location_alt</span>
           Check-in manual (sem GPS)
@@ -5484,6 +6287,28 @@ function renderCheckin() {
     </div>
   `;
 }
+
+// Cadastra nova instituição direto da tela de check-in (antes mesmo de entrar no modal manual)
+window.cadastrarInstituicaoECheckin = async function() {
+  const dados = await showModalInstituicaoNova();
+  if (!dados) return;
+  try {
+    const nova = await criarInstituicaoSugerida(dados);
+    // Segue o fluxo: seleciona essa instituição e manda pro confirm (modo manual porque nova sem GPS cadastrado)
+    CheckinFlow.manual = true;
+    CheckinFlow.instituicaoSelecionada = nova;
+    window.location.hash = '#/checkin/confirmar';
+  } catch (err) {
+    await showModalConfirmacao({
+      icone: 'error',
+      iconeCor: 'danger',
+      titulo: 'Não foi possível cadastrar',
+      subtitulo: err.message || 'Tente novamente em instantes.',
+      btnConfirmar: 'OK',
+      btnCancelar: '',
+    });
+  }
+};
 
 window.filterInstitutions = function(query) {
   const q = query.toLowerCase().trim();
@@ -5506,7 +6331,7 @@ window.filterInstitutions = function(query) {
 
   listEl.innerHTML = filtered.map((inst, i) => {
     const zone = inst.dentroDoRaio ? 'in' : 'out';
-    const enderecoCurto = `${inst.logradouro}${inst.bairro ? ' · ' + inst.bairro : ''}`;
+    const enderecoCurto = [inst.logradouro, inst.bairro].filter(Boolean).join(' · ') || 'Endereço não informado';
     return `
       <a href="#" onclick="selectInstitution('${inst.id}'); return false;" class="inst-item">
         <div class="inst-item__pin inst-item__pin--${zone}">
@@ -5533,7 +6358,42 @@ window.selectInstitution = function(id) {
   window.location.hash = '#/checkin/confirmar';
 };
 
-window.startManualCheckin = function() {
+// Sugere novo objetivo direto do check-in. Cria como pendente, recarrega o select, já seleciona.
+window.sugerirObjetivoNoCheckin = async function() {
+  const nome = await showModalInput({
+    icone: 'add_circle',
+    iconeCor: 'info',
+    titulo: 'Sugerir novo objetivo',
+    subtitulo: 'Digite o nome do objetivo. Ele já fica disponível agora pra você selecionar, mas o admin precisa aprovar pra ficar oficial.',
+    label: 'Nome do objetivo',
+    placeholder: 'Ex: Treinamento de nova equipe',
+    required: true,
+    btnConfirmar: 'Sugerir e selecionar',
+    tipo: 'input',
+  });
+  if (!nome) return;
+  try {
+    const novo = await criarObjetivoSugerido(nome);
+    // Recarrega o select do check-in com o novo objetivo já selecionado
+    const sel = document.getElementById('objSelect');
+    if (sel) {
+      const objs = await listarObjetivos();
+      sel.innerHTML = `<option value="">Selecione um objetivo...</option>` +
+        objs.map(o => `<option value="${o.id}"${o.id === novo.id ? ' selected' : ''}>${o.nome}${o.pendente_aprovacao ? ' (aguardando admin)' : ''}</option>`).join('');
+    }
+  } catch (err) {
+    await showModalConfirmacao({
+      icone: 'error',
+      iconeCor: 'danger',
+      titulo: 'Não foi possível sugerir',
+      subtitulo: err.message || 'Tente novamente em instantes.',
+      btnConfirmar: 'OK',
+      btnCancelar: '',
+    });
+  }
+};
+
+window.startManualCheckin = async function() {
   // Fluxo manual: seleciona sem GPS
   if (!CheckinFlow.instituicoes || CheckinFlow.instituicoes.length === 0) {
     alert('Ainda não há instituições cadastradas.');
@@ -5544,19 +6404,159 @@ window.startManualCheckin = function() {
   if (CheckinFlow.instituicoes.length === 1) {
     CheckinFlow.instituicaoSelecionada = CheckinFlow.instituicoes[0];
     window.location.hash = '#/checkin/confirmar';
-  } else {
-    // Mostra modal simples pra escolher (pra MVP vamos só fazer alert)
-    const nome = prompt('Qual instituição? (digite parte do nome)');
-    if (!nome) return;
-    const inst = CheckinFlow.instituicoes.find(i => i.nome.toLowerCase().includes(nome.toLowerCase()));
-    if (!inst) {
-      alert('Nenhuma instituição encontrada com esse nome.');
-      return;
-    }
-    CheckinFlow.instituicaoSelecionada = inst;
-    window.location.hash = '#/checkin/confirmar';
+    return;
   }
+  // Modal customizado com lista filtrável
+  const inst = await showModalSelectInstituicao(CheckinFlow.instituicoes);
+  if (!inst) return;
+  CheckinFlow.instituicaoSelecionada = inst;
+  window.location.hash = '#/checkin/confirmar';
 };
+
+// Modal para escolher instituição no check-in manual (sem GPS)
+function showModalSelectInstituicao(instituicoes) {
+  return new Promise((resolve) => {
+    const backdrop = document.createElement('div');
+    backdrop.className = 'modal-backdrop';
+    backdrop.innerHTML = `
+      <div class="modal-card" style="max-width:420px;">
+        <div class="modal-card__header">
+          <div class="modal-card__icon" style="background:#FEF4E1;color:var(--status-warning);">
+            <span class="material-symbols-rounded">edit_location_alt</span>
+          </div>
+          <div class="modal-card__title">Check-in manual</div>
+          <div class="modal-card__subtitle">GPS indisponível. Selecione o local da visita — o admin será notificado pra revisão.</div>
+        </div>
+        <div class="modal-card__body" style="padding-top:4px;">
+          <div class="search-bar" style="margin-bottom:10px;">
+            <span class="material-symbols-rounded search-bar__icon">search</span>
+            <input type="text" id="msiSearch" placeholder="Buscar instituição..." autocomplete="off" />
+          </div>
+          <div id="msiList" style="max-height:320px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;"></div>
+        </div>
+        <div class="modal-card__footer">
+          <button class="modal-btn modal-btn--secondary" id="msiCancel" style="width:100%;">Cancelar</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(backdrop);
+
+    const listEl = backdrop.querySelector('#msiList');
+    const searchEl = backdrop.querySelector('#msiSearch');
+
+    const renderList = (q) => {
+      const query = (q || '').toLowerCase().trim();
+      const filtered = query
+        ? instituicoes.filter(i => i.nome.toLowerCase().includes(query) || (i.bairro || '').toLowerCase().includes(query))
+        : instituicoes;
+
+      // Botão "cadastrar nova" — aparece sempre; texto muda conforme busca
+      const addNewBtn = query
+        ? `<button type="button" id="msiAddNew" style="
+            display:flex;align-items:center;gap:10px;padding:12px;margin-top:4px;
+            border:1.5px dashed var(--brand-lime);border-radius:10px;background:#F4F9EA;
+            cursor:pointer;text-align:left;transition:all 140ms;width:100%;
+            color:var(--brand-navy);font-weight:700;font-size:13px;font-family:inherit;
+          ">
+            <span class="material-symbols-rounded" style="font-size:20px;color:var(--brand-lime);">add_location_alt</span>
+            <div style="flex:1;">
+              <div>Cadastrar "${query.replace(/"/g,'&quot;')}"</div>
+              <div style="font-size:11px;font-weight:500;color:var(--neutral-500);margin-top:2px;">O admin completará os dados depois.</div>
+            </div>
+          </button>`
+        : `<button type="button" id="msiAddNew" style="
+            display:flex;align-items:center;gap:10px;padding:12px;margin-top:4px;
+            border:1.5px dashed var(--neutral-300);border-radius:10px;background:var(--neutral-50);
+            cursor:pointer;text-align:left;transition:all 140ms;width:100%;
+            color:var(--brand-navy);font-weight:700;font-size:13px;font-family:inherit;
+          ">
+            <span class="material-symbols-rounded" style="font-size:20px;color:var(--brand-lime);">add_location_alt</span>
+            <div style="flex:1;">
+              <div>Cadastrar nova instituição</div>
+              <div style="font-size:11px;font-weight:500;color:var(--neutral-500);margin-top:2px;">Não está na lista? Cadastre só o nome e siga com o check-in.</div>
+            </div>
+          </button>`;
+
+      if (filtered.length === 0) {
+        listEl.innerHTML = `
+          <div style="padding:20px 12px;text-align:center;color:var(--neutral-500);font-size:13px;">
+            <span class="material-symbols-rounded" style="font-size:28px;color:var(--neutral-400);display:block;margin-bottom:4px;">search_off</span>
+            Nenhuma instituição encontrada
+          </div>
+          ${addNewBtn}
+        `;
+      } else {
+        listEl.innerHTML = filtered.map(inst => {
+          const endereco = `${inst.logradouro || ''}${inst.bairro ? ' · ' + inst.bairro : ''}`;
+          const pendingBadge = inst.pendente_aprovacao
+            ? `<span style="display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;background:#FEF4E1;color:#92400E;margin-left:6px;"><span class="material-symbols-rounded" style="font-size:11px;">hourglass_top</span>Pendente</span>`
+            : '';
+          return `
+            <button type="button" class="msi-item" data-id="${inst.id}" style="
+              display:flex;align-items:center;gap:10px;padding:10px 12px;
+              border:1.5px solid var(--neutral-200);border-radius:10px;background:var(--neutral-0);
+              cursor:pointer;text-align:left;transition:all 140ms;width:100%;
+            ">
+              <div style="
+                width:32px;height:32px;border-radius:50%;flex-shrink:0;
+                background:#FEF4E1;color:var(--status-warning);
+                display:flex;align-items:center;justify-content:center;
+              ">
+                <span class="material-symbols-rounded" style="font-size:18px;">location_on</span>
+              </div>
+              <div style="flex:1;min-width:0;">
+                <div style="font-size:13.5px;font-weight:700;color:var(--brand-navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${inst.nome.replace(/"/g,'&quot;')}${pendingBadge}</div>
+                <div style="font-size:11.5px;color:var(--neutral-500);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${endereco.replace(/"/g,'&quot;') || '(endereço pendente)'}</div>
+              </div>
+            </button>
+          `;
+        }).join('') + addNewBtn;
+      }
+
+      listEl.querySelectorAll('.msi-item').forEach(btn => {
+        btn.onclick = () => {
+          const id = btn.getAttribute('data-id');
+          const inst = instituicoes.find(i => String(i.id) === String(id));
+          cleanup();
+          resolve(inst || null);
+        };
+        btn.onmouseover = () => { btn.style.background = 'var(--neutral-50)'; btn.style.borderColor = 'var(--brand-navy)'; };
+        btn.onmouseout = () => { btn.style.background = 'var(--neutral-0)'; btn.style.borderColor = 'var(--neutral-200)'; };
+      });
+
+      const addBtn = listEl.querySelector('#msiAddNew');
+      if (addBtn) {
+        addBtn.onclick = async () => {
+          const nomeSugerido = searchEl.value.trim();
+          const dados = await showModalInstituicaoNova({ valorInicialNome: nomeSugerido });
+          if (!dados) return;
+          try {
+            const nova = await criarInstituicaoSugerida(dados);
+            cleanup();
+            resolve(nova);
+          } catch (err) {
+            await showModalConfirmacao({
+              icone: 'error',
+              iconeCor: 'danger',
+              titulo: 'Não foi possível cadastrar',
+              subtitulo: err.message || 'Tente novamente em instantes.',
+              btnConfirmar: 'OK',
+              btnCancelar: '',
+            });
+          }
+        };
+      }
+    };
+
+    renderList('');
+    searchEl.oninput = () => renderList(searchEl.value);
+    setTimeout(() => searchEl.focus(), 150);
+
+    const cleanup = () => backdrop.remove();
+    backdrop.querySelector('#msiCancel').onclick = () => { cleanup(); resolve(null); };
+    backdrop.onclick = (e) => { if (e.target === backdrop) { cleanup(); resolve(null); } };
+  });
+}
 
 function renderCheckinConfirmar() {
   const user = requireAuth();
@@ -5588,8 +6588,12 @@ function renderCheckinConfirmar() {
     }
   }, 0);
 
-  const endereco = `${inst.logradouro}${inst.bairro ? ', ' + inst.bairro : ''}`;
-  const cidadeUf = `${inst.cidade || ''} · SP`;
+  // Monta endereço e cidade/UF tolerando campos nulos (instituição recém cadastrada pelo profissional pode não ter tudo)
+  const partesEndereco = [];
+  if (inst.logradouro) partesEndereco.push(inst.logradouro);
+  if (inst.bairro) partesEndereco.push(inst.bairro);
+  const endereco = partesEndereco.join(', ') || 'Endereço não informado';
+  const cidadeUf = [inst.cidade, inst.estado].filter(Boolean).join(' · ') || '—';
 
   return `
     <div class="mobile-app">
@@ -5656,7 +6660,17 @@ function renderCheckinConfirmar() {
           <select id="objSelect">
             <option>Carregando...</option>
           </select>
-          <textarea id="obsArea" placeholder="Observações iniciais (opcional)..."></textarea>
+          <button type="button" onclick="sugerirObjetivoNoCheckin()" style="
+            display:flex;align-items:center;gap:8px;width:100%;
+            background:#F4F9EA;border:1.5px dashed var(--brand-lime);
+            padding:10px 12px;margin-top:8px;border-radius:10px;
+            color:var(--brand-navy);font-size:13px;font-weight:700;
+            cursor:pointer;font-family:inherit;text-align:left;
+          ">
+            <span class="material-symbols-rounded" style="font-size:18px;color:var(--brand-lime);">add_circle</span>
+            <span style="flex:1;">Objetivo não listado? Sugerir novo</span>
+          </button>
+          <textarea id="obsArea" placeholder="Observações iniciais (opcional)..." style="margin-top:10px;"></textarea>
         </div>
 
         ${!dentro && dist !== null ? `
@@ -5907,7 +6921,15 @@ function showPostCheckoutModal({ instName, duracao }) {
 }
 
 window.handleCancelarVisita = async function() {
-  if (!confirm('Cancelar a visita? Os dados não serão salvos.')) return;
+  const ok = await showModalConfirmacao({
+    icone: 'cancel',
+    iconeCor: 'danger',
+    titulo: 'Cancelar visita?',
+    subtitulo: 'Você perderá todos os dados preenchidos até agora. Esta ação não pode ser desfeita.',
+    btnConfirmar: 'Sim, cancelar',
+    btnCancelar: 'Voltar',
+  });
+  if (!ok) return;
   const visitaId = window._activeVisitaId;
   if (!visitaId) return;
 
@@ -5954,7 +6976,7 @@ function renderVisitas() {
               <div class="visits-list__name">${(v.instituicoes?.nome || 'Instituição').replace(/"/g,'&quot;')}</div>
               <div class="visits-list__time">${formatarTempoRelativo(v.data_visita + 'T' + (v.horario_inicio || '00:00:00'))}</div>
             </div>
-            ${sbadgeForStatus(v.status)}
+            ${sbadgeForStatus(v)}
           </a>
         `).join('');
       }
@@ -6093,11 +7115,54 @@ function hydrateReportForm() {
             <span class="material-symbols-rounded">schedule</span>${formatarDuracao(duracao)}
           </span>
           <span class="report-info__meta-item">
-            ${sbadgeForStatus(v.status)}
+            ${sbadgeForStatus(v)}
           </span>
         </div>
       </div>
     </div>
+
+    ${(v.checkin_latitude || v.checkout_latitude) ? `
+      <div style="background:var(--neutral-0);border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:12px;color:var(--neutral-600);display:flex;align-items:center;gap:8px;border:1px solid var(--neutral-200);">
+        <span class="material-symbols-rounded" style="font-size:18px;color:var(--status-success);">gps_fixed</span>
+        <div style="flex:1;">
+          <strong style="color:var(--brand-navy);">Localização registrada</strong> —
+          ${v.checkin_latitude ? `check-in ${v.checkin_latitude.toFixed(4)}, ${v.checkin_longitude.toFixed(4)}` : 'sem check-in GPS'}${v.checkout_latitude ? ` · check-out ${v.checkout_latitude.toFixed(4)}, ${v.checkout_longitude.toFixed(4)}` : ''}
+        </div>
+      </div>
+    ` : v.checkin_manual ? `
+      <div style="background:#FEF4E1;border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:12px;color:#92400E;display:flex;align-items:center;gap:8px;border:1px solid rgba(245,158,11,0.25);">
+        <span class="material-symbols-rounded" style="font-size:18px;color:var(--status-warning);">gps_off</span>
+        <div><strong>Check-in manual</strong> — sem registro de GPS.</div>
+      </div>
+    ` : ''}
+
+    ${v.status === 'em_revisao' ? `
+      <div class="review-notice-nutri">
+        <div class="review-notice-nutri__icon">
+          <span class="material-symbols-rounded">rate_review</span>
+        </div>
+        <div class="review-notice-nutri__body">
+          <div class="review-notice-nutri__title">Visita em revisão pelo administrador</div>
+          <div class="review-notice-nutri__text">Você não pode editar agora. Aguarde o admin aprovar ou devolver.</div>
+          ${v.revisao_motivo ? `
+            <div class="review-notice-nutri__motivo">"${v.revisao_motivo.replace(/"/g,'&quot;')}"</div>
+          ` : ''}
+        </div>
+      </div>
+    ` : v.status === 'rascunho' && v.revisao_motivo ? `
+      <div class="review-notice-nutri" style="background:linear-gradient(135deg,#FEF4E1 0%,#FFF8E5 100%);border-color:rgba(245,158,11,0.3);">
+        <div class="review-notice-nutri__icon" style="background:var(--status-warning);">
+          <span class="material-symbols-rounded">undo</span>
+        </div>
+        <div class="review-notice-nutri__body">
+          <div class="review-notice-nutri__title" style="color:#B45309;">Admin pediu correção nesta visita</div>
+          <div class="review-notice-nutri__text" style="color:#92400E;">Revise os campos sinalizados, corrija e finalize novamente.</div>
+          <div class="review-notice-nutri__motivo" style="border-color:rgba(245,158,11,0.25);">
+            "${v.revisao_motivo.replace(/"/g,'&quot;')}"
+          </div>
+        </div>
+      </div>
+    ` : ''}
 
     ${readonly ? `
       <div class="report-lock-warning">
@@ -6236,6 +7301,21 @@ function hydrateReportForm() {
           <span class="material-symbols-rounded" style="font-size:24px">${v.status === 'completa' ? 'save' : 'check_circle'}</span>
           ${v.status === 'completa' ? 'Salvar alterações' : 'Finalizar relatório'}
         </button>
+        ${(v.status === 'rascunho' && !v.revisao_motivo) ? `
+          <button type="button" onclick="handleExcluirVisita()" style="
+            width:100%;margin-top:12px;padding:12px;
+            background:transparent;border:1.5px solid var(--status-danger);border-radius:12px;
+            color:var(--status-danger);font-weight:700;font-size:13px;font-family:inherit;
+            cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;
+            transition:all 140ms;
+          " onmouseover="this.style.background='var(--status-danger-bg)'" onmouseout="this.style.background='transparent'">
+            <span class="material-symbols-rounded" style="font-size:18px;">delete_forever</span>
+            Excluir visita
+          </button>
+          <div style="margin-top:6px;font-size:11px;color:var(--neutral-500);text-align:center;">
+            Use apenas se for um teste. Esta ação não pode ser desfeita.
+          </div>
+        ` : ''}
       </div>
     `}
   `;
@@ -6248,15 +7328,69 @@ function hydrateReportForm() {
 function renderObjetivos() {
   const grid = document.getElementById('objectiveGrid');
   if (!grid) return;
-  grid.innerHTML = ReportState.objetivos.map(o => `
-    <div class="objective-check ${ReportState.objetivosSelecionados.has(o.id) ? 'is-selected' : ''}" onclick="toggleObjetivo(${o.id})">
-      <div class="objective-check__box">
-        <span class="material-symbols-rounded">check</span>
+  // Respeita o estado de edição da visita (readonly = em revisão, aprovada ou janela expirada)
+  const readonly = ReportState.visita ? !visitaPodeSerEditada(ReportState.visita).pode : false;
+  const itemsHtml = ReportState.objetivos.map(o => {
+    const selected = ReportState.objetivosSelecionados.has(o.id);
+    const onclickAttr = readonly ? '' : `onclick="toggleObjetivo(${o.id})"`;
+    const pendingBadge = o.pendente_aprovacao
+      ? `<span style="display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;background:#FEF4E1;color:#92400E;margin-left:6px;"><span class="material-symbols-rounded" style="font-size:11px;">hourglass_top</span>Aguardando admin</span>`
+      : '';
+    return `
+      <div class="objective-check ${selected ? 'is-selected' : ''} ${readonly ? 'is-disabled' : ''}" ${onclickAttr}>
+        <div class="objective-check__box">
+          <span class="material-symbols-rounded">check</span>
+        </div>
+        <span class="objective-check__label">${o.nome}${pendingBadge}</span>
       </div>
-      <span class="objective-check__label">${o.nome}</span>
+    `;
+  }).join('');
+  const addBtn = readonly ? '' : `
+    <div style="margin-top:8px;padding-top:10px;border-top:1px dashed var(--neutral-200);">
+      <button type="button" onclick="handleSugerirNovoObjetivo()" style="
+        display:flex;align-items:center;gap:10px;padding:12px;
+        border:1.5px dashed var(--brand-lime);border-radius:10px;background:#F4F9EA;
+        cursor:pointer;text-align:left;transition:all 140ms;width:100%;
+        color:var(--brand-navy);font-weight:700;font-size:13px;font-family:inherit;
+      ">
+        <span class="material-symbols-rounded" style="font-size:20px;color:var(--brand-lime);">add_circle</span>
+        <div style="flex:1;">
+          <div>Outro objetivo (não listado)</div>
+          <div style="font-size:11px;font-weight:500;color:var(--neutral-500);margin-top:2px;">Sugira um novo — passa por aprovação do admin.</div>
+        </div>
+      </button>
     </div>
-  `).join('');
+  `;
+  grid.innerHTML = itemsHtml + addBtn;
 }
+
+window.handleSugerirNovoObjetivo = async function() {
+  // Barreira: se a visita está travada, não deixa nem sugerir
+  if (ReportState.visita && !visitaPodeSerEditada(ReportState.visita).pode) return;
+  const nome = await showModalInput({
+    icone: 'add_circle',
+    iconeCor: 'info',
+    titulo: 'Sugerir novo objetivo',
+    subtitulo: 'Digite o nome do objetivo. Ele já fica disponível agora pra você marcar, mas o admin precisa aprovar pra ficar oficial (ele pode renomear ou rejeitar).',
+    label: 'Nome do objetivo',
+    placeholder: 'Ex: Treinamento de nova equipe',
+    required: true,
+    btnConfirmar: 'Sugerir e adicionar',
+    tipo: 'input',
+  });
+  if (!nome) return;
+  try {
+    const novo = await criarObjetivoSugerido(nome);
+    // Recarrega a lista oficial de objetivos e já marca o novo como selecionado
+    const objs = await listarObjetivos();
+    ReportState.objetivos = objs;
+    ReportState.objetivosSelecionados.add(novo.id);
+    renderObjetivos();
+    scheduleSyncObjetivos();
+  } catch (err) {
+    alert('Erro ao sugerir: ' + err.message);
+  }
+};
 
 function renderProfSelected() {
   const el = document.getElementById('profSelected');
@@ -6289,18 +7423,42 @@ window.handleProfSearch = function(query) {
     ? available.filter(p => p.nome.toLowerCase().includes(q) || (p.profissao || '').toLowerCase().includes(q))
     : available;
 
-  if (filtered.length === 0 && !q) {
-    dropdown.innerHTML = `
-      <div class="prof-dropdown__empty">Nenhum profissional cadastrado neste hospital.</div>
+  // Botão de cadastro — sempre presente no final do dropdown,
+  // com texto adaptado ao contexto (busca vazia vs. busca com valor)
+  const addNewBtn = q && !ReportState.profissionaisInstituicao.some(p => p.nome.toLowerCase() === q)
+    ? `
+      <div class="prof-dropdown__add-new" onclick="handleAddNewProf('${q.replace(/'/g, '')}')">
+        <span class="material-symbols-rounded">person_add</span>
+        Cadastrar "${q}" como novo profissional
+      </div>
+    `
+    : `
       <div class="prof-dropdown__add-new" onclick="handleAddNewProf('')">
         <span class="material-symbols-rounded">person_add</span>
         Cadastrar novo profissional
       </div>
     `;
+
+  // Caso não tenha ninguém cadastrado no hospital
+  if (ReportState.profissionaisInstituicao.length === 0) {
+    dropdown.innerHTML = `
+      <div class="prof-dropdown__empty">Nenhum profissional cadastrado neste hospital.</div>
+      ${addNewBtn}
+    `;
     return;
   }
 
-  let html = filtered.slice(0, 8).map(p => {
+  // Caso a busca não retornou resultados
+  if (filtered.length === 0) {
+    dropdown.innerHTML = `
+      <div class="prof-dropdown__empty">Nenhum resultado encontrado.</div>
+      ${addNewBtn}
+    `;
+    return;
+  }
+
+  // Lista de profissionais + botão cadastrar sempre no final
+  const itemsHtml = filtered.slice(0, 8).map(p => {
     const profText = p.profissao === 'Outro' ? (p.profissao_outro || 'Outro') : p.profissao;
     return `
       <div class="prof-dropdown-item" onclick="addProfissional('${p.id}')">
@@ -6313,22 +7471,7 @@ window.handleProfSearch = function(query) {
     `;
   }).join('');
 
-  if (q && !ReportState.profissionaisInstituicao.some(p => p.nome.toLowerCase() === q)) {
-    html += `
-      <div class="prof-dropdown__add-new" onclick="handleAddNewProf('${q.replace(/'/g, '')}')">
-        <span class="material-symbols-rounded">person_add</span>
-        Cadastrar "${q}" como novo profissional
-      </div>
-    `;
-  }
-
-  dropdown.innerHTML = html || `
-    <div class="prof-dropdown__empty">Nenhum resultado encontrado.</div>
-    <div class="prof-dropdown__add-new" onclick="handleAddNewProf('${q.replace(/'/g, '')}')">
-      <span class="material-symbols-rounded">person_add</span>
-      Cadastrar "${q}" como novo profissional
-    </div>
-  `;
+  dropdown.innerHTML = itemsHtml + addNewBtn;
 };
 
 window.showProfDropdown = function() {
@@ -6520,6 +7663,8 @@ function showNewProfissionalModal(nomeInicial) {
 }
 
 window.toggleObjetivo = function(objId) {
+  // Barreira dupla: não permite alterar se a visita está bloqueada
+  if (ReportState.visita && !visitaPodeSerEditada(ReportState.visita).pode) return;
   if (ReportState.objetivosSelecionados.has(objId)) {
     ReportState.objetivosSelecionados.delete(objId);
   } else {
@@ -6686,6 +7831,8 @@ window.handleFinalizarRelatorio = async function() {
     profissionais_ids: ReportState.profissionaisSelecionados.map(p => p.id),
     objetivos_ids: Array.from(ReportState.objetivosSelecionados),
     checkin_timestamp: v.checkin_timestamp,
+    // Sinaliza que a visita está sendo refinalizada após devolução do admin
+    foiDevolvida: v.status === 'rascunho' && !!v.revisao_solicitada_em,
   };
 
   const eraCompleta = v.status === 'completa';
@@ -6700,6 +7847,51 @@ window.handleFinalizarRelatorio = async function() {
     btn.innerHTML = eraCompleta
       ? '<span class="material-symbols-rounded" style="font-size:24px">save</span> Salvar alterações'
       : '<span class="material-symbols-rounded" style="font-size:24px">check_circle</span> Finalizar relatório';
+  }
+};
+
+// Excluir visita (só permitido pra rascunhos que nunca foram concluídos nem devolvidos)
+window.handleExcluirVisita = async function() {
+  const v = ReportState.visita;
+  if (!v) return;
+  // Barreira de segurança (dupla): só rascunho sem motivo de revisão
+  if (v.status !== 'rascunho' || v.revisao_motivo) {
+    await showModalConfirmacao({
+      icone: 'block',
+      iconeCor: 'danger',
+      titulo: 'Não é possível excluir',
+      subtitulo: 'Esta visita já foi finalizada ou passou por revisão. Visitas com histórico não podem ser apagadas.',
+      btnConfirmar: 'OK',
+      btnCancelar: '',
+    });
+    return;
+  }
+  const ok = await showModalConfirmacao({
+    icone: 'delete_forever',
+    iconeCor: 'danger',
+    titulo: 'Excluir visita?',
+    subtitulo: 'Todos os dados preenchidos serão perdidos. Esta ação não pode ser desfeita. Use apenas se foi um teste ou erro.',
+    btnConfirmar: 'Sim, excluir',
+    btnCancelar: 'Cancelar',
+  });
+  if (!ok) return;
+  try {
+    // Limpa os relacionamentos antes de apagar a visita
+    await db.from('visitas_objetivos').delete().eq('visita_id', v.id);
+    await db.from('visitas_profissionais').delete().eq('visita_id', v.id);
+    const { error } = await db.from('visitas').delete().eq('id', v.id);
+    if (error) throw new Error(error.message);
+    setFlash('info', 'Visita excluída.');
+    window.location.hash = '#/visitas';
+  } catch (err) {
+    await showModalConfirmacao({
+      icone: 'error',
+      iconeCor: 'danger',
+      titulo: 'Erro ao excluir',
+      subtitulo: err.message || 'Tente novamente em instantes.',
+      btnConfirmar: 'OK',
+      btnCancelar: '',
+    });
   }
 };
 
@@ -6718,11 +7910,53 @@ function renderAdminDashboard() {
   const user = requireAdmin();
   if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
 
+  // Carrega contagens de pendências async
+  setTimeout(async () => {
+    try {
+      const [instPend, objPend] = await Promise.all([
+        listarInstituicoesPendentes(),
+        listarObjetivosPendentes(),
+      ]);
+      const banner = document.getElementById('pendingAprovacoesBanner');
+      if (!banner) return;
+      const total = instPend.length + objPend.length;
+      if (total === 0) {
+        banner.style.display = 'none';
+        return;
+      }
+      const partes = [];
+      if (instPend.length > 0) partes.push(`<strong>${instPend.length}</strong> ${instPend.length === 1 ? 'instituição' : 'instituições'}`);
+      if (objPend.length > 0) partes.push(`<strong>${objPend.length}</strong> ${objPend.length === 1 ? 'objetivo' : 'objetivos'}`);
+      banner.style.display = 'block';
+      banner.innerHTML = `
+        <a href="#/admin/pendentes" style="
+          display:flex;align-items:center;gap:12px;padding:14px 16px;margin-bottom:12px;
+          background:linear-gradient(135deg,#FEF4E1 0%,#FFF9EB 100%);
+          border:1.5px solid rgba(245,158,11,0.35);border-radius:12px;
+          text-decoration:none;color:inherit;transition:all 140ms;position:relative;
+        " onmouseover="this.style.transform='translateY(-1px)';this.style.boxShadow='0 4px 12px rgba(245,158,11,0.15)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
+          <div style="position:relative;width:40px;height:40px;border-radius:10px;background:var(--status-warning);color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <span class="material-symbols-rounded" style="font-size:22px;">notifications_active</span>
+            <span style="position:absolute;top:-4px;right:-4px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--status-danger);color:#fff;font-size:10.5px;font-weight:800;display:flex;align-items:center;justify-content:center;border:2px solid #fff;">${total}</span>
+          </div>
+          <div style="flex:1;">
+            <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:14px;line-height:1.3;">Pendências de aprovação</div>
+            <div style="font-size:11.5px;color:#92400E;margin-top:2px;">${partes.join(' · ')} ${total === 1 ? 'aguarda' : 'aguardam'} sua revisão.</div>
+          </div>
+          <span class="material-symbols-rounded" style="font-size:18px;color:var(--status-warning);">arrow_forward</span>
+        </a>
+      `;
+    } catch (err) {
+      console.warn('Erro ao carregar pendências:', err);
+    }
+  }, 0);
+
   const items = [
     { href: '#/admin/instituicoes',   icon: 'local_hospital',          cor: 'navy',  titulo: 'Instituições',    desc: 'Hospitais e clínicas cadastrados',     pronto: true },
     { href: '#/admin/profissionais',  icon: 'stethoscope',             cor: 'lime',  titulo: 'Profissionais',   desc: 'Contatos nas instituições',             pronto: true },
     { href: '#/admin/configuracoes',  icon: 'settings',                cor: 'info',  titulo: 'Configurações',   desc: 'Parâmetros globais do sistema',         pronto: true },
-    { href: '#/admin/revisao',        icon: 'rule',                    cor: 'warn',  titulo: 'Fila de Revisão', desc: 'Visitas com divergências',              pronto: false },
+    { href: '#/admin/revisao',        icon: 'rule',                    cor: 'warn',  titulo: 'Fila de Revisão', desc: 'Visitas com divergências',              pronto: true },
+    { href: '#/admin/pendentes',      icon: 'hourglass_top',           cor: 'info',  titulo: 'Pendências',      desc: 'Aprovar instituições e objetivos',      pronto: true },
     { href: '#/admin/equipe',         icon: 'groups',                  cor: 'navy',  titulo: 'Equipe',          desc: 'Nutricionistas + aprovar pendentes',    pronto: false },
   ];
 
@@ -6741,6 +7975,24 @@ function renderAdminDashboard() {
           <div class="home__greeting-title">Painel Admin</div>
           <div class="home__greeting-date">${user.nome} · ${formatarDataPtBr(new Date())}</div>
         </div>
+
+        <div id="pendingAprovacoesBanner" style="display:none;"></div>
+
+        <button onclick="entrarModoSimulacaoNutri()" style="
+          width:100%;margin-bottom:16px;padding:12px 14px;
+          background:linear-gradient(135deg,#FEF4E1 0%,#FFF8E5 100%);
+          border:1.5px dashed var(--status-warning);border-radius:12px;
+          display:flex;align-items:center;gap:10px;cursor:pointer;
+          color:#92400E;font-family:var(--font-sans);font-size:13px;font-weight:600;
+          transition:all 140ms;
+        " onmouseover="this.style.background='#FDE9C3'" onmouseout="this.style.background='linear-gradient(135deg,#FEF4E1 0%,#FFF8E5 100%)'">
+          <span class="material-symbols-rounded" style="font-size:20px;color:var(--status-warning);">visibility</span>
+          <div style="flex:1;text-align:left;">
+            <div style="font-weight:700;color:#B45309;">Simular como nutricionista</div>
+            <div style="font-size:11.5px;font-weight:500;color:#92400E;margin-top:2px;">Teste o fluxo do nutri sem sair da sua conta.</div>
+          </div>
+          <span class="material-symbols-rounded" style="font-size:20px;color:var(--status-warning);">arrow_forward</span>
+        </button>
 
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:22px;">
           ${items.map(it => `
@@ -6777,8 +8029,1182 @@ function renderAdminDashboard() {
 function renderAdminRevisao() {
   const user = requireAdmin();
   if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
-  return loggedPlaceholderScreen(user, 'rule', 'Fila de Revisão', 'Visitas com flags de divergência.', '#/admin/revisao');
+
+  // Filtro inicial = 'com_flags' ou vem da URL
+  const filtroInicial = window._routeParams?.filtro || 'com_flags';
+  window._reviewFilter = filtroInicial;
+
+  setTimeout(async () => {
+    await carregarFilaRevisao();
+  }, 0);
+
+  return `
+    <div class="mobile-app">
+      ${mobileTopBar({ title: 'Fila de Revisão', showBack: true })}
+      <main class="mcontent">
+        <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+          <button onclick="seedVisitasTeste()" style="flex:1;min-width:140px;padding:8px 12px;border:1.5px dashed var(--status-info);background:#E4ECFD;color:var(--status-info);border-radius:10px;font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;">
+            <span class="material-symbols-rounded" style="font-size:15px;">science</span>Gerar visitas teste
+          </button>
+          <button onclick="limparVisitasTeste()" style="padding:8px 12px;border:1.5px dashed var(--status-danger);background:var(--status-danger-bg);color:var(--status-danger);border-radius:10px;font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;">
+            <span class="material-symbols-rounded" style="font-size:15px;">delete_sweep</span>Limpar todas
+          </button>
+        </div>
+
+        <div class="review-tabs" id="reviewTabs">
+          <button class="review-tab ${filtroInicial === 'com_flags' ? 'is-active' : ''}" data-filtro="com_flags" onclick="trocarFiltroRevisao('com_flags')">
+            Com flags <span class="review-tab__count" id="cntComFlags">—</span>
+          </button>
+          <button class="review-tab ${filtroInicial === 'em_revisao' ? 'is-active' : ''}" data-filtro="em_revisao" onclick="trocarFiltroRevisao('em_revisao')">
+            Em revisão <span class="review-tab__count" id="cntEmRevisao">—</span>
+          </button>
+          <button class="review-tab ${filtroInicial === 'resolvidas' ? 'is-active' : ''}" data-filtro="resolvidas" onclick="trocarFiltroRevisao('resolvidas')">
+            Resolvidas <span class="review-tab__count" id="cntResolvidas">—</span>
+          </button>
+          <button class="review-tab ${filtroInicial === 'todas' ? 'is-active' : ''}" data-filtro="todas" onclick="trocarFiltroRevisao('todas')">
+            Todas <span class="review-tab__count" id="cntTodas">—</span>
+          </button>
+        </div>
+
+        <div id="reviewList">
+          <div style="padding:30px 20px;text-align:center;color:var(--neutral-500);font-size:13px;">
+            <span class="material-symbols-rounded" style="font-size:28px;color:var(--neutral-400);">hourglass_empty</span>
+            <div style="margin-top:6px;">Carregando...</div>
+          </div>
+        </div>
+      </main>
+    </div>
+  `;
 }
+
+async function carregarFilaRevisao() {
+  const listEl = document.getElementById('reviewList');
+  if (!listEl) return;
+
+  try {
+    // Carrega counts + lista em paralelo
+    const [counts, visitas] = await Promise.all([
+      contarVisitasPorFiltro(),
+      listarVisitasAdmin(window._reviewFilter || 'com_flags'),
+    ]);
+
+    // Atualiza counts dos tabs
+    if (document.getElementById('cntComFlags')) document.getElementById('cntComFlags').textContent = counts.com_flags;
+    if (document.getElementById('cntEmRevisao')) document.getElementById('cntEmRevisao').textContent = counts.em_revisao;
+    if (document.getElementById('cntResolvidas')) document.getElementById('cntResolvidas').textContent = counts.resolvidas;
+    if (document.getElementById('cntTodas')) document.getElementById('cntTodas').textContent = counts.todas;
+
+    if (visitas.length === 0) {
+      const msgs = {
+        com_flags: { icon: 'verified', title: 'Nenhuma visita com divergência', desc: 'Todas as visitas estão dentro dos parâmetros.' },
+        em_revisao: { icon: 'inbox', title: 'Nenhuma visita em revisão', desc: 'A fila está limpa.' },
+        resolvidas: { icon: 'task_alt', title: 'Nenhuma visita resolvida ainda', desc: 'Visitas que você aprovar após revisão aparecerão aqui.' },
+        todas: { icon: 'assignment', title: 'Nenhuma visita cadastrada', desc: 'Aguardando primeiras visitas dos nutricionistas.' },
+      };
+      const m = msgs[window._reviewFilter] || msgs.com_flags;
+      listEl.innerHTML = `
+        <div class="empty-state" style="margin:0;">
+          <div class="empty-state__icon">
+            <span class="material-symbols-rounded">${m.icon}</span>
+          </div>
+          <div class="empty-state__title">${m.title}</div>
+          <div class="empty-state__desc">${m.desc}</div>
+        </div>
+      `;
+      return;
+    }
+
+    // Ordena: mais flags críticas primeiro
+    visitas.forEach(v => {
+      v._flags = getFlagsAtivas(v);
+      v._nivel = getNivelCritico(v._flags);
+      v._peso = (v._flags.filter(f => f.nivel === 'critical').length * 100)
+              + (v._flags.filter(f => f.nivel === 'warning').length * 10)
+              + v._flags.length;
+    });
+    visitas.sort((a, b) => b._peso - a._peso);
+
+    listEl.innerHTML = visitas.map(v => {
+      const nivel = v._nivel || 'info';
+      // Classe especial pra visitas com revisão solicitada (devolvidas pro profissional),
+      // independente do status (rascunho novo padrão ou em_revisao legado)
+      const emRevisao = v.status === 'em_revisao' || (v.status === 'rascunho' && v.revisao_motivo && !v.revisao_resolvida_em);
+      const cardClass = emRevisao ? 'review-card--in-review' : `review-card--${nivel}`;
+      const dataFmt = v.checkin_timestamp ? formatarTempoRelativo(v.checkin_timestamp) : (v.data_visita || '—');
+      const nutriNome = v.usuarios?.nome || v.nutricionista?.nome || '—';
+      const flagsHtml = v._flags.slice(0, 3).map(f => `
+        <span class="review-flag review-flag--${f.nivel}">
+          <span class="material-symbols-rounded">${f.icone}</span>
+          ${f.titulo}
+        </span>
+      `).join('');
+      const maisFlags = v._flags.length > 3 ? `<span class="review-flag review-flag--info">+${v._flags.length - 3}</span>` : '';
+      const flagCountClass = nivel === 'critical' ? 'review-card__flag-count--critical' : 'review-card__flag-count--warning';
+
+      return `
+        <a href="#/admin/revisao/detalhe?id=${v.id}" class="review-card ${cardClass}">
+          <div class="review-card__header">
+            <div class="review-card__icon">
+              <span class="material-symbols-rounded">local_hospital</span>
+            </div>
+            <div class="review-card__info">
+              <div class="review-card__inst">${(v.instituicoes?.nome || 'Instituição').replace(/"/g,'&quot;')}</div>
+              <div class="review-card__meta">
+                <span class="review-card__meta-item">
+                  <span class="material-symbols-rounded">person</span>${nutriNome.split(' ')[0]}
+                </span>
+                <span class="review-card__meta-item">
+                  <span class="material-symbols-rounded">schedule</span>${dataFmt}
+                </span>
+                ${sbadgeForStatus(v)}
+              </div>
+            </div>
+            ${v._flags.length > 0 ? `
+              <div class="review-card__flag-count ${flagCountClass}">
+                <span class="material-symbols-rounded" style="font-size:14px">flag</span>${v._flags.length}
+              </div>
+            ` : ''}
+          </div>
+          ${v._flags.length > 0 ? `<div class="review-flags">${flagsHtml}${maisFlags}</div>` : ''}
+        </a>
+      `;
+    }).join('');
+  } catch (err) {
+    listEl.innerHTML = `
+      <div class="empty-state" style="margin:0;">
+        <div class="empty-state__icon" style="background:var(--status-danger-bg);color:var(--status-danger);">
+          <span class="material-symbols-rounded">error</span>
+        </div>
+        <div class="empty-state__title">Erro ao carregar</div>
+        <div class="empty-state__desc">${err.message}</div>
+      </div>
+    `;
+  }
+}
+
+window.trocarFiltroRevisao = function(filtro) {
+  window._reviewFilter = filtro;
+  // Atualiza tabs
+  document.querySelectorAll('.review-tab').forEach(t => {
+    t.classList.toggle('is-active', t.dataset.filtro === filtro);
+  });
+  carregarFilaRevisao();
+};
+
+/* ==========================================================================
+   Tela de detalhes da visita (admin revisando)
+   ========================================================================== */
+
+function renderAdminRevisaoDetalhe() {
+  const user = requireAdmin();
+  if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
+
+  const visitaId = window._routeParams?.id;
+  if (!visitaId) {
+    setTimeout(() => { window.location.hash = '#/admin/revisao'; }, 0);
+    return '<div class="splash"><div class="splash__spinner"></div></div>';
+  }
+
+  window._currentReviewId = visitaId;
+
+  setTimeout(async () => {
+    const bodyEl = document.getElementById('reviewDetailBody');
+    if (!bodyEl) return;
+    try {
+      const v = await getVisitaAdmin(visitaId);
+      window._currentReviewVisita = v;
+      bodyEl.innerHTML = renderReviewDetailContent(v);
+    } catch (err) {
+      bodyEl.innerHTML = `
+        <div class="empty-state" style="margin:0;">
+          <div class="empty-state__icon" style="background:var(--status-danger-bg);color:var(--status-danger);">
+            <span class="material-symbols-rounded">error</span>
+          </div>
+          <div class="empty-state__title">Erro ao carregar</div>
+          <div class="empty-state__desc">${err.message}</div>
+        </div>
+      `;
+    }
+  }, 0);
+
+  return `
+    <div class="mobile-app">
+      ${mobileTopBar({ title: 'Detalhes', showBack: true })}
+      <main class="mcontent" id="reviewDetailBody">
+        <div style="padding:30px 20px;text-align:center;color:var(--neutral-500);font-size:13px;">
+          <span class="material-symbols-rounded" style="font-size:28px;color:var(--neutral-400);">hourglass_empty</span>
+          <div style="margin-top:6px;">Carregando detalhes...</div>
+        </div>
+      </main>
+    </div>
+  `;
+}
+
+function renderReviewDetailContent(v) {
+  const flags = getFlagsAtivas(v);
+  const checkinFmt = v.checkin_timestamp ? formatarDataCompleta(v.checkin_timestamp) : '—';
+  const checkoutFmt = v.checkout_timestamp ? formatarDataCompleta(v.checkout_timestamp) : '—';
+  const duracao = calcularDuracaoMin(v.checkin_timestamp, v.checkout_timestamp);
+  const nutriNome = v.nutricionista?.nome || '—';
+  const instName = v.instituicoes?.nome || 'Instituição';
+  const podeAgir = v.status !== 'aprovada_pos_revisao';
+
+  return `
+    <!-- Header com status -->
+    <div class="report-info">
+      <div class="report-info__icon">
+        <span class="material-symbols-rounded">local_hospital</span>
+      </div>
+      <div class="report-info__body">
+        <div class="report-info__name">${instName.replace(/"/g,'&quot;')}</div>
+        <div class="report-info__meta">
+          <span class="report-info__meta-item">
+            <span class="material-symbols-rounded">person</span>${nutriNome.replace(/"/g,'&quot;')}
+          </span>
+          <span class="report-info__meta-item">
+            <span class="material-symbols-rounded">schedule</span>${formatarDuracao(duracao)}
+          </span>
+          <span class="report-info__meta-item">
+            ${sbadgeForStatus(v)}
+          </span>
+        </div>
+      </div>
+    </div>
+
+    ${v.revisao_motivo && !v.revisao_resolvida_em ? `
+      <div class="report-lock-warning" style="background:#FEF4E1;border-color:rgba(245,158,11,0.3);color:#92400E;">
+        <span class="material-symbols-rounded" style="color:var(--status-warning);">rate_review</span>
+        <div>
+          <strong>Revisão solicitada ${v.status === 'rascunho' ? '— aguardando correção do profissional.' : '.'}</strong> ${v.revisor_solicitou?.nome ? `Por ${v.revisor_solicitou.nome}` : 'Por admin'}${v.revisao_solicitada_em ? ` em ${formatarDataCurta(v.revisao_solicitada_em)}` : ''}.
+          <div style="margin-top:6px;background:var(--neutral-0);border-radius:6px;padding:8px 10px;font-style:italic;color:var(--brand-navy);">
+            "${v.revisao_motivo.replace(/"/g,'&quot;')}"
+          </div>
+        </div>
+      </div>
+    ` : v.status === 'aprovada_pos_revisao' ? `
+      <div class="report-lock-warning" style="background:#E6F6EF;border-color:rgba(34,160,107,0.25);color:#166534;">
+        <span class="material-symbols-rounded" style="color:var(--status-success);">verified</span>
+        <div>
+          <strong>Visita aprovada pós-revisão.</strong> Resolvida por ${v.revisor_resolveu?.nome || 'admin'} em ${v.revisao_resolvida_em ? formatarDataCurta(v.revisao_resolvida_em) : '—'}.
+        </div>
+      </div>
+    ` : ''}
+
+    <!-- Flags ativas -->
+    ${flags.length > 0 ? `
+      <div class="review-detail__section">
+        <div class="review-detail__section-title">
+          <span class="material-symbols-rounded">flag</span>
+          Divergências detectadas (${flags.length})
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          ${flags.map(f => `
+            <div style="display:flex;gap:10px;align-items:flex-start;padding:10px;border-radius:10px;background:${
+              f.nivel === 'critical' ? 'var(--status-danger-bg)' :
+              f.nivel === 'warning' ? '#FEF4E1' : '#E4ECFD'
+            };">
+              <span class="material-symbols-rounded" style="font-size:20px;color:${
+                f.nivel === 'critical' ? 'var(--status-danger)' :
+                f.nivel === 'warning' ? 'var(--status-warning)' : 'var(--status-info)'
+              };flex-shrink:0;">${f.icone}</span>
+              <div>
+                <div style="font-size:13px;font-weight:700;color:${
+                  f.nivel === 'critical' ? '#B91C1C' :
+                  f.nivel === 'warning' ? '#B45309' : '#1D4ED8'
+                };">${f.titulo}</div>
+                <div style="font-size:12px;color:var(--neutral-600);margin-top:2px;line-height:1.4;">${f.descricao}</div>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    ` : `
+      <div class="review-detail__section">
+        <div style="display:flex;gap:10px;align-items:center;color:var(--status-success);padding:6px 0;">
+          <span class="material-symbols-rounded">check_circle</span>
+          <strong style="font-size:13px;">Nenhuma divergência detectada</strong>
+        </div>
+      </div>
+    `}
+
+    <!-- Info GPS -->
+    <div class="review-detail__section">
+      <div class="review-detail__section-title">
+        <span class="material-symbols-rounded">my_location</span>
+        Check-in / Check-out
+      </div>
+      <div class="review-detail__row">
+        <span class="review-detail__label">Check-in</span>
+        <span class="review-detail__value review-detail__value--mono">${checkinFmt}</span>
+      </div>
+      <div class="review-detail__row">
+        <span class="review-detail__label">Check-out</span>
+        <span class="review-detail__value review-detail__value--mono">${checkoutFmt}</span>
+      </div>
+      ${v.checkin_latitude ? `
+        <div class="review-detail__row">
+          <span class="review-detail__label">Coords check-in</span>
+          <span class="review-detail__value review-detail__value--mono">
+            <a href="https://www.google.com/maps?q=${v.checkin_latitude},${v.checkin_longitude}" target="_blank" rel="noopener" style="color:var(--status-info);text-decoration:none;display:inline-flex;align-items:center;gap:4px;">
+              ${v.checkin_latitude.toFixed(5)}, ${v.checkin_longitude.toFixed(5)}
+              <span class="material-symbols-rounded" style="font-size:14px;">open_in_new</span>
+            </a>
+          </span>
+        </div>
+      ` : ''}
+      ${v.checkout_latitude ? `
+        <div class="review-detail__row">
+          <span class="review-detail__label">Coords check-out</span>
+          <span class="review-detail__value review-detail__value--mono">
+            <a href="https://www.google.com/maps?q=${v.checkout_latitude},${v.checkout_longitude}" target="_blank" rel="noopener" style="color:var(--status-info);text-decoration:none;display:inline-flex;align-items:center;gap:4px;">
+              ${v.checkout_latitude.toFixed(5)}, ${v.checkout_longitude.toFixed(5)}
+              <span class="material-symbols-rounded" style="font-size:14px;">open_in_new</span>
+            </a>
+          </span>
+        </div>
+      ` : ''}
+      ${v.checkin_precisao_metros ? `
+        <div class="review-detail__row">
+          <span class="review-detail__label">Precisão GPS</span>
+          <span class="review-detail__value review-detail__value--mono">±${Math.round(v.checkin_precisao_metros)}m</span>
+        </div>
+      ` : ''}
+      ${v.checkin_manual ? `
+        <div class="review-detail__row">
+          <span class="review-detail__label">Modo</span>
+          <span class="review-detail__value" style="color:var(--status-warning);">Manual (sem GPS)</span>
+        </div>
+      ` : ''}
+      ${renderMiniMapaVisita(v)}
+    </div>
+
+    <!-- Relatório da nutri -->
+    <div class="review-detail__section">
+      <div class="review-detail__section-title">
+        <span class="material-symbols-rounded">description</span>
+        Relatório
+      </div>
+      <div class="review-detail__row">
+        <span class="review-detail__label">Horário declarado</span>
+        <span class="review-detail__value review-detail__value--mono">
+          ${v.horario_inicio || '—'} → ${v.horario_termino || '—'}
+        </span>
+      </div>
+      <div class="review-detail__row">
+        <span class="review-detail__label">Foi realizada?</span>
+        <span class="review-detail__value" style="color:${v.visita_realizada === false ? 'var(--status-danger)' : v.visita_realizada === true ? 'var(--status-success)' : 'var(--neutral-500)'};">
+          ${v.visita_realizada === false ? 'Não' : v.visita_realizada === true ? 'Sim' : '—'}
+        </span>
+      </div>
+      ${v.visita_realizada === false ? `
+        <div class="review-detail__row" style="flex-direction:column;align-items:flex-start;">
+          <span class="review-detail__label">Motivo</span>
+          <span class="review-detail__value review-detail__value--multiline">${(v.motivo_nao_realizada || '—').replace(/</g, '&lt;')}</span>
+        </div>
+      ` : `
+        <div class="review-detail__row" style="flex-direction:column;align-items:flex-start;">
+          <span class="review-detail__label">Profissionais conversados (${v.profissionais?.length || 0})</span>
+          <div class="review-detail__value--multiline">
+            ${v.profissionais?.length ? v.profissionais.map(p => `
+              <div style="padding:4px 0;">• ${p.nome} <span style="color:var(--neutral-500);font-size:12px;">(${p.profissao === 'Outro' ? (p.profissao_outro || 'Outro') : p.profissao})</span></div>
+            `).join('') : '<span style="color:var(--neutral-400);font-style:italic;">Nenhum profissional registrado</span>'}
+          </div>
+        </div>
+        <div class="review-detail__row" style="flex-direction:column;align-items:flex-start;">
+          <span class="review-detail__label">Objetivos (${v.objetivos?.length || 0})</span>
+          <div class="review-detail__value--multiline">
+            ${v.objetivos?.length ? v.objetivos.map(o => `<div style="padding:4px 0;">• ${o.nome}</div>`).join('') : '<span style="color:var(--neutral-400);font-style:italic;">Nenhum objetivo registrado</span>'}
+          </div>
+        </div>
+        <div class="review-detail__row" style="flex-direction:column;align-items:flex-start;">
+          <span class="review-detail__label">Resumo</span>
+          <span class="review-detail__value review-detail__value--multiline">${(v.resumo || '—').replace(/</g, '&lt;')}</span>
+        </div>
+        <div class="review-detail__row" style="flex-direction:column;align-items:flex-start;">
+          <span class="review-detail__label">Próximos passos</span>
+          <span class="review-detail__value review-detail__value--multiline">${(v.proximos_passos || '—').replace(/</g, '&lt;')}</span>
+        </div>
+      `}
+    </div>
+
+    ${podeAgir ? `
+      <!-- Ações admin: sempre 2 opções diretas, independente do status -->
+      <div class="review-actions">
+        <button class="review-action-btn review-action-btn--approve" onclick="handleAprovarVisita()">
+          <span class="material-symbols-rounded">verified</span>
+          ${v.status === 'em_revisao' ? 'Aprovar esta visita' : 'Aprovar'}
+        </button>
+        <button class="review-action-btn review-action-btn--return" onclick="handleDevolverAoNutri()">
+          <span class="material-symbols-rounded">undo</span>
+          Devolver pro profissional
+        </button>
+      </div>
+    ` : ''}
+  `;
+}
+
+// Formata timestamp completo (data + hora)
+// Renderiza mini mapa SVG ilustrativo com os pinos check-in / check-out / instituição
+// + link pro Google Maps com rota completa.
+function renderMiniMapaVisita(v) {
+  const inst = v.instituicoes || {};
+  const temInst = inst.latitude !== null && inst.latitude !== undefined;
+  const temCheckin = v.checkin_latitude !== null && v.checkin_latitude !== undefined;
+  const temCheckout = v.checkout_latitude !== null && v.checkout_latitude !== undefined;
+
+  // Se não tem nenhuma coord, não renderiza nada
+  if (!temInst && !temCheckin && !temCheckout) return '';
+
+  // Coleta pontos com lat/lng pra calcular bounds
+  const pontos = [];
+  if (temInst) pontos.push({ tipo: 'inst', lat: inst.latitude, lng: inst.longitude, cor: 'var(--brand-lime)', label: 'Local' });
+  if (temCheckin) pontos.push({ tipo: 'in', lat: v.checkin_latitude, lng: v.checkin_longitude, cor: 'var(--status-info)', label: 'Check-in' });
+  if (temCheckout) pontos.push({ tipo: 'out', lat: v.checkout_latitude, lng: v.checkout_longitude, cor: 'var(--status-warning)', label: 'Check-out' });
+
+  // Bounds
+  const lats = pontos.map(p => p.lat);
+  const lngs = pontos.map(p => p.lng);
+  const minLat = Math.min(...lats), maxLat = Math.max(...lats);
+  const minLng = Math.min(...lngs), maxLng = Math.max(...lngs);
+  const dLat = Math.max(maxLat - minLat, 0.001);
+  const dLng = Math.max(maxLng - minLng, 0.001);
+  // Padding nos bounds (15% de margem)
+  const padLat = dLat * 0.2, padLng = dLng * 0.2;
+
+  // Mapeia para coords de tela (SVG 100x50 viewBox)
+  const W = 100, H = 50;
+  const toXY = (lat, lng) => {
+    const x = ((lng - (minLng - padLng)) / (dLng + 2 * padLng)) * W;
+    // inverte Y (lat maior = mais ao norte = topo)
+    const y = H - ((lat - (minLat - padLat)) / (dLat + 2 * padLat)) * H;
+    return { x, y };
+  };
+
+  // Calcula distância aproximada entre check-in e instituição (pra mostrar no label)
+  let distStr = '';
+  if (temCheckin && temInst) {
+    const d = calcularDistanciaMetros(v.checkin_latitude, v.checkin_longitude, inst.latitude, inst.longitude);
+    distStr = d < 1000 ? `${Math.round(d)}m do local` : `${(d / 1000).toFixed(1)}km do local`;
+  }
+
+  // Monta URL do Google Maps com todos os pinos
+  const mapUrl = pontos.length > 1
+    ? `https://www.google.com/maps/dir/${pontos.map(p => `${p.lat},${p.lng}`).join('/')}`
+    : `https://www.google.com/maps?q=${pontos[0].lat},${pontos[0].lng}`;
+
+  // Linha ligando check-in -> check-out (se ambos existem)
+  let linhaPath = '';
+  if (temCheckin && temCheckout) {
+    const a = toXY(v.checkin_latitude, v.checkin_longitude);
+    const b = toXY(v.checkout_latitude, v.checkout_longitude);
+    linhaPath = `<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="var(--neutral-300)" stroke-width="0.5" stroke-dasharray="1.5 1.5" />`;
+  }
+
+  // Pinos
+  const pinsSvg = pontos.map(p => {
+    const { x, y } = toXY(p.lat, p.lng);
+    return `
+      <circle cx="${x}" cy="${y}" r="4" fill="${p.cor}" opacity="0.25" />
+      <circle cx="${x}" cy="${y}" r="2" fill="${p.cor}" />
+    `;
+  }).join('');
+
+  // Legenda
+  const legenda = pontos.map(p => `
+    <span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--neutral-600);">
+      <span style="width:8px;height:8px;border-radius:50%;background:${p.cor};"></span>${p.label}
+    </span>
+  `).join('<span style="color:var(--neutral-300);">·</span>');
+
+  return `
+    <div style="margin-top:12px;padding:12px;background:var(--neutral-50);border-radius:10px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:8px;flex-wrap:wrap;">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">${legenda}</div>
+        <a href="${mapUrl}" target="_blank" rel="noopener" style="color:var(--status-info);text-decoration:none;display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:600;">
+          Ver no Google Maps
+          <span class="material-symbols-rounded" style="font-size:14px;">open_in_new</span>
+        </a>
+      </div>
+      <svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:120px;display:block;background:var(--neutral-0);border-radius:6px;border:1px solid var(--neutral-200);">
+        ${linhaPath}
+        ${pinsSvg}
+      </svg>
+      ${distStr ? `<div style="margin-top:6px;font-size:11px;color:var(--neutral-500);text-align:center;">Check-in a aprox. <strong>${distStr}</strong></div>` : ''}
+    </div>
+  `;
+}
+
+function formatarDataCompleta(ts) {
+  if (!ts) return '—';
+  const d = new Date(ts);
+  const meses = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+  return `${d.getDate()} ${meses[d.getMonth()]} ${d.getFullYear()} · ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+
+/* ==========================================================================
+   Ações admin: aprovar, enviar pra revisão, devolver
+   ========================================================================== */
+
+window.handleAprovarVisita = async function() {
+  const v = window._currentReviewVisita;
+  if (!v) return;
+
+  const ok = await showModalConfirmacao({
+    icone: 'verified',
+    iconeCor: 'success',
+    titulo: 'Aprovar visita',
+    subtitulo: 'A visita ficará imutável após a aprovação — não será mais possível editar nem devolver.',
+    btnConfirmar: 'Sim, aprovar',
+    btnCancelar: 'Cancelar',
+  });
+  if (!ok) return;
+
+  const user = getCurrentUser();
+  try {
+    const { data, error, status } = await db.from('visitas').update({
+      status: 'aprovada_pos_revisao',
+      revisao_resolvida_por: user.id,
+      revisao_resolvida_em: new Date().toISOString(),
+      atualizado_em: new Date().toISOString(),
+    }).eq('id', v.id).select();
+    if (error) throw new Error(error.message || 'Falha ao atualizar visita');
+    if (!data || data.length === 0) {
+      throw new Error('Update não afetou nenhum registro. Verifique as políticas RLS da tabela visitas no Supabase.');
+    }
+    setFlash('success', 'Visita aprovada!');
+    window.location.hash = '#/admin/revisao';
+  } catch (err) {
+    alert('Erro ao aprovar: ' + err.message);
+    console.error('[handleAprovarVisita]', err);
+  }
+};
+
+window.handleEnviarParaRevisao = async function() {
+  const v = window._currentReviewVisita;
+  if (!v) return;
+
+  const motivo = await showModalInput({
+    icone: 'rate_review',
+    iconeCor: 'info',
+    titulo: 'Enviar pra revisão',
+    subtitulo: 'Descreva o que precisa ser verificado ou corrigido. O nutricionista verá esse motivo.',
+    label: 'Motivo da revisão',
+    placeholder: 'Ex: Horário declarado não bate com o check-in...',
+    required: true,
+    btnConfirmar: 'Enviar pra revisão',
+  });
+  if (!motivo) return;
+
+  const user = getCurrentUser();
+  try {
+    const { data, error } = await db.from('visitas').update({
+      status: 'em_revisao',
+      revisao_solicitada_por: user.id,
+      revisao_solicitada_em: new Date().toISOString(),
+      revisao_motivo: motivo,
+      atualizado_em: new Date().toISOString(),
+    }).eq('id', v.id).select();
+    if (error) throw new Error(error.message || 'Falha ao atualizar visita');
+    if (!data || data.length === 0) {
+      throw new Error('Update não afetou nenhum registro. Verifique as políticas RLS da tabela visitas no Supabase.');
+    }
+    setFlash('success', 'Visita enviada para revisão.');
+    window.location.hash = '#/admin/revisao';
+  } catch (err) {
+    alert('Erro ao enviar pra revisão: ' + err.message);
+    console.error('[handleEnviarParaRevisao]', err);
+  }
+};
+
+window.handleDevolverAoNutri = async function() {
+  const v = window._currentReviewVisita;
+  if (!v) return;
+
+  const motivo = await showModalInput({
+    icone: 'undo',
+    iconeCor: 'warning',
+    titulo: 'Devolver pro profissional',
+    subtitulo: 'A visita volta para "Rascunho" e o profissional poderá editar e finalizar novamente (janela de 24h a partir de agora). Descreva o que precisa ser corrigido — o motivo fica visível na tela de relatório.',
+    label: 'Motivo da devolução',
+    placeholder: 'Ex: horário não bate com o check-in, faltou detalhar o resumo...',
+    required: true,
+    btnConfirmar: 'Devolver',
+  });
+  if (!motivo) return;
+
+  const user = getCurrentUser();
+  try {
+    const { data, error } = await db.from('visitas').update({
+      status: 'rascunho',
+      revisao_motivo: motivo,
+      revisao_solicitada_por: user.id,
+      revisao_solicitada_em: new Date().toISOString(),
+      atualizado_em: new Date().toISOString(),
+    }).eq('id', v.id).select();
+    if (error) throw new Error(error.message || 'Falha ao atualizar visita');
+    if (!data || data.length === 0) {
+      throw new Error('Update não afetou nenhum registro. Verifique as políticas RLS da tabela visitas no Supabase.');
+    }
+    setFlash('success', 'Visita devolvida pro profissional.');
+    window.location.hash = '#/admin/revisao';
+  } catch (err) {
+    alert('Erro ao devolver: ' + err.message);
+    console.error('[handleDevolverAoNutri]', err);
+  }
+};
+
+// Modal genérico de confirmação (sim/não)
+function showModalConfirmacao({ icone = 'info', iconeCor = 'info', titulo, subtitulo, btnConfirmar = 'Confirmar', btnCancelar = 'Cancelar' }) {
+  return new Promise((resolve) => {
+    const backdrop = document.createElement('div');
+    backdrop.className = 'modal-backdrop';
+    const iconeBgMap = {
+      success: 'var(--status-success-bg);color:var(--status-success)',
+      warning: '#FEF4E1;color:var(--status-warning)',
+      danger: 'var(--status-danger-bg);color:var(--status-danger)',
+      info: '#E4ECFD;color:var(--status-info)',
+    };
+    const iconeStyle = iconeBgMap[iconeCor] || iconeBgMap.info;
+    const cancelHtml = btnCancelar
+      ? `<button class="modal-btn modal-btn--secondary" id="mcCancel">${btnCancelar}</button>`
+      : '';
+    backdrop.innerHTML = `
+      <div class="modal-card">
+        <div class="modal-card__header">
+          <div class="modal-card__icon" style="background:${iconeStyle.split(';')[0]};color:${iconeStyle.split(';')[1].replace('color:','')};">
+            <span class="material-symbols-rounded">${icone}</span>
+          </div>
+          <div class="modal-card__title">${titulo}</div>
+          <div class="modal-card__subtitle">${subtitulo}</div>
+        </div>
+        <div class="modal-card__footer">
+          <button class="modal-btn modal-btn--primary" id="mcOk">${btnConfirmar}</button>
+          ${cancelHtml}
+        </div>
+      </div>
+    `;
+    document.body.appendChild(backdrop);
+    const cleanup = () => backdrop.remove();
+    backdrop.querySelector('#mcOk').onclick = () => { cleanup(); resolve(true); };
+    const cancelBtn = backdrop.querySelector('#mcCancel');
+    if (cancelBtn) cancelBtn.onclick = () => { cleanup(); resolve(false); };
+    backdrop.onclick = (e) => { if (e.target === backdrop) { cleanup(); resolve(false); } };
+  });
+}
+
+// Modal genérico de input (com textarea)
+// Modal dedicado pra cadastro rápido de instituição no check-in.
+// Pede nome + endereço (obrigatórios) + cidade (obrigatória) + bairro (opcional).
+// Resolve({ nome, logradouro, bairro, cidade }) ou null se cancelou.
+function showModalInstituicaoNova({ valorInicialNome = '' } = {}) {
+  return new Promise((resolve) => {
+    const backdrop = document.createElement('div');
+    backdrop.className = 'modal-backdrop';
+    backdrop.innerHTML = `
+      <div class="modal-card" style="max-width:440px;">
+        <div class="modal-card__header">
+          <div class="modal-card__icon" style="background:#E4ECFD;color:var(--status-info);">
+            <span class="material-symbols-rounded">add_location_alt</span>
+          </div>
+          <div class="modal-card__title">Cadastrar nova instituição</div>
+          <div class="modal-card__subtitle">Preencha nome e endereço. O admin completará os demais dados (CNPJ, coordenadas, etc.) ao aprovar.</div>
+        </div>
+        <div class="modal-card__body" style="display:flex;flex-direction:column;gap:12px;">
+          <div class="report-field">
+            <label>Nome da instituição <span style="color:var(--status-danger)">*</span></label>
+            <input type="text" id="mniNome" placeholder="Ex: Hospital São Camilo Pompeia" value="${valorInicialNome.replace(/"/g,'&quot;')}" style="width:100%;padding:10px 12px;border:1.5px solid var(--neutral-200);border-radius:10px;font-size:14px;font-family:inherit;" />
+          </div>
+          <div class="report-field">
+            <label>Endereço (rua e número) <span style="color:var(--status-danger)">*</span></label>
+            <input type="text" id="mniEndereco" placeholder="Ex: Rua Frei Caneca, 1407" style="width:100%;padding:10px 12px;border:1.5px solid var(--neutral-200);border-radius:10px;font-size:14px;font-family:inherit;" />
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <div class="report-field">
+              <label>Bairro</label>
+              <input type="text" id="mniBairro" placeholder="Ex: Pompeia" style="width:100%;padding:10px 12px;border:1.5px solid var(--neutral-200);border-radius:10px;font-size:14px;font-family:inherit;" />
+            </div>
+            <div class="report-field">
+              <label>Cidade <span style="color:var(--status-danger)">*</span></label>
+              <input type="text" id="mniCidade" placeholder="Ex: São Paulo" style="width:100%;padding:10px 12px;border:1.5px solid var(--neutral-200);border-radius:10px;font-size:14px;font-family:inherit;" />
+            </div>
+          </div>
+        </div>
+        <div class="modal-card__footer">
+          <button class="modal-btn modal-btn--primary" id="mniOk">Cadastrar e usar</button>
+          <button class="modal-btn modal-btn--secondary" id="mniCancel">Cancelar</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(backdrop);
+    const nomeEl = backdrop.querySelector('#mniNome');
+    const endEl = backdrop.querySelector('#mniEndereco');
+    const bairroEl = backdrop.querySelector('#mniBairro');
+    const cidadeEl = backdrop.querySelector('#mniCidade');
+    setTimeout(() => { (valorInicialNome ? endEl : nomeEl).focus(); }, 150);
+    const cleanup = () => backdrop.remove();
+    const submit = () => {
+      const nome = nomeEl.value.trim();
+      const logradouro = endEl.value.trim();
+      const bairro = bairroEl.value.trim();
+      const cidade = cidadeEl.value.trim();
+      if (!nome) { nomeEl.focus(); return; }
+      if (!logradouro) { endEl.focus(); return; }
+      if (!cidade) { cidadeEl.focus(); return; }
+      cleanup();
+      resolve({ nome, logradouro, bairro: bairro || null, cidade });
+    };
+    backdrop.querySelector('#mniOk').onclick = submit;
+    backdrop.querySelector('#mniCancel').onclick = () => { cleanup(); resolve(null); };
+    backdrop.onclick = (e) => { if (e.target === backdrop) { cleanup(); resolve(null); } };
+    [nomeEl, endEl, bairroEl, cidadeEl].forEach(el => {
+      el.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && el === cidadeEl) { e.preventDefault(); submit(); }
+      });
+    });
+  });
+}
+
+function showModalInput({ icone = 'edit', iconeCor = 'info', titulo, subtitulo, label, placeholder, required = false, btnConfirmar = 'Enviar', valorInicial = '', tipo = 'textarea' }) {
+  return new Promise((resolve) => {
+    const backdrop = document.createElement('div');
+    backdrop.className = 'modal-backdrop';
+    const iconeBgMap = {
+      info: '#E4ECFD;color:var(--status-info)',
+      warning: '#FEF4E1;color:var(--status-warning)',
+    };
+    const iconeStyle = iconeBgMap[iconeCor] || iconeBgMap.info;
+    const campoHtml = tipo === 'input'
+      ? `<input type="text" id="miText" placeholder="${(placeholder || '').replace(/"/g,'&quot;')}" value="${(valorInicial || '').replace(/"/g,'&quot;')}" style="width:100%;padding:10px 12px;border:1.5px solid var(--neutral-200);border-radius:10px;font-size:14px;font-family:inherit;" />`
+      : `<textarea id="miText" placeholder="${(placeholder || '').replace(/"/g,'&quot;')}" style="min-height:90px;">${(valorInicial || '').replace(/</g,'&lt;')}</textarea>`;
+    backdrop.innerHTML = `
+      <div class="modal-card">
+        <div class="modal-card__header">
+          <div class="modal-card__icon" style="background:${iconeStyle.split(';')[0]};color:${iconeStyle.split(';')[1].replace('color:','')};">
+            <span class="material-symbols-rounded">${icone}</span>
+          </div>
+          <div class="modal-card__title">${titulo}</div>
+          <div class="modal-card__subtitle">${subtitulo}</div>
+        </div>
+        <div class="modal-card__body">
+          <div class="report-field">
+            <label>${label}${required ? ' <span style="color:var(--status-danger)">*</span>' : ''}</label>
+            ${campoHtml}
+          </div>
+        </div>
+        <div class="modal-card__footer">
+          <button class="modal-btn modal-btn--primary" id="miOk">${btnConfirmar}</button>
+          <button class="modal-btn modal-btn--secondary" id="miCancel">Cancelar</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(backdrop);
+    const inp = backdrop.querySelector('#miText');
+    setTimeout(() => { inp.focus(); if (tipo === 'input') inp.select(); }, 150);
+    const cleanup = () => backdrop.remove();
+    const submit = () => {
+      const v = inp.value.trim();
+      if (required && !v) {
+        alert('Campo obrigatório');
+        return;
+      }
+      cleanup();
+      resolve(v);
+    };
+    backdrop.querySelector('#miOk').onclick = submit;
+    backdrop.querySelector('#miCancel').onclick = () => { cleanup(); resolve(null); };
+    backdrop.onclick = (e) => { if (e.target === backdrop) { cleanup(); resolve(null); } };
+    if (tipo === 'input') {
+      inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); submit(); } });
+    }
+  });
+}
+
+/* ==========================================================================
+   PENDÊNCIAS DE APROVAÇÃO (instituições e objetivos sugeridos pelo nutri)
+   ========================================================================== */
+
+function renderAdminPendentes() {
+  const user = requireAdmin();
+  if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
+
+  setTimeout(async () => {
+    await carregarAdminPendentes();
+  }, 0);
+
+  return `
+    <div class="mobile-app">
+      ${mobileTopBar({ title: 'Pendências de aprovação', showBack: true })}
+      <main class="mcontent" id="pendBody">
+        <div style="padding:40px 20px;text-align:center;color:var(--neutral-500);font-size:13px;">
+          <span class="material-symbols-rounded" style="font-size:32px;color:var(--neutral-400);">hourglass_empty</span>
+          <div style="margin-top:8px;">Carregando pendências...</div>
+        </div>
+      </main>
+    </div>
+  `;
+}
+
+async function carregarAdminPendentes() {
+  const body = document.getElementById('pendBody');
+  if (!body) return;
+  try {
+    const [instPend, objPend] = await Promise.all([
+      listarInstituicoesPendentes(),
+      listarObjetivosPendentes(),
+    ]);
+    const total = instPend.length + objPend.length;
+    if (total === 0) {
+      body.innerHTML = `
+        <div class="empty-state" style="margin:0;">
+          <div class="empty-state__icon" style="background:var(--status-success-bg);color:var(--status-success);">
+            <span class="material-symbols-rounded">check_circle</span>
+          </div>
+          <div class="empty-state__title">Nada pendente</div>
+          <div class="empty-state__desc">Todas as sugestões dos nutricionistas já foram revisadas.</div>
+        </div>
+      `;
+      return;
+    }
+    const instSection = instPend.length > 0 ? `
+      <div class="section-head" style="margin-top:0;">
+        <h2>Instituições <span style="font-size:12px;font-weight:600;color:var(--neutral-500);margin-left:6px;">(${instPend.length})</span></h2>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:24px;">
+        ${instPend.map(i => cardPendenteInst(i)).join('')}
+      </div>
+    ` : '';
+    const objSection = objPend.length > 0 ? `
+      <div class="section-head" style="${instPend.length === 0 ? 'margin-top:0;' : ''}">
+        <h2>Objetivos <span style="font-size:12px;font-weight:600;color:var(--neutral-500);margin-left:6px;">(${objPend.length})</span></h2>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        ${objPend.map(o => cardPendenteObj(o)).join('')}
+      </div>
+    ` : '';
+    body.innerHTML = instSection + objSection;
+  } catch (err) {
+    body.innerHTML = `<div style="padding:20px;color:var(--status-danger);">Erro: ${err.message}</div>`;
+  }
+}
+
+function cardPendenteInst(inst) {
+  const autor = inst.cadastrada_por_user?.nome || 'Profissional';
+  const quando = inst.criado_em ? formatarTempoRelativo(inst.criado_em) : '—';
+  const endereco = [inst.logradouro, inst.bairro].filter(Boolean).join(', ');
+  const cidadeUf = [inst.cidade, inst.estado].filter(Boolean).join(' · ');
+  const linhaLocal = [endereco, cidadeUf].filter(Boolean).join(' — ');
+
+  // Lista os campos que ainda faltam o admin preencher
+  const faltando = [];
+  if (!inst.cnpj) faltando.push('CNPJ');
+  if (!inst.razao_social) faltando.push('razão social');
+  if (!inst.latitude || !inst.longitude) faltando.push('coordenadas');
+
+  return `
+    <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-left:4px solid var(--status-warning);border-radius:12px;padding:14px;box-shadow:0 2px 6px rgba(10,31,92,0.04);">
+      <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:10px;">
+        <div style="width:36px;height:36px;border-radius:10px;background:#FEF4E1;color:var(--status-warning);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <span class="material-symbols-rounded" style="font-size:20px;">local_hospital</span>
+        </div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:14px;line-height:1.3;">${inst.nome.replace(/"/g,'&quot;')}</div>
+          <div style="font-size:11.5px;color:var(--neutral-500);margin-top:3px;">Sugerido por ${autor.replace(/"/g,'&quot;')} · ${quando}</div>
+        </div>
+      </div>
+      ${linhaLocal ? `
+        <div style="background:var(--neutral-50);border-radius:8px;padding:8px 10px;margin-bottom:10px;font-size:12px;color:var(--neutral-700);display:flex;gap:6px;align-items:flex-start;">
+          <span class="material-symbols-rounded" style="font-size:16px;color:var(--neutral-500);flex-shrink:0;margin-top:1px;">location_on</span>
+          <span style="flex:1;">${linhaLocal.replace(/"/g,'&quot;')}</span>
+        </div>
+      ` : ''}
+      ${faltando.length > 0 ? `
+        <div style="background:#FEF4E1;border-radius:8px;padding:8px 10px;margin-bottom:10px;font-size:11px;color:#92400E;display:flex;gap:6px;align-items:center;">
+          <span class="material-symbols-rounded" style="font-size:14px;">info</span>
+          <span>Precisa preencher antes de aprovar: <strong>${faltando.join(', ')}</strong></span>
+        </div>
+      ` : ''}
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+        <button onclick="abrirEdicaoInstituicaoPendente('${inst.id}')" style="padding:10px;border-radius:8px;border:none;background:var(--brand-navy);color:#fff;font-weight:700;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px;">
+          <span class="material-symbols-rounded" style="font-size:14px;">edit_note</span>Completar e aprovar
+        </button>
+        <button onclick="rejeitarInstituicaoPendente('${inst.id}')" style="padding:10px;border-radius:8px;border:1.5px solid var(--status-danger);background:var(--neutral-0);color:var(--status-danger);font-weight:700;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px;">
+          <span class="material-symbols-rounded" style="font-size:14px;">close</span>Rejeitar
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+function cardPendenteObj(obj) {
+  const autor = obj.sugerido_por_user?.nome || 'Nutri';
+  const quando = obj.criado_em ? formatarTempoRelativo(obj.criado_em) : '—';
+  return `
+    <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-left:4px solid var(--brand-lime);border-radius:12px;padding:14px;box-shadow:0 2px 6px rgba(10,31,92,0.04);">
+      <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:10px;">
+        <div style="width:36px;height:36px;border-radius:10px;background:#F4F9EA;color:var(--brand-lime);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <span class="material-symbols-rounded" style="font-size:20px;">flag</span>
+        </div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:14px;line-height:1.3;">${obj.nome.replace(/"/g,'&quot;')}</div>
+          <div style="font-size:11.5px;color:var(--neutral-500);margin-top:3px;">Sugerido por ${autor.replace(/"/g,'&quot;')} · ${quando}</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;">
+        <button onclick="aprovarObjetivoPendente('${obj.id}')" style="padding:8px;border-radius:8px;border:none;background:var(--status-success);color:#fff;font-weight:700;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px;">
+          <span class="material-symbols-rounded" style="font-size:14px;">check</span>Aprovar
+        </button>
+        <button onclick="editarObjetivoPendente('${obj.id}','${obj.nome.replace(/'/g,'&#39;').replace(/"/g,'&quot;')}')" style="padding:8px;border-radius:8px;border:1.5px solid var(--neutral-300);background:var(--neutral-0);color:var(--brand-navy);font-weight:700;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px;">
+          <span class="material-symbols-rounded" style="font-size:14px;">edit</span>Editar
+        </button>
+        <button onclick="rejeitarObjetivoPendente('${obj.id}')" style="padding:8px;border-radius:8px;border:1.5px solid var(--status-danger);background:var(--neutral-0);color:var(--status-danger);font-weight:700;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px;">
+          <span class="material-symbols-rounded" style="font-size:14px;">close</span>Rejeitar
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+// === Handlers: aprovar/editar/rejeitar instituição pendente ===
+// Helper: executa update no Supabase e lança erro explícito se não atualizar
+async function updateOrThrow(tabela, patch, id) {
+  const { data, error } = await db.from(tabela).update(patch).eq('id', id).select();
+  if (error) throw new Error(error.message || `Falha ao atualizar ${tabela}`);
+  if (!data || data.length === 0) {
+    throw new Error(`Update em ${tabela} não afetou nenhum registro. Verifique as políticas RLS no Supabase.`);
+  }
+  return data[0];
+}
+
+window.aprovarInstituicaoPendente = async function(id) {
+  const ok = await showModalConfirmacao({
+    icone: 'check_circle',
+    iconeCor: 'success',
+    titulo: 'Aprovar instituição?',
+    subtitulo: 'A instituição ficará oficial. Lembre-se de completar os dados (endereço, CNPJ, coordenadas) na tela de Instituições.',
+    btnConfirmar: 'Sim, aprovar',
+    btnCancelar: 'Cancelar',
+  });
+  if (!ok) return;
+  try {
+    await updateOrThrow('instituicoes', { pendente_aprovacao: false }, id);
+    setFlash('success', 'Instituição aprovada. Complete os dados agora.');
+    await carregarAdminPendentes();
+  } catch (err) { alert('Erro: ' + err.message); console.error(err); }
+};
+
+// Edição completa da instituição pendente: abre modal grande com todos os campos.
+// Admin pode preencher tudo e aprovar de uma vez só.
+window.abrirEdicaoInstituicaoPendente = async function(id) {
+  // Carrega dados atuais
+  const { data: inst, error } = await db.from('instituicoes').select('*').eq('id', id).single();
+  if (error) { alert('Erro ao carregar: ' + error.message); return; }
+  const resultado = await showModalEdicaoInstituicao(inst);
+  if (!resultado) return; // cancelou
+  const { dados, aprovar } = resultado;
+  try {
+    const payload = { ...dados };
+    if (aprovar) payload.pendente_aprovacao = false;
+    await updateOrThrow('instituicoes', payload, id);
+    setFlash('success', aprovar ? 'Instituição aprovada e atualizada.' : 'Dados salvos (ainda pendente).');
+    await carregarAdminPendentes();
+  } catch (err) { alert('Erro: ' + err.message); console.error(err); }
+};
+
+// Modal de edição completa de instituição (usado no fluxo de pendências)
+function showModalEdicaoInstituicao(inst) {
+  return new Promise((resolve) => {
+    const backdrop = document.createElement('div');
+    backdrop.className = 'modal-backdrop';
+    const v = (k) => (inst[k] ?? '').toString().replace(/"/g, '&quot;');
+    backdrop.innerHTML = `
+      <div class="modal-card" style="max-width:520px;max-height:90vh;overflow-y:auto;">
+        <div class="modal-card__header">
+          <div class="modal-card__icon" style="background:#E4ECFD;color:var(--status-info);">
+            <span class="material-symbols-rounded">edit_location_alt</span>
+          </div>
+          <div class="modal-card__title">Completar dados da instituição</div>
+          <div class="modal-card__subtitle">Preencha os dados administrativos e aprove. Os campos marcados com * são obrigatórios.</div>
+        </div>
+        <div class="modal-card__body" style="display:flex;flex-direction:column;gap:12px;">
+          <div class="report-field">
+            <label>Nome <span style="color:var(--status-danger)">*</span></label>
+            <input type="text" id="meiNome" value="${v('nome')}" />
+          </div>
+          <div class="report-field">
+            <label>Razão social</label>
+            <input type="text" id="meiRazao" placeholder="Razão social completa" value="${v('razao_social')}" />
+          </div>
+          <div class="report-field">
+            <label>CNPJ</label>
+            <input type="text" id="meiCnpj" placeholder="00.000.000/0000-00" value="${v('cnpj')}" />
+          </div>
+          <div class="report-field">
+            <label>Endereço (rua e número) <span style="color:var(--status-danger)">*</span></label>
+            <input type="text" id="meiLogr" placeholder="Ex: Rua Frei Caneca, 1407" value="${v('logradouro')}" />
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <div class="report-field">
+              <label>Bairro</label>
+              <input type="text" id="meiBairro" value="${v('bairro')}" />
+            </div>
+            <div class="report-field">
+              <label>CEP</label>
+              <input type="text" id="meiCep" placeholder="00000-000" value="${v('cep')}" />
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:2fr 1fr;gap:12px;">
+            <div class="report-field">
+              <label>Cidade <span style="color:var(--status-danger)">*</span></label>
+              <input type="text" id="meiCidade" value="${v('cidade')}" />
+            </div>
+            <div class="report-field">
+              <label>UF</label>
+              <input type="text" id="meiUf" maxlength="2" placeholder="SP" value="${v('estado')}" style="text-transform:uppercase;" />
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <div class="report-field">
+              <label>Latitude</label>
+              <input type="number" step="any" id="meiLat" placeholder="-23.550520" value="${v('latitude')}" />
+            </div>
+            <div class="report-field">
+              <label>Longitude</label>
+              <input type="number" step="any" id="meiLng" placeholder="-46.633308" value="${v('longitude')}" />
+            </div>
+          </div>
+          <div style="background:#E4ECFD;border-radius:8px;padding:10px;font-size:11.5px;color:#1E40AF;">
+            <strong>💡 Dica:</strong> Para obter as coordenadas, abra o endereço no Google Maps, clique com o botão direito no local exato e copie as coordenadas. Isso permite validar o GPS dos check-ins.
+          </div>
+        </div>
+        <div class="modal-card__footer" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <button class="modal-btn modal-btn--secondary" id="meiSalvar">Só salvar (ainda pendente)</button>
+          <button class="modal-btn modal-btn--primary" id="meiAprovar" style="background:var(--status-success);">Salvar e aprovar</button>
+        </div>
+        <div style="padding:0 20px 14px;">
+          <button class="modal-btn modal-btn--secondary" id="meiCancel" style="width:100%;background:transparent;border:none;color:var(--neutral-500);">Cancelar</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(backdrop);
+    const get = (id) => backdrop.querySelector(id);
+    const cleanup = () => backdrop.remove();
+    const coletarDados = () => {
+      const nome = get('#meiNome').value.trim();
+      const logradouro = get('#meiLogr').value.trim();
+      const cidade = get('#meiCidade').value.trim();
+      if (!nome) { alert('Nome é obrigatório'); get('#meiNome').focus(); return null; }
+      if (!logradouro) { alert('Endereço é obrigatório'); get('#meiLogr').focus(); return null; }
+      if (!cidade) { alert('Cidade é obrigatória'); get('#meiCidade').focus(); return null; }
+      const lat = parseFloat(get('#meiLat').value);
+      const lng = parseFloat(get('#meiLng').value);
+      return {
+        nome,
+        razao_social: get('#meiRazao').value.trim() || null,
+        cnpj: get('#meiCnpj').value.trim() || null,
+        logradouro,
+        bairro: get('#meiBairro').value.trim() || null,
+        cep: get('#meiCep').value.trim() || null,
+        cidade,
+        estado: get('#meiUf').value.trim().toUpperCase() || null,
+        latitude: isNaN(lat) ? null : lat,
+        longitude: isNaN(lng) ? null : lng,
+      };
+    };
+    get('#meiSalvar').onclick = () => { const d = coletarDados(); if (!d) return; cleanup(); resolve({ dados: d, aprovar: false }); };
+    get('#meiAprovar').onclick = () => {
+      const d = coletarDados();
+      if (!d) return;
+      // Exigir coordenadas pra aprovar (sem elas GPS não valida)
+      if (d.latitude === null || d.longitude === null) {
+        alert('Coordenadas são obrigatórias para aprovar (permitem validar o GPS dos check-ins). Use "Só salvar" se quiser completar depois.');
+        return;
+      }
+      cleanup();
+      resolve({ dados: d, aprovar: true });
+    };
+    get('#meiCancel').onclick = () => { cleanup(); resolve(null); };
+    backdrop.onclick = (e) => { if (e.target === backdrop) { cleanup(); resolve(null); } };
+    setTimeout(() => get('#meiRazao').focus(), 150);
+  });
+}
+
+// Mantém por compatibilidade (caso alguma referência antiga)
+window.editarInstituicaoPendente = async function(id) {
+  return window.abrirEdicaoInstituicaoPendente(id);
+};
+
+window.rejeitarInstituicaoPendente = async function(id) {
+  const ok = await showModalConfirmacao({
+    icone: 'cancel',
+    iconeCor: 'danger',
+    titulo: 'Rejeitar instituição?',
+    subtitulo: 'A instituição será desativada. Visitas já feitas nela continuam existindo, mas ninguém poderá fazer novos check-ins.',
+    btnConfirmar: 'Sim, rejeitar',
+    btnCancelar: 'Cancelar',
+  });
+  if (!ok) return;
+  try {
+    await updateOrThrow('instituicoes', { ativo: false, pendente_aprovacao: false }, id);
+    setFlash('info', 'Instituição rejeitada e desativada.');
+    await carregarAdminPendentes();
+  } catch (err) { alert('Erro: ' + err.message); console.error(err); }
+};
+
+// === Handlers: aprovar/editar/rejeitar objetivo pendente ===
+window.aprovarObjetivoPendente = async function(id) {
+  const ok = await showModalConfirmacao({
+    icone: 'check_circle',
+    iconeCor: 'success',
+    titulo: 'Aprovar objetivo?',
+    subtitulo: 'O objetivo ficará oficial e disponível pra todos os nutricionistas.',
+    btnConfirmar: 'Sim, aprovar',
+    btnCancelar: 'Cancelar',
+  });
+  if (!ok) return;
+  try {
+    await updateOrThrow('objetivos_visita', { pendente_aprovacao: false }, id);
+    setFlash('success', 'Objetivo aprovado.');
+    await carregarAdminPendentes();
+  } catch (err) { alert('Erro: ' + err.message); console.error(err); }
+};
+
+window.editarObjetivoPendente = async function(id, nomeAtual) {
+  const novoNome = await showModalInput({
+    icone: 'edit',
+    iconeCor: 'info',
+    titulo: 'Editar nome e aprovar',
+    subtitulo: 'Ajuste o nome do objetivo antes de aprovar.',
+    label: 'Nome do objetivo',
+    required: true,
+    btnConfirmar: 'Salvar e aprovar',
+    valorInicial: nomeAtual,
+    tipo: 'input',
+  });
+  if (!novoNome) return;
+  try {
+    await updateOrThrow('objetivos_visita', { nome: novoNome, pendente_aprovacao: false }, id);
+    setFlash('success', 'Objetivo aprovado.');
+    await carregarAdminPendentes();
+  } catch (err) { alert('Erro: ' + err.message); console.error(err); }
+};
+
+window.rejeitarObjetivoPendente = async function(id) {
+  const ok = await showModalConfirmacao({
+    icone: 'cancel',
+    iconeCor: 'danger',
+    titulo: 'Rejeitar objetivo?',
+    subtitulo: 'O objetivo será desativado. Visitas que já o usaram continuam com ele registrado, mas ele não aparecerá em novas visitas.',
+    btnConfirmar: 'Sim, rejeitar',
+    btnCancelar: 'Cancelar',
+  });
+  if (!ok) return;
+  try {
+    await updateOrThrow('objetivos_visita', { ativo: false, pendente_aprovacao: false }, id);
+    setFlash('info', 'Objetivo rejeitado e desativado.');
+    await carregarAdminPendentes();
+  } catch (err) { alert('Erro: ' + err.message); console.error(err); }
+};
+
 function renderAdminEquipe() {
   const user = requireAdmin();
   if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
@@ -6823,7 +9249,7 @@ function renderAdminInstituicoes() {
                   ${(inst.bairro || '').replace(/"/g,'&quot;')}${inst.bairro && inst.cidade ? ' · ' : ''}${(inst.cidade || '').replace(/"/g,'&quot;')}
                 </div>
               </div>
-              <span style="font-family:var(--font-mono);font-size:11px;color:var(--neutral-500);">${inst.cnpj}</span>
+              <span style="font-family:var(--font-mono);font-size:11px;color:var(--neutral-500);">${inst.cnpj || '—'}</span>
             </div>
           `).join('')}
         `;
@@ -7135,6 +9561,322 @@ window.seedProfissionaisTeste = async function() {
     alert('Erro ao cadastrar profissionais: ' + err.message);
   }
 };
+
+// Seed de visitas de teste — gera 9 visitas com cenários variados
+window.seedVisitasTeste = async function() {
+  const ok = await showModalConfirmacao({
+    icone: 'science',
+    iconeCor: 'info',
+    titulo: 'Gerar visitas de teste?',
+    subtitulo: 'Vou criar 9 visitas variadas (sem check-in, GPS divergente, horário fora, em revisão, etc.) pra testar o admin. Apenas para desenvolvimento.',
+    btnConfirmar: 'Sim, gerar 9 visitas',
+    btnCancelar: 'Cancelar',
+  });
+  if (!ok) return;
+
+  try {
+    const user = getCurrentUser();
+    if (!user) throw new Error('Usuário não logado');
+
+    // Busca hospitais
+    const insts = await listarInstituicoes();
+    if (insts.length < 5) {
+      alert('Precisa de pelo menos 5 instituições. Popula instituições primeiro.');
+      return;
+    }
+
+    // Busca objetivos
+    const objs = await listarObjetivos();
+    if (objs.length === 0) {
+      alert('Sem objetivos cadastrados. Algo está errado no banco.');
+      return;
+    }
+
+    // Helpers
+    const diasAtras = (dias) => {
+      const d = new Date();
+      d.setDate(d.getDate() - dias);
+      return d;
+    };
+    const toTime = (date, h, m) => {
+      const d = new Date(date);
+      d.setHours(h, m, 0, 0);
+      return d;
+    };
+    const isoOf = (date) => date.toISOString();
+    const dateOf = (date) => date.toISOString().split('T')[0];
+    const timeOf = (date) => date.toTimeString().substring(0, 8);
+
+    // Pick helpers (usando índices pra espalhar)
+    const [einstein, sirio, saoLuiz, samaritano, nove] = insts;
+
+    // Define os 9 cenários
+    // Cada cenário tem: instituicao, cenario descritivo, datas, coords, status, relatório
+    const cenarios = [
+      // 1. Visita normal completa — Einstein (7 dias atrás)
+      {
+        inst: einstein,
+        dia: diasAtras(7),
+        checkinTime: [10, 5],
+        checkoutTime: [11, 20],
+        horaInicio: '10:05', horaTermino: '11:20',
+        coordDelta: 0.0003, // ~30m = dentro do raio
+        checkinManual: false,
+        status: 'completa',
+        realizada: true,
+        resumo: 'Reunião produtiva com Dra. Mariana sobre padronização do protocolo de NP. Apresentei o novo kit e discutimos próximas ações.',
+        proximos: 'Enviar proposta formal até sexta. Agendar retorno em 15 dias.',
+      },
+      // 2. Visita normal completa — Sírio (5 dias atrás)
+      {
+        inst: sirio,
+        dia: diasAtras(5),
+        checkinTime: [14, 15],
+        checkoutTime: [15, 40],
+        horaInicio: '14:15', horaTermino: '15:40',
+        coordDelta: 0.0002,
+        checkinManual: false,
+        status: 'completa',
+        realizada: true,
+        resumo: 'Contagem de consignados. Estoque conferido e 3 itens reprocessados. Dra. Camila atendeu.',
+        proximos: 'Retornar próximo mês pra nova contagem.',
+      },
+      // 3. Sem check-out — São Luiz (4 dias atrás) — nutri esqueceu
+      {
+        inst: saoLuiz,
+        dia: diasAtras(4),
+        checkinTime: [9, 30],
+        checkoutTime: null,
+        horaInicio: '09:30', horaTermino: '10:50',
+        coordDelta: 0.0004,
+        checkinManual: false,
+        status: 'completa',
+        flagSemCheckout: true,
+        realizada: true,
+        resumo: 'Visita técnica de rotina. Tudo dentro do esperado.',
+        proximos: 'Próxima visita em 30 dias.',
+      },
+      // 4. Sem check-in (manual) — Samaritano (3 dias atrás)
+      {
+        inst: samaritano,
+        dia: diasAtras(3),
+        checkinTime: null,
+        checkoutTime: [16, 50],
+        horaInicio: '15:30', horaTermino: '16:50',
+        coordDelta: null,
+        checkinManual: true,
+        status: 'completa',
+        flagSemCheckin: true,
+        realizada: true,
+        resumo: 'Visita urgente sem acesso ao GPS (celular descarregado). Apresentação de produto novo.',
+        proximos: 'Seguimento via email.',
+      },
+      // 5. GPS divergente forte (2km fora) — 9 de Julho (3 dias atrás)
+      {
+        inst: nove,
+        dia: diasAtras(3),
+        checkinTime: [11, 0],
+        checkoutTime: [12, 15],
+        horaInicio: '11:00', horaTermino: '12:15',
+        coordDelta: 0.018, // ~2km de diferença
+        forceGpsDivergente: true,
+        checkinManual: false,
+        status: 'completa',
+        realizada: true,
+        resumo: 'Visita de acompanhamento. Supervisora em treinamento externo, conversei com substituta.',
+        proximos: 'Retornar quando supervisora titular voltar.',
+      },
+      // 6. Horário declarado fora da margem — Einstein (2 dias atrás)
+      {
+        inst: einstein,
+        dia: diasAtras(2),
+        checkinTime: [8, 0], // check-in 08:00
+        checkoutTime: [9, 30],
+        horaInicio: '12:00', horaTermino: '13:30', // declarou 4h depois!
+        coordDelta: 0.0003,
+        forceHorarioForaMargem: true,
+        checkinManual: false,
+        status: 'completa',
+        realizada: true,
+        resumo: 'Reunião com Dr. Rafael adiada, fui atendido só à tarde.',
+        proximos: 'Manter contato por telefone.',
+      },
+      // 7. Rascunho (check-in manual, não finalizou ainda) — Sírio (hoje)
+      {
+        inst: sirio,
+        dia: diasAtras(0),
+        checkinTime: null,
+        checkoutTime: null,
+        horaInicio: null, horaTermino: null,
+        coordDelta: null,
+        checkinManual: true,
+        status: 'rascunho',
+        flagSemCheckin: true,
+        realizada: null,
+        resumo: null,
+        proximos: null,
+      },
+      // 8. Duas flags juntas (GPS divergente + horário fora) — São Luiz (1 dia atrás)
+      {
+        inst: saoLuiz,
+        dia: diasAtras(1),
+        checkinTime: [16, 0],
+        checkoutTime: [17, 30],
+        horaInicio: '10:00', horaTermino: '11:30', // 6h fora do check-in!
+        coordDelta: 0.012, // ~1.3km fora
+        forceGpsDivergente: true,
+        forceHorarioForaMargem: true,
+        checkinManual: false,
+        status: 'completa',
+        realizada: true,
+        resumo: 'Confusão com agenda, cheguei no horário errado. Visita aconteceu à tarde.',
+        proximos: 'Confirmar agenda com antecedência próxima vez.',
+      },
+      // 9. Em revisão (admin pediu correção) — Samaritano (1 dia atrás)
+      {
+        inst: samaritano,
+        dia: diasAtras(1),
+        checkinTime: [13, 45],
+        checkoutTime: [14, 55],
+        horaInicio: '13:45', horaTermino: '14:55',
+        coordDelta: 0.008, // ~900m fora
+        forceGpsDivergente: true,
+        checkinManual: false,
+        status: 'em_revisao',
+        revisaoMotivo: 'GPS mostra que você estava longe do hospital. Pode confirmar o endereço?',
+        realizada: true,
+        resumo: 'Apresentação do kit para Dra. Beatriz. Feedback positivo.',
+        proximos: 'Enviar ficha técnica por email.',
+      },
+    ];
+
+    const agora = new Date();
+    const visitasCriadas = [];
+
+    // Cria cada visita
+    for (const c of cenarios) {
+      // Calcula timestamps de check-in/out
+      const checkinTs = c.checkinTime ? toTime(c.dia, c.checkinTime[0], c.checkinTime[1]) : null;
+      const checkoutTs = c.checkoutTime ? toTime(c.dia, c.checkoutTime[0], c.checkoutTime[1]) : null;
+
+      // Coords (com delta adicionado pra simular divergência)
+      const coordLat = c.coordDelta !== null ? c.inst.latitude + c.coordDelta : null;
+      const coordLng = c.coordDelta !== null ? c.inst.longitude + c.coordDelta : null;
+
+      // Distância calculada (pra flag)
+      let distanciaMetros = null;
+      if (coordLat !== null) {
+        distanciaMetros = calcularDistanciaMetros(coordLat, coordLng, c.inst.latitude, c.inst.longitude);
+      }
+
+      const payload = {
+        nutricionista_id: user.id,
+        instituicao_id: c.inst.id,
+        data_visita: dateOf(c.dia),
+        horario_inicio: c.horaInicio || null,
+        horario_termino: c.horaTermino || null,
+        checkin_timestamp: checkinTs ? isoOf(checkinTs) : null,
+        checkout_timestamp: checkoutTs ? isoOf(checkoutTs) : null,
+        checkin_latitude: coordLat,
+        checkin_longitude: coordLng,
+        checkin_precisao_metros: coordLat !== null ? (Math.random() * 50 + 10).toFixed(2) : null,
+        checkout_latitude: checkoutTs && coordLat !== null ? coordLat : null,
+        checkout_longitude: checkoutTs && coordLng !== null ? coordLng : null,
+        checkin_manual: !!c.checkinManual,
+        status: c.status,
+        visita_realizada: c.realizada,
+        resumo: c.resumo,
+        proximos_passos: c.proximos,
+        flag_sem_checkin: !!c.flagSemCheckin,
+        flag_sem_checkout: !!c.flagSemCheckout,
+        flag_gps_divergente: !!c.forceGpsDivergente || (distanciaMetros !== null && distanciaMetros > 500),
+        flag_horario_fora_margem: !!c.forceHorarioForaMargem,
+        distancia_checkin_metros: distanciaMetros,
+        criado_em: new Date().toISOString(),
+        atualizado_em: new Date().toISOString(),
+      };
+
+      // Se está em revisão, preenche campos de revisão
+      if (c.status === 'em_revisao') {
+        payload.revisao_solicitada_por = user.id;
+        payload.revisao_solicitada_em = new Date().toISOString();
+        payload.revisao_motivo = c.revisaoMotivo;
+      }
+
+      const { data: visita, error } = await db
+        .from('visitas')
+        .insert(payload)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('[Seed] Erro na visita:', error);
+        throw new Error(`Erro ao criar visita ${visitasCriadas.length + 1}: ${error.message}`);
+      }
+
+      visitasCriadas.push(visita);
+
+      // Adiciona objetivo (primeiro objetivo da lista pra simplificar)
+      if (c.realizada && objs.length > 0) {
+        const objIdx = visitasCriadas.length % objs.length;
+        await db.from('visitas_objetivos').insert({
+          visita_id: visita.id,
+          objetivo_id: objs[objIdx].id,
+        });
+      }
+
+      // Adiciona 1 profissional aleatório daquela instituição
+      if (c.realizada) {
+        const { data: profsInst } = await db
+          .from('profissionais')
+          .select('id')
+          .eq('instituicao_id', c.inst.id)
+          .eq('ativo', true)
+          .limit(1);
+        if (profsInst && profsInst.length > 0) {
+          await db.from('visitas_profissionais').insert({
+            visita_id: visita.id,
+            profissional_id: profsInst[0].id,
+          });
+        }
+      }
+    }
+
+    setFlash('success', `${visitasCriadas.length} visitas de teste criadas!`);
+    router();
+  } catch (err) {
+    alert('Erro ao gerar visitas: ' + err.message);
+    console.error('[Seed] Erro:', err);
+  }
+};
+
+// Limpar todas as visitas (CUIDADO — só em dev)
+window.limparVisitasTeste = async function() {
+  const ok = await showModalConfirmacao({
+    icone: 'delete_forever',
+    iconeCor: 'danger',
+    titulo: 'Apagar TODAS as visitas?',
+    subtitulo: 'Isso vai deletar permanentemente todas as visitas do banco (de todos os usuários). Use só em ambiente de teste!',
+    btnConfirmar: 'Sim, apagar tudo',
+    btnCancelar: 'Cancelar',
+  });
+  if (!ok) return;
+
+  try {
+    // Apaga associações primeiro (pra evitar erro de FK)
+    await db.from('visitas_objetivos').delete().gte('visita_id', '00000000-0000-0000-0000-000000000000');
+    await db.from('visitas_profissionais').delete().gte('visita_id', '00000000-0000-0000-0000-000000000000');
+    // Apaga visitas
+    const { error } = await db.from('visitas').delete().gte('id', '00000000-0000-0000-0000-000000000000');
+    if (error) throw new Error(error.message);
+
+    setFlash('success', 'Todas as visitas foram apagadas.');
+    router();
+  } catch (err) {
+    alert('Erro ao apagar: ' + err.message);
+  }
+};
+
 function renderAdminConfig() {
   const user = requireAdmin();
   if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
