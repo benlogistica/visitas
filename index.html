@@ -6,7 +6,16 @@
 <meta name="theme-color" content="#0A1F5C">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Nutricionais">
+<meta name="mobile-web-app-capable" content="yes">
 <title>Nutricionais Visitas</title>
+
+<!-- PWA -->
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png">
+<link rel="apple-touch-icon" sizes="192x192" href="icons/icon-192.png">
 
 <!-- Fonts -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1439,6 +1448,34 @@ a {
   justify-content: center;
   flex-shrink: 0;
 }
+/* Variante quando a notificação tem foto do actor (Sprint 8.3) */
+.notif-item__icon--avatar {
+  border-radius: 50%;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  position: relative;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 13px;
+}
+.notif-item__icon--avatar .notif-item__icon-badge {
+  position: absolute;
+  bottom: -3px;
+  right: -3px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--neutral-0);
+  border: 1.5px solid var(--neutral-0);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+.notif-item__icon-badge .material-symbols-rounded {
+  font-size: 11px !important;
+}
 .notif-item__body {
   flex: 1;
   min-width: 0;
@@ -1501,6 +1538,34 @@ a {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+}
+/* Variante avatar pra tela cheia (Sprint 8.3) */
+.notif-page-card__icon--avatar {
+  border-radius: 50%;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  position: relative;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 14px;
+}
+.notif-page-card__icon--avatar .notif-page-card__icon-badge {
+  position: absolute;
+  bottom: -3px;
+  right: -3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--neutral-0);
+  border: 1.5px solid var(--neutral-0);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+.notif-page-card__icon-badge .material-symbols-rounded {
+  font-size: 12px !important;
 }
 .notif-page-card__body { flex: 1; min-width: 0; }
 .notif-page-card__title {
@@ -1575,7 +1640,189 @@ a {
   letter-spacing: -0.02em;
   cursor: pointer;
   border: 0;
+  overflow: hidden;        /* garante que foto não escape do círculo */
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  transition: transform 140ms;
 }
+.mbar__avatar:hover { transform: scale(1.06); }
+.mbar__avatar--com-foto { background-color: transparent; color: transparent; }
+.mbar__avatar--simulando { box-shadow: 0 0 0 2px var(--status-warning), 0 0 0 4px rgba(245,158,11,0.25); }
+
+/* Dropdown do avatar (menu "Alterar foto" / "Sair") — Sprint 8.2 */
+.perfil-dropdown {
+  position: fixed;
+  z-index: 1000;
+  width: 220px;
+  max-width: calc(100vw - 16px);
+  background: var(--neutral-0);
+  border-radius: 12px;
+  box-shadow: 0 12px 32px rgba(10,31,92,0.22);
+  border: 1px solid var(--neutral-100);
+  overflow: hidden;
+  animation: notifSlideIn 180ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.perfil-dropdown__header {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--neutral-100);
+  background: var(--neutral-50);
+}
+.perfil-dropdown__nome {
+  font-family: var(--font-display);
+  font-weight: 700;
+  color: var(--brand-navy);
+  font-size: 13px;
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.perfil-dropdown__perfil {
+  font-size: 11px;
+  color: var(--neutral-600);
+  margin-top: 2px;
+}
+.perfil-dropdown__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  cursor: pointer;
+  color: var(--brand-navy);
+  font-size: 13px;
+  font-weight: 600;
+  transition: background 140ms;
+  background: transparent;
+  border: 0;
+  width: 100%;
+  text-align: left;
+  font-family: inherit;
+  text-decoration: none;
+}
+.perfil-dropdown__item:hover { background: var(--neutral-100); }
+.perfil-dropdown__item--danger { color: var(--status-danger); border-top: 1px solid var(--neutral-100); }
+.perfil-dropdown__item--danger:hover { background: #FEE2E2; }
+.perfil-dropdown__item--warning { color: var(--status-warning); border-top: 1px solid var(--neutral-100); }
+.perfil-dropdown__item--warning:hover { background: #FEF4E1; }
+.perfil-dropdown__item .material-symbols-rounded { font-size: 18px; }
+
+/* Avatar universal (Sprint 8.2) — usado em listas de equipe, cards de agenda, etc. */
+.avatar-univ {
+  border-radius: 50%;
+  background-color: var(--brand-lime);
+  color: var(--neutral-0);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  flex-shrink: 0;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  overflow: hidden;
+  vertical-align: middle;
+}
+
+/* Modal de crop de foto (Sprint 8.2) */
+.crop-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 31, 92, 0.6);
+  backdrop-filter: blur(4px);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 200ms ease;
+}
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+.crop-modal {
+  background: var(--neutral-0);
+  border-radius: 16px;
+  padding: 20px;
+  width: calc(100% - 32px);
+  max-width: 360px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+}
+.crop-modal__title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--brand-navy);
+  margin: 0;
+}
+.crop-modal__hint {
+  font-size: 12px;
+  color: var(--neutral-600);
+  margin: -8px 0 0;
+}
+.crop-canvas-wrapper {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  background: #000;
+  border-radius: 12px;
+  overflow: hidden;
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+}
+.crop-canvas-wrapper:active { cursor: grabbing; }
+.crop-canvas-wrapper canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.crop-frame-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at center, transparent 0, transparent 49.5%, rgba(0,0,0,0.55) 50%);
+}
+.crop-frame-overlay::before {
+  content: '';
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 99%; height: 99%;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.85);
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.4);
+}
+.crop-modal__actions {
+  display: flex;
+  gap: 10px;
+}
+.crop-modal__btn {
+  flex: 1;
+  padding: 12px;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  border: 0;
+  font-family: inherit;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.crop-modal__btn--secondary {
+  background: var(--neutral-100);
+  color: var(--brand-navy);
+}
+.crop-modal__btn--primary {
+  background: var(--brand-lime);
+  color: var(--neutral-0);
+}
+.crop-modal__btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .mbar__live-indicator {
   display: inline-flex;
@@ -4725,7 +4972,7 @@ a {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint8-busca-deeplink',
+  APP_VERSION: '1.0.0-alpha.sprint8-pwa',
   APP_NAME: 'Nutricionais Visitas',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -4846,6 +5093,7 @@ function saveSession(user) {
     email: user.email,
     perfil: user.perfil,
     permissoes: user.permissoes,
+    foto_url: user.foto_url || null,
     loggedAt: Date.now(),
   }));
 }
@@ -4879,6 +5127,23 @@ function getCurrentUserReal() {
 function estaSimulando() {
   const user = getCurrentUser();
   return !!(user && user._simulando);
+}
+
+// Bloqueia uma ação se estiver em modo simulação — mostra modal de aviso.
+// Retorna true se bloqueou (o handler deve fazer `return`), false se pode prosseguir.
+// Uso padrão no início de handlers destrutivos:
+//   if (await bloqueioSimulacao('criar visita')) return;
+async function bloqueioSimulacao(acaoDescricao = 'realizar esta ação') {
+  if (!estaSimulando()) return false;
+  await showModalConfirmacao({
+    icone: 'lock',
+    iconeCor: 'warning',
+    titulo: 'Ação bloqueada no modo simulação',
+    subtitulo: `Você está testando como profissional. Pra ${acaoDescricao}, saia do modo simulação primeiro.`,
+    btnConfirmar: 'Ok, entendi',
+    btnCancelar: '',
+  });
+  return true;
 }
 
 // Flash messages (entre navegações)
@@ -4985,7 +5250,7 @@ async function listarNotificacoes(limit = 15) {
   if (!user) return [];
   const { data, error } = await db
     .from('notificacoes')
-    .select('id, tipo, titulo, mensagem, link, objeto_id, lida, criado_em, lida_em')
+    .select('id, tipo, titulo, mensagem, link, objeto_id, lida, criado_em, lida_em, actor_user_id, actor:actor_user_id(id, nome, foto_url)')
     .eq('user_id', user.id)
     .order('criado_em', { ascending: false })
     .limit(limit);
@@ -5049,6 +5314,32 @@ function formatarTempoCurto(iso) {
   if (diff < 86400) return `${Math.floor(diff / 3600)}h`;
   if (diff < 604800) return `${Math.floor(diff / 86400)}d`;
   return `${Math.floor(diff / 604800)}sem`;
+}
+
+// Renderiza o ícone de uma notificação:
+// - Se tem actor com foto → mostra foto + badge pequeno do tipo
+// - Se tem actor sem foto → mostra iniciais + badge pequeno do tipo
+// - Se não tem actor → fallback pro ícone genérico colorido (comportamento antigo)
+// `variant`: 'item' (dropdown, 34px) ou 'page' (tela cheia, 40px)
+function renderIconeNotif(n, variant = 'item') {
+  const ic = iconeNotificacao(n.tipo);
+  const actor = n.actor;
+  const baseClass = variant === 'page' ? 'notif-page-card__icon' : 'notif-item__icon';
+  const badgeClass = variant === 'page' ? 'notif-page-card__icon-badge' : 'notif-item__icon-badge';
+  const iconSize = variant === 'page' ? '20px' : '18px';
+
+  if (actor) {
+    const init = iniciais(actor.nome);
+    const badge = `<span class="${badgeClass}" style="color:${ic.cor};"><span class="material-symbols-rounded">${ic.icon}</span></span>`;
+    if (actor.foto_url) {
+      return `<div class="${baseClass} ${baseClass}--avatar" style="background-image:url('${actor.foto_url}');" title="${(actor.nome || '').replace(/"/g,'&quot;')}">${badge}</div>`;
+    }
+    return `<div class="${baseClass} ${baseClass}--avatar" style="background:${ic.cor}40;color:${ic.cor};" title="${(actor.nome || '').replace(/"/g,'&quot;')}">${init}${badge}</div>`;
+  }
+  // Fallback: ícone genérico (notificações antigas sem actor)
+  return `<div class="${baseClass}" style="background:${ic.cor}20;color:${ic.cor};">
+    <span class="material-symbols-rounded" style="font-size:${iconSize};">${ic.icon}</span>
+  </div>`;
 }
 
 // Ícone e cor por tipo
@@ -5153,12 +5444,9 @@ window.toggleNotifDropdown = async function(ev) {
     `;
   } else {
     listEl.innerHTML = list.map(n => {
-      const ic = iconeNotificacao(n.tipo);
       return `
         <a href="#" onclick="abrirNotificacao('${n.id}', '${(n.link || '').replace(/'/g,"\\'")}'); return false;" class="notif-item ${n.lida ? '' : 'notif-item--unread'}">
-          <div class="notif-item__icon" style="background:${ic.cor}20;color:${ic.cor};">
-            <span class="material-symbols-rounded" style="font-size:18px;">${ic.icon}</span>
-          </div>
+          ${renderIconeNotif(n)}
           <div class="notif-item__body">
             <div class="notif-item__title">${(n.titulo || '').replace(/"/g,'&quot;')}</div>
             ${n.mensagem ? `<div class="notif-item__msg">${n.mensagem.replace(/"/g,'&quot;')}</div>` : ''}
@@ -5233,23 +5521,378 @@ window.marcarTodasLidasUI = async function() {
 };
 
 // Limpa (apaga definitivamente) as notificações já lidas
+/* ==========================================================================
+   DROPDOWN DO AVATAR — menu do perfil (Sprint 8.2)
+   Aparece ao clicar no AM/iniciais do topbar. Opções: alterar foto, sair.
+   ========================================================================== */
+window.togglePerfilDropdown = function(ev) {
+  if (ev) { ev.stopPropagation(); ev.preventDefault(); }
+  const existing = document.getElementById('perfilDropdown');
+  if (existing) { existing.remove(); return; }
+  const user = getCurrentUser();
+  if (!user) return;
+
+  const trigger = ev?.currentTarget;
+  const dd = document.createElement('div');
+  dd.id = 'perfilDropdown';
+  dd.className = 'perfil-dropdown';
+
+  const perfilLabel = user._simulando
+    ? 'Admin (simulando)'
+    : user.perfil === 'admin' ? 'Administrador' : 'Profissional';
+
+  dd.innerHTML = `
+    <div class="perfil-dropdown__header">
+      <div class="perfil-dropdown__nome">${(user.nome || '').replace(/</g,'&lt;')}</div>
+      <div class="perfil-dropdown__perfil">${perfilLabel}</div>
+    </div>
+    <button class="perfil-dropdown__item" onclick="handleAlterarFotoClick()">
+      <span class="material-symbols-rounded">photo_camera</span>
+      <span>${user.foto_url ? 'Alterar foto' : 'Adicionar foto'}</span>
+    </button>
+    ${user.foto_url ? `
+      <button class="perfil-dropdown__item" onclick="handleRemoverFoto()">
+        <span class="material-symbols-rounded">do_not_disturb_on</span>
+        <span>Remover foto</span>
+      </button>
+    ` : ''}
+    ${user._simulando ? `
+      <button class="perfil-dropdown__item perfil-dropdown__item--warning" onclick="handleSairSimulacao()">
+        <span class="material-symbols-rounded">switch_account</span>
+        <span>Sair da simulação</span>
+      </button>
+    ` : ''}
+    ${window._pwaInstallPrompt ? `
+      <button class="perfil-dropdown__item" onclick="handleInstalarApp()" style="border-top:1px solid var(--neutral-100);">
+        <span class="material-symbols-rounded">install_mobile</span>
+        <span>Instalar app</span>
+      </button>
+    ` : ''}
+    <a href="#/logout" class="perfil-dropdown__item perfil-dropdown__item--danger" onclick="document.getElementById('perfilDropdown')?.remove()">
+      <span class="material-symbols-rounded">logout</span>
+      <span>Sair</span>
+    </a>
+    <input type="file" id="perfilFotoInput" accept="image/jpeg,image/png,image/webp" style="display:none" onchange="handleFotoSelecionada(event)" />
+  `;
+
+  document.body.appendChild(dd);
+
+  // Posiciona abaixo do avatar, clampando no viewport
+  if (trigger) {
+    const rect = trigger.getBoundingClientRect();
+    const margem = 8;
+    dd.style.top = `${rect.bottom + 4}px`;
+    const larguraReal = Math.min(220, window.innerWidth - margem * 2);
+    const rightIdeal = Math.max(margem, window.innerWidth - rect.right);
+    const leftSeUsarRightIdeal = window.innerWidth - rightIdeal - larguraReal;
+    const rightFinal = leftSeUsarRightIdeal < margem ? margem : rightIdeal;
+    dd.style.right = `${rightFinal}px`;
+  }
+
+  // Fecha ao clicar fora
+  setTimeout(() => {
+    document.addEventListener('click', fecharPerfilDropdownOnClickFora, { once: true });
+  }, 0);
+};
+
+function fecharPerfilDropdownOnClickFora(ev) {
+  const dd = document.getElementById('perfilDropdown');
+  if (!dd) return;
+  if (dd.contains(ev.target)) {
+    document.addEventListener('click', fecharPerfilDropdownOnClickFora, { once: true });
+  } else {
+    dd.remove();
+  }
+}
+
+// Abre o seletor de arquivo nativo
+window.handleAlterarFotoClick = function() {
+  const input = document.getElementById('perfilFotoInput');
+  if (input) input.click();
+};
+
+// Sai do modo simulação direto pelo dropdown do avatar
+window.handleSairSimulacao = function() {
+  document.getElementById('perfilDropdown')?.remove();
+  if (typeof window.sairModoSimulacaoNutri === 'function') {
+    window.sairModoSimulacaoNutri();
+  }
+};
+
+// Mostra modal de crop interativo. Retorna Blob (JPEG 256x256) ou null se cancelado.
+function showCropModal(file) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const TAMANHO_FINAL = 256;
+        const backdrop = document.createElement('div');
+        backdrop.className = 'crop-modal-backdrop';
+        backdrop.innerHTML = `
+          <div class="crop-modal">
+            <h3 class="crop-modal__title">Ajustar foto</h3>
+            <p class="crop-modal__hint">Arraste a imagem pra escolher o que aparece dentro do círculo.</p>
+            <div class="crop-canvas-wrapper" id="cropWrap">
+              <canvas id="cropCanvas"></canvas>
+              <div class="crop-frame-overlay"></div>
+            </div>
+            <div class="crop-modal__actions">
+              <button class="crop-modal__btn crop-modal__btn--secondary" id="cropCancel">Cancelar</button>
+              <button class="crop-modal__btn crop-modal__btn--primary" id="cropConfirm">
+                <span class="material-symbols-rounded" style="font-size:18px;">check</span>
+                Usar esta foto
+              </button>
+            </div>
+          </div>
+        `;
+        document.body.appendChild(backdrop);
+
+        const wrap = document.getElementById('cropWrap');
+        const canvas = document.getElementById('cropCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Tamanho do canvas (matches do CSS — quadrado preenchendo o wrapper)
+        const wrapSize = wrap.getBoundingClientRect().width;
+        canvas.width = wrapSize;
+        canvas.height = wrapSize;
+
+        // Calcula tamanho de exibição da imagem (cobre o quadrado, mantém proporção — "cover")
+        const escala = Math.max(wrapSize / img.width, wrapSize / img.height);
+        const displayW = img.width * escala;
+        const displayH = img.height * escala;
+
+        // Posição inicial centralizada
+        let offsetX = (wrapSize - displayW) / 2;
+        let offsetY = (wrapSize - displayH) / 2;
+
+        // Limites pra não deixar arrastar pra fora do frame
+        function clampOffset() {
+          const minX = wrapSize - displayW;
+          const minY = wrapSize - displayH;
+          if (offsetX > 0) offsetX = 0;
+          if (offsetY > 0) offsetY = 0;
+          if (offsetX < minX) offsetX = minX;
+          if (offsetY < minY) offsetY = minY;
+        }
+
+        function desenhar() {
+          clampOffset();
+          ctx.fillStyle = '#000';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(img, offsetX, offsetY, displayW, displayH);
+        }
+        desenhar();
+
+        // Drag handlers (mouse + touch)
+        let dragStart = null;
+        function onPointerDown(ev) {
+          ev.preventDefault();
+          const p = ev.touches ? ev.touches[0] : ev;
+          dragStart = { x: p.clientX - offsetX, y: p.clientY - offsetY };
+        }
+        function onPointerMove(ev) {
+          if (!dragStart) return;
+          ev.preventDefault();
+          const p = ev.touches ? ev.touches[0] : ev;
+          offsetX = p.clientX - dragStart.x;
+          offsetY = p.clientY - dragStart.y;
+          desenhar();
+        }
+        function onPointerUp() { dragStart = null; }
+
+        wrap.addEventListener('mousedown', onPointerDown);
+        wrap.addEventListener('touchstart', onPointerDown, { passive: false });
+        window.addEventListener('mousemove', onPointerMove);
+        window.addEventListener('touchmove', onPointerMove, { passive: false });
+        window.addEventListener('mouseup', onPointerUp);
+        window.addEventListener('touchend', onPointerUp);
+
+        function cleanup() {
+          window.removeEventListener('mousemove', onPointerMove);
+          window.removeEventListener('touchmove', onPointerMove);
+          window.removeEventListener('mouseup', onPointerUp);
+          window.removeEventListener('touchend', onPointerUp);
+          backdrop.remove();
+        }
+
+        document.getElementById('cropCancel').onclick = () => {
+          cleanup();
+          resolve(null);
+        };
+
+        document.getElementById('cropConfirm').onclick = () => {
+          // Gera o blob 256x256 do que está visível dentro do canvas
+          // (canvas atual tá no tamanho de exibição — preciso refazer no tamanho final)
+          const finalCanvas = document.createElement('canvas');
+          finalCanvas.width = TAMANHO_FINAL;
+          finalCanvas.height = TAMANHO_FINAL;
+          const finalCtx = finalCanvas.getContext('2d');
+          // Calcula em coords da imagem original o que é o "topo-esquerdo" do crop
+          const escalaInversa = img.width / displayW; // mesma pra X e Y (escala uniforme)
+          const cropX = -offsetX * escalaInversa;
+          const cropY = -offsetY * escalaInversa;
+          const cropSize = wrapSize * escalaInversa;
+          finalCtx.drawImage(img, cropX, cropY, cropSize, cropSize, 0, 0, TAMANHO_FINAL, TAMANHO_FINAL);
+          finalCanvas.toBlob(
+            (blob) => { cleanup(); resolve(blob); },
+            'image/jpeg',
+            0.85
+          );
+        };
+      };
+      img.onerror = () => resolve(null);
+      img.src = e.target.result;
+    };
+    reader.onerror = () => resolve(null);
+    reader.readAsDataURL(file);
+  });
+}
+
+// Processa a foto selecionada: abre crop modal + upload
+window.handleFotoSelecionada = async function(ev) {
+  const file = ev.target.files?.[0];
+  // Limpa o input pra permitir selecionar a mesma foto de novo se cancelar
+  ev.target.value = '';
+  if (!file) return;
+  // Fecha o dropdown
+  document.getElementById('perfilDropdown')?.remove();
+
+  if (await bloqueioSimulacao('alterar foto de perfil')) return;
+
+  // Validação leve
+  if (!file.type.startsWith('image/')) {
+    alert('Arquivo não é uma imagem.');
+    return;
+  }
+  if (file.size > 10 * 1024 * 1024) {
+    alert('Imagem muito grande (limite 10MB pra upload). Tenta uma foto menor.');
+    return;
+  }
+
+  // Abre modal de crop interativo
+  const blob = await showCropModal(file);
+  if (!blob) return; // cancelou
+
+  try {
+    setFlash('info', 'Enviando foto...');
+    const user = getCurrentUser();
+    const url = await uploadFotoPerfil(blob, user.id);
+    await atualizarFotoUsuario(user.id, url);
+    atualizarFotoNaSessao(url);
+    setFlash('success', 'Foto atualizada!');
+    window.dispatchEvent(new HashChangeEvent('hashchange'));
+  } catch (err) {
+    console.error('[upload foto]', err);
+    alert('Erro ao enviar foto: ' + err.message);
+  }
+};
+
+// Remove a foto do user atual (volta pras iniciais)
+window.handleRemoverFoto = async function() {
+  document.getElementById('perfilDropdown')?.remove();
+  if (await bloqueioSimulacao('remover foto de perfil')) return;
+
+  const ok = await showModalConfirmacao({
+    icone: 'do_not_disturb_on',
+    iconeCor: 'danger',
+    titulo: 'Remover foto de perfil?',
+    subtitulo: 'Você vai voltar a ser exibido com as iniciais do nome.',
+    btnConfirmar: 'Sim, remover',
+    btnCancelar: 'Cancelar',
+  });
+  if (!ok) return;
+
+  try {
+    const user = getCurrentUser();
+    // Tenta apagar do storage (se falhar, segue — a coluna é o que importa)
+    try { await apagarFotoDoStorage(user.foto_url); } catch {}
+    await atualizarFotoUsuario(user.id, null);
+    atualizarFotoNaSessao(null);
+    setFlash('info', 'Foto removida.');
+    window.dispatchEvent(new HashChangeEvent('hashchange'));
+  } catch (err) {
+    alert('Erro ao remover: ' + err.message);
+  }
+};
+
+// Redimensiona uma imagem (File/Blob) pra quadrado MxM, converte pra JPEG, retorna Blob
+function redimensionarImagem(file, tamanho = 256, qualidade = 0.85) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const reader = new FileReader();
+    reader.onload = (e) => { img.src = e.target.result; };
+    reader.onerror = () => reject(new Error('Falha ao ler arquivo'));
+    img.onload = () => {
+      // Corta ao centro pra virar quadrado
+      const lado = Math.min(img.width, img.height);
+      const sx = (img.width - lado) / 2;
+      const sy = (img.height - lado) / 2;
+      const canvas = document.createElement('canvas');
+      canvas.width = tamanho;
+      canvas.height = tamanho;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, sx, sy, lado, lado, 0, 0, tamanho, tamanho);
+      canvas.toBlob(
+        (blob) => blob ? resolve(blob) : reject(new Error('Falha ao converter')),
+        'image/jpeg',
+        qualidade
+      );
+    };
+    img.onerror = () => reject(new Error('Falha ao carregar imagem'));
+    reader.readAsDataURL(file);
+  });
+}
+
+// Sobe a foto pro bucket 'avatars' e retorna a URL pública
+async function uploadFotoPerfil(blob, userId) {
+  if (!db) throw new Error('Banco não conectado');
+  // Nome do arquivo: uuid do user + timestamp pra evitar cache
+  const timestamp = Date.now();
+  const path = `${userId}/${timestamp}.jpg`;
+  const { error } = await db.storage
+    .from('avatars')
+    .upload(path, blob, { contentType: 'image/jpeg', upsert: true });
+  if (error) throw new Error(error.message);
+  const { data } = db.storage.from('avatars').getPublicUrl(path);
+  if (!data?.publicUrl) throw new Error('Falha ao obter URL pública');
+  return data.publicUrl;
+}
+
+// Apaga foto antiga do storage (best-effort — se falhar, não crítico)
+async function apagarFotoDoStorage(url) {
+  if (!url || !db) return;
+  // Extrai o path do URL público (tudo depois de /avatars/)
+  const match = url.match(/\/avatars\/(.+?)(?:\?|$)/);
+  if (!match) return;
+  const path = match[1];
+  await db.storage.from('avatars').remove([path]);
+}
+
+// Atualiza a coluna foto_url do user
+async function atualizarFotoUsuario(userId, url) {
+  if (!db) throw new Error('Banco não conectado');
+  const { error } = await db.from('usuarios')
+    .update({ foto_url: url })
+    .eq('id', userId);
+  if (error) throw new Error(error.message);
+}
+
+// Atualiza a sessão local pra refletir a nova foto sem precisar relogar
+function atualizarFotoNaSessao(url) {
+  const raw = localStorage.getItem(AUTH_KEY);
+  if (!raw) return;
+  try {
+    const sess = JSON.parse(raw);
+    sess.foto_url = url;
+    localStorage.setItem(AUTH_KEY, JSON.stringify(sess));
+  } catch {}
+}
+
 window.handleLimparNotifLidas = async function() {
   // Fecha o dropdown antes do modal pra não ficar sobreposto
   document.getElementById('notifDropdown')?.remove();
-
-  // Fix: bloqueia ação destrutiva em modo simulação (senão apagaria as notificações
-  // reais do admin, porque o user.id não muda ao simular)
-  if (estaSimulando()) {
-    await showModalConfirmacao({
-      icone: 'lock',
-      iconeCor: 'warning',
-      titulo: 'Ação bloqueada no modo simulação',
-      subtitulo: 'Você está testando como profissional. Pra limpar notificações, saia do modo simulação primeiro.',
-      btnConfirmar: 'Ok',
-      btnCancelar: '',
-    });
-    return;
-  }
+  if (await bloqueioSimulacao('limpar notificações')) return;
 
   const ok = await showModalConfirmacao({
     icone: 'delete_sweep',
@@ -5290,6 +5933,64 @@ function iniciarPollingNotificacoes() {
 function pararPollingNotificacoes() {
   if (_notifPollInterval) { clearInterval(_notifPollInterval); _notifPollInterval = null; }
 }
+
+/* ==========================================================================
+   PWA INSTALL PROMPT (Sprint 8.5)
+   Captura o evento beforeinstallprompt e expõe via window._pwaInstallPrompt.
+   O dropdown do avatar mostra "Instalar app" só quando o prompt está disponível.
+   ========================================================================== */
+window._pwaInstallPrompt = null;
+
+// Registra service worker (necessário pra PWA ser instalável no Chrome)
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js')
+      .then((reg) => console.log('[PWA] Service worker registrado:', reg.scope))
+      .catch((err) => console.warn('[PWA] Falha ao registrar SW:', err));
+  });
+}
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  // Previne o mini-banner padrão do Chrome
+  e.preventDefault();
+  window._pwaInstallPrompt = e;
+  console.log('[PWA] Pronto pra instalar');
+});
+
+window.addEventListener('appinstalled', () => {
+  window._pwaInstallPrompt = null;
+  setFlash('success', 'App instalado! Você pode abrir pela home screen.');
+  console.log('[PWA] Instalado com sucesso');
+});
+
+// Detecta se já está rodando como PWA instalado (modo standalone)
+function rodandoComoPWA() {
+  return window.matchMedia('(display-mode: standalone)').matches
+      || window.navigator.standalone === true;
+}
+
+// Handler chamado pelo dropdown do avatar
+window.handleInstalarApp = async function() {
+  document.getElementById('perfilDropdown')?.remove();
+  const prompt = window._pwaInstallPrompt;
+  if (!prompt) {
+    // Fallback: orienta instalação manual (iOS Safari não dispara beforeinstallprompt)
+    await showModalConfirmacao({
+      icone: 'install_mobile',
+      iconeCor: 'info',
+      titulo: 'Como instalar',
+      subtitulo: 'No iPhone (Safari): toque no botão de compartilhar e escolha "Adicionar à Tela de Início". No Android (Chrome): toque no menu (⋮) e "Instalar app" ou "Adicionar à tela inicial".',
+      btnConfirmar: 'Entendi',
+      btnCancelar: '',
+    });
+    return;
+  }
+  prompt.prompt();
+  const { outcome } = await prompt.userChoice;
+  console.log('[PWA] User choice:', outcome);
+  // O prompt só pode ser usado uma vez — limpa
+  window._pwaInstallPrompt = null;
+};
 
 // Logout
 function logout() {
@@ -6429,6 +7130,21 @@ function iniciais(nome) {
   return (partes[0][0] + partes[partes.length - 1][0]).toUpperCase();
 }
 
+// Renderiza avatar com foto (se houver) ou iniciais como fallback (Sprint 8.2)
+// `user` precisa ter `nome` e opcionalmente `foto_url`
+// `size` em pixels (default 40), `bgClass` opcional pra customizar a cor de fundo das iniciais
+function renderAvatar(user, size = 40, bgClass = '') {
+  if (!user) return '';
+  const fotoUrl = user.foto_url || user.fotoUrl || null;
+  const nome = (user.nome || '?').replace(/"/g, '&quot;');
+  const init = iniciais(user.nome);
+  const fontSize = Math.max(10, Math.round(size * 0.38));
+  if (fotoUrl) {
+    return `<div class="avatar-univ ${bgClass}" title="${nome}" style="width:${size}px;height:${size}px;background-image:url('${fotoUrl}');"></div>`;
+  }
+  return `<div class="avatar-univ ${bgClass}" title="${nome}" style="width:${size}px;height:${size}px;font-size:${fontSize}px;">${init}</div>`;
+}
+
 // Cache temporário de estado do check-in (entre navegações)
 const CheckinFlow = {
   userPos: null,
@@ -6543,7 +7259,12 @@ function mobileTopBar(opts = {}) {
           </button>
         ` : ''}
         ${showAvatar && user ? `
-          <a href="#/logout" class="mbar__avatar" title="Sair (${user.nome})">${iniciais(user.nome)}</a>
+          <button class="mbar__avatar${user.foto_url ? ' mbar__avatar--com-foto' : ''}${user._simulando ? ' mbar__avatar--simulando' : ''}"
+                  onclick="togglePerfilDropdown(event)"
+                  title="${user.nome}${user._simulando ? ' (simulando)' : ''}"
+                  ${user.foto_url ? `style="background-image:url('${user.foto_url}')"` : ''}>
+            ${user.foto_url ? '' : iniciais(user.nome)}
+          </button>
         ` : ''}
       </div>
     </header>
@@ -6957,7 +7678,7 @@ async function listarTodosAgendamentos() {
       id, data_visita, horario_inicio, resumo, instituicao_id, nutricionista_id, atribuido_por, status,
       sugestao_motivo_recusa, sugestao_decidida_em,
       instituicoes(id, nome, cidade),
-      usuarios:nutricionista_id(id, nome)
+      usuarios:nutricionista_id(id, nome, foto_url)
     `)
     .in('status', ['agendada', 'sugerida'])
     .order('data_visita', { ascending: true })
@@ -8774,6 +9495,7 @@ window.atualizarGPSManual = async function() {
 
 // Cadastra nova instituição direto da tela de check-in (antes mesmo de entrar no modal manual)
 window.cadastrarInstituicaoECheckin = async function() {
+  if (await bloqueioSimulacao('cadastrar instituição')) return;
   const dados = await showModalInstituicaoNova();
   if (!dados) return;
   // Se o profissional tem GPS ativo agora, usa essa posição como coords iniciais da instituição.
@@ -8803,6 +9525,7 @@ window.cadastrarInstituicaoECheckin = async function() {
 // Profissional edita dados de uma instituição que ele cadastrou e que AINDA está pendente.
 // Se admin já aprovou, não deixa editar.
 window.editarMinhaInstituicaoPendente = async function(id) {
+  if (await bloqueioSimulacao('editar instituição pendente')) return;
   const user = getCurrentUser();
   if (!user) return;
   // Busca estado atual
@@ -9272,6 +9995,7 @@ function renderCheckinConfirmar() {
 }
 
 window.handleConfirmCheckin = async function() {
+  if (await bloqueioSimulacao('fazer check-in')) return;
   const btn = document.getElementById('btnConfirmCheckin');
   const objId = document.getElementById('objSelect')?.value || null;
   const obs = document.getElementById('obsArea')?.value?.trim() || null;
@@ -9374,6 +10098,7 @@ window.abrirRelatorioDaVisitaAtiva = function() {
 };
 
 window.handleCheckoutAtivo = async function() {
+  if (await bloqueioSimulacao('finalizar check-in')) return;
   const visitaId = window._activeVisitaId;
   if (!visitaId) {
     alert('Erro: não encontrei a visita ativa');
@@ -9502,6 +10227,7 @@ function showPostCheckoutModal({ instName, duracao }) {
 }
 
 window.handleCancelarVisita = async function() {
+  if (await bloqueioSimulacao('cancelar visita')) return;
   const ok = await showModalConfirmacao({
     icone: 'cancel',
     iconeCor: 'danger',
@@ -9965,6 +10691,7 @@ function renderObjetivos() {
 }
 
 window.handleSugerirNovoObjetivo = async function() {
+  if (await bloqueioSimulacao('sugerir novo objetivo')) return;
   // Barreira: se a visita está travada, não deixa nem sugerir
   if (ReportState.visita && !visitaPodeSerEditada(ReportState.visita).pode) return;
   const nome = await showModalInput({
@@ -10109,6 +10836,7 @@ window.removeProfissional = function(id) {
 };
 
 window.handleAddNewProf = async function(nomeInicial) {
+  if (await bloqueioSimulacao('cadastrar novo profissional')) return;
   try {
     const dados = await showNewProfissionalModal(nomeInicial);
     if (!dados) return; // cancelado
@@ -10414,6 +11142,7 @@ function setSaveIndicator(state, text) {
 }
 
 window.handleFinalizarRelatorio = async function() {
+  if (await bloqueioSimulacao('finalizar relatório')) return;
   const btn = document.getElementById('btnFinalizar');
 
   // Força o auto-save antes de finalizar
@@ -10512,6 +11241,7 @@ async function oferecerAgendarProximaVisita(visita, dataProxima) {
 
 // Excluir visita (só permitido pra rascunhos que nunca foram concluídos nem devolvidos)
 window.handleExcluirVisita = async function() {
+  if (await bloqueioSimulacao('excluir visita')) return;
   const v = ReportState.visita;
   if (!v) return;
   // Barreira de segurança (dupla): só rascunho sem motivo de revisão
@@ -10674,7 +11404,7 @@ async function carregarListaNotificacoes() {
   const user = getCurrentUser();
   if (!user) { listEl.innerHTML = ''; return; }
   let query = db.from('notificacoes')
-    .select('id, tipo, titulo, mensagem, link, objeto_id, lida, criado_em, lida_em')
+    .select('id, tipo, titulo, mensagem, link, objeto_id, lida, criado_em, lida_em, actor_user_id, actor:actor_user_id(id, nome, foto_url)')
     .eq('user_id', user.id);
   if (filtro === 'nao_lidas') query = query.eq('lida', false);
   else if (filtro === 'lidas') query = query.eq('lida', true);
@@ -10706,13 +11436,10 @@ async function carregarListaNotificacoes() {
   }
 
   listEl.innerHTML = items.map(n => {
-    const ic = iconeNotificacao(n.tipo);
     const dataCompleta = n.criado_em ? new Date(n.criado_em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
     return `
       <div class="notif-page-card ${n.lida ? '' : 'notif-page-card--unread'}">
-        <div class="notif-page-card__icon" style="background:${ic.cor}20;color:${ic.cor};">
-          <span class="material-symbols-rounded" style="font-size:20px;">${ic.icon}</span>
-        </div>
+        ${renderIconeNotif(n, 'page')}
         <div class="notif-page-card__body">
           <div class="notif-page-card__title">${(n.titulo || '').replace(/"/g,'&quot;')}</div>
           ${n.mensagem ? `<div class="notif-page-card__msg">${n.mensagem.replace(/"/g,'&quot;')}</div>` : ''}
@@ -11036,6 +11763,7 @@ function cardAgendamento(ag, bucket) {
 // === Handlers ===
 
 window.handleNovoAgendamento = async function() {
+  if (await bloqueioSimulacao('criar agendamento')) return;
   // Carrega instituições e objetivos pra os selects
   const [insts, objs] = await Promise.all([
     listarInstituicoes(),
@@ -11067,6 +11795,7 @@ window.handleNovoAgendamento = async function() {
 };
 
 window.handleEditarAgendamento = async function(id) {
+  if (await bloqueioSimulacao('editar agendamento')) return;
   // Busca dados atuais + listas de suporte em paralelo
   const [ags, insts, objs] = await Promise.all([
     listarAgendamentosDoUser(),
@@ -11188,6 +11917,7 @@ function showModalAgendamento({ instituicoes, objetivos, hojeStr, agendamento = 
 }
 
 window.handleIniciarAgendamento = async function(id) {
+  if (await bloqueioSimulacao('iniciar visita')) return;
   const ok = await showModalConfirmacao({
     icone: 'play_circle',
     iconeCor: 'success',
@@ -11220,6 +11950,7 @@ window.handleIniciarAgendamento = async function(id) {
 };
 
 window.handleCancelarAgendamento = async function(id) {
+  if (await bloqueioSimulacao('cancelar agendamento')) return;
   const ok = await showModalConfirmacao({
     icone: 'event_busy',
     iconeCor: 'danger',
@@ -11240,6 +11971,7 @@ window.handleCancelarAgendamento = async function(id) {
 
 // Profissional aceita sugestão do admin → vira agendamento normal
 window.handleAceitarSugestao = async function(id) {
+  if (await bloqueioSimulacao('aceitar sugestão')) return;
   const ok = await showModalConfirmacao({
     icone: 'check_circle',
     iconeCor: 'success',
@@ -11260,6 +11992,7 @@ window.handleAceitarSugestao = async function(id) {
 
 // Profissional recusa sugestão — modal com motivo obrigatório
 window.handleRecusarSugestao = async function(id) {
+  if (await bloqueioSimulacao('recusar sugestão')) return;
   const motivo = await showModalInput({
     icone: 'cancel',
     iconeCor: 'danger',
@@ -14499,6 +15232,7 @@ function renderAgendaPorProfissional(ags) {
     if (!porProf[pid]) {
       porProf[pid] = {
         nome: a.usuarios?.nome || 'Profissional',
+        foto_url: a.usuarios?.foto_url || null,
         ags: [],
       };
     }
@@ -14517,10 +15251,13 @@ function renderAgendaPorProfissional(ags) {
       if (a.data_visita !== b.data_visita) return a.data_visita < b.data_visita ? -1 : 1;
       return (a.horario_inicio || '99:99') < (b.horario_inicio || '99:99') ? -1 : 1;
     });
+    const avatarHtml = info.foto_url
+      ? `<div class="ag-prof-group__avatar" style="background-image:url('${info.foto_url}');background-size:cover;background-position:center;color:transparent;">${iniciais}</div>`
+      : `<div class="ag-prof-group__avatar">${iniciais}</div>`;
     return `
       <div class="ag-prof-group">
         <div class="ag-prof-group__header">
-          <div class="ag-prof-group__avatar">${iniciais}</div>
+          ${avatarHtml}
           <div class="ag-prof-group__nome">${(info.nome || '').replace(/"/g,'&quot;')}</div>
           <div class="ag-prof-group__count">
             <span class="material-symbols-rounded" style="font-size:13px;">event</span>
@@ -15138,8 +15875,10 @@ function renderAdminEquipe() {
   const user = requireAdmin();
   if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
 
-  const filtroInicial = window._routeParams?.filtro || 'pendentes';
-  window._equipeFilter = filtroInicial;
+  // Filtro: 1) URL > 2) busca global > 3) inteligente (pendentes se tiver, senão ativos)
+  const filtroPorRota = window._routeParams?.filtro || null;
+  // Default temporário: ativos (mais comum). Pode ser sobrescrito pela checagem assíncrona abaixo.
+  window._equipeFilter = filtroPorRota || 'ativos';
 
   // Se veio da busca global (?id=X), descobre o status do user pra abrir na aba certa
   const idBusca = getIdDaURL('id');
@@ -15157,18 +15896,28 @@ function renderAdminEquipe() {
           const abaCorreta = abaPorStatus[data.status];
           if (abaCorreta && abaCorreta !== window._equipeFilter) {
             window._equipeFilter = abaCorreta;
-            // Re-marca a aba ativa visualmente
-            document.querySelectorAll('#equipeTabs .review-tab').forEach(btn => btn.classList.remove('is-active'));
-            const btnCerto = document.querySelector(`#equipeTabs .review-tab[onclick*="${abaCorreta}"]`);
-            if (btnCerto) btnCerto.classList.add('is-active');
+            atualizarAbaAtivaEquipe(abaCorreta);
           }
         }
       } catch {}
       await carregarEquipe();
       destacarItemDaURL('.eq-card[data-id="%ID%"]');
     }, 0);
-  } else {
+  } else if (filtroPorRota) {
+    // Filtro veio explícito na rota — respeita
     setTimeout(async () => {
+      await carregarEquipe();
+    }, 0);
+  } else {
+    // Modo inteligente: se tiver pendentes, abre em "Pendentes" (alerta); senão em "Ativos"
+    setTimeout(async () => {
+      try {
+        const cnts = await contarUsuariosPorStatus();
+        if (cnts.pendentes > 0 && window._equipeFilter !== 'pendentes') {
+          window._equipeFilter = 'pendentes';
+          atualizarAbaAtivaEquipe('pendentes');
+        }
+      } catch {}
       await carregarEquipe();
     }, 0);
   }
@@ -15178,18 +15927,27 @@ function renderAdminEquipe() {
       ${mobileTopBar({ title: 'Equipe', showBack: true })}
       <main class="mcontent">
         <div class="review-tabs" id="equipeTabs" style="overflow-x:auto;scrollbar-width:none;">
-          <button class="review-tab ${filtroInicial === 'pendentes' ? 'is-active' : ''}" onclick="trocarEquipeFiltro('pendentes')">
+          <button class="review-tab ${window._equipeFilter === 'pendentes' ? 'is-active' : ''}" onclick="trocarEquipeFiltro('pendentes')">
             Pendentes <span class="review-tab__count" id="cntPendentes">—</span>
           </button>
-          <button class="review-tab ${filtroInicial === 'ativos' ? 'is-active' : ''}" onclick="trocarEquipeFiltro('ativos')">
+          <button class="review-tab ${window._equipeFilter === 'ativos' ? 'is-active' : ''}" onclick="trocarEquipeFiltro('ativos')">
             Ativos <span class="review-tab__count" id="cntAtivos">—</span>
           </button>
-          <button class="review-tab ${filtroInicial === 'desativados' ? 'is-active' : ''}" onclick="trocarEquipeFiltro('desativados')">
+          <button class="review-tab ${window._equipeFilter === 'desativados' ? 'is-active' : ''}" onclick="trocarEquipeFiltro('desativados')">
             Desativados <span class="review-tab__count" id="cntDesativados">—</span>
           </button>
-          <button class="review-tab ${filtroInicial === 'categorias' ? 'is-active' : ''}" onclick="trocarEquipeFiltro('categorias')">
+          <button class="review-tab ${window._equipeFilter === 'categorias' ? 'is-active' : ''}" onclick="trocarEquipeFiltro('categorias')">
             Categorias <span class="review-tab__count" id="cntCategorias">—</span>
           </button>
+        </div>
+
+        <div id="equipeBuscaWrap" style="position:relative;margin:12px 0 8px;">
+          <span class="material-symbols-rounded" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--neutral-500);font-size:18px;pointer-events:none;">search</span>
+          <input type="text"
+                 id="equipeBusca"
+                 placeholder="Filtrar por nome, CPF ou email..."
+                 oninput="filtrarEquipeLocal(this.value)"
+                 style="width:100%;padding:10px 14px 10px 38px;border:1px solid var(--neutral-200);border-radius:10px;font-family:inherit;font-size:13px;background:var(--neutral-0);color:var(--brand-navy);" />
         </div>
 
         <div id="equipeList" style="display:flex;flex-direction:column;gap:10px;">
@@ -15205,20 +15963,25 @@ async function listarUsuariosPorStatus(statuses) {
   if (!db) return [];
   const { data, error } = await db
     .from('usuarios')
-    .select('id, nome, cpf, email, telefone, perfil, status, categoria_id, criado_em, ultimo_login, categorias_profissionais(nome)')
+    .select('id, nome, cpf, email, telefone, perfil, status, categoria_id, criado_em, ultimo_login, foto_url, categorias_profissionais(nome)')
     .in('status', statuses)
-    .neq('perfil', 'admin') // não lista admins aqui
     .order('criado_em', { ascending: false });
   if (error) { console.warn('[equipe]', error.message); return []; }
-  return data || [];
+  // Admins primeiro, depois o resto na ordem original (criado_em desc)
+  const lista = data || [];
+  return lista.sort((a, b) => {
+    if (a.perfil === 'admin' && b.perfil !== 'admin') return -1;
+    if (b.perfil === 'admin' && a.perfil !== 'admin') return 1;
+    return 0; // mantém ordem do banco
+  });
 }
 
 async function contarUsuariosPorStatus() {
   if (!db) return { pendentes: 0, ativos: 0, desativados: 0 };
   const [p, a, d] = await Promise.all([
-    db.from('usuarios').select('*', { count: 'exact', head: true }).eq('status', 'pendente').neq('perfil', 'admin'),
-    db.from('usuarios').select('*', { count: 'exact', head: true }).eq('status', 'ativo').neq('perfil', 'admin'),
-    db.from('usuarios').select('*', { count: 'exact', head: true }).in('status', ['inativo', 'bloqueado']).neq('perfil', 'admin'),
+    db.from('usuarios').select('*', { count: 'exact', head: true }).eq('status', 'pendente'),
+    db.from('usuarios').select('*', { count: 'exact', head: true }).eq('status', 'ativo'),
+    db.from('usuarios').select('*', { count: 'exact', head: true }).in('status', ['inativo', 'bloqueado']),
   ]);
   return { pendentes: p.count || 0, ativos: a.count || 0, desativados: d.count || 0 };
 }
@@ -15227,8 +15990,55 @@ window.trocarEquipeFiltro = function(filtro) {
   window._equipeFilter = filtro;
   document.querySelectorAll('#equipeTabs .review-tab').forEach(t => t.classList.remove('is-active'));
   event.currentTarget.classList.add('is-active');
+  // Esconde busca na aba Categorias (não faz sentido filtrar)
+  const buscaWrap = document.getElementById('equipeBuscaWrap');
+  if (buscaWrap) buscaWrap.style.display = filtro === 'categorias' ? 'none' : '';
+  // Limpa busca anterior ao trocar de aba
+  const buscaInput = document.getElementById('equipeBusca');
+  if (buscaInput) buscaInput.value = '';
   carregarEquipe();
 };
+
+// Filtra os cards já renderizados (filtro local, sem nova consulta ao banco)
+window.filtrarEquipeLocal = function(termo) {
+  const t = (termo || '').trim().toLowerCase();
+  const cards = document.querySelectorAll('#equipeList .eq-card');
+  let matches = 0;
+  cards.forEach(card => {
+    if (!t) {
+      card.style.display = '';
+      matches++;
+      return;
+    }
+    // Procura em nome, CPF e email — campos que estão visíveis no card
+    const texto = card.textContent.toLowerCase();
+    const visivel = texto.includes(t);
+    card.style.display = visivel ? '' : 'none';
+    if (visivel) matches++;
+  });
+  // Mostra ou esconde mensagem de "nada encontrado"
+  let msgEl = document.getElementById('equipeBuscaSemResultado');
+  if (t && matches === 0) {
+    if (!msgEl) {
+      msgEl = document.createElement('div');
+      msgEl.id = 'equipeBuscaSemResultado';
+      msgEl.style.cssText = 'padding:30px;text-align:center;color:var(--neutral-500);font-size:13px;';
+      msgEl.innerHTML = `<span class="material-symbols-rounded" style="font-size:32px;display:block;margin-bottom:6px;color:var(--neutral-300);">search_off</span>Nenhum resultado pra "${t.replace(/</g,'&lt;')}"`;
+      document.getElementById('equipeList').appendChild(msgEl);
+    } else {
+      msgEl.innerHTML = `<span class="material-symbols-rounded" style="font-size:32px;display:block;margin-bottom:6px;color:var(--neutral-300);">search_off</span>Nenhum resultado pra "${t.replace(/</g,'&lt;')}"`;
+    }
+  } else if (msgEl) {
+    msgEl.remove();
+  }
+};
+
+// Atualiza visualmente a aba ativa sem precisar de um clique (usado quando troca a aba programaticamente)
+function atualizarAbaAtivaEquipe(filtro) {
+  document.querySelectorAll('#equipeTabs .review-tab').forEach(btn => btn.classList.remove('is-active'));
+  const btnCerto = document.querySelector(`#equipeTabs .review-tab[onclick*="'${filtro}'"]`);
+  if (btnCerto) btnCerto.classList.add('is-active');
+}
 
 async function carregarEquipe() {
   const listEl = document.getElementById('equipeList');
@@ -15488,9 +16298,13 @@ function renderEquipeCard(u, filtro) {
   const dataCad = u.criado_em ? new Date(u.criado_em).toLocaleDateString('pt-BR') : '—';
   const ultimoLogin = u.ultimo_login ? new Date(u.ultimo_login).toLocaleDateString('pt-BR') : 'nunca';
 
-  // Botões de ação variam por filtro
+  // Botões de ação variam por filtro. Admins não recebem botões de ação
+  // (sem aprovar/rejeitar/desativar/excluir admin pela tela de equipe — usar SQL)
+  const ehAdmin = u.perfil === 'admin';
   let acoes = '';
-  if (filtro === 'pendentes') {
+  if (ehAdmin) {
+    acoes = `<div style="font-size:11px;color:var(--neutral-500);padding:8px;text-align:center;font-style:italic;">Conta de administrador — gerencie via SQL.</div>`;
+  } else if (filtro === 'pendentes') {
     acoes = `
       <button class="eq-btn eq-btn--primary" onclick="aprovarProfissional('${u.id}')">
         <span class="material-symbols-rounded" style="font-size:16px;">check_circle</span>
@@ -15506,6 +16320,10 @@ function renderEquipeCard(u, filtro) {
       <button class="eq-btn eq-btn--secondary" onclick="editarCategoriaProfissional('${u.id}')">
         <span class="material-symbols-rounded" style="font-size:16px;">edit</span>
         Categoria
+      </button>
+      <button class="eq-btn eq-btn--secondary" onclick="alterarFotoDeOutro('${u.id}', '${(u.nome || '').replace(/'/g,"\\'")}', ${u.foto_url ? `'${u.foto_url.replace(/'/g,"\\'")}'` : 'null'})" title="Alterar foto de perfil">
+        <span class="material-symbols-rounded" style="font-size:16px;">photo_camera</span>
+        Foto
       </button>
       <button class="eq-btn eq-btn--warning-outline" onclick="desativarProfissional('${u.id}')">
         <span class="material-symbols-rounded" style="font-size:16px;">person_off</span>
@@ -15537,11 +16355,17 @@ function renderEquipeCard(u, filtro) {
   return `
     <div class="eq-card" data-id="${u.id}">
       <div class="eq-card__top">
-        <div class="eq-card__avatar">${iniciais_}</div>
+        ${u.foto_url
+          ? `<div class="eq-card__avatar" style="background-image:url('${u.foto_url}');background-size:cover;background-position:center;color:transparent;">${iniciais_}</div>`
+          : `<div class="eq-card__avatar">${iniciais_}</div>`
+        }
         <div class="eq-card__info">
-          <div class="eq-card__name">${(u.nome || '(sem nome)').replace(/"/g,'&quot;')}</div>
+          <div class="eq-card__name">
+            ${(u.nome || '(sem nome)').replace(/"/g,'&quot;')}
+            ${ehAdmin ? '<span class="badge badge--info" style="margin-left:6px;font-size:10px;vertical-align:middle;"><span class="material-symbols-rounded" style="font-size:11px;">shield_person</span>Admin</span>' : ''}
+          </div>
           <div class="eq-card__meta">
-            <span>${categoria}</span>
+            <span>${ehAdmin ? 'Administrador' : categoria}</span>
             <span>·</span>
             ${statusBadge}
           </div>
@@ -15612,6 +16436,83 @@ window.desativarProfissional = async function(id) {
     setFlash('success', 'Profissional desativado.');
   }
   carregarEquipe();
+};
+
+// Admin altera foto de qualquer profissional ativo (Sprint 8.4)
+// Reaproveita o crop modal e o uploadFotoPerfil — só passa userId diferente
+window.alterarFotoDeOutro = async function(userId, nomeProf, fotoAtual) {
+  if (await bloqueioSimulacao('alterar foto de profissional')) return;
+
+  // Se já tem foto, oferece escolha entre trocar ou remover via prompt simples
+  if (fotoAtual) {
+    const remover = await showModalConfirmacao({
+      icone: 'photo_camera',
+      iconeCor: 'info',
+      titulo: `Foto de ${nomeProf}`,
+      subtitulo: 'Quer enviar uma nova foto ou remover a atual?',
+      btnConfirmar: 'Enviar nova',
+      btnCancelar: 'Remover atual',
+    });
+    if (remover === false) {
+      // Cancelar = "Remover atual" (porque o cancelar é o segundo botão)
+      const ok = await showModalConfirmacao({
+        icone: 'do_not_disturb_on',
+        iconeCor: 'danger',
+        titulo: 'Remover foto de perfil?',
+        subtitulo: `${nomeProf} voltará a ser exibido com as iniciais do nome.`,
+        btnConfirmar: 'Sim, remover',
+        btnCancelar: 'Voltar',
+      });
+      if (!ok) return;
+      try {
+        try { await apagarFotoDoStorage(fotoAtual); } catch {}
+        await atualizarFotoUsuario(userId, null);
+        setFlash('info', `Foto de ${nomeProf} removida.`);
+        await carregarEquipe();
+      } catch (err) {
+        alert('Erro ao remover: ' + err.message);
+      }
+      return;
+    }
+    if (remover !== true) return; // fechou modal
+  }
+
+  // Abre seletor de arquivo (caso "enviar nova" ou nunca teve foto)
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/jpeg,image/png,image/webp';
+  input.style.display = 'none';
+  input.onchange = async (ev) => {
+    const file = ev.target.files?.[0];
+    document.body.removeChild(input);
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      alert('Arquivo não é uma imagem.');
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      alert('Imagem muito grande (limite 10MB).');
+      return;
+    }
+    const blob = await showCropModal(file);
+    if (!blob) return;
+    try {
+      setFlash('info', `Enviando foto de ${nomeProf}...`);
+      const url = await uploadFotoPerfil(blob, userId);
+      // Apaga foto antiga se houver (cleanup do storage)
+      if (fotoAtual && fotoAtual !== url) {
+        try { await apagarFotoDoStorage(fotoAtual); } catch {}
+      }
+      await atualizarFotoUsuario(userId, url);
+      setFlash('success', `Foto de ${nomeProf} atualizada!`);
+      await carregarEquipe();
+    } catch (err) {
+      console.error('[alterar foto outro]', err);
+      alert('Erro ao enviar: ' + err.message);
+    }
+  };
+  document.body.appendChild(input);
+  input.click();
 };
 
 window.reativarProfissional = async function(id) {
