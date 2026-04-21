@@ -1361,6 +1361,204 @@ a {
   border: 2px solid var(--brand-navy);
 }
 
+/* Badge numérico do sininho */
+.notif-badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: #DC2626;
+  color: #fff;
+  font-size: 10.5px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--brand-navy);
+  font-family: var(--font-sans);
+  line-height: 1;
+}
+
+/* Dropdown de notificações */
+.notif-dropdown {
+  position: fixed;
+  z-index: 1000;
+  width: 340px;
+  max-width: calc(100vw - 16px);
+  max-height: 70vh;
+  background: var(--neutral-0);
+  border-radius: 14px;
+  box-shadow: 0 12px 32px rgba(10,31,92,0.22);
+  border: 1px solid var(--neutral-100);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: notifSlideIn 180ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+@keyframes notifSlideIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.notif-dropdown__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--neutral-100);
+  background: var(--neutral-50);
+}
+.notif-dropdown__list {
+  flex: 1;
+  overflow-y: auto;
+  max-height: calc(70vh - 50px);
+}
+.notif-item {
+  display: flex;
+  gap: 10px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--neutral-100);
+  text-decoration: none;
+  color: inherit;
+  transition: background 120ms;
+  position: relative;
+  align-items: flex-start;
+}
+.notif-item:last-child { border-bottom: none; }
+.notif-item:hover { background: var(--neutral-50); }
+.notif-item--unread { background: #F3F8E8; }
+.notif-item--unread:hover { background: #EBF2DD; }
+.notif-item__icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.notif-item__body {
+  flex: 1;
+  min-width: 0;
+}
+.notif-item__title {
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--brand-navy);
+  line-height: 1.25;
+  margin-bottom: 2px;
+}
+.notif-item__msg {
+  font-size: 11.5px;
+  color: var(--neutral-600);
+  line-height: 1.35;
+  margin-bottom: 3px;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.notif-item__time {
+  font-size: 10.5px;
+  color: var(--neutral-400);
+  font-family: var(--font-mono);
+}
+.notif-item__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--status-info);
+  flex-shrink: 0;
+  margin-top: 14px;
+}
+
+.notif-dropdown__footer {
+  border-top: 1px solid var(--neutral-100);
+  background: var(--neutral-50);
+}
+
+/* Tela dedicada de notificações */
+.notif-page-card {
+  display: flex;
+  gap: 12px;
+  padding: 14px;
+  background: var(--neutral-0);
+  border-radius: 12px;
+  border: 1px solid var(--neutral-100);
+  box-shadow: 0 2px 6px rgba(10,31,92,0.04);
+}
+.notif-page-card--unread {
+  border-color: rgba(37,99,235,0.3);
+  background: #F5F9FF;
+}
+.notif-page-card__icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.notif-page-card__body { flex: 1; min-width: 0; }
+.notif-page-card__title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--brand-navy);
+  line-height: 1.25;
+  margin-bottom: 4px;
+}
+.notif-page-card__msg {
+  font-size: 12.5px;
+  color: var(--neutral-700, #374151);
+  line-height: 1.4;
+  margin-bottom: 6px;
+}
+.notif-page-card__time {
+  font-size: 11px;
+  color: var(--neutral-500);
+  margin-bottom: 10px;
+  font-family: var(--font-mono);
+}
+.notif-page-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.notif-page-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  background: var(--neutral-0);
+  border: 1.5px solid var(--neutral-200);
+  color: var(--brand-navy);
+  transition: all 140ms;
+}
+.notif-page-btn:hover { background: var(--neutral-50); }
+.notif-page-btn--primary {
+  background: var(--brand-lime);
+  color: #fff;
+  border-color: var(--brand-lime);
+}
+.notif-page-btn--primary:hover { filter: brightness(1.05); }
+.notif-page-btn--danger {
+  color: var(--status-danger);
+  border-color: var(--neutral-200);
+}
+.notif-page-btn--danger:hover {
+  background: var(--status-danger-bg);
+  border-color: var(--status-danger);
+}
+
 .mbar__avatar {
   width: 40px;
   height: 40px;
@@ -1542,6 +1740,18 @@ a {
   padding: 14px;
   box-shadow: 0 2px 6px rgba(10,31,92,0.04);
   border: 1px solid var(--neutral-100);
+}
+.dash-kpi-card--clickable {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  transition: all 140ms ease;
+  cursor: pointer;
+}
+.dash-kpi-card--clickable:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(10,31,92,0.08);
+  border-color: var(--brand-lime);
 }
 .dash-kpi-card__label {
   font-size: 10.5px;
@@ -1730,6 +1940,485 @@ a {
   color: var(--neutral-500);
   margin-top: 2px;
   line-height: 1.3;
+}
+
+/* ========================================================================
+   EQUIPE - Cards de profissionais
+   ======================================================================== */
+.eq-card {
+  background: var(--neutral-0);
+  border-radius: 12px;
+  padding: 14px;
+  box-shadow: 0 2px 6px rgba(10,31,92,0.04);
+  border: 1px solid var(--neutral-100);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.eq-card__top {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.eq-card__avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--brand-navy);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-family: var(--font-display);
+  font-size: 15px;
+  flex-shrink: 0;
+}
+.eq-card__info { flex: 1; min-width: 0; }
+.eq-card__name {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--brand-navy);
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.eq-card__meta {
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  color: var(--neutral-600);
+}
+.eq-card__meta .badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 700;
+}
+.eq-card__details {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 10px;
+  border-top: 1px solid var(--neutral-100);
+}
+.eq-card__row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 12.5px;
+  color: var(--neutral-600);
+}
+.eq-card__actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding-top: 4px;
+}
+.eq-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 9px 10px;
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1.5px solid transparent;
+  transition: all 140ms;
+}
+.eq-btn--primary {
+  background: var(--brand-lime);
+  color: #fff;
+}
+.eq-btn--primary:hover { filter: brightness(1.05); }
+.eq-btn--secondary {
+  background: var(--neutral-0);
+  border-color: var(--neutral-200);
+  color: var(--brand-navy);
+}
+.eq-btn--secondary:hover { background: var(--neutral-50); }
+.eq-btn--warning-outline {
+  background: var(--neutral-0);
+  border-color: var(--status-warning);
+  color: var(--status-warning);
+}
+.eq-btn--warning-outline:hover { background: var(--status-warning-bg); }
+.eq-btn--danger-outline {
+  background: var(--neutral-0);
+  border-color: var(--status-danger);
+  color: var(--status-danger);
+}
+.eq-btn--danger-outline:hover { background: var(--status-danger-bg); }
+
+/* ========================================================================
+   Admin Visitas - Filtros
+   ======================================================================== */
+.av-filters {
+  background: var(--neutral-0);
+  border-radius: 12px;
+  padding: 14px;
+  box-shadow: 0 2px 6px rgba(10,31,92,0.04);
+  border: 1px solid var(--neutral-100);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.av-filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.av-filter-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--neutral-500);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.av-filter-row {
+  display: flex;
+  gap: 10px;
+}
+.av-filter-select {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1.5px solid var(--neutral-200);
+  border-radius: 10px;
+  font-size: 13px;
+  font-family: inherit;
+  background: var(--neutral-0);
+  color: var(--brand-navy);
+  appearance: none;
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="%23627388" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>');
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 32px;
+  cursor: pointer;
+}
+.av-filter-select:focus {
+  outline: none;
+  border-color: var(--brand-lime);
+}
+.av-btn-limpar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: transparent;
+  border: 1.5px dashed var(--neutral-300);
+  color: var(--neutral-600);
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  align-self: flex-start;
+}
+.av-btn-limpar:hover {
+  background: var(--neutral-50);
+  color: var(--brand-navy);
+  border-color: var(--neutral-400);
+}
+
+/* Header da lista — contagem à esquerda, botão de export à direita */
+.av-list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 16px 0 10px;
+  flex-wrap: wrap;
+}
+.av-list-header__count {
+  font-size: 13px;
+  color: var(--neutral-600);
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.av-btn-export {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: var(--brand-navy);
+  border: 1.5px solid var(--brand-navy);
+  color: #fff;
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity .15s, transform .1s;
+  flex-shrink: 0;
+}
+.av-btn-export:hover:not(:disabled) {
+  opacity: .92;
+  transform: translateY(-1px);
+}
+.av-btn-export:active:not(:disabled) {
+  transform: translateY(0);
+}
+.av-btn-export:disabled {
+  opacity: .55;
+  cursor: wait;
+}
+.av-btn-export .material-symbols-rounded {
+  font-size: 16px;
+}
+
+/* ========================================================================
+   Relatório imprimível do dashboard
+   ======================================================================== */
+.relatorio-page {
+  min-height: 100vh;
+  background: #F1F3F7;
+  padding: 20px 12px 60px;
+}
+.relatorio-actions {
+  max-width: 900px;
+  margin: 0 auto 16px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.relatorio-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 18px;
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1.5px solid transparent;
+  transition: all 140ms;
+  text-decoration: none;
+}
+.relatorio-btn--primary {
+  background: var(--brand-lime);
+  color: #fff;
+}
+.relatorio-btn--primary:hover { filter: brightness(1.05); }
+.relatorio-btn--secondary {
+  background: var(--neutral-0);
+  border-color: var(--neutral-200);
+  color: var(--brand-navy);
+}
+.relatorio-btn--secondary:hover { background: var(--neutral-50); }
+
+.relatorio-dica {
+  max-width: 900px;
+  margin: 0 auto 16px;
+  background: #E4ECFD;
+  border: 1px solid rgba(37,99,235,0.25);
+  border-radius: 10px;
+  padding: 12px 14px;
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  font-size: 12.5px;
+  color: #1E40AF;
+  line-height: 1.5;
+}
+
+.relatorio-paper {
+  max-width: 900px;
+  margin: 0 auto;
+  background: #fff;
+  padding: 40px 48px;
+  box-shadow: 0 4px 24px rgba(10,31,92,0.08);
+  border-radius: 4px;
+  color: #222;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.relatorio-header {
+  padding-bottom: 16px;
+  border-bottom: 2px solid var(--brand-navy);
+  margin-bottom: 24px;
+}
+.relatorio-header__brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 12px;
+}
+.relatorio-header__title {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--brand-navy);
+  line-height: 1.1;
+}
+.relatorio-header__subtitle {
+  font-size: 11.5px;
+  color: var(--neutral-500);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-top: 3px;
+}
+.relatorio-header__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 24px;
+  font-size: 12px;
+  color: var(--neutral-700, #374151);
+}
+
+.relatorio-section {
+  margin-bottom: 28px;
+}
+.relatorio-section__title {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--brand-navy);
+  margin: 0 0 14px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid var(--neutral-100);
+}
+.relatorio-subtitle {
+  font-family: var(--font-display);
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--brand-navy);
+  margin: 0 0 10px;
+}
+.relatorio-prosa {
+  font-size: 13px;
+  line-height: 1.7;
+  color: #333;
+}
+.relatorio-prosa p { margin: 0 0 8px; }
+
+.relatorio-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+.relatorio-kpi {
+  border: 1px solid var(--neutral-200);
+  border-radius: 8px;
+  padding: 12px;
+  background: #FAFBFD;
+}
+.relatorio-kpi__label {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--neutral-500);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 4px;
+}
+.relatorio-kpi__value {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--brand-navy);
+  line-height: 1.1;
+}
+.relatorio-kpi__hint {
+  font-size: 10px;
+  color: var(--neutral-600);
+  margin-top: 4px;
+}
+
+.relatorio-two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+.relatorio-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.relatorio-table th,
+.relatorio-table td {
+  padding: 6px 8px;
+  text-align: left;
+  border-bottom: 1px solid var(--neutral-100);
+  vertical-align: top;
+}
+.relatorio-table th {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--neutral-500);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: #FAFBFD;
+  border-bottom: 2px solid var(--neutral-200);
+}
+.relatorio-table--compact th,
+.relatorio-table--compact td {
+  padding: 4px 6px;
+  font-size: 11px;
+}
+
+.relatorio-footer {
+  margin-top: 32px;
+  padding-top: 14px;
+  border-top: 1px solid var(--neutral-200);
+  font-size: 10.5px;
+  color: var(--neutral-500);
+  text-align: center;
+  font-style: italic;
+}
+
+/* Impressão */
+.no-print { /* default visível */ }
+.page-break-before { page-break-before: always; }
+.avoid-break { page-break-inside: avoid; }
+
+@media print {
+  body, html {
+    background: #fff !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  .no-print { display: none !important; }
+  .relatorio-page {
+    background: #fff !important;
+    padding: 0 !important;
+  }
+  .relatorio-paper {
+    box-shadow: none !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+  }
+  /* Garante cores na impressão */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  @page {
+    size: A4;
+    margin: 16mm 14mm;
+  }
+  /* Reduz tamanhos de gráficos pra não sair da página */
+  .relatorio-kpis { grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .relatorio-kpi__value { font-size: 18px; }
+  .relatorio-section { margin-bottom: 18px; }
 }
 
 .home__greeting {
@@ -2932,7 +3621,7 @@ a {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  margin-top: 6px;
+  margin-bottom: 6px;
 }
 .prof-chip {
   display: inline-flex;
@@ -4017,7 +4706,7 @@ async function login(cpf, senha) {
 // Cadastro
 async function cadastrar(dados) {
   if (!db) throw new Error('Banco de dados não conectado');
-  const { nome, cpf, email, telefone, senha } = dados;
+  const { nome, cpf, email, telefone, senha, categoria_id = null } = dados;
   const cpfFmt = maskCPF(cpf);
   const senhaHash = await hashSenha(senha);
 
@@ -4041,6 +4730,7 @@ async function cadastrar(dados) {
     senha_hash: senhaHash,
     perfil: 'nutricionista',
     status: 'pendente',
+    categoria_id: categoria_id || null,
     permissoes: {},
   });
 
@@ -4048,10 +4738,247 @@ async function cadastrar(dados) {
   return true;
 }
 
+// Lista categorias ativas para dropdowns
+async function listarCategoriasAtivas() {
+  if (!db) return [];
+  const { data, error } = await db
+    .from('categorias_profissionais')
+    .select('id, nome')
+    .eq('ativo', true)
+    .order('nome');
+  if (error) return [];
+  return data || [];
+}
+
+/* ==========================================================================
+   NOTIFICAÇÕES — client API
+   Tabela `notificacoes` (criada na migration 19) + triggers SQL fazem
+   a maior parte do trabalho. Aqui só lemos e marcamos como lidas.
+   ========================================================================== */
+
+// Lista últimas N notificações do usuário logado
+async function listarNotificacoes(limit = 15) {
+  if (!db) return [];
+  const user = getCurrentUser();
+  if (!user) return [];
+  const { data, error } = await db
+    .from('notificacoes')
+    .select('id, tipo, titulo, mensagem, link, objeto_id, lida, criado_em, lida_em')
+    .eq('user_id', user.id)
+    .order('criado_em', { ascending: false })
+    .limit(limit);
+  if (error) { console.warn('[notif] erro listar:', error.message); return []; }
+  return data || [];
+}
+
+// Conta não lidas (pro badge)
+async function contarNotificacoesNaoLidas() {
+  if (!db) return 0;
+  const user = getCurrentUser();
+  if (!user) return 0;
+  const { count, error } = await db
+    .from('notificacoes')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', user.id)
+    .eq('lida', false);
+  if (error) return 0;
+  return count || 0;
+}
+
+// Marca uma notificação como lida
+async function marcarNotificacaoLida(id) {
+  if (!db) return;
+  await db.from('notificacoes')
+    .update({ lida: true, lida_em: new Date().toISOString() })
+    .eq('id', id);
+}
+
+// Marca todas como lidas
+async function marcarTodasNotificacoesLidas() {
+  if (!db) return;
+  const user = getCurrentUser();
+  if (!user) return;
+  await db.from('notificacoes')
+    .update({ lida: true, lida_em: new Date().toISOString() })
+    .eq('user_id', user.id)
+    .eq('lida', false);
+}
+
+// Formata tempo relativo curto ("há 2h", "há 3d")
+function formatarTempoCurto(iso) {
+  if (!iso) return '';
+  const diff = (Date.now() - new Date(iso).getTime()) / 1000;
+  if (diff < 60) return 'agora';
+  if (diff < 3600) return `${Math.floor(diff / 60)}min`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h`;
+  if (diff < 604800) return `${Math.floor(diff / 86400)}d`;
+  return `${Math.floor(diff / 604800)}sem`;
+}
+
+// Ícone e cor por tipo
+function iconeNotificacao(tipo) {
+  const map = {
+    // --- Notificações pro profissional (migration 19) ---
+    visita_devolvida:            { icon: 'rule',             cor: '#F59E0B' }, // âmbar
+    visita_aprovada_pos_revisao: { icon: 'check_circle',     cor: '#22A06B' }, // verde
+    instituicao_aprovada:        { icon: 'local_hospital',   cor: '#22A06B' },
+    instituicao_rejeitada:       { icon: 'do_not_disturb_on',cor: '#DC2626' },
+    objetivo_aprovado:           { icon: 'flag',             cor: '#22A06B' },
+    objetivo_rejeitado:          { icon: 'flag',             cor: '#DC2626' },
+    conta_aprovada:              { icon: 'verified',         cor: '#22A06B' },
+
+    // --- Notificações pro admin (migration 20) ---
+    conta_pendente:              { icon: 'person_add',       cor: '#2563EB' }, // azul-info
+    instituicao_sugerida:        { icon: 'add_business',     cor: '#F59E0B' }, // âmbar (aguarda ação)
+    objetivo_sugerido:           { icon: 'add_task',         cor: '#F59E0B' },
+    visita_reenviada:            { icon: 'reply',            cor: '#2563EB' }, // azul (pra revisar)
+    visita_flagueada:            { icon: 'flag_circle',      cor: '#DC2626' }, // vermelho (crítico)
+  };
+  return map[tipo] || { icon: 'notifications', cor: '#2563EB' };
+}
+
+// Atualiza o badge do sininho — chamado pelo polling e depois de ações
+async function atualizarBadgeNotificacoes() {
+  const badge = document.getElementById('notifBadge');
+  if (!badge) return;
+  const n = await contarNotificacoesNaoLidas();
+  if (n > 0) {
+    badge.textContent = n > 99 ? '99+' : String(n);
+    badge.style.display = 'flex';
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+// Abre/fecha o dropdown
+window.toggleNotifDropdown = async function(ev) {
+  if (ev) ev.stopPropagation();
+  const existing = document.getElementById('notifDropdown');
+  if (existing) { existing.remove(); return; }
+  const trigger = document.getElementById('notifTrigger');
+  if (!trigger) return;
+
+  // Cria dropdown anexado ao body (pra ficar acima de tudo)
+  const dropdown = document.createElement('div');
+  dropdown.id = 'notifDropdown';
+  dropdown.className = 'notif-dropdown';
+  dropdown.innerHTML = `
+    <div class="notif-dropdown__header">
+      <div style="font-weight:700;color:var(--brand-navy);font-family:var(--font-display);">Notificações</div>
+      <button onclick="marcarTodasLidasUI()" style="background:none;border:none;color:var(--status-info);font-size:11.5px;font-weight:600;cursor:pointer;padding:4px 6px;" title="Marcar todas como lidas">
+        Marcar todas
+      </button>
+    </div>
+    <div id="notifList" class="notif-dropdown__list">
+      <div style="padding:20px;text-align:center;color:var(--neutral-400);font-size:12px;">Carregando...</div>
+    </div>
+  `;
+  document.body.appendChild(dropdown);
+
+  // Posiciona abaixo do sininho
+  const rect = trigger.getBoundingClientRect();
+  dropdown.style.top = `${rect.bottom + 4}px`;
+  dropdown.style.right = `${Math.max(8, window.innerWidth - rect.right)}px`;
+
+  // Carrega conteúdo
+  const list = await listarNotificacoes(15);
+  const listEl = document.getElementById('notifList');
+  if (!listEl) return;
+
+  if (list.length === 0) {
+    listEl.innerHTML = `
+      <div style="padding:30px 16px;text-align:center;color:var(--neutral-500);font-size:12.5px;">
+        <span class="material-symbols-rounded" style="font-size:32px;color:var(--neutral-300);display:block;margin-bottom:6px;">notifications_none</span>
+        Você está em dia!<br>
+        <span style="font-size:11px;color:var(--neutral-400);">Nenhuma notificação por aqui.</span>
+      </div>
+    `;
+  } else {
+    listEl.innerHTML = list.map(n => {
+      const ic = iconeNotificacao(n.tipo);
+      return `
+        <a href="#" onclick="abrirNotificacao('${n.id}', '${(n.link || '').replace(/'/g,"\\'")}'); return false;" class="notif-item ${n.lida ? '' : 'notif-item--unread'}">
+          <div class="notif-item__icon" style="background:${ic.cor}20;color:${ic.cor};">
+            <span class="material-symbols-rounded" style="font-size:18px;">${ic.icon}</span>
+          </div>
+          <div class="notif-item__body">
+            <div class="notif-item__title">${(n.titulo || '').replace(/"/g,'&quot;')}</div>
+            ${n.mensagem ? `<div class="notif-item__msg">${n.mensagem.replace(/"/g,'&quot;')}</div>` : ''}
+            <div class="notif-item__time">${formatarTempoCurto(n.criado_em)}</div>
+          </div>
+          ${n.lida ? '' : '<span class="notif-item__dot"></span>'}
+        </a>
+      `;
+    }).join('');
+  }
+
+  // Rodapé com link pra tela completa
+  dropdown.innerHTML += `
+    <div class="notif-dropdown__footer">
+      <a href="#/notificacoes" onclick="document.getElementById('notifDropdown')?.remove();" style="display:flex;align-items:center;justify-content:center;gap:6px;padding:10px;font-size:12px;font-weight:700;color:var(--status-info);text-decoration:none;">
+        Ver todas
+        <span class="material-symbols-rounded" style="font-size:15px;">arrow_forward</span>
+      </a>
+    </div>
+  `;
+
+  // Fecha ao clicar fora
+  setTimeout(() => {
+    document.addEventListener('click', fecharNotifDropdownOnClickFora, { once: true });
+  }, 0);
+};
+
+function fecharNotifDropdownOnClickFora(ev) {
+  const dropdown = document.getElementById('notifDropdown');
+  const trigger = document.getElementById('notifTrigger');
+  if (!dropdown) return;
+  if (dropdown.contains(ev.target) || trigger?.contains(ev.target)) {
+    // Continua ouvindo
+    document.addEventListener('click', fecharNotifDropdownOnClickFora, { once: true });
+  } else {
+    dropdown.remove();
+  }
+}
+
+window.abrirNotificacao = async function(id, link) {
+  await marcarNotificacaoLida(id);
+  atualizarBadgeNotificacoes();
+  const dd = document.getElementById('notifDropdown');
+  if (dd) dd.remove();
+  if (link && link.startsWith('#/')) {
+    window.location.hash = link;
+  }
+};
+
+window.marcarTodasLidasUI = async function() {
+  await marcarTodasNotificacoesLidas();
+  atualizarBadgeNotificacoes();
+  // Re-renderiza a lista
+  const dd = document.getElementById('notifDropdown');
+  if (dd) {
+    dd.remove();
+    toggleNotifDropdown();
+  }
+};
+
+// Polling: atualiza badge a cada 60s
+let _notifPollInterval = null;
+function iniciarPollingNotificacoes() {
+  if (_notifPollInterval) clearInterval(_notifPollInterval);
+  atualizarBadgeNotificacoes();
+  _notifPollInterval = setInterval(() => {
+    atualizarBadgeNotificacoes();
+  }, 60000);
+}
+function pararPollingNotificacoes() {
+  if (_notifPollInterval) { clearInterval(_notifPollInterval); _notifPollInterval = null; }
+}
+
 // Logout
 function logout() {
   sessionStorage.removeItem('SIMULAR_NUTRI');
   clearSession();
+  pararPollingNotificacoes();
   window.location.hash = '#/login';
 }
 
@@ -4105,6 +5032,7 @@ function requireAdmin() {
 
 // Redireciona após login baseado no perfil
 function redirectAfterLogin(user) {
+  iniciarPollingNotificacoes();
   if (user.perfil === 'admin') {
     window.location.hash = '#/admin';
   } else {
@@ -4374,6 +5302,7 @@ function calcularDataInicio(periodo) {
 
 async function carregarDashboardData(periodo) {
   if (!db) return;
+  window._dashPeriodoAtual = periodo; // pra drilldown
   const dataInicio = calcularDataInicio(periodo);
 
   // Query base de visitas no período
@@ -4418,13 +5347,13 @@ async function carregarDashboardData(periodo) {
   // Atualiza cards KPI
   const set = (id, html) => { const el = document.getElementById(id); if (el) el.innerHTML = html; };
   set('kpiTotalVisitas', total);
-  set('kpiTotalHint', `${realizadas} realizadas · ${canceladas} canceladas${naoPreenchida > 0 ? ` · ${naoPreenchida} sem status` : ''}`);
+  set('kpiTotalHint', `${realizadas} ${realizadas === 1 ? 'realizada' : 'realizadas'} · ${canceladas} ${canceladas === 1 ? 'cancelada' : 'canceladas'}${naoPreenchida > 0 ? ` · ${naoPreenchida} sem status` : ''}`);
   set('kpiTaxaRealiz', total > 0 ? `${taxaRealiz}%` : '—');
   set('kpiTaxaHint', total > 0 ? `${realizadas} de ${total} visitas` : 'sem dados no período');
   set('kpiPendencias', pendTotal);
   set('kpiPendHint', pendTotal === 0 ? 'nada pra revisar' : `${pendInst} inst · ${pendObj} obj`);
   set('kpiQualidadeGps', total > 0 ? `${qualidadeGps}%` : '—');
-  set('kpiGpsHint', total > 0 ? `${divergentes} divergentes · ${manuais} manuais` : 'sem dados');
+  set('kpiGpsHint', total > 0 ? `${divergentes} ${divergentes === 1 ? 'divergente' : 'divergentes'} · ${manuais} ${manuais === 1 ? 'manual' : 'manuais'}` : 'sem dados');
 
   // ===== Gráfico de linha — visitas por dia =====
   renderDashChartLine(v, dataInicio);
@@ -5149,9 +6078,9 @@ function mobileTopBar(opts = {}) {
           </div>
         ` : `<div class="mbar__title">${title || ''}</div>`}
         ${showNotification ? `
-          <button class="mbar__icon-btn" title="Notificações">
+          <button class="mbar__icon-btn notif-trigger" id="notifTrigger" onclick="toggleNotifDropdown(event)" title="Notificações" style="position:relative;">
             <span class="material-symbols-rounded" style="font-size:22px">notifications</span>
-            <span class="mbar__notification-dot"></span>
+            <span id="notifBadge" class="notif-badge" style="display:none;">0</span>
           </button>
         ` : ''}
         ${showAvatar && user ? `
@@ -5461,6 +6390,12 @@ const ConfigMeta = {
     categoria: 'admin',
     tipo: 'boolean',
   },
+  notif_visita_flagueada_ativa: {
+    titulo: 'Notificar visitas com pendências',
+    descricao: 'Envia notificação pro admin toda vez que um profissional finaliza uma visita com alguma flag ativa (sem check-in/out, GPS divergente, horário fora da margem, check-in manual). Desative se estiver virando ruído — as outras notificações continuam funcionando.',
+    categoria: 'admin',
+    tipo: 'boolean',
+  },
   analise_ia_habilitada: {
     titulo: 'Análise por IA',
     descricao: 'Quando uma visita entra em revisão com divergências, o sistema gera automaticamente uma análise de possíveis causas usando IA.',
@@ -5751,8 +6686,11 @@ const routes = {
   '#/agenda':       { title: 'Agenda', icon: 'calendar_month', render: renderAgenda },
   '#/faturamento':  { title: 'Faturamento', icon: 'payments', render: renderFaturamento },
   '#/admin':        { title: 'Dashboard Admin', icon: 'dashboard', render: renderAdminDashboard },
+  '#/admin/dashboard/relatorio': { title: 'Relatório do dashboard', icon: 'print', render: renderAdminDashboardRelatorio },
+  '#/notificacoes': { title: 'Notificações', icon: 'notifications', render: renderNotificacoes },
   '#/admin/revisao':{ title: 'Revisão', icon: 'rule', render: renderAdminRevisao },
   '#/admin/revisao/detalhe':{ title: 'Detalhes da visita', icon: 'rule', render: renderAdminRevisaoDetalhe },
+  '#/admin/visitas': { title: 'Todas as visitas', icon: 'list_alt', render: renderAdminVisitas },
   '#/admin/equipe': { title: 'Equipe', icon: 'groups', render: renderAdminEquipe },
   '#/admin/instituicoes': { title: 'Instituições', icon: 'local_hospital', render: renderAdminInstituicoes },
   '#/admin/profissionais':{ title: 'Profissionais', icon: 'stethoscope', render: renderAdminProfissionais },
@@ -5782,6 +6720,12 @@ function router() {
   } else {
     app.innerHTML = render404(hash);
     document.title = `Não encontrado · ${CONFIG.APP_NAME}`;
+  }
+
+  // Atualiza badge de notificações sempre que mudar de tela
+  // (assim o usuário vê novas notifs logo após agir — admin aprovar, etc.)
+  if (getCurrentUser()) {
+    setTimeout(() => atualizarBadgeNotificacoes(), 200);
   }
 
   // Pós-render: aplica máscaras e listeners dinâmicos
@@ -5903,10 +6847,10 @@ function renderDiagnostico() {
     {
       label: 'Configurações do sistema',
       detail: cs.testPassed
-        ? `${cs.details.totalConfigs || 0} parâmetros (esperado: 5)`
+        ? `${cs.details.totalConfigs || 0} parâmetros (esperado: 5 ou mais)`
         : 'Testando...',
-      status: (cs.details.totalConfigs === 5) ? 'ok' : (cs.testPassed ? 'error' : 'pending'),
-      icon: (cs.details.totalConfigs === 5) ? 'check_circle' : 'warning',
+      status: (cs.details.totalConfigs >= 5) ? 'ok' : (cs.testPassed ? 'error' : 'pending'),
+      icon: (cs.details.totalConfigs >= 5) ? 'check_circle' : 'warning',
     },
   ];
 
@@ -6151,6 +7095,25 @@ function renderCadastro() {
     return '<div class="splash"><div class="splash__spinner"></div></div>';
   }
 
+  // Carrega lista de categorias do banco (async, depois da renderização)
+  setTimeout(async () => {
+    const sel = document.getElementById('sCategoria');
+    if (!sel) return;
+    try {
+      const cats = await listarCategoriasAtivas();
+      if (cats.length === 0) {
+        sel.innerHTML = '<option value="">Nenhuma categoria disponível — fale com o admin</option>';
+        sel.disabled = true;
+      } else {
+        sel.innerHTML = '<option value="">Selecione sua categoria...</option>' +
+          cats.map(c => `<option value="${c.id}">${c.nome}</option>`).join('');
+      }
+    } catch (err) {
+      sel.innerHTML = '<option value="">Erro ao carregar categorias</option>';
+      console.warn('[cadastro] erro categorias:', err);
+    }
+  }, 0);
+
   return `
     <div class="auth">
       <aside class="auth__brand">
@@ -6198,6 +7161,16 @@ function renderCadastro() {
             ${renderField({ id: 'sCpf', label: 'CPF', icon: 'badge', mono: true, mask: 'cpf', placeholder: '000.000.000-00', required: true })}
             ${renderField({ id: 'sEmail', label: 'E-mail corporativo', icon: 'mail', type: 'email', placeholder: 'seu.nome@empresa.com.br', required: true })}
             ${renderField({ id: 'sTel', label: 'Telefone', icon: 'phone', mono: true, mask: 'phone', placeholder: '(11) 99999-9999', required: true })}
+
+            <div class="input-group">
+              <label class="input__label" for="sCategoria">Categoria profissional <span class="required">*</span></label>
+              <div class="input__wrap">
+                <span class="material-symbols-rounded input__icon">stethoscope</span>
+                <select id="sCategoria" class="input__field" required style="padding-left:44px;appearance:none;background-image:url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2212%22 height=%2212%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23627388%22 stroke-width=%222%22><polyline points=%226 9 12 15 18 9%22/></svg>');background-repeat:no-repeat;background-position:right 14px center;">
+                  <option value="">Carregando...</option>
+                </select>
+              </div>
+            </div>
 
             <div>
               ${renderPasswordField({ id: 'sPwd', required: true })}
@@ -6250,6 +7223,7 @@ window.handleSignupSubmit = async function(ev) {
   const cpf = document.getElementById('sCpf').value;
   const email = document.getElementById('sEmail').value.trim();
   const telefone = document.getElementById('sTel').value;
+  const categoriaId = document.getElementById('sCategoria')?.value || '';
   const pwd = document.getElementById('sPwd').value;
   const pwd2 = document.getElementById('sPwd2').value;
   const termsChecked = document.getElementById('termsLabel').classList.contains('cbx--checked');
@@ -6262,6 +7236,7 @@ window.handleSignupSubmit = async function(ev) {
   if (cpf.replace(/\D/g,'').length !== 11) errors.push('CPF inválido');
   if (!email.includes('@') || !email.includes('.')) errors.push('E-mail inválido');
   if (telefone.replace(/\D/g,'').length < 10) errors.push('Telefone inválido');
+  if (!categoriaId) errors.push('Selecione sua categoria profissional');
   if (pwd.length < 8 || !/[A-Z]/.test(pwd) || !/[0-9]/.test(pwd) || !/[^A-Za-z0-9]/.test(pwd)) {
     errors.push('Senha não atende aos requisitos');
   }
@@ -6278,7 +7253,7 @@ window.handleSignupSubmit = async function(ev) {
   flashEl.innerHTML = '';
 
   try {
-    await cadastrar({ nome, cpf, email, telefone, senha: pwd });
+    await cadastrar({ nome, cpf, email, telefone, senha: pwd, categoria_id: categoriaId });
     setFlash('success', 'Conta criada! Aguardando aprovação do administrador.');
     window.location.hash = '#/login';
   } catch (err) {
@@ -6805,17 +7780,24 @@ function renderCheckin() {
 
       // Renderiza lista
       if (listEl) {
+        const currentUserId = user.id;
         listEl.innerHTML = instComDist.map((inst, i) => {
           const isClosest = i === 0 && userPos;
           const zone = inst.dentroDoRaio ? 'in' : 'out';
           const enderecoCurto = [inst.logradouro, inst.bairro].filter(Boolean).join(' · ') || 'Endereço não informado';
+          const ehMinhaPendente = inst.pendente_aprovacao && inst.cadastrada_por === currentUserId;
+          const pendingBadge = ehMinhaPendente
+            ? `<span onclick="event.preventDefault(); event.stopPropagation(); editarMinhaInstituicaoPendente('${inst.id}');" style="display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;background:#FEF4E1;color:#92400E;margin-left:6px;cursor:pointer;border:1px solid rgba(245,158,11,0.3);" title="Clique para editar"><span class="material-symbols-rounded" style="font-size:11px;">edit</span>Pendente — editar</span>`
+            : inst.pendente_aprovacao
+            ? `<span style="display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;background:#FEF4E1;color:#92400E;margin-left:6px;"><span class="material-symbols-rounded" style="font-size:11px;">hourglass_top</span>Pendente</span>`
+            : '';
           return `
             <a href="#" onclick="selectInstitution('${inst.id}'); return false;" class="inst-item${isClosest ? ' inst-item--closest' : ''}">
               <div class="inst-item__pin inst-item__pin--${zone}">
                 <span class="material-symbols-rounded">location_on</span>
               </div>
               <div class="inst-item__info">
-                <div class="inst-item__name">${inst.nome.replace(/"/g,'&quot;')}</div>
+                <div class="inst-item__name">${inst.nome.replace(/"/g,'&quot;')}${pendingBadge}</div>
                 <div class="inst-item__addr">${enderecoCurto.replace(/"/g,'&quot;')}</div>
               </div>
               <div class="inst-item__right">
@@ -6960,6 +7942,68 @@ window.cadastrarInstituicaoECheckin = async function() {
       subtitulo: err.message || 'Tente novamente em instantes.',
       btnConfirmar: 'OK',
       btnCancelar: '',
+    });
+  }
+};
+
+// Profissional edita dados de uma instituição que ele cadastrou e que AINDA está pendente.
+// Se admin já aprovou, não deixa editar.
+window.editarMinhaInstituicaoPendente = async function(id) {
+  const user = getCurrentUser();
+  if (!user) return;
+  // Busca estado atual
+  const { data: inst, error } = await db.from('instituicoes').select('*').eq('id', id).single();
+  if (error || !inst) {
+    await showModalConfirmacao({
+      icone: 'error', iconeCor: 'danger',
+      titulo: 'Não foi possível carregar',
+      subtitulo: error?.message || 'Instituição não encontrada.',
+      btnConfirmar: 'OK', btnCancelar: '',
+    });
+    return;
+  }
+  // Checagem de segurança dupla: só edita se pendente E foi ele quem cadastrou
+  if (!inst.pendente_aprovacao) {
+    await showModalConfirmacao({
+      icone: 'lock', iconeCor: 'warning',
+      titulo: 'Já foi aprovada',
+      subtitulo: 'O admin já aprovou esta instituição. Se precisar ajustar algo, fale com ele.',
+      btnConfirmar: 'Entendi', btnCancelar: '',
+    });
+    return;
+  }
+  if (inst.cadastrada_por !== user.id) {
+    await showModalConfirmacao({
+      icone: 'block', iconeCor: 'danger',
+      titulo: 'Sem permissão',
+      subtitulo: 'Você só pode editar instituições que cadastrou.',
+      btnConfirmar: 'OK', btnCancelar: '',
+    });
+    return;
+  }
+  const novosDados = await showModalInstituicaoNova({ modo: 'edicao', instExistente: inst });
+  if (!novosDados) return;
+  // Se o profissional tem GPS ativo agora, atualiza as coords também (caso queira refinar)
+  const payload = { ...novosDados };
+  if (CheckinFlow.userPos) {
+    payload.latitude = CheckinFlow.userPos.lat;
+    payload.longitude = CheckinFlow.userPos.lng;
+  }
+  try {
+    const { error: upErr } = await db.from('instituicoes').update(payload).eq('id', id);
+    if (upErr) throw new Error(upErr.message);
+    setFlash('success', 'Dados atualizados. Aguardando aprovação do admin.');
+    // Recarrega a listagem da tela de check-in
+    if (typeof window.filterInstitutions === 'function') {
+      // dispara re-render completo da tela
+      window.location.hash = '#/checkin';
+    }
+  } catch (err) {
+    await showModalConfirmacao({
+      icone: 'error', iconeCor: 'danger',
+      titulo: 'Não foi possível salvar',
+      subtitulo: err.message || 'Tente novamente em instantes.',
+      btnConfirmar: 'OK', btnCancelar: '',
     });
   }
 };
@@ -7939,12 +8983,12 @@ function hydrateReportForm() {
           <span class="report-section__required">*</span>
         </div>
         <div class="report-section__help">Busque pelo nome ou cadastre um novo no hospital.</div>
+        <div class="prof-selected" id="profSelected"></div>
         <div class="prof-search">
           <span class="material-symbols-rounded prof-search__icon">search</span>
           <input type="text" class="prof-search-input" id="profSearchInput" ${readonly ? 'disabled' : ''} placeholder="Buscar profissional..." oninput="handleProfSearch(this.value)" onfocus="showProfDropdown()" onblur="setTimeout(hideProfDropdown, 200)" />
           <div class="prof-dropdown" id="profDropdown" style="display:none;"></div>
         </div>
-        <div class="prof-selected" id="profSelected"></div>
       </section>
 
       <!-- SEÇÃO 4: Objetivos -->
@@ -8150,8 +9194,14 @@ window.handleProfSearch = function(query) {
 
   // Caso a busca não retornou resultados
   if (filtered.length === 0) {
+    const totalInst = ReportState.profissionaisInstituicao.length;
+    const totalSel = ReportState.profissionaisSelecionados.length;
+    const todosJaSelecionados = !q && totalInst > 0 && totalSel >= totalInst;
+    const mensagem = todosJaSelecionados
+      ? `Todos os ${totalInst} ${totalInst === 1 ? 'profissional já foi adicionado' : 'profissionais já foram adicionados'} a esta visita.`
+      : 'Nenhum resultado encontrado.';
     dropdown.innerHTML = `
-      <div class="prof-dropdown__empty">Nenhum resultado encontrado.</div>
+      <div class="prof-dropdown__empty">${mensagem}</div>
       ${addNewBtn}
     `;
     return;
@@ -8596,6 +9646,244 @@ window.handleExcluirVisita = async function() {
 };
 
 
+function renderNotificacoes() {
+  const user = requireAuth();
+  if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
+
+  // Filtro via URL ou default
+  const filtroInicial = window._routeParams?.filtro || 'todas';
+  window._notifFilter = filtroInicial;
+  window._notifPage = 0;
+  window._notifPageSize = 30;
+
+  setTimeout(async () => {
+    await carregarListaNotificacoes();
+  }, 0);
+
+  return `
+    <div class="mobile-app">
+      ${mobileTopBar({ title: 'Notificações', showBack: true })}
+      <main class="mcontent">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:10px;">
+          <div class="review-tabs" style="flex:1;margin-bottom:0;">
+            <button class="review-tab ${filtroInicial === 'todas' ? 'is-active' : ''}" onclick="trocarFiltroNotif('todas')">
+              Todas <span class="review-tab__count" id="cntNotifTodas">—</span>
+            </button>
+            <button class="review-tab ${filtroInicial === 'nao_lidas' ? 'is-active' : ''}" onclick="trocarFiltroNotif('nao_lidas')">
+              Não lidas <span class="review-tab__count" id="cntNotifNaoLidas">—</span>
+            </button>
+            <button class="review-tab ${filtroInicial === 'lidas' ? 'is-active' : ''}" onclick="trocarFiltroNotif('lidas')">
+              Lidas <span class="review-tab__count" id="cntNotifLidas">—</span>
+            </button>
+          </div>
+          <button onclick="marcarTodasLidasUI2()" class="av-btn-limpar" id="btnMarcarTodasNotif" style="flex-shrink:0;">
+            <span class="material-symbols-rounded" style="font-size:15px;">done_all</span>
+            Marcar todas
+          </button>
+        </div>
+
+        <div id="notifPageList" style="display:flex;flex-direction:column;gap:8px;">
+          <div style="padding:30px;text-align:center;color:var(--neutral-400);font-size:13px;">Carregando...</div>
+        </div>
+
+        <div id="notifPagerControls" style="margin-top:16px;display:none;justify-content:center;gap:8px;">
+          <button onclick="notifPagerPrev()" class="av-btn-limpar" id="notifPrevBtn">
+            <span class="material-symbols-rounded" style="font-size:15px;">chevron_left</span>
+            Anterior
+          </button>
+          <button onclick="notifPagerNext()" class="av-btn-limpar" id="notifNextBtn">
+            Próxima
+            <span class="material-symbols-rounded" style="font-size:15px;">chevron_right</span>
+          </button>
+        </div>
+      </main>
+    </div>
+  `;
+}
+
+window.trocarFiltroNotif = function(filtro) {
+  window._notifFilter = filtro;
+  window._notifPage = 0;
+  document.querySelectorAll('.mobile-app .review-tab').forEach(t => t.classList.remove('is-active'));
+  if (event && event.currentTarget) event.currentTarget.classList.add('is-active');
+  carregarListaNotificacoes();
+};
+
+window.notifPagerPrev = function() {
+  if (window._notifPage > 0) {
+    window._notifPage--;
+    carregarListaNotificacoes();
+    window.scrollTo(0, 0);
+  }
+};
+
+window.notifPagerNext = function() {
+  window._notifPage++;
+  carregarListaNotificacoes();
+  window.scrollTo(0, 0);
+};
+
+async function contarNotificacoesPorStatus() {
+  if (!db) return { todas: 0, nao_lidas: 0, lidas: 0 };
+  const user = getCurrentUser();
+  if (!user) return { todas: 0, nao_lidas: 0, lidas: 0 };
+  const [all, nao, lid] = await Promise.all([
+    db.from('notificacoes').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
+    db.from('notificacoes').select('*', { count: 'exact', head: true }).eq('user_id', user.id).eq('lida', false),
+    db.from('notificacoes').select('*', { count: 'exact', head: true }).eq('user_id', user.id).eq('lida', true),
+  ]);
+  return { todas: all.count || 0, nao_lidas: nao.count || 0, lidas: lid.count || 0 };
+}
+
+async function carregarListaNotificacoes() {
+  const listEl = document.getElementById('notifPageList');
+  if (!listEl) return;
+
+  const cnts = await contarNotificacoesPorStatus();
+  const setCnt = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  setCnt('cntNotifTodas', cnts.todas);
+  setCnt('cntNotifNaoLidas', cnts.nao_lidas);
+  setCnt('cntNotifLidas', cnts.lidas);
+
+  const btnMarcar = document.getElementById('btnMarcarTodasNotif');
+  if (btnMarcar) btnMarcar.style.display = cnts.nao_lidas > 0 ? '' : 'none';
+
+  const filtro = window._notifFilter || 'todas';
+  const page = window._notifPage || 0;
+  const size = window._notifPageSize || 30;
+  const from = page * size;
+  const to = from + size - 1;
+
+  const user = getCurrentUser();
+  if (!user) { listEl.innerHTML = ''; return; }
+  let query = db.from('notificacoes')
+    .select('id, tipo, titulo, mensagem, link, objeto_id, lida, criado_em, lida_em')
+    .eq('user_id', user.id);
+  if (filtro === 'nao_lidas') query = query.eq('lida', false);
+  else if (filtro === 'lidas') query = query.eq('lida', true);
+  query = query.order('criado_em', { ascending: false }).range(from, to);
+
+  const { data, error } = await query;
+  if (error) {
+    listEl.innerHTML = `<div style="padding:20px;color:var(--status-danger);">Erro: ${error.message}</div>`;
+    return;
+  }
+  const items = data || [];
+  const totalNessaAba = filtro === 'todas' ? cnts.todas : (filtro === 'nao_lidas' ? cnts.nao_lidas : cnts.lidas);
+
+  if (items.length === 0) {
+    const emptyMsg = filtro === 'nao_lidas'
+      ? { icon: 'check_circle', titulo: 'Nenhuma não lida', desc: 'Você está em dia com todas as suas notificações.' }
+      : filtro === 'lidas'
+      ? { icon: 'inbox', titulo: 'Nenhuma lida ainda', desc: 'Quando você ler notificações, elas aparecerão aqui.' }
+      : { icon: 'notifications_none', titulo: 'Nenhuma notificação', desc: 'Você não tem notificações no momento. Quando houver novidades, aparecerão aqui.' };
+    listEl.innerHTML = `
+      <div class="empty-state" style="margin:0;">
+        <div class="empty-state__icon"><span class="material-symbols-rounded">${emptyMsg.icon}</span></div>
+        <div class="empty-state__title">${emptyMsg.titulo}</div>
+        <div class="empty-state__desc">${emptyMsg.desc}</div>
+      </div>
+    `;
+    document.getElementById('notifPagerControls').style.display = 'none';
+    return;
+  }
+
+  listEl.innerHTML = items.map(n => {
+    const ic = iconeNotificacao(n.tipo);
+    const dataCompleta = n.criado_em ? new Date(n.criado_em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+    return `
+      <div class="notif-page-card ${n.lida ? '' : 'notif-page-card--unread'}">
+        <div class="notif-page-card__icon" style="background:${ic.cor}20;color:${ic.cor};">
+          <span class="material-symbols-rounded" style="font-size:20px;">${ic.icon}</span>
+        </div>
+        <div class="notif-page-card__body">
+          <div class="notif-page-card__title">${(n.titulo || '').replace(/"/g,'&quot;')}</div>
+          ${n.mensagem ? `<div class="notif-page-card__msg">${n.mensagem.replace(/"/g,'&quot;')}</div>` : ''}
+          <div class="notif-page-card__time">${dataCompleta} · ${formatarTempoCurto(n.criado_em)} atrás${n.lida_em ? ` · lida em ${new Date(n.lida_em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}` : ''}</div>
+          <div class="notif-page-card__actions">
+            ${n.link ? `<button onclick="abrirNotifPagina('${n.id}', '${(n.link || '').replace(/'/g,"\\'")}')" class="notif-page-btn notif-page-btn--primary">
+              <span class="material-symbols-rounded" style="font-size:15px;">arrow_forward</span>
+              Abrir
+            </button>` : ''}
+            ${n.lida
+              ? `<button onclick="marcarNotifNaoLida('${n.id}')" class="notif-page-btn">
+                   <span class="material-symbols-rounded" style="font-size:15px;">mark_email_unread</span>
+                   Marcar não lida
+                 </button>`
+              : `<button onclick="marcarNotifLida('${n.id}')" class="notif-page-btn">
+                   <span class="material-symbols-rounded" style="font-size:15px;">mark_email_read</span>
+                   Marcar lida
+                 </button>`
+            }
+            <button onclick="excluirNotif('${n.id}')" class="notif-page-btn notif-page-btn--danger">
+              <span class="material-symbols-rounded" style="font-size:15px;">delete</span>
+              Excluir
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  // Paginação
+  const pager = document.getElementById('notifPagerControls');
+  const prevBtn = document.getElementById('notifPrevBtn');
+  const nextBtn = document.getElementById('notifNextBtn');
+  const totalPages = Math.ceil(totalNessaAba / size);
+  if (totalPages > 1) {
+    pager.style.display = 'flex';
+    prevBtn.disabled = page === 0;
+    nextBtn.disabled = page >= totalPages - 1;
+    prevBtn.style.opacity = page === 0 ? '0.4' : '1';
+    nextBtn.style.opacity = page >= totalPages - 1 ? '0.4' : '1';
+    prevBtn.style.pointerEvents = page === 0 ? 'none' : '';
+    nextBtn.style.pointerEvents = page >= totalPages - 1 ? 'none' : '';
+  } else {
+    pager.style.display = 'none';
+  }
+}
+
+window.abrirNotifPagina = async function(id, link) {
+  await marcarNotificacaoLida(id);
+  atualizarBadgeNotificacoes();
+  if (link && link.startsWith('#/')) window.location.hash = link;
+};
+
+window.marcarNotifLida = async function(id) {
+  await marcarNotificacaoLida(id);
+  atualizarBadgeNotificacoes();
+  carregarListaNotificacoes();
+};
+
+window.marcarNotifNaoLida = async function(id) {
+  if (!db) return;
+  await db.from('notificacoes').update({ lida: false, lida_em: null }).eq('id', id);
+  atualizarBadgeNotificacoes();
+  carregarListaNotificacoes();
+};
+
+window.excluirNotif = async function(id) {
+  if (!db) return;
+  const ok = await showModalConfirmacao({
+    icone: 'delete', iconeCor: 'danger',
+    titulo: 'Excluir notificação?',
+    subtitulo: 'A notificação será removida em definitivo.',
+    btnConfirmar: 'Excluir',
+    btnCancelar: 'Cancelar',
+  });
+  if (!ok) return;
+  await db.from('notificacoes').delete().eq('id', id);
+  atualizarBadgeNotificacoes();
+  carregarListaNotificacoes();
+};
+
+// Versão da tela dedicada (atualiza a lista local, não o dropdown)
+window.marcarTodasLidasUI2 = async function() {
+  await marcarTodasNotificacoesLidas();
+  atualizarBadgeNotificacoes();
+  carregarListaNotificacoes();
+};
+
 function renderAgenda() {
   const user = requireAuth();
   if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
@@ -8613,39 +9901,71 @@ function renderAdminDashboard() {
   // Carrega contagens de pendências async
   setTimeout(async () => {
     try {
-      const [instPend, objPend] = await Promise.all([
+      const [instPend, objPend, eqCnts] = await Promise.all([
         listarInstituicoesPendentes(),
         listarObjetivosPendentes(),
+        contarUsuariosPorStatus(),
       ]);
       const banner = document.getElementById('pendingAprovacoesBanner');
       if (!banner) return;
-      const total = instPend.length + objPend.length;
+      const totalDados = instPend.length + objPend.length;
+      const totalEquipe = eqCnts.pendentes;
+      const total = totalDados + totalEquipe;
       if (total === 0) {
         banner.style.display = 'none';
         return;
       }
-      const partes = [];
-      if (instPend.length > 0) partes.push(`<strong>${instPend.length}</strong> ${instPend.length === 1 ? 'instituição' : 'instituições'}`);
-      if (objPend.length > 0) partes.push(`<strong>${objPend.length}</strong> ${objPend.length === 1 ? 'objetivo' : 'objetivos'}`);
+      const bannersHtml = [];
+
+      // Banner 1: Cadastros de profissionais pendentes (leva pra #/admin/equipe)
+      if (totalEquipe > 0) {
+        bannersHtml.push(`
+          <a href="#/admin/equipe" style="
+            display:flex;align-items:center;gap:12px;padding:14px 16px;margin-bottom:10px;
+            background:linear-gradient(135deg,#E4ECFD 0%,#EFF3FC 100%);
+            border:1.5px solid rgba(37,99,235,0.35);border-radius:12px;
+            text-decoration:none;color:inherit;transition:all 140ms;position:relative;
+          " onmouseover="this.style.transform='translateY(-1px)';this.style.boxShadow='0 4px 12px rgba(37,99,235,0.15)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
+            <div style="position:relative;width:40px;height:40px;border-radius:10px;background:var(--status-info);color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+              <span class="material-symbols-rounded" style="font-size:22px;">person_add</span>
+              <span style="position:absolute;top:-4px;right:-4px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--status-danger);color:#fff;font-size:10.5px;font-weight:800;display:flex;align-items:center;justify-content:center;border:2px solid #fff;">${totalEquipe}</span>
+            </div>
+            <div style="flex:1;">
+              <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:14px;line-height:1.3;">Novos cadastros de profissionais</div>
+              <div style="font-size:11.5px;color:#1E40AF;margin-top:2px;"><strong>${totalEquipe}</strong> ${totalEquipe === 1 ? 'profissional aguarda' : 'profissionais aguardam'} sua aprovação.</div>
+            </div>
+            <span class="material-symbols-rounded" style="font-size:18px;color:var(--status-info);">arrow_forward</span>
+          </a>
+        `);
+      }
+
+      // Banner 2: Dados pendentes (instituições / objetivos — leva pra #/admin/pendentes)
+      if (totalDados > 0) {
+        const partes = [];
+        if (instPend.length > 0) partes.push(`<strong>${instPend.length}</strong> ${instPend.length === 1 ? 'instituição' : 'instituições'}`);
+        if (objPend.length > 0) partes.push(`<strong>${objPend.length}</strong> ${objPend.length === 1 ? 'objetivo' : 'objetivos'}`);
+        bannersHtml.push(`
+          <a href="#/admin/pendentes" style="
+            display:flex;align-items:center;gap:12px;padding:14px 16px;margin-bottom:10px;
+            background:linear-gradient(135deg,#FEF4E1 0%,#FFF9EB 100%);
+            border:1.5px solid rgba(245,158,11,0.35);border-radius:12px;
+            text-decoration:none;color:inherit;transition:all 140ms;position:relative;
+          " onmouseover="this.style.transform='translateY(-1px)';this.style.boxShadow='0 4px 12px rgba(245,158,11,0.15)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
+            <div style="position:relative;width:40px;height:40px;border-radius:10px;background:var(--status-warning);color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+              <span class="material-symbols-rounded" style="font-size:22px;">notifications_active</span>
+              <span style="position:absolute;top:-4px;right:-4px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--status-danger);color:#fff;font-size:10.5px;font-weight:800;display:flex;align-items:center;justify-content:center;border:2px solid #fff;">${totalDados}</span>
+            </div>
+            <div style="flex:1;">
+              <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:14px;line-height:1.3;">Pendências de aprovação</div>
+              <div style="font-size:11.5px;color:#92400E;margin-top:2px;">${partes.join(' · ')} ${totalDados === 1 ? 'aguarda' : 'aguardam'} sua revisão.</div>
+            </div>
+            <span class="material-symbols-rounded" style="font-size:18px;color:var(--status-warning);">arrow_forward</span>
+          </a>
+        `);
+      }
+
       banner.style.display = 'block';
-      banner.innerHTML = `
-        <a href="#/admin/pendentes" style="
-          display:flex;align-items:center;gap:12px;padding:14px 16px;margin-bottom:12px;
-          background:linear-gradient(135deg,#FEF4E1 0%,#FFF9EB 100%);
-          border:1.5px solid rgba(245,158,11,0.35);border-radius:12px;
-          text-decoration:none;color:inherit;transition:all 140ms;position:relative;
-        " onmouseover="this.style.transform='translateY(-1px)';this.style.boxShadow='0 4px 12px rgba(245,158,11,0.15)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
-          <div style="position:relative;width:40px;height:40px;border-radius:10px;background:var(--status-warning);color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-            <span class="material-symbols-rounded" style="font-size:22px;">notifications_active</span>
-            <span style="position:absolute;top:-4px;right:-4px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--status-danger);color:#fff;font-size:10.5px;font-weight:800;display:flex;align-items:center;justify-content:center;border:2px solid #fff;">${total}</span>
-          </div>
-          <div style="flex:1;">
-            <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:14px;line-height:1.3;">Pendências de aprovação</div>
-            <div style="font-size:11.5px;color:#92400E;margin-top:2px;">${partes.join(' · ')} ${total === 1 ? 'aguarda' : 'aguardam'} sua revisão.</div>
-          </div>
-          <span class="material-symbols-rounded" style="font-size:18px;color:var(--status-warning);">arrow_forward</span>
-        </a>
-      `;
+      banner.innerHTML = bannersHtml.join('');
     } catch (err) {
       console.warn('Erro ao carregar pendências:', err);
     }
@@ -8666,7 +9986,7 @@ function renderAdminDashboard() {
 
   return `
     <div class="mobile-app">
-      ${mobileTopBar({ showLogo: true, showNotification: false, showAvatar: true, showMenu: true })}
+      ${mobileTopBar({ showLogo: true, showNotification: true, showAvatar: true, showMenu: true })}
       <main class="mcontent">
         <div class="home__greeting">
           <div class="home__greeting-title">Painel Admin</div>
@@ -8691,37 +10011,55 @@ function renderAdminDashboard() {
           <span class="material-symbols-rounded" style="font-size:20px;color:var(--status-warning);">arrow_forward</span>
         </button>
 
-        <!-- Seletor de período -->
-        <div class="dash-period-selector" id="dashPeriodSelector">
-          <button class="dash-period-btn" data-period="7">7 dias</button>
-          <button class="dash-period-btn is-active" data-period="30">30 dias</button>
-          <button class="dash-period-btn" data-period="mes">Mês</button>
-          <button class="dash-period-btn" data-period="tri">Trimestre</button>
-          <button class="dash-period-btn" data-period="all">Tudo</button>
+        <!-- Seletor de período + botão exportar -->
+        <div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:14px;flex-wrap:wrap;">
+          <div class="dash-period-selector" id="dashPeriodSelector" style="margin-bottom:0;flex:1;min-width:0;">
+            <button class="dash-period-btn" data-period="7">7 dias</button>
+            <button class="dash-period-btn is-active" data-period="30">30 dias</button>
+            <button class="dash-period-btn" data-period="mes">Mês</button>
+            <button class="dash-period-btn" data-period="tri">Trimestre</button>
+            <button class="dash-period-btn" data-period="all">Tudo</button>
+          </div>
+          <button onclick="exportarRelatorioDashboard()" class="relatorio-btn relatorio-btn--primary" style="padding:7px 14px;font-size:12px;flex-shrink:0;" title="Gera uma versão imprimível / PDF do dashboard">
+            <span class="material-symbols-rounded" style="font-size:16px;">print</span>
+            Exportar PDF
+          </button>
         </div>
 
         <!-- Seção 1: KPIs Gerais (4 cards) -->
         <div class="dash-kpi-grid" id="dashKpiGrid">
-          <div class="dash-kpi-card">
-            <div class="dash-kpi-card__label">Total de visitas</div>
+          <a href="#" onclick="irParaVisitasComPeriodoAtual(); return false;" class="dash-kpi-card dash-kpi-card--clickable" title="Ver lista completa de visitas">
+            <div class="dash-kpi-card__label">
+              Total de visitas
+              <span class="material-symbols-rounded" style="font-size:13px;color:var(--neutral-400);vertical-align:middle;margin-left:3px;">arrow_forward</span>
+            </div>
             <div class="dash-kpi-card__value" id="kpiTotalVisitas">—</div>
             <div class="dash-kpi-card__hint" id="kpiTotalHint">&nbsp;</div>
-          </div>
-          <div class="dash-kpi-card">
-            <div class="dash-kpi-card__label">Taxa de realização</div>
+          </a>
+          <a href="#" onclick="irParaVisitasRealizadas(); return false;" class="dash-kpi-card dash-kpi-card--clickable" title="Ver apenas visitas realizadas">
+            <div class="dash-kpi-card__label">
+              Taxa de realização
+              <span class="material-symbols-rounded" style="font-size:13px;color:var(--neutral-400);vertical-align:middle;margin-left:3px;">arrow_forward</span>
+            </div>
             <div class="dash-kpi-card__value" id="kpiTaxaRealiz">—</div>
             <div class="dash-kpi-card__hint" id="kpiTaxaHint">&nbsp;</div>
-          </div>
-          <div class="dash-kpi-card">
-            <div class="dash-kpi-card__label">Pendências</div>
+          </a>
+          <a href="#" onclick="irParaPendenciasInteligente(); return false;" class="dash-kpi-card dash-kpi-card--clickable" title="Ver itens aguardando aprovação">
+            <div class="dash-kpi-card__label">
+              Pendências
+              <span class="material-symbols-rounded" style="font-size:13px;color:var(--neutral-400);vertical-align:middle;margin-left:3px;">arrow_forward</span>
+            </div>
             <div class="dash-kpi-card__value" id="kpiPendencias">—</div>
             <div class="dash-kpi-card__hint" id="kpiPendHint">&nbsp;</div>
-          </div>
-          <div class="dash-kpi-card">
-            <div class="dash-kpi-card__label">Qualidade GPS</div>
+          </a>
+          <a href="#" onclick="irParaVisitasComDivergencia(); return false;" class="dash-kpi-card dash-kpi-card--clickable" title="Ver visitas com GPS divergente ou check-in manual">
+            <div class="dash-kpi-card__label">
+              Qualidade GPS
+              <span class="material-symbols-rounded" style="font-size:13px;color:var(--neutral-400);vertical-align:middle;margin-left:3px;">arrow_forward</span>
+            </div>
             <div class="dash-kpi-card__value" id="kpiQualidadeGps">—</div>
             <div class="dash-kpi-card__hint" id="kpiGpsHint">&nbsp;</div>
-          </div>
+          </a>
         </div>
 
         <!-- Seção 2: Gráfico de linha - visitas no tempo -->
@@ -8780,11 +10118,401 @@ function renderAdminDashboard() {
   `;
 }
 
+/* ==========================================================================
+   Relatório imprimível do dashboard
+   Página dedicada com layout otimizado pra impressão/PDF
+   ========================================================================== */
+
+function renderAdminDashboardRelatorio() {
+  const user = requireAdmin();
+  if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
+
+  const periodo = window._routeParams?.periodo || '30';
+  const autoPrint = window._routeParams?.auto === '1';
+
+  setTimeout(async () => {
+    await carregarRelatorio(periodo, user);
+    if (autoPrint) {
+      // Espera um tico pras fontes / ícones carregarem antes de abrir o print
+      setTimeout(() => { window.print(); }, 800);
+    }
+  }, 0);
+
+  const labelPeriodo = {
+    '7': 'últimos 7 dias',
+    '30': 'últimos 30 dias',
+    'mes': 'mês atual',
+    'tri': 'trimestre atual',
+    'all': 'todo o histórico',
+  }[periodo] || 'período selecionado';
+
+  const agora = new Date();
+  const dataGer = agora.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
+  const horaGer = agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+  return `
+    <div class="relatorio-page">
+      <!-- Barra de ações (some na impressão) -->
+      <div class="relatorio-actions no-print">
+        <button onclick="history.back()" class="relatorio-btn relatorio-btn--secondary">
+          <span class="material-symbols-rounded" style="font-size:18px;">arrow_back</span>
+          Voltar
+        </button>
+        <div style="flex:1;"></div>
+        <button onclick="window.print()" class="relatorio-btn relatorio-btn--primary">
+          <span class="material-symbols-rounded" style="font-size:18px;">print</span>
+          Imprimir / Salvar PDF
+        </button>
+      </div>
+
+      <!-- Dica de impressão (some no PDF) -->
+      <div class="relatorio-dica no-print">
+        <span class="material-symbols-rounded" style="font-size:18px;color:var(--status-info);flex-shrink:0;">tips_and_updates</span>
+        <div>
+          <strong>Dica:</strong> no diálogo de impressão, escolha <strong>"Salvar como PDF"</strong> no campo "Destino". Para um PDF mais limpo, abra <strong>"Mais configurações"</strong> e <strong>desmarque "Cabeçalhos e rodapés"</strong> — isso remove a URL e data que o navegador adiciona em cada página.
+        </div>
+      </div>
+
+      <!-- Conteúdo imprimível -->
+      <div class="relatorio-paper">
+        <!-- Cabeçalho oficial -->
+        <header class="relatorio-header">
+          <div class="relatorio-header__brand">
+            <svg viewBox="0 0 64 52" style="height:32px;width:auto;fill:#0A1F5C;">
+              <path d="M32 8 C28 8 25 11 25 15 C25 10 22 8 18 8 C13 8 10 12 10 17 C10 28 32 44 32 44 C32 44 54 28 54 17 C54 12 51 8 46 8 C42 8 39 11 39 15 C39 11 36 8 32 8 Z"/>
+            </svg>
+            <div>
+              <div class="relatorio-header__title">Relatório de visitas</div>
+              <div class="relatorio-header__subtitle">Nutricionais · Sistema de visitas comerciais</div>
+            </div>
+          </div>
+          <div class="relatorio-header__meta">
+            <div><strong>Período:</strong> ${labelPeriodo}</div>
+            <div><strong>Gerado em:</strong> ${dataGer} às ${horaGer}</div>
+            <div><strong>Por:</strong> ${user.nome}</div>
+          </div>
+        </header>
+
+        <!-- Resumo textual em prosa -->
+        <section class="relatorio-section">
+          <h2 class="relatorio-section__title">Resumo executivo</h2>
+          <div id="relProsa" class="relatorio-prosa">Carregando...</div>
+        </section>
+
+        <!-- KPIs principais -->
+        <section class="relatorio-section">
+          <h2 class="relatorio-section__title">Indicadores gerais</h2>
+          <div class="relatorio-kpis" id="relKpis">
+            <div class="relatorio-kpi">
+              <div class="relatorio-kpi__label">Total de visitas</div>
+              <div class="relatorio-kpi__value" id="relKpiTotal">—</div>
+              <div class="relatorio-kpi__hint" id="relKpiTotalHint">&nbsp;</div>
+            </div>
+            <div class="relatorio-kpi">
+              <div class="relatorio-kpi__label">Taxa de realização</div>
+              <div class="relatorio-kpi__value" id="relKpiTaxa">—</div>
+              <div class="relatorio-kpi__hint" id="relKpiTaxaHint">&nbsp;</div>
+            </div>
+            <div class="relatorio-kpi">
+              <div class="relatorio-kpi__label">Qualidade GPS</div>
+              <div class="relatorio-kpi__value" id="relKpiGps">—</div>
+              <div class="relatorio-kpi__hint" id="relKpiGpsHint">&nbsp;</div>
+            </div>
+            <div class="relatorio-kpi">
+              <div class="relatorio-kpi__label">Pendências</div>
+              <div class="relatorio-kpi__value" id="relKpiPend">—</div>
+              <div class="relatorio-kpi__hint" id="relKpiPendHint">&nbsp;</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Gráfico de linha -->
+        <section class="relatorio-section avoid-break">
+          <h2 class="relatorio-section__title">Visitas no tempo</h2>
+          <div id="relChartLine" style="min-height:160px;"></div>
+        </section>
+
+        <!-- Rankings -->
+        <section class="relatorio-section avoid-break">
+          <div class="relatorio-two-col">
+            <div>
+              <h3 class="relatorio-subtitle">Top profissionais</h3>
+              <div id="relRankProf"></div>
+            </div>
+            <div>
+              <h3 class="relatorio-subtitle">Top instituições</h3>
+              <div id="relRankInst"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Distribuições -->
+        <section class="relatorio-section avoid-break">
+          <h2 class="relatorio-section__title">Distribuições</h2>
+          <div class="relatorio-two-col">
+            <div>
+              <h3 class="relatorio-subtitle">Status das visitas</h3>
+              <div id="relPieStatus"></div>
+            </div>
+            <div>
+              <h3 class="relatorio-subtitle">Tipo de check-in</h3>
+              <div id="relPieCheckin"></div>
+            </div>
+          </div>
+          <h3 class="relatorio-subtitle" style="margin-top:20px;">Top objetivos</h3>
+          <div id="relBarsObj"></div>
+        </section>
+
+        <!-- Lista completa de visitas (quebra página antes) -->
+        <section class="relatorio-section page-break-before">
+          <h2 class="relatorio-section__title">Lista completa de visitas</h2>
+          <div id="relListaVisitas">Carregando...</div>
+        </section>
+
+        <footer class="relatorio-footer">
+          Documento gerado automaticamente pelo sistema Nutricionais em ${dataGer}. Dados sujeitos a conferência.
+        </footer>
+      </div>
+    </div>
+  `;
+}
+
+// Carrega todos os dados pro relatório
+async function carregarRelatorio(periodo, user) {
+  if (!db) return;
+  const dataInicio = calcularDataInicio(periodo);
+
+  // Busca visitas do período
+  let query = db.from('visitas').select(`
+    id, status, data_visita, checkin_timestamp, checkout_timestamp,
+    checkin_manual, flag_gps_divergente, flag_horario_fora_margem,
+    flag_sem_checkin, flag_sem_checkout,
+    visita_realizada, revisao_motivo,
+    nutricionista_id, instituicao_id,
+    usuarios:nutricionista_id(nome),
+    instituicoes(nome)
+  `);
+  if (dataInicio) query = query.gte('checkin_timestamp', dataInicio);
+  query = query.order('checkin_timestamp', { ascending: false });
+  const { data: visitas = [] } = await query;
+
+  // Pendências
+  const [instPendRes, objPendRes, equipePendRes] = await Promise.all([
+    db.from('instituicoes').select('*', { count: 'exact', head: true }).eq('pendente_aprovacao', true).eq('ativo', true),
+    db.from('objetivos_visita').select('*', { count: 'exact', head: true }).eq('pendente_aprovacao', true),
+    db.from('usuarios').select('*', { count: 'exact', head: true }).eq('status', 'pendente').neq('perfil', 'admin'),
+  ]);
+  const pendInst = instPendRes.count || 0;
+  const pendObj = objPendRes.count || 0;
+  const pendProf = equipePendRes.count || 0;
+  const pendTotal = pendInst + pendObj + pendProf;
+
+  // ============ KPIs ============
+  const total = visitas.length;
+  const realizadas = visitas.filter(v => v.visita_realizada === true).length;
+  const canceladas = visitas.filter(v => v.visita_realizada === false).length;
+  const taxaRealiz = total > 0 ? Math.round((realizadas / total) * 100) : 0;
+  const divergentes = visitas.filter(v => v.flag_gps_divergente === true).length;
+  const manuais = visitas.filter(v => v.checkin_manual === true).length;
+  const comGps = visitas.filter(v => !v.checkin_manual).length;
+  const gpsValidos = comGps - divergentes;
+  const qualidadeGps = total > 0 ? Math.round((gpsValidos / total) * 100) : 0;
+
+  const set = (id, html) => { const el = document.getElementById(id); if (el) el.innerHTML = html; };
+  set('relKpiTotal', total);
+  set('relKpiTotalHint', total > 0 ? `${realizadas} ${realizadas === 1 ? 'realizada' : 'realizadas'} · ${canceladas} ${canceladas === 1 ? 'cancelada' : 'canceladas'}` : 'sem dados');
+  set('relKpiTaxa', total > 0 ? `${taxaRealiz}%` : '—');
+  set('relKpiTaxaHint', total > 0 ? `${realizadas} de ${total}` : 'sem dados');
+  set('relKpiGps', total > 0 ? `${qualidadeGps}%` : '—');
+  set('relKpiGpsHint', total > 0 ? `${divergentes} ${divergentes === 1 ? 'divergente' : 'divergentes'} · ${manuais} ${manuais === 1 ? 'manual' : 'manuais'}` : 'sem dados');
+  set('relKpiPend', pendTotal);
+  set('relKpiPendHint', pendTotal === 0 ? 'nenhuma' : `${pendInst} inst · ${pendObj} obj · ${pendProf} prof`);
+
+  // ============ Prosa ============
+  const labelPeriodo = {
+    '7': 'nos últimos 7 dias',
+    '30': 'nos últimos 30 dias',
+    'mes': 'no mês corrente',
+    'tri': 'no trimestre corrente',
+    'all': 'em todo o histórico disponível',
+  }[periodo] || 'no período selecionado';
+
+  // Top profissional
+  const contagemProf = {};
+  const nomesProf = {};
+  visitas.forEach(v => {
+    if (!v.nutricionista_id) return;
+    contagemProf[v.nutricionista_id] = (contagemProf[v.nutricionista_id] || 0) + 1;
+    if (v.usuarios?.nome) nomesProf[v.nutricionista_id] = v.usuarios.nome;
+  });
+  const topProfEntries = Object.entries(contagemProf).sort((a, b) => b[1] - a[1]);
+  const topProf = topProfEntries[0] ? { nome: nomesProf[topProfEntries[0][0]] || '—', total: topProfEntries[0][1] } : null;
+
+  // Partes da prosa
+  const partes = [];
+  if (total === 0) {
+    partes.push(`<p>Não há visitas registradas ${labelPeriodo}. Se esperava ver dados aqui, verifique se houve check-ins no período ou escolha um intervalo maior.</p>`);
+  } else {
+    // Só fala em "destaque" se há pelo menos 3 profissionais ativos no período — com 1 ou 2 a frase soa vazia
+    const quantosProfAtivos = topProfEntries.length;
+    const mostraDestaque = quantosProfAtivos >= 3 && topProf;
+    partes.push(`<p>${labelPeriodo.charAt(0).toUpperCase() + labelPeriodo.slice(1)}, a equipe registrou <strong>${total} ${total === 1 ? 'visita' : 'visitas'}</strong>${mostraDestaque ? `, com destaque para <strong>${topProf.nome}</strong> (${topProf.total} ${topProf.total === 1 ? 'visita' : 'visitas'})` : quantosProfAtivos === 1 && topProf ? `, todas registradas por <strong>${topProf.nome}</strong>` : ''}.</p>`);
+    if (realizadas + canceladas > 0) {
+      partes.push(`<p>A taxa de realização foi de <strong>${taxaRealiz}%</strong> — ${realizadas} ${realizadas === 1 ? 'visita realizada' : 'visitas realizadas'} e ${canceladas} ${canceladas === 1 ? 'cancelada' : 'canceladas'}.</p>`);
+    }
+    if (total > 0) {
+      const qualidadeFrase = qualidadeGps >= 80
+        ? `A qualidade dos check-ins foi <strong>boa</strong>, com ${qualidadeGps}% dos registros confirmados por GPS dentro do raio das instituições.`
+        : qualidadeGps >= 60
+        ? `A qualidade dos check-ins foi <strong>aceitável</strong>, com ${qualidadeGps}% confirmados por GPS. Há ${divergentes + manuais} ${divergentes + manuais === 1 ? 'ocorrência' : 'ocorrências'} que merecem atenção.`
+        : `A qualidade dos check-ins merece <strong>atenção</strong>: apenas ${qualidadeGps}% foram confirmados por GPS. Há ${divergentes} ${divergentes === 1 ? 'divergência de localização' : 'divergências de localização'} e ${manuais} ${manuais === 1 ? 'check-in manual' : 'check-ins manuais'}.`;
+      partes.push(`<p>${qualidadeFrase}</p>`);
+    }
+    if (pendTotal > 0) {
+      const itensPend = [];
+      if (pendProf > 0) itensPend.push(`<strong>${pendProf}</strong> ${pendProf === 1 ? 'cadastro de profissional' : 'cadastros de profissionais'}`);
+      if (pendInst > 0) itensPend.push(`<strong>${pendInst}</strong> ${pendInst === 1 ? 'instituição' : 'instituições'}`);
+      if (pendObj > 0) itensPend.push(`<strong>${pendObj}</strong> ${pendObj === 1 ? 'objetivo' : 'objetivos'}`);
+      partes.push(`<p>No momento da geração deste relatório, há ${itensPend.join(' · ')} aguardando aprovação administrativa.</p>`);
+    }
+  }
+  set('relProsa', partes.join(''));
+
+  // ============ Gráfico de linha ============
+  // Injeta no container do relatório (reusa a função existente fazendo swap do id temporariamente)
+  const chartEl = document.getElementById('relChartLine');
+  if (chartEl) {
+    chartEl.id = 'dashChartLine';
+    renderDashChartLine(visitas, dataInicio);
+    chartEl.id = 'relChartLine';
+  }
+
+  // ============ Rankings ============
+  renderRankRelatorio('relRankProf', visitas, 'nutricionista_id', 'usuarios', 8);
+  renderRankRelatorio('relRankInst', visitas, 'instituicao_id', 'instituicoes', 8);
+
+  // ============ Pizzas ============
+  // Swap de IDs pra reusar renderDashPieStatus / renderDashPieCheckin
+  const swapIds = [
+    ['relPieStatus', 'dashPieStatus', () => renderDashPieStatus(visitas)],
+    ['relPieCheckin', 'dashPieCheckin', () => renderDashPieCheckin(visitas)],
+    ['relBarsObj', 'dashPieObj', () => renderDashBarsObjetivos(dataInicio)],
+  ];
+  for (const [originalId, tempId, fn] of swapIds) {
+    const el = document.getElementById(originalId);
+    if (!el) continue;
+    el.id = tempId;
+    await Promise.resolve(fn());
+    el.id = originalId;
+  }
+
+  // ============ Lista completa de visitas ============
+  renderListaVisitasRelatorio(visitas);
+}
+
+// Ranking sem animações de barra (melhor pra impressão)
+function renderRankRelatorio(containerId, visitas, foreignKey, joinKey, topN) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  const contagem = {};
+  const nomes = {};
+  visitas.forEach(v => {
+    const id = v[foreignKey];
+    if (!id) return;
+    contagem[id] = (contagem[id] || 0) + 1;
+    if (v[joinKey]?.nome) nomes[id] = v[joinKey].nome;
+  });
+  const ranked = Object.entries(contagem)
+    .map(([id, count]) => ({ id, count, nome: nomes[id] || '(sem nome)' }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, topN);
+  if (ranked.length === 0) {
+    container.innerHTML = '<div style="padding:10px;color:#999;font-size:12px;">Sem dados</div>';
+    return;
+  }
+  const maxCount = ranked[0].count;
+  container.innerHTML = `
+    <table class="relatorio-table">
+      <thead><tr><th style="width:30px;">#</th><th>Nome</th><th style="width:50px;text-align:right;">Visitas</th></tr></thead>
+      <tbody>
+        ${ranked.map((r, i) => `
+          <tr>
+            <td style="color:#999;font-family:var(--font-mono);">${i + 1}</td>
+            <td>${r.nome}
+              <div style="height:4px;background:#EEE;border-radius:2px;margin-top:3px;overflow:hidden;">
+                <div style="height:100%;width:${(r.count / maxCount * 100).toFixed(1)}%;background:#8BC63F;"></div>
+              </div>
+            </td>
+            <td style="text-align:right;font-family:var(--font-mono);font-weight:700;">${r.count}</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+// Lista completa de visitas (tabela bem densa pra caber na página)
+function renderListaVisitasRelatorio(visitas) {
+  const el = document.getElementById('relListaVisitas');
+  if (!el) return;
+  if (visitas.length === 0) {
+    el.innerHTML = '<div style="padding:20px;color:#999;text-align:center;">Sem visitas no período.</div>';
+    return;
+  }
+  const fmtData = (iso) => {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    return `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth()+1).toString().padStart(2, '0')}/${d.getFullYear()} ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+  };
+  const statusLabel = (v) => {
+    if (v.status === 'completa') return 'Completa';
+    if (v.status === 'aprovada_pos_revisao') return 'Aprovada pós-rev.';
+    if (v.status === 'rascunho' && v.revisao_motivo) return 'Devolvida p/ revisão';
+    if (v.status === 'rascunho') return 'Rascunho';
+    return v.status || '—';
+  };
+  const realizadaLabel = (v) => {
+    if (v.visita_realizada === true) return '✓ Realizada';
+    if (v.visita_realizada === false) return '✗ Cancelada';
+    return '—';
+  };
+  el.innerHTML = `
+    <table class="relatorio-table relatorio-table--compact">
+      <thead>
+        <tr>
+          <th>Data/hora</th>
+          <th>Profissional</th>
+          <th>Instituição</th>
+          <th>Status</th>
+          <th>Resultado</th>
+          <th style="width:50px;">GPS</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${visitas.map(v => `
+          <tr>
+            <td style="font-family:var(--font-mono);font-size:11px;white-space:nowrap;">${fmtData(v.checkin_timestamp)}</td>
+            <td>${(v.usuarios?.nome || '—').replace(/"/g,'&quot;')}</td>
+            <td>${(v.instituicoes?.nome || '—').replace(/"/g,'&quot;')}</td>
+            <td>${statusLabel(v)}</td>
+            <td>${realizadaLabel(v)}</td>
+            <td style="text-align:center;">${v.checkin_manual ? '🅼' : v.flag_gps_divergente ? '⚠' : '✓'}</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+    <div style="font-size:10px;color:#888;margin-top:6px;">
+      🅼 = check-in manual · ⚠ = GPS divergente · ✓ = GPS validado
+    </div>
+  `;
+}
+
 // Drawer lateral com atalhos de admin
 function renderAdminDrawer() {
   const items = [
     { href: '#/admin/instituicoes',   icon: 'local_hospital',          titulo: 'Instituições',    desc: 'Hospitais e clínicas cadastrados' },
     { href: '#/admin/profissionais',  icon: 'stethoscope',             titulo: 'Profissionais',   desc: 'Contatos nas instituições' },
+    { href: '#/admin/equipe',         icon: 'groups',                  titulo: 'Equipe',          desc: 'Aprovar cadastros e gerenciar acesso' },
     { href: '#/admin/revisao',        icon: 'rule',                    titulo: 'Fila de Revisão', desc: 'Visitas com divergências' },
     { href: '#/admin/pendentes',      icon: 'hourglass_top',           titulo: 'Pendências',      desc: 'Aprovar instituições e objetivos' },
     { href: '#/admin/configuracoes',  icon: 'settings',                titulo: 'Configurações',   desc: 'Parâmetros globais do sistema' },
@@ -8826,6 +10554,55 @@ window.openAdminDrawer = function() {
 window.closeAdminDrawer = function() {
   const drawer = document.getElementById('adminDrawer');
   if (drawer) drawer.classList.remove('is-open');
+};
+
+// Drilldown: navega pra tela de visitas usando o período atual do dashboard
+window.irParaVisitasComPeriodoAtual = function() {
+  const periodo = window._dashPeriodoAtual || '30';
+  window.location.hash = `#/admin/visitas?periodo=${periodo}`;
+};
+
+// Drilldown Taxa de realização: lista só as visitas realizadas no período
+window.irParaVisitasRealizadas = function() {
+  const periodo = window._dashPeriodoAtual || '30';
+  window.location.hash = `#/admin/visitas?periodo=${periodo}&status=realizada`;
+};
+
+// Drilldown Qualidade GPS: lista visitas com algum problema de GPS
+window.irParaVisitasComDivergencia = function() {
+  const periodo = window._dashPeriodoAtual || '30';
+  window.location.hash = `#/admin/visitas?periodo=${periodo}&gps=problema`;
+};
+
+// Drilldown Pendências: decide pra onde ir baseado no que tem mais
+window.irParaPendenciasInteligente = async function() {
+  // Faz uma mini consulta rápida pra decidir o destino
+  const [instRes, objRes, equipeRes] = await Promise.all([
+    db.from('instituicoes').select('*', { count: 'exact', head: true }).eq('pendente_aprovacao', true).eq('ativo', true),
+    db.from('objetivos_visita').select('*', { count: 'exact', head: true }).eq('pendente_aprovacao', true),
+    db.from('usuarios').select('*', { count: 'exact', head: true }).eq('status', 'pendente').neq('perfil', 'admin'),
+  ]);
+  const pendInst = instRes.count || 0;
+  const pendObj = objRes.count || 0;
+  const pendProf = equipeRes.count || 0;
+
+  // Regra: se tem pendências de dados (inst/obj), vai pra Pendentes. Se só tem prof, vai pra Equipe.
+  // Se tem os dois, vai pra Pendentes que é mais comum; banner separado já cobre equipe.
+  if (pendInst + pendObj + pendProf === 0) {
+    // Sem pendências → vai mesmo assim pra Pendentes (tela vazia é melhor que nada)
+    window.location.hash = '#/admin/pendentes';
+  } else if (pendInst + pendObj > 0) {
+    window.location.hash = '#/admin/pendentes';
+  } else {
+    // Só profissionais pendentes
+    window.location.hash = '#/admin/equipe?filtro=pendentes';
+  }
+};
+
+// Exporta dashboard em PDF: abre a página de relatório com o período atual e aciona print automático
+window.exportarRelatorioDashboard = function() {
+  const periodo = window._dashPeriodoAtual || '30';
+  window.location.hash = `#/admin/dashboard/relatorio?periodo=${periodo}&auto=1`;
 };
 function renderAdminRevisao() {
   const user = requireAdmin();
@@ -8990,6 +10767,541 @@ window.trocarFiltroRevisao = function(filtro) {
     t.classList.toggle('is-active', t.dataset.filtro === filtro);
   });
   carregarFilaRevisao();
+};
+
+/* ==========================================================================
+   Tela de Todas as Visitas (admin)
+   Drilldown do KPI "Total de visitas" do dashboard.
+   Aceita params de URL: periodo (7/30/mes/tri/all), status, profissional, instituicao
+   ========================================================================== */
+
+function renderAdminVisitas() {
+  const user = requireAdmin();
+  if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
+
+  // Estado inicial dos filtros (pode vir da URL)
+  window._visitasFilter = {
+    periodo: window._routeParams?.periodo || '30',
+    status: window._routeParams?.status || 'todos',
+    profissional_id: window._routeParams?.profissional_id || 'todos',
+    instituicao_id: window._routeParams?.instituicao_id || 'todos',
+    gps: window._routeParams?.gps || 'todos',
+  };
+
+  setTimeout(async () => {
+    // Popula dropdowns de profissional e instituição
+    await popularFiltrosVisitas();
+    // Carrega lista
+    await carregarListaVisitas();
+  }, 0);
+
+  const f = window._visitasFilter;
+
+  return `
+    <div class="mobile-app">
+      ${mobileTopBar({ title: 'Todas as visitas', showBack: true })}
+      <main class="mcontent">
+        <!-- Filtros -->
+        <div class="av-filters">
+          <div class="av-filter-group">
+            <label class="av-filter-label">Período</label>
+            <div class="dash-period-selector" id="avPeriodSelector">
+              <button class="dash-period-btn ${f.periodo === '7' ? 'is-active' : ''}" data-val="7">7 dias</button>
+              <button class="dash-period-btn ${f.periodo === '30' ? 'is-active' : ''}" data-val="30">30 dias</button>
+              <button class="dash-period-btn ${f.periodo === 'mes' ? 'is-active' : ''}" data-val="mes">Mês</button>
+              <button class="dash-period-btn ${f.periodo === 'tri' ? 'is-active' : ''}" data-val="tri">Trimestre</button>
+              <button class="dash-period-btn ${f.periodo === 'all' ? 'is-active' : ''}" data-val="all">Tudo</button>
+            </div>
+          </div>
+
+          <div class="av-filter-row">
+            <div class="av-filter-group" style="flex:1;">
+              <label class="av-filter-label">Status</label>
+              <select id="avFiltroStatus" class="av-filter-select">
+                <option value="todos"${f.status === 'todos' ? ' selected' : ''}>Todos</option>
+                <option value="completa"${f.status === 'completa' ? ' selected' : ''}>Completa</option>
+                <option value="aprovada_pos_revisao"${f.status === 'aprovada_pos_revisao' ? ' selected' : ''}>Aprovada pós-revisão</option>
+                <option value="em_revisao"${f.status === 'em_revisao' ? ' selected' : ''}>Devolvida p/ revisão</option>
+                <option value="rascunho"${f.status === 'rascunho' ? ' selected' : ''}>Rascunho</option>
+                <option value="realizada"${f.status === 'realizada' ? ' selected' : ''}>Realizadas</option>
+                <option value="cancelada"${f.status === 'cancelada' ? ' selected' : ''}>Canceladas</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="av-filter-row">
+            <div class="av-filter-group" style="flex:1;">
+              <label class="av-filter-label">Profissional</label>
+              <select id="avFiltroProfissional" class="av-filter-select">
+                <option value="todos">Todos</option>
+              </select>
+            </div>
+            <div class="av-filter-group" style="flex:1;">
+              <label class="av-filter-label">Instituição</label>
+              <select id="avFiltroInstituicao" class="av-filter-select">
+                <option value="todos">Todas</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="av-filter-row">
+            <div class="av-filter-group" style="flex:1;">
+              <label class="av-filter-label">Qualidade GPS</label>
+              <select id="avFiltroGps" class="av-filter-select">
+                <option value="todos"${f.gps === 'todos' ? ' selected' : ''}>Todas</option>
+                <option value="validado"${f.gps === 'validado' ? ' selected' : ''}>GPS validado (dentro do raio)</option>
+                <option value="problema"${f.gps === 'problema' ? ' selected' : ''}>Com problema (divergente ou manual)</option>
+                <option value="divergente"${f.gps === 'divergente' ? ' selected' : ''}>Apenas GPS divergente</option>
+                <option value="manual"${f.gps === 'manual' ? ' selected' : ''}>Apenas check-in manual</option>
+              </select>
+            </div>
+          </div>
+
+          <button onclick="limparFiltrosVisitas()" class="av-btn-limpar">
+            <span class="material-symbols-rounded" style="font-size:15px;">restart_alt</span>
+            Limpar filtros
+          </button>
+        </div>
+
+        <!-- Header com contagem + botão de export -->
+        <div class="av-list-header">
+          <div id="avCount" class="av-list-header__count">—</div>
+          <button id="avBtnExport" class="av-btn-export" onclick="exportarVisitasCSV()" title="Exportar lista atual pra CSV (respeita filtros aplicados)">
+            <span class="material-symbols-rounded">download</span>
+            Exportar CSV
+          </button>
+        </div>
+
+        <!-- Lista -->
+        <div id="avList">
+          <div style="padding:30px 20px;text-align:center;color:var(--neutral-500);font-size:13px;">
+            <span class="material-symbols-rounded" style="font-size:28px;color:var(--neutral-400);">hourglass_empty</span>
+            <div style="margin-top:6px;">Carregando...</div>
+          </div>
+        </div>
+      </main>
+    </div>
+  `;
+}
+
+async function popularFiltrosVisitas() {
+  const selProf = document.getElementById('avFiltroProfissional');
+  const selInst = document.getElementById('avFiltroInstituicao');
+  if (!selProf || !selInst) return;
+
+  const [{ data: profs }, { data: insts }] = await Promise.all([
+    db.from('usuarios').select('id, nome').eq('perfil', 'nutricionista').eq('status', 'ativo').order('nome'),
+    db.from('instituicoes').select('id, nome').eq('ativo', true).order('nome'),
+  ]);
+  const f = window._visitasFilter;
+  selProf.innerHTML = '<option value="todos">Todos</option>' +
+    (profs || []).map(p => `<option value="${p.id}"${f.profissional_id === p.id ? ' selected' : ''}>${(p.nome || '').replace(/"/g,'&quot;')}</option>`).join('');
+  selInst.innerHTML = '<option value="todos">Todas</option>' +
+    (insts || []).map(i => `<option value="${i.id}"${f.instituicao_id === i.id ? ' selected' : ''}>${(i.nome || '').replace(/"/g,'&quot;')}</option>`).join('');
+
+  // Liga handlers
+  document.querySelectorAll('#avPeriodSelector .dash-period-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#avPeriodSelector .dash-period-btn').forEach(b => b.classList.remove('is-active'));
+      btn.classList.add('is-active');
+      window._visitasFilter.periodo = btn.dataset.val;
+      carregarListaVisitas();
+    });
+  });
+  document.getElementById('avFiltroStatus').addEventListener('change', (e) => {
+    window._visitasFilter.status = e.target.value;
+    carregarListaVisitas();
+  });
+  selProf.addEventListener('change', (e) => {
+    window._visitasFilter.profissional_id = e.target.value;
+    carregarListaVisitas();
+  });
+  selInst.addEventListener('change', (e) => {
+    window._visitasFilter.instituicao_id = e.target.value;
+    carregarListaVisitas();
+  });
+  const selGps = document.getElementById('avFiltroGps');
+  if (selGps) {
+    selGps.addEventListener('change', (e) => {
+      window._visitasFilter.gps = e.target.value;
+      carregarListaVisitas();
+    });
+  }
+}
+
+window.limparFiltrosVisitas = function() {
+  window._visitasFilter = { periodo: '30', status: 'todos', profissional_id: 'todos', instituicao_id: 'todos', gps: 'todos' };
+  // UI
+  document.querySelectorAll('#avPeriodSelector .dash-period-btn').forEach(b => {
+    b.classList.toggle('is-active', b.dataset.val === '30');
+  });
+  const st = document.getElementById('avFiltroStatus'); if (st) st.value = 'todos';
+  const pr = document.getElementById('avFiltroProfissional'); if (pr) pr.value = 'todos';
+  const ins = document.getElementById('avFiltroInstituicao'); if (ins) ins.value = 'todos';
+  const gps = document.getElementById('avFiltroGps'); if (gps) gps.value = 'todos';
+  carregarListaVisitas();
+};
+
+async function carregarListaVisitas() {
+  const listEl = document.getElementById('avList');
+  const cntEl = document.getElementById('avCount');
+  if (!listEl) return;
+  listEl.innerHTML = `<div style="padding:30px;text-align:center;color:var(--neutral-400);font-size:12px;">Carregando...</div>`;
+
+  const f = window._visitasFilter;
+  const dataInicio = calcularDataInicio(f.periodo);
+
+  let query = db.from('visitas').select(`
+    id, status, data_visita, checkin_timestamp, checkout_timestamp,
+    checkin_manual, flag_gps_divergente, flag_horario_fora_margem,
+    flag_sem_checkin, flag_sem_checkout,
+    visita_realizada, revisao_motivo, revisao_resolvida_em,
+    nutricionista_id, instituicao_id,
+    usuarios:nutricionista_id(nome),
+    instituicoes(nome)
+  `);
+  if (dataInicio) query = query.gte('checkin_timestamp', dataInicio);
+
+  // Filtros adicionais (aplica os que forem != 'todos')
+  if (f.profissional_id !== 'todos') query = query.eq('nutricionista_id', f.profissional_id);
+  if (f.instituicao_id !== 'todos') query = query.eq('instituicao_id', f.instituicao_id);
+
+  // Status tem casos especiais:
+  //  - 'realizada' e 'cancelada' usam a coluna visita_realizada
+  //  - 'em_revisao' na UI = rascunho devolvido pelo admin (status='rascunho' + revisao_motivo preenchido)
+  //  - outros valores vão direto pra coluna status
+  if (f.status === 'realizada') query = query.eq('visita_realizada', true);
+  else if (f.status === 'cancelada') query = query.eq('visita_realizada', false);
+  else if (f.status === 'em_revisao') {
+    query = query.eq('status', 'rascunho').not('revisao_motivo', 'is', null);
+  } else if (f.status === 'rascunho') {
+    // Se filtrar "rascunho puro", exclui os devolvidos (que são rascunho+motivo)
+    query = query.eq('status', 'rascunho').is('revisao_motivo', null);
+  } else if (f.status !== 'todos') {
+    query = query.eq('status', f.status);
+  }
+
+  // Filtro de qualidade GPS
+  //  - 'validado': sem flag de divergência E não é manual
+  //  - 'problema': tem flag_gps_divergente = true OR checkin_manual = true
+  //  - 'divergente': só as com flag_gps_divergente = true
+  //  - 'manual': só as com checkin_manual = true
+  if (f.gps === 'validado') {
+    query = query.eq('checkin_manual', false).eq('flag_gps_divergente', false);
+  } else if (f.gps === 'problema') {
+    query = query.or('flag_gps_divergente.eq.true,checkin_manual.eq.true');
+  } else if (f.gps === 'divergente') {
+    query = query.eq('flag_gps_divergente', true);
+  } else if (f.gps === 'manual') {
+    query = query.eq('checkin_manual', true);
+  }
+
+  // Ordena do mais recente pro mais antigo
+  query = query.order('checkin_timestamp', { ascending: false, nullsFirst: false });
+
+  const { data, error } = await query;
+  if (error) {
+    listEl.innerHTML = `<div style="padding:20px;color:var(--status-danger);">Erro: ${error.message}</div>`;
+    return;
+  }
+  const visitas = data || [];
+
+  // Atualiza contagem
+  if (cntEl) {
+    cntEl.innerHTML = `<strong>${visitas.length}</strong> ${visitas.length === 1 ? 'visita encontrada' : 'visitas encontradas'}`;
+  }
+
+  if (visitas.length === 0) {
+    listEl.innerHTML = `
+      <div class="empty-state" style="margin:0;">
+        <div class="empty-state__icon"><span class="material-symbols-rounded">search_off</span></div>
+        <div class="empty-state__title">Nenhuma visita encontrada</div>
+        <div class="empty-state__desc">Ajuste os filtros ou mude o período para ver mais resultados.</div>
+      </div>
+    `;
+    return;
+  }
+
+  // Renderiza cards reutilizando o visual da review-card (que já é bem polido)
+  listEl.innerHTML = visitas.map(v => {
+    const flags = getFlagsAtivas(v);
+    const nivel = flags.some(f => f.nivel === 'critical') ? 'critical' : flags.length > 0 ? 'warning' : 'ok';
+    const dataFmt = v.checkin_timestamp ? formatarTempoRelativo(v.checkin_timestamp) : (v.data_visita || '—');
+    const nutriNome = v.usuarios?.nome || '—';
+    const flagsHtml = flags.slice(0, 3).map(fl => `
+      <span class="review-flag review-flag--${fl.nivel}">
+        <span class="material-symbols-rounded">${fl.icone}</span>
+        ${fl.titulo}
+      </span>
+    `).join('');
+    const maisFlags = flags.length > 3 ? `<span class="review-flag review-flag--info">+${flags.length - 3}</span>` : '';
+    const flagCountClass = nivel === 'critical' ? 'review-card__flag-count--critical' : 'review-card__flag-count--warning';
+    const cardClass = nivel === 'critical' ? 'review-card--critical' : nivel === 'warning' ? 'review-card--warning' : '';
+
+    return `
+      <a href="#/admin/revisao/detalhe?id=${v.id}" class="review-card ${cardClass}">
+        <div class="review-card__header">
+          <div class="review-card__icon">
+            <span class="material-symbols-rounded">local_hospital</span>
+          </div>
+          <div class="review-card__info">
+            <div class="review-card__inst">${(v.instituicoes?.nome || 'Instituição').replace(/"/g,'&quot;')}</div>
+            <div class="review-card__meta">
+              <span class="review-card__meta-item">
+                <span class="material-symbols-rounded">person</span>${(nutriNome || '').split(' ')[0] || '—'}
+              </span>
+              <span class="review-card__meta-item">
+                <span class="material-symbols-rounded">schedule</span>${dataFmt}
+              </span>
+              ${sbadgeForStatus(v)}
+            </div>
+          </div>
+          ${flags.length > 0 ? `
+            <div class="review-card__flag-count ${flagCountClass}">
+              <span class="material-symbols-rounded" style="font-size:14px">flag</span>${flags.length}
+            </div>
+          ` : ''}
+        </div>
+        ${flags.length > 0 ? `<div class="review-flags">${flagsHtml}${maisFlags}</div>` : ''}
+      </a>
+    `;
+  }).join('');
+}
+
+/* ==========================================================================
+   Exportar CSV da tela /admin/visitas (Sprint 5 Mini 3)
+   - Respeita os mesmos filtros aplicados em carregarListaVisitas()
+   - Paginação de 1000 em 1000 pra trazer tudo (Supabase limita em 1000/req)
+   - Separador ";" + BOM UTF-8 pra abrir certo no Excel PT-BR
+   - Feedback visual no botão
+   ========================================================================== */
+
+// Escape de campo CSV: envolve em aspas se tiver separador, quebra de linha ou aspas.
+// Duplica aspas internas conforme RFC 4180.
+function _csvField(value) {
+  if (value === null || value === undefined) return '';
+  const s = String(value);
+  if (s === '') return '';
+  const precisaEscape = /[;,"\r\n]/.test(s);
+  if (!precisaEscape) return s;
+  return '"' + s.replace(/"/g, '""') + '"';
+}
+
+// Formata ISO timestamp pra "DD/MM/AAAA HH:MM" em hora local (America/Sao_Paulo do navegador do user)
+function _fmtDateTimeBR(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '';
+  const pad = n => String(n).padStart(2, '0');
+  return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+// Formata só a data (YYYY-MM-DD vindo do DB) pra "DD/MM/AAAA"
+function _fmtDataBR(dataStr) {
+  if (!dataStr) return '';
+  // aceita "2026-04-20" ou "2026-04-20T..." 
+  const m = String(dataStr).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!m) return dataStr;
+  return `${m[3]}/${m[2]}/${m[1]}`;
+}
+
+// "HH:MM:SS" -> "HH:MM" (horario_inicio / horario_termino vêm assim no banco)
+function _fmtHoraBR(h) {
+  if (!h) return '';
+  const m = String(h).match(/^(\d{2}:\d{2})/);
+  return m ? m[1] : h;
+}
+
+// Status legível pro CSV (mesma lógica do sbadgeForStatus)
+function _labelStatusCsv(v) {
+  if (v.status === 'rascunho' && v.revisao_motivo && v.revisao_solicitada_em && !v.revisao_resolvida_em) {
+    return 'Revisão solicitada';
+  }
+  const map = {
+    'rascunho': 'Rascunho',
+    'completa': 'Concluída',
+    'em_revisao': 'Em revisão',
+    'aprovada_pos_revisao': 'Aprovada pós-revisão',
+  };
+  return map[v.status] || (v.status || '');
+}
+
+function _labelResultado(v) {
+  if (v.visita_realizada === true) return 'Realizada';
+  if (v.visita_realizada === false) return 'Cancelada';
+  return '';
+}
+
+// Converte período em slug curto pra nome do arquivo
+function _periodoSlug(p) {
+  switch (p) {
+    case '7':   return '7dias';
+    case '30':  return '30dias';
+    case 'mes': return 'mes-atual';
+    case 'tri': return 'trimestre';
+    case 'all': return 'tudo';
+    default:    return String(p || 'periodo');
+  }
+}
+
+// Aplica os filtros de window._visitasFilter numa query Supabase (mantém em sincronia com carregarListaVisitas)
+function _aplicarFiltrosVisitas(query, f) {
+  const dataInicio = calcularDataInicio(f.periodo);
+  if (dataInicio) query = query.gte('checkin_timestamp', dataInicio);
+  if (f.profissional_id !== 'todos') query = query.eq('nutricionista_id', f.profissional_id);
+  if (f.instituicao_id !== 'todos') query = query.eq('instituicao_id', f.instituicao_id);
+
+  if (f.status === 'realizada') query = query.eq('visita_realizada', true);
+  else if (f.status === 'cancelada') query = query.eq('visita_realizada', false);
+  else if (f.status === 'em_revisao') {
+    query = query.eq('status', 'rascunho').not('revisao_motivo', 'is', null);
+  } else if (f.status === 'rascunho') {
+    query = query.eq('status', 'rascunho').is('revisao_motivo', null);
+  } else if (f.status !== 'todos') {
+    query = query.eq('status', f.status);
+  }
+
+  if (f.gps === 'validado') {
+    query = query.eq('checkin_manual', false).eq('flag_gps_divergente', false);
+  } else if (f.gps === 'problema') {
+    query = query.or('flag_gps_divergente.eq.true,checkin_manual.eq.true');
+  } else if (f.gps === 'divergente') {
+    query = query.eq('flag_gps_divergente', true);
+  } else if (f.gps === 'manual') {
+    query = query.eq('checkin_manual', true);
+  }
+
+  return query;
+}
+
+window.exportarVisitasCSV = async function() {
+  const btn = document.getElementById('avBtnExport');
+  if (!btn) return;
+  if (!db) { alert('Banco não conectado.'); return; }
+
+  const textoOriginal = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="material-symbols-rounded">hourglass_top</span>Exportando...';
+
+  try {
+    const f = window._visitasFilter || { periodo: '30', status: 'todos', profissional_id: 'todos', instituicao_id: 'todos', gps: 'todos' };
+
+    // Select expandido: mais campos úteis pra análise offline
+    const SELECT = `
+      id, status, data_visita, horario_inicio, horario_termino,
+      checkin_timestamp, checkout_timestamp, checkin_manual,
+      flag_gps_divergente, flag_horario_fora_margem, flag_sem_checkin, flag_sem_checkout,
+      visita_realizada, revisao_motivo, revisao_solicitada_em, revisao_resolvida_em,
+      resumo,
+      nutricionista_id, instituicao_id,
+      usuarios:nutricionista_id(nome, email, cpf),
+      instituicoes(nome, cidade, estado)
+    `;
+
+    // Paginação: 1000 por página até esgotar
+    const PAGE = 1000;
+    const MAX_PAGES = 20; // hard cap 20.000 linhas pra segurança
+    let from = 0;
+    const todas = [];
+
+    for (let pag = 0; pag < MAX_PAGES; pag++) {
+      let q = db.from('visitas').select(SELECT);
+      q = _aplicarFiltrosVisitas(q, f);
+      q = q.order('checkin_timestamp', { ascending: false, nullsFirst: false }).range(from, from + PAGE - 1);
+
+      const { data, error } = await q;
+      if (error) throw new Error(error.message);
+      if (!data || data.length === 0) break;
+      todas.push(...data);
+      if (data.length < PAGE) break;
+      from += PAGE;
+    }
+
+    if (todas.length === 0) {
+      alert('Nenhuma visita pra exportar com os filtros atuais.');
+      return;
+    }
+
+    // Monta cabeçalho + linhas
+    const cabecalho = [
+      'ID', 'Data da visita', 'Hora início', 'Hora fim',
+      'Check-in', 'Check-out', 'Duração (min)',
+      'Profissional', 'E-mail', 'CPF',
+      'Instituição', 'Cidade', 'UF',
+      'Status', 'Resultado',
+      'Check-in manual', 'GPS divergente', 'Horário fora da margem',
+      'Sem check-in', 'Sem check-out',
+      'Motivo da revisão', 'Revisão solicitada em', 'Revisão resolvida em',
+      'Relatório'
+    ];
+
+    const sim = v => v === true ? 'Sim' : v === false ? 'Não' : '';
+    const duracao = (ci, co) => {
+      if (!ci || !co) return '';
+      const diff = new Date(co).getTime() - new Date(ci).getTime();
+      if (isNaN(diff) || diff < 0) return '';
+      return String(Math.round(diff / 60000));
+    };
+
+    const linhas = todas.map(v => [
+      v.id || '',
+      _fmtDataBR(v.data_visita),
+      _fmtHoraBR(v.horario_inicio),
+      _fmtHoraBR(v.horario_termino),
+      _fmtDateTimeBR(v.checkin_timestamp),
+      _fmtDateTimeBR(v.checkout_timestamp),
+      duracao(v.checkin_timestamp, v.checkout_timestamp),
+      v.usuarios?.nome || '',
+      v.usuarios?.email || '',
+      v.usuarios?.cpf || '',
+      v.instituicoes?.nome || '',
+      v.instituicoes?.cidade || '',
+      v.instituicoes?.estado || '',
+      _labelStatusCsv(v),
+      _labelResultado(v),
+      sim(v.checkin_manual),
+      sim(v.flag_gps_divergente),
+      sim(v.flag_horario_fora_margem),
+      sim(v.flag_sem_checkin),
+      sim(v.flag_sem_checkout),
+      v.revisao_motivo || '',
+      _fmtDateTimeBR(v.revisao_solicitada_em),
+      _fmtDateTimeBR(v.revisao_resolvida_em),
+      v.resumo || ''
+    ].map(_csvField).join(';'));
+
+    const conteudoCsv = cabecalho.map(_csvField).join(';') + '\r\n' + linhas.join('\r\n') + '\r\n';
+
+    // BOM UTF-8 pra Excel reconhecer acentos
+    const BOM = '\uFEFF';
+    const blob = new Blob([BOM + conteudoCsv], { type: 'text/csv;charset=utf-8;' });
+
+    // Nome do arquivo: visitas_YYYY-MM-DD_<periodo>[_filtrado].csv
+    const hoje = new Date();
+    const dataStr = `${hoje.getFullYear()}-${String(hoje.getMonth()+1).padStart(2,'0')}-${String(hoje.getDate()).padStart(2,'0')}`;
+    const periodoSlug = _periodoSlug(f.periodo);
+    const temFiltroExtra = f.status !== 'todos' || f.profissional_id !== 'todos' || f.instituicao_id !== 'todos' || f.gps !== 'todos';
+    const sufixo = temFiltroExtra ? '_filtrado' : '';
+    const nomeArquivo = `visitas_${dataStr}_${periodoSlug}${sufixo}.csv`;
+
+    // Dispara download
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = nomeArquivo;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1500);
+
+    console.log(`[export CSV] ${todas.length} visitas exportadas -> ${nomeArquivo}`);
+  } catch (err) {
+    console.error('[exportarVisitasCSV] erro:', err);
+    alert('Erro ao exportar CSV: ' + (err.message || err));
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = textoOriginal;
+  }
 };
 
 /* ==========================================================================
@@ -9497,51 +11809,64 @@ function showModalConfirmacao({ icone = 'info', iconeCor = 'info', titulo, subti
 // Modal dedicado pra cadastro rápido de instituição no check-in.
 // Pede nome + endereço (obrigatórios) + cidade (obrigatória) + bairro (opcional).
 // Resolve({ nome, logradouro, bairro, cidade }) ou null se cancelou.
-function showModalInstituicaoNova({ valorInicialNome = '' } = {}) {
+function showModalInstituicaoNova({ valorInicialNome = '', modo = 'cadastro', instExistente = null } = {}) {
   return new Promise((resolve) => {
     const backdrop = document.createElement('div');
     backdrop.className = 'modal-backdrop';
+    const ehEdicao = modo === 'edicao';
     const temGPS = !!(window.CheckinFlow && CheckinFlow.userPos);
-    const gpsInfoHtml = temGPS ? `
+    // Em modo edição, se já tem coords, não sobrescreve com GPS; só mostra aviso se NÃO tem coords ainda
+    const mostrarAvisoGPS = temGPS && (!ehEdicao || !instExistente?.latitude);
+    const gpsInfoHtml = mostrarAvisoGPS ? `
       <div style="background:#E6F6EF;border:1px solid rgba(34,160,107,0.3);border-radius:8px;padding:10px;font-size:11.5px;color:#166534;display:flex;gap:8px;align-items:flex-start;">
         <span class="material-symbols-rounded" style="font-size:16px;color:var(--status-success);flex-shrink:0;margin-top:1px;">gps_fixed</span>
         <div>
-          <strong>GPS ativo</strong> — sua localização atual (${CheckinFlow.userPos.lat.toFixed(5)}, ${CheckinFlow.userPos.lng.toFixed(5)}) será usada como coordenadas iniciais. O admin ajusta depois se necessário.
+          <strong>GPS ativo</strong> — sua localização atual (${CheckinFlow.userPos.lat.toFixed(5)}, ${CheckinFlow.userPos.lng.toFixed(5)}) será ${ehEdicao ? 'salva' : 'usada'} como coordenadas. O admin ajusta depois se necessário.
         </div>
       </div>
     ` : '';
+    // Valores iniciais (em modo edição, vem do instExistente)
+    const valNome = ehEdicao && instExistente?.nome ? instExistente.nome : valorInicialNome;
+    const valEnd = ehEdicao && instExistente?.logradouro ? instExistente.logradouro : '';
+    const valBairro = ehEdicao && instExistente?.bairro ? instExistente.bairro : '';
+    const valCidade = ehEdicao && instExistente?.cidade ? instExistente.cidade : '';
+    const titulo = ehEdicao ? 'Editar dados da instituição' : 'Cadastrar nova instituição';
+    const subtitulo = ehEdicao
+      ? 'Ajuste os dados que cadastrou. Enquanto aguarda aprovação do admin, você pode corrigir.'
+      : 'Preencha nome e endereço. O admin completará os demais dados (CNPJ, coordenadas, etc.) ao aprovar.';
+    const btnOkLabel = ehEdicao ? 'Salvar alterações' : 'Cadastrar e usar';
     backdrop.innerHTML = `
       <div class="modal-card" style="max-width:440px;">
         <div class="modal-card__header">
           <div class="modal-card__icon" style="background:#E4ECFD;color:var(--status-info);">
-            <span class="material-symbols-rounded">add_location_alt</span>
+            <span class="material-symbols-rounded">${ehEdicao ? 'edit_location_alt' : 'add_location_alt'}</span>
           </div>
-          <div class="modal-card__title">Cadastrar nova instituição</div>
-          <div class="modal-card__subtitle">Preencha nome e endereço. O admin completará os demais dados (CNPJ, coordenadas, etc.) ao aprovar.</div>
+          <div class="modal-card__title">${titulo}</div>
+          <div class="modal-card__subtitle">${subtitulo}</div>
         </div>
         <div class="modal-card__body" style="display:flex;flex-direction:column;gap:12px;">
           ${gpsInfoHtml}
           <div class="report-field">
             <label>Nome da instituição <span style="color:var(--status-danger)">*</span></label>
-            <input type="text" id="mniNome" placeholder="Ex: Hospital São Camilo Pompeia" value="${valorInicialNome.replace(/"/g,'&quot;')}" style="width:100%;padding:10px 12px;border:1.5px solid var(--neutral-200);border-radius:10px;font-size:14px;font-family:inherit;" />
+            <input type="text" id="mniNome" placeholder="Ex: Hospital São Camilo Pompeia" value="${(valNome || '').replace(/"/g,'&quot;')}" style="width:100%;padding:10px 12px;border:1.5px solid var(--neutral-200);border-radius:10px;font-size:14px;font-family:inherit;" />
           </div>
           <div class="report-field">
             <label>Endereço (rua e número) <span style="color:var(--status-danger)">*</span></label>
-            <input type="text" id="mniEndereco" placeholder="Ex: Rua Frei Caneca, 1407" style="width:100%;padding:10px 12px;border:1.5px solid var(--neutral-200);border-radius:10px;font-size:14px;font-family:inherit;" />
+            <input type="text" id="mniEndereco" placeholder="Ex: Rua Frei Caneca, 1407" value="${(valEnd || '').replace(/"/g,'&quot;')}" style="width:100%;padding:10px 12px;border:1.5px solid var(--neutral-200);border-radius:10px;font-size:14px;font-family:inherit;" />
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
             <div class="report-field">
               <label>Bairro</label>
-              <input type="text" id="mniBairro" placeholder="Ex: Pompeia" style="width:100%;padding:10px 12px;border:1.5px solid var(--neutral-200);border-radius:10px;font-size:14px;font-family:inherit;" />
+              <input type="text" id="mniBairro" placeholder="Ex: Pompeia" value="${(valBairro || '').replace(/"/g,'&quot;')}" style="width:100%;padding:10px 12px;border:1.5px solid var(--neutral-200);border-radius:10px;font-size:14px;font-family:inherit;" />
             </div>
             <div class="report-field">
               <label>Cidade <span style="color:var(--status-danger)">*</span></label>
-              <input type="text" id="mniCidade" placeholder="Ex: São Paulo" style="width:100%;padding:10px 12px;border:1.5px solid var(--neutral-200);border-radius:10px;font-size:14px;font-family:inherit;" />
+              <input type="text" id="mniCidade" placeholder="Ex: São Paulo" value="${(valCidade || '').replace(/"/g,'&quot;')}" style="width:100%;padding:10px 12px;border:1.5px solid var(--neutral-200);border-radius:10px;font-size:14px;font-family:inherit;" />
             </div>
           </div>
         </div>
         <div class="modal-card__footer">
-          <button class="modal-btn modal-btn--primary" id="mniOk">Cadastrar e usar</button>
+          <button class="modal-btn modal-btn--primary" id="mniOk">${btnOkLabel}</button>
           <button class="modal-btn modal-btn--secondary" id="mniCancel">Cancelar</button>
         </div>
       </div>
@@ -10064,7 +12389,560 @@ window.rejeitarObjetivoPendente = async function(id) {
 function renderAdminEquipe() {
   const user = requireAdmin();
   if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
-  return loggedPlaceholderScreen(user, 'groups', 'Equipe', 'Gestão de nutricionistas — aprovar cadastros pendentes.', '#/admin/equipe');
+
+  const filtroInicial = window._routeParams?.filtro || 'pendentes';
+  window._equipeFilter = filtroInicial;
+
+  setTimeout(async () => {
+    await carregarEquipe();
+  }, 0);
+
+  return `
+    <div class="mobile-app">
+      ${mobileTopBar({ title: 'Equipe', showBack: true })}
+      <main class="mcontent">
+        <div class="review-tabs" id="equipeTabs" style="overflow-x:auto;scrollbar-width:none;">
+          <button class="review-tab ${filtroInicial === 'pendentes' ? 'is-active' : ''}" onclick="trocarEquipeFiltro('pendentes')">
+            Pendentes <span class="review-tab__count" id="cntPendentes">—</span>
+          </button>
+          <button class="review-tab ${filtroInicial === 'ativos' ? 'is-active' : ''}" onclick="trocarEquipeFiltro('ativos')">
+            Ativos <span class="review-tab__count" id="cntAtivos">—</span>
+          </button>
+          <button class="review-tab ${filtroInicial === 'desativados' ? 'is-active' : ''}" onclick="trocarEquipeFiltro('desativados')">
+            Desativados <span class="review-tab__count" id="cntDesativados">—</span>
+          </button>
+          <button class="review-tab ${filtroInicial === 'categorias' ? 'is-active' : ''}" onclick="trocarEquipeFiltro('categorias')">
+            Categorias <span class="review-tab__count" id="cntCategorias">—</span>
+          </button>
+        </div>
+
+        <div id="equipeList" style="display:flex;flex-direction:column;gap:10px;">
+          <div style="padding:30px;text-align:center;color:var(--neutral-500);font-size:13px;">Carregando...</div>
+        </div>
+      </main>
+    </div>
+  `;
+}
+
+// ====== Equipe: helpers ======
+async function listarUsuariosPorStatus(statuses) {
+  if (!db) return [];
+  const { data, error } = await db
+    .from('usuarios')
+    .select('id, nome, cpf, email, telefone, perfil, status, categoria_id, criado_em, ultimo_login, categorias_profissionais(nome)')
+    .in('status', statuses)
+    .neq('perfil', 'admin') // não lista admins aqui
+    .order('criado_em', { ascending: false });
+  if (error) { console.warn('[equipe]', error.message); return []; }
+  return data || [];
+}
+
+async function contarUsuariosPorStatus() {
+  if (!db) return { pendentes: 0, ativos: 0, desativados: 0 };
+  const [p, a, d] = await Promise.all([
+    db.from('usuarios').select('*', { count: 'exact', head: true }).eq('status', 'pendente').neq('perfil', 'admin'),
+    db.from('usuarios').select('*', { count: 'exact', head: true }).eq('status', 'ativo').neq('perfil', 'admin'),
+    db.from('usuarios').select('*', { count: 'exact', head: true }).in('status', ['inativo', 'bloqueado']).neq('perfil', 'admin'),
+  ]);
+  return { pendentes: p.count || 0, ativos: a.count || 0, desativados: d.count || 0 };
+}
+
+window.trocarEquipeFiltro = function(filtro) {
+  window._equipeFilter = filtro;
+  document.querySelectorAll('#equipeTabs .review-tab').forEach(t => t.classList.remove('is-active'));
+  event.currentTarget.classList.add('is-active');
+  carregarEquipe();
+};
+
+async function carregarEquipe() {
+  const listEl = document.getElementById('equipeList');
+  if (!listEl) return;
+  // Atualiza contadores (paralelo: usuários + categorias)
+  const [cnts, cats] = await Promise.all([
+    contarUsuariosPorStatus(),
+    listarTodasCategoriasComContagem(),
+  ]);
+  const setCnt = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  setCnt('cntPendentes', cnts.pendentes);
+  setCnt('cntAtivos', cnts.ativos);
+  setCnt('cntDesativados', cnts.desativados);
+  setCnt('cntCategorias', cats.length);
+
+  const filtro = window._equipeFilter || 'pendentes';
+
+  // Aba Categorias é tratada separadamente
+  if (filtro === 'categorias') {
+    renderAbaCategorias(listEl, cats);
+    return;
+  }
+
+  const statuses = filtro === 'pendentes' ? ['pendente']
+    : filtro === 'ativos' ? ['ativo']
+    : ['inativo', 'bloqueado'];
+  const users = await listarUsuariosPorStatus(statuses);
+
+  if (users.length === 0) {
+    const vazios = {
+      pendentes: { icon: 'check_circle', titulo: 'Nenhum cadastro pendente', desc: 'Assim que alguém se cadastrar no sistema, vai aparecer aqui para sua aprovação.' },
+      ativos: { icon: 'groups', titulo: 'Nenhum profissional ativo', desc: 'Aguarde novos cadastros ou aprove pendentes para liberar acesso.' },
+      desativados: { icon: 'person_off', titulo: 'Nenhum profissional desativado', desc: 'Quando você desativar ou rejeitar alguém, aparece aqui.' },
+    };
+    const v = vazios[filtro];
+    listEl.innerHTML = `
+      <div class="empty-state" style="margin:0;">
+        <div class="empty-state__icon"><span class="material-symbols-rounded">${v.icon}</span></div>
+        <div class="empty-state__title">${v.titulo}</div>
+        <div class="empty-state__desc">${v.desc}</div>
+      </div>
+    `;
+    return;
+  }
+
+  listEl.innerHTML = users.map(u => renderEquipeCard(u, filtro)).join('');
+}
+
+// Lista categorias com contagem de profissionais vinculados
+async function listarTodasCategoriasComContagem() {
+  if (!db) return [];
+  const { data: cats, error: errC } = await db
+    .from('categorias_profissionais')
+    .select('id, nome, ativo, criado_em')
+    .order('nome');
+  if (errC || !cats) return [];
+  // Pega contagens em paralelo — poderia ser uma view, mas com poucas categorias roda rápido
+  const counts = await Promise.all(
+    cats.map(c => db.from('usuarios').select('*', { count: 'exact', head: true }).eq('categoria_id', c.id))
+  );
+  return cats.map((c, i) => ({ ...c, total_profissionais: counts[i].count || 0 }));
+}
+
+function renderAbaCategorias(listEl, cats) {
+  const header = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:10px;">
+      <div style="font-size:13px;color:var(--neutral-600);">
+        <strong>${cats.length}</strong> categoria${cats.length === 1 ? '' : 's'} ${cats.filter(c => c.ativo).length !== cats.length ? `· ${cats.filter(c => c.ativo).length} ativa${cats.filter(c => c.ativo).length === 1 ? '' : 's'}` : ''}
+      </div>
+      <button class="eq-btn eq-btn--primary" onclick="novaCategoria()" style="width:auto;padding:8px 14px;">
+        <span class="material-symbols-rounded" style="font-size:16px;">add</span>
+        Nova categoria
+      </button>
+    </div>
+  `;
+
+  if (cats.length === 0) {
+    listEl.innerHTML = header + `
+      <div class="empty-state" style="margin:0;">
+        <div class="empty-state__icon"><span class="material-symbols-rounded">label</span></div>
+        <div class="empty-state__title">Nenhuma categoria cadastrada</div>
+        <div class="empty-state__desc">Crie a primeira categoria (ex: Nutricionista, Enfermeiro) pra que profissionais possam se cadastrar.</div>
+      </div>
+    `;
+    return;
+  }
+
+  const cards = cats.map(c => {
+    const desativada = !c.ativo;
+    const vazia = c.total_profissionais === 0;
+    return `
+      <div class="eq-card" style="${desativada ? 'opacity:0.6;' : ''}">
+        <div class="eq-card__top">
+          <div class="eq-card__avatar" style="background:${desativada ? 'var(--neutral-400)' : 'var(--brand-lime)'};">
+            <span class="material-symbols-rounded" style="font-size:22px;">label</span>
+          </div>
+          <div class="eq-card__info">
+            <div class="eq-card__name">${c.nome.replace(/"/g,'&quot;')}</div>
+            <div class="eq-card__meta">
+              <span>${c.total_profissionais} ${c.total_profissionais === 1 ? 'profissional vinculado' : 'profissionais vinculados'}</span>
+              <span>·</span>
+              ${desativada
+                ? '<span class="badge badge--draft"><span class="material-symbols-rounded" style="font-size:12px;">visibility_off</span>Desativada</span>'
+                : '<span class="badge badge--success"><span class="material-symbols-rounded" style="font-size:12px;">check_circle</span>Ativa</span>'}
+            </div>
+          </div>
+        </div>
+        <div class="eq-card__actions">
+          <button class="eq-btn eq-btn--secondary" onclick="renomearCategoria('${c.id}', '${c.nome.replace(/'/g,"\\'")}')">
+            <span class="material-symbols-rounded" style="font-size:16px;">edit</span>
+            Renomear
+          </button>
+          ${desativada
+            ? `<button class="eq-btn eq-btn--primary" onclick="reativarCategoria('${c.id}')">
+                 <span class="material-symbols-rounded" style="font-size:16px;">restart_alt</span>
+                 Reativar
+               </button>`
+            : vazia
+              ? `<button class="eq-btn eq-btn--danger-outline" onclick="excluirCategoria('${c.id}', '${c.nome.replace(/'/g,"\\'")}')">
+                   <span class="material-symbols-rounded" style="font-size:16px;">delete</span>
+                   Excluir
+                 </button>`
+              : `<button class="eq-btn eq-btn--warning-outline" onclick="desativarCategoria('${c.id}', '${c.nome.replace(/'/g,"\\'")}')">
+                   <span class="material-symbols-rounded" style="font-size:16px;">visibility_off</span>
+                   Desativar
+                 </button>`
+          }
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  listEl.innerHTML = header + cards;
+}
+
+// Ações de categorias
+window.novaCategoria = async function() {
+  const nome = await showModalInputTexto({
+    titulo: 'Nova categoria',
+    subtitulo: 'Ex: Nutricionista, Enfermeiro, Farmacêutico...',
+    label: 'Nome da categoria',
+    placeholder: 'Digite o nome',
+    btnConfirmar: 'Criar',
+  });
+  if (!nome) return;
+  const { error } = await db.from('categorias_profissionais').insert({ nome: nome.trim(), ativo: true });
+  if (error) {
+    setFlash('error', error.message.includes('duplicate') ? 'Já existe uma categoria com esse nome.' : 'Erro: ' + error.message);
+  } else {
+    setFlash('success', 'Categoria criada.');
+  }
+  carregarEquipe();
+};
+
+window.renomearCategoria = async function(id, nomeAtual) {
+  const novoNome = await showModalInputTexto({
+    titulo: 'Renomear categoria',
+    subtitulo: `Atual: ${nomeAtual}`,
+    label: 'Novo nome',
+    placeholder: 'Digite o novo nome',
+    valorInicial: nomeAtual,
+    btnConfirmar: 'Salvar',
+  });
+  if (!novoNome || novoNome.trim() === nomeAtual) return;
+  const { error } = await db.from('categorias_profissionais').update({ nome: novoNome.trim() }).eq('id', id);
+  if (error) {
+    setFlash('error', error.message.includes('duplicate') ? 'Já existe uma categoria com esse nome.' : 'Erro: ' + error.message);
+  } else {
+    setFlash('success', 'Categoria renomeada.');
+  }
+  carregarEquipe();
+};
+
+window.desativarCategoria = async function(id, nome) {
+  const ok = await showModalConfirmacao({
+    icone: 'visibility_off', iconeCor: 'warning',
+    titulo: 'Desativar categoria?',
+    subtitulo: `"${nome}" não aparecerá mais no cadastro de novos profissionais. Os profissionais já vinculados continuam como estão.`,
+    btnConfirmar: 'Desativar',
+    btnCancelar: 'Cancelar',
+  });
+  if (!ok) return;
+  const { error } = await db.from('categorias_profissionais').update({ ativo: false }).eq('id', id);
+  if (error) { setFlash('error', 'Erro: ' + error.message); }
+  else { setFlash('success', 'Categoria desativada.'); }
+  carregarEquipe();
+};
+
+window.reativarCategoria = async function(id) {
+  const { error } = await db.from('categorias_profissionais').update({ ativo: true }).eq('id', id);
+  if (error) { setFlash('error', 'Erro: ' + error.message); }
+  else { setFlash('success', 'Categoria reativada.'); }
+  carregarEquipe();
+};
+
+window.excluirCategoria = async function(id, nome) {
+  const ok = await showModalConfirmacao({
+    icone: 'delete', iconeCor: 'danger',
+    titulo: 'Excluir categoria?',
+    subtitulo: `"${nome}" será apagada do banco. Essa ação só é permitida porque nenhum profissional está vinculado a ela.`,
+    btnConfirmar: 'Excluir',
+    btnCancelar: 'Cancelar',
+  });
+  if (!ok) return;
+  const { error } = await db.from('categorias_profissionais').delete().eq('id', id);
+  if (error) { setFlash('error', 'Erro: ' + error.message); }
+  else { setFlash('success', 'Categoria excluída.'); }
+  carregarEquipe();
+};
+
+// Modal reutilizável de input de texto
+function showModalInputTexto({ titulo, subtitulo = '', label, placeholder = '', valorInicial = '', btnConfirmar = 'OK' }) {
+  return new Promise((resolve) => {
+    const backdrop = document.createElement('div');
+    backdrop.className = 'modal-backdrop';
+    backdrop.innerHTML = `
+      <div class="modal-card" style="max-width:400px;">
+        <div class="modal-card__header">
+          <div class="modal-card__icon" style="background:#E4ECFD;color:var(--status-info);">
+            <span class="material-symbols-rounded">edit</span>
+          </div>
+          <div class="modal-card__title">${titulo}</div>
+          ${subtitulo ? `<div class="modal-card__subtitle">${subtitulo}</div>` : ''}
+        </div>
+        <div class="modal-card__body" style="display:flex;flex-direction:column;gap:12px;">
+          <div class="report-field">
+            <label>${label}</label>
+            <input type="text" id="mniTxInput" placeholder="${placeholder.replace(/"/g,'&quot;')}" value="${valorInicial.replace(/"/g,'&quot;')}" style="width:100%;padding:10px 12px;border:1.5px solid var(--neutral-200);border-radius:10px;font-size:14px;font-family:inherit;" />
+          </div>
+        </div>
+        <div class="modal-card__footer">
+          <button class="modal-btn modal-btn--primary" id="mniTxOk">${btnConfirmar}</button>
+          <button class="modal-btn modal-btn--secondary" id="mniTxCancel">Cancelar</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(backdrop);
+    const input = backdrop.querySelector('#mniTxInput');
+    setTimeout(() => { input.focus(); input.select(); }, 150);
+    const cleanup = () => backdrop.remove();
+    const submit = () => {
+      const v = input.value.trim();
+      if (!v) { input.focus(); return; }
+      cleanup();
+      resolve(v);
+    };
+    backdrop.querySelector('#mniTxOk').onclick = submit;
+    backdrop.querySelector('#mniTxCancel').onclick = () => { cleanup(); resolve(null); };
+    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') submit(); if (e.key === 'Escape') { cleanup(); resolve(null); } });
+    backdrop.onclick = (e) => { if (e.target === backdrop) { cleanup(); resolve(null); } };
+  });
+}
+
+function renderEquipeCard(u, filtro) {
+  const categoria = u.categorias_profissionais?.nome || '—';
+  const iniciais_ = (u.nome || '?').split(' ').filter(Boolean).slice(0, 2).map(s => s[0].toUpperCase()).join('');
+  const dataCad = u.criado_em ? new Date(u.criado_em).toLocaleDateString('pt-BR') : '—';
+  const ultimoLogin = u.ultimo_login ? new Date(u.ultimo_login).toLocaleDateString('pt-BR') : 'nunca';
+
+  // Botões de ação variam por filtro
+  let acoes = '';
+  if (filtro === 'pendentes') {
+    acoes = `
+      <button class="eq-btn eq-btn--primary" onclick="aprovarProfissional('${u.id}')">
+        <span class="material-symbols-rounded" style="font-size:16px;">check_circle</span>
+        Aprovar
+      </button>
+      <button class="eq-btn eq-btn--danger-outline" onclick="rejeitarProfissional('${u.id}')">
+        <span class="material-symbols-rounded" style="font-size:16px;">close</span>
+        Rejeitar
+      </button>
+    `;
+  } else if (filtro === 'ativos') {
+    acoes = `
+      <button class="eq-btn eq-btn--secondary" onclick="editarCategoriaProfissional('${u.id}')">
+        <span class="material-symbols-rounded" style="font-size:16px;">edit</span>
+        Categoria
+      </button>
+      <button class="eq-btn eq-btn--warning-outline" onclick="desativarProfissional('${u.id}')">
+        <span class="material-symbols-rounded" style="font-size:16px;">person_off</span>
+        Desativar
+      </button>
+    `;
+  } else {
+    // desativados
+    acoes = `
+      <button class="eq-btn eq-btn--primary" onclick="reativarProfissional('${u.id}')">
+        <span class="material-symbols-rounded" style="font-size:16px;">restart_alt</span>
+        Reativar
+      </button>
+      <button class="eq-btn eq-btn--danger-outline" onclick="excluirProfissional('${u.id}')">
+        <span class="material-symbols-rounded" style="font-size:16px;">delete_forever</span>
+        Excluir
+      </button>
+    `;
+  }
+
+  const statusBadge = u.status === 'pendente'
+    ? '<span class="badge badge--warning"><span class="material-symbols-rounded" style="font-size:12px;">hourglass_top</span>Pendente</span>'
+    : u.status === 'ativo'
+    ? '<span class="badge badge--success"><span class="material-symbols-rounded" style="font-size:12px;">check_circle</span>Ativo</span>'
+    : u.status === 'inativo'
+    ? '<span class="badge badge--draft"><span class="material-symbols-rounded" style="font-size:12px;">person_off</span>Inativo</span>'
+    : '<span class="badge badge--danger"><span class="material-symbols-rounded" style="font-size:12px;">block</span>Bloqueado</span>';
+
+  return `
+    <div class="eq-card">
+      <div class="eq-card__top">
+        <div class="eq-card__avatar">${iniciais_}</div>
+        <div class="eq-card__info">
+          <div class="eq-card__name">${(u.nome || '(sem nome)').replace(/"/g,'&quot;')}</div>
+          <div class="eq-card__meta">
+            <span>${categoria}</span>
+            <span>·</span>
+            ${statusBadge}
+          </div>
+        </div>
+      </div>
+      <div class="eq-card__details">
+        <div class="eq-card__row"><span class="material-symbols-rounded" style="font-size:14px;">badge</span><span style="font-family:var(--font-mono);">${u.cpf || '—'}</span></div>
+        ${u.email ? `<div class="eq-card__row"><span class="material-symbols-rounded" style="font-size:14px;">mail</span><span>${u.email}</span></div>` : ''}
+        ${u.telefone ? `<div class="eq-card__row"><span class="material-symbols-rounded" style="font-size:14px;">phone</span><span style="font-family:var(--font-mono);">${u.telefone}</span></div>` : ''}
+        <div class="eq-card__row"><span class="material-symbols-rounded" style="font-size:14px;">event</span><span>Cadastrado em ${dataCad}${filtro === 'ativos' ? ` · último login: ${ultimoLogin}` : ''}</span></div>
+      </div>
+      <div class="eq-card__actions">${acoes}</div>
+    </div>
+  `;
+}
+
+// ====== Equipe: ações ======
+
+window.aprovarProfissional = async function(id) {
+  const ok = await showModalConfirmacao({
+    icone: 'check_circle', iconeCor: 'success',
+    titulo: 'Aprovar profissional?',
+    subtitulo: 'Ele poderá fazer login imediatamente e começar a registrar visitas.',
+    btnConfirmar: 'Aprovar',
+    btnCancelar: 'Cancelar',
+  });
+  if (!ok) return;
+  const { error } = await db.from('usuarios').update({ status: 'ativo' }).eq('id', id);
+  if (error) {
+    setFlash('error', 'Erro ao aprovar: ' + error.message);
+  } else {
+    setFlash('success', 'Profissional aprovado. Acesso liberado.');
+  }
+  carregarEquipe();
+};
+
+window.rejeitarProfissional = async function(id) {
+  const ok = await showModalConfirmacao({
+    icone: 'block', iconeCor: 'danger',
+    titulo: 'Rejeitar cadastro?',
+    subtitulo: 'O profissional ficará bloqueado. Você pode excluir em definitivo depois, na aba Desativados.',
+    btnConfirmar: 'Rejeitar',
+    btnCancelar: 'Cancelar',
+  });
+  if (!ok) return;
+  const { error } = await db.from('usuarios').update({ status: 'bloqueado' }).eq('id', id);
+  if (error) {
+    setFlash('error', 'Erro ao rejeitar: ' + error.message);
+  } else {
+    setFlash('success', 'Cadastro rejeitado.');
+  }
+  carregarEquipe();
+};
+
+window.desativarProfissional = async function(id) {
+  const ok = await showModalConfirmacao({
+    icone: 'person_off', iconeCor: 'warning',
+    titulo: 'Desativar profissional?',
+    subtitulo: 'Ele não conseguirá mais fazer login. O histórico de visitas fica preservado e você pode reativar depois.',
+    btnConfirmar: 'Desativar',
+    btnCancelar: 'Cancelar',
+  });
+  if (!ok) return;
+  const { error } = await db.from('usuarios').update({ status: 'inativo' }).eq('id', id);
+  if (error) {
+    setFlash('error', 'Erro ao desativar: ' + error.message);
+  } else {
+    setFlash('success', 'Profissional desativado.');
+  }
+  carregarEquipe();
+};
+
+window.reativarProfissional = async function(id) {
+  const ok = await showModalConfirmacao({
+    icone: 'restart_alt', iconeCor: 'info',
+    titulo: 'Reativar profissional?',
+    subtitulo: 'Ele voltará a ter acesso ao sistema imediatamente.',
+    btnConfirmar: 'Reativar',
+    btnCancelar: 'Cancelar',
+  });
+  if (!ok) return;
+  const { error } = await db.from('usuarios').update({ status: 'ativo' }).eq('id', id);
+  if (error) {
+    setFlash('error', 'Erro ao reativar: ' + error.message);
+  } else {
+    setFlash('success', 'Profissional reativado.');
+  }
+  carregarEquipe();
+};
+
+window.excluirProfissional = async function(id) {
+  // Primeira confirmação
+  const ok1 = await showModalConfirmacao({
+    icone: 'warning', iconeCor: 'danger',
+    titulo: 'Excluir em definitivo?',
+    subtitulo: 'O profissional e todos os registros de visita dele serão perdidos. Essa ação NÃO pode ser desfeita. Considere desativar.',
+    btnConfirmar: 'Continuar mesmo assim',
+    btnCancelar: 'Cancelar',
+  });
+  if (!ok1) return;
+  // Segunda confirmação (dupla barreira)
+  const ok2 = await showModalConfirmacao({
+    icone: 'delete_forever', iconeCor: 'danger',
+    titulo: 'Tem certeza absoluta?',
+    subtitulo: 'Última chance. Esta ação é irreversível e apagará o profissional do banco.',
+    btnConfirmar: 'Sim, excluir',
+    btnCancelar: 'Não, voltar',
+  });
+  if (!ok2) return;
+  const { error } = await db.from('usuarios').delete().eq('id', id);
+  if (error) {
+    // Pode falhar se tem FKs (visitas, etc.). Orientar.
+    setFlash('error', 'Não foi possível excluir: ' + error.message + '. Use "Desativar" se o profissional tem histórico de visitas.');
+  } else {
+    setFlash('success', 'Profissional excluído em definitivo.');
+  }
+  carregarEquipe();
+};
+
+window.editarCategoriaProfissional = async function(id) {
+  const { data: u } = await db.from('usuarios').select('id, nome, categoria_id').eq('id', id).single();
+  if (!u) return;
+  const cats = await listarCategoriasAtivas();
+  if (cats.length === 0) {
+    setFlash('error', 'Nenhuma categoria cadastrada. Crie ao menos uma primeiro.');
+    return;
+  }
+  const novaCat = await showModalSelectCategoria(u, cats);
+  if (!novaCat) return;
+  if (novaCat === u.categoria_id) return; // sem mudança
+  const { error } = await db.from('usuarios').update({ categoria_id: novaCat }).eq('id', id);
+  if (error) {
+    setFlash('error', 'Erro ao atualizar: ' + error.message);
+  } else {
+    setFlash('success', 'Categoria atualizada.');
+  }
+  carregarEquipe();
+};
+
+// Modal simples pra escolher categoria
+function showModalSelectCategoria(user, cats) {
+  return new Promise((resolve) => {
+    const backdrop = document.createElement('div');
+    backdrop.className = 'modal-backdrop';
+    backdrop.innerHTML = `
+      <div class="modal-card" style="max-width:400px;">
+        <div class="modal-card__header">
+          <div class="modal-card__icon" style="background:#E4ECFD;color:var(--status-info);">
+            <span class="material-symbols-rounded">edit</span>
+          </div>
+          <div class="modal-card__title">Editar categoria</div>
+          <div class="modal-card__subtitle">${user.nome}</div>
+        </div>
+        <div class="modal-card__body" style="display:flex;flex-direction:column;gap:12px;">
+          <div class="report-field">
+            <label>Categoria</label>
+            <select id="msCatSel" style="width:100%;padding:10px 12px;border:1.5px solid var(--neutral-200);border-radius:10px;font-size:14px;font-family:inherit;">
+              ${cats.map(c => `<option value="${c.id}"${c.id === user.categoria_id ? ' selected' : ''}>${c.nome}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        <div class="modal-card__footer">
+          <button class="modal-btn modal-btn--primary" id="msOk">Salvar</button>
+          <button class="modal-btn modal-btn--secondary" id="msCancel">Cancelar</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(backdrop);
+    const cleanup = () => backdrop.remove();
+    backdrop.querySelector('#msOk').onclick = () => {
+      const v = backdrop.querySelector('#msCatSel').value;
+      cleanup();
+      resolve(v || null);
+    };
+    backdrop.querySelector('#msCancel').onclick = () => { cleanup(); resolve(null); };
+    backdrop.onclick = (e) => { if (e.target === backdrop) { cleanup(); resolve(null); } };
+  });
 }
 function renderAdminInstituicoes() {
   const user = requireAdmin();
@@ -10985,6 +13863,11 @@ async function boot() {
 
   window.addEventListener('hashchange', router);
   router();
+
+  // Se já tem sessão ativa, liga o polling de notificações
+  if (getCurrentUser()) {
+    iniciarPollingNotificacoes();
+  }
 
   setTimeout(() => {
     document.getElementById('splash').classList.add('splash--hidden');
