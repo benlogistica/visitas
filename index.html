@@ -5600,7 +5600,7 @@ window.togglePerfilDropdown = function(ev) {
         <span>Sair da simulação</span>
       </button>
     ` : ''}
-    ${window._pwaInstallPrompt ? `
+    ${!rodandoComoPWA() ? `
       <button class="perfil-dropdown__item" onclick="handleInstalarApp()" style="border-top:1px solid var(--neutral-100);">
         <span class="material-symbols-rounded">install_mobile</span>
         <span>Instalar app</span>
