@@ -4874,6 +4874,13 @@ function getCurrentUserReal() {
   return getSession();
 }
 
+// Detecta se a sessão atual é admin simulando perfil de profissional.
+// Usado pra bloquear ações destrutivas que poderiam afetar dados reais do admin.
+function estaSimulando() {
+  const user = getCurrentUser();
+  return !!(user && user._simulando);
+}
+
 // Flash messages (entre navegações)
 function setFlash(type, message) {
   sessionStorage.setItem(AUTH_FLASH, JSON.stringify({ type, message }));
@@ -5164,8 +5171,10 @@ window.toggleNotifDropdown = async function(ev) {
   }
 
   // Rodapé com link pra tela completa + botão de limpar lidas
-  // Só mostra "Limpar lidas" se tiver ao menos uma lida (senão o botão fica inútil)
+  // Só mostra "Limpar lidas" se tiver ao menos uma lida E não estiver em modo simulação
+  // (simulação mantém user.id do admin, então deletaria as notif reais dele)
   const temLidas = list.some(n => n.lida);
+  const mostrarLimpar = temLidas && !estaSimulando();
   dropdown.innerHTML += `
     <div class="notif-dropdown__footer" style="display:flex;align-items:stretch;">
       <a href="#/notificacoes" onclick="document.getElementById('notifDropdown')?.remove();"
@@ -5173,7 +5182,7 @@ window.toggleNotifDropdown = async function(ev) {
         Ver todas
         <span class="material-symbols-rounded" style="font-size:15px;">arrow_forward</span>
       </a>
-      ${temLidas ? `
+      ${mostrarLimpar ? `
         <div style="width:1px;background:var(--neutral-200);"></div>
         <button onclick="handleLimparNotifLidas()"
                 style="flex:1;background:transparent;border:none;display:flex;align-items:center;justify-content:center;gap:6px;padding:10px;font-size:12px;font-weight:700;color:var(--neutral-600);cursor:pointer;font-family:inherit;">
@@ -5227,6 +5236,20 @@ window.marcarTodasLidasUI = async function() {
 window.handleLimparNotifLidas = async function() {
   // Fecha o dropdown antes do modal pra não ficar sobreposto
   document.getElementById('notifDropdown')?.remove();
+
+  // Fix: bloqueia ação destrutiva em modo simulação (senão apagaria as notificações
+  // reais do admin, porque o user.id não muda ao simular)
+  if (estaSimulando()) {
+    await showModalConfirmacao({
+      icone: 'lock',
+      iconeCor: 'warning',
+      titulo: 'Ação bloqueada no modo simulação',
+      subtitulo: 'Você está testando como profissional. Pra limpar notificações, saia do modo simulação primeiro.',
+      btnConfirmar: 'Ok',
+      btnCancelar: '',
+    });
+    return;
+  }
 
   const ok = await showModalConfirmacao({
     icone: 'delete_sweep',
@@ -10639,7 +10662,8 @@ async function carregarListaNotificacoes() {
   const btnMarcar = document.getElementById('btnMarcarTodasNotif');
   if (btnMarcar) btnMarcar.style.display = cnts.nao_lidas > 0 ? '' : 'none';
   const btnLimpar = document.getElementById('btnLimparNotifLidas');
-  if (btnLimpar) btnLimpar.style.display = cnts.lidas > 0 ? '' : 'none';
+  // Esconde se não há lidas OU se está em modo simulação (evita apagar dados do admin real)
+  if (btnLimpar) btnLimpar.style.display = (cnts.lidas > 0 && !estaSimulando()) ? '' : 'none';
 
   const filtro = window._notifFilter || 'todas';
   const page = window._notifPage || 0;
