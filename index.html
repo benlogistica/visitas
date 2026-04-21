@@ -1299,7 +1299,8 @@ a {
 .mbar {
   background: var(--brand-navy);
   color: var(--neutral-0);
-  padding: calc(env(safe-area-inset-top, 12px) + 12px) 20px 14px;
+  /* Safe area pro notch + padding balanceado top/bottom pra conteúdo parecer centralizado */
+  padding: calc(env(safe-area-inset-top, 0px) + 14px) 20px 14px;
   position: sticky;
   top: 0;
   z-index: 30;
@@ -4972,7 +4973,7 @@ a {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint8-pwa',
+  APP_VERSION: '1.0.0-alpha.sprint8-refinamentos',
   APP_NAME: 'Nutricionais Visitas',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -5106,6 +5107,44 @@ function getSession() {
 function clearSession() {
   localStorage.removeItem(AUTH_KEY);
 }
+
+// Sincroniza a sessão local com dados frescos do banco (foto_url, nome, permissoes, status).
+// Chamado no boot() quando existe sessão ativa — resolve o caso de foto/dados
+// atualizados em outro dispositivo não aparecerem até o próximo login.
+async function sincronizarSessaoComBanco() {
+  const sess = getSession();
+  if (!sess || !db) return;
+  try {
+    const { data, error } = await db.from('usuarios')
+      .select('id, nome, cpf, email, perfil, permissoes, foto_url, status')
+      .eq('id', sess.id)
+      .single();
+    if (error || !data) return;
+    // Se o user foi desativado no banco, força logout
+    if (data.status !== 'ativo') {
+      console.warn('[sync sessão] usuário não está mais ativo, fazendo logout');
+      logout();
+      return;
+    }
+    // Atualiza campos que podem ter mudado, mantendo loggedAt original
+    const atualizado = {
+      ...sess,
+      nome: data.nome,
+      email: data.email,
+      perfil: data.perfil,
+      permissoes: data.permissoes,
+      foto_url: data.foto_url || null,
+    };
+    localStorage.setItem(AUTH_KEY, JSON.stringify(atualizado));
+    // Se a foto mudou, força re-render do topbar pra mostrar a nova foto
+    if (sess.foto_url !== data.foto_url || sess.nome !== data.nome) {
+      window.dispatchEvent(new HashChangeEvent('hashchange'));
+    }
+  } catch (err) {
+    console.warn('[sync sessão] erro (ignorado):', err.message);
+  }
+}
+
 function getCurrentUser() {
   const user = getSession();
   if (!user) return null;
@@ -7244,9 +7283,7 @@ function mobileTopBar(opts = {}) {
         ${showLogo ? `
           <div style="flex:1;">
             <div style="height:24px;display:inline-flex;align-items:center;gap:8px;color:#fff;">
-              <svg viewBox="0 0 64 52" style="height:22px;width:auto;fill:#FFFFFF">
-                <path d="M32 8 C28 8 25 11 25 15 C25 10 22 8 18 8 C13 8 10 12 10 17 C10 28 32 44 32 44 C32 44 54 28 54 17 C54 12 51 8 46 8 C42 8 39 11 39 15 C39 11 36 8 32 8 Z"/>
-              </svg>
+              <img src="icons/logo-color.png" alt="Nutricionais" style="height:28px;width:auto;display:block;" />
               <span style="font-family:var(--font-display);font-weight:700;font-size:15px;letter-spacing:0.5px;">NUTRICIONAIS</span>
             </div>
           </div>
@@ -12113,7 +12150,7 @@ function renderAdminDashboard() {
       ${mobileTopBar({ showLogo: true, showNotification: true, showAvatar: true, showMenu: true })}
       <main class="mcontent">
         <div class="home__greeting">
-          <div class="home__greeting-title">Painel Admin</div>
+          <div class="home__greeting-title">Painel Administrador</div>
           <div class="home__greeting-date">${user.nome} · ${formatarDataPtBr(new Date())}</div>
         </div>
 
@@ -12649,7 +12686,7 @@ function renderAdminDrawer() {
       <div class="admin-drawer__backdrop" onclick="closeAdminDrawer()"></div>
       <aside class="admin-drawer__panel">
         <div class="admin-drawer__header">
-          <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:15px;">Menu admin</div>
+          <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:15px;">Menu</div>
           <button onclick="closeAdminDrawer()" style="background:none;border:none;padding:6px;cursor:pointer;color:var(--neutral-500);">
             <span class="material-symbols-rounded">close</span>
           </button>
@@ -17543,9 +17580,10 @@ async function boot() {
   window.addEventListener('hashchange', router);
   router();
 
-  // Se já tem sessão ativa, liga o polling de notificações
+  // Se já tem sessão ativa, liga o polling de notificações + sincroniza dados do user
   if (getCurrentUser()) {
     iniciarPollingNotificacoes();
+    sincronizarSessaoComBanco(); // atualiza foto_url, nome, permissoes sem precisar relogar
   }
 
   setTimeout(() => {
