@@ -3932,6 +3932,21 @@ a {
 }
 
 /* Calendário semanal da agenda admin (Sprint 7 Mini 2b) */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* Pulse de destaque pra item vindo de busca global (Sprint 8) */
+@keyframes buscaPulse {
+  0%   { box-shadow: 0 0 0 0 rgba(245,158,11,0.45); background: #FEF4E1; }
+  40%  { box-shadow: 0 0 0 14px rgba(245,158,11,0); background: #FEF4E1; }
+  100% { box-shadow: 0 0 0 0 rgba(245,158,11,0); background: transparent; }
+}
+.busca-destaque {
+  animation: buscaPulse 2.2s ease-out 1;
+  border-radius: 12px;
+}
 .ag-cal-nav {
   display: flex;
   align-items: center;
@@ -4710,7 +4725,7 @@ a {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint7-mini2b',
+  APP_VERSION: '1.0.0-alpha.sprint8-busca-deeplink',
   APP_NAME: 'Nutricionais Visitas',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -6369,6 +6384,12 @@ function stopTimer() {
 function mobileTopBar(opts = {}) {
   const { title, showLogo, showNotification, showAvatar, showBack, liveIndicator, showMenu } = opts;
   const user = getCurrentUser();
+  // Lupa aparece em TODAS as telas do user logado — escopo da busca varia por perfil
+  const botaoBusca = user ? `
+    <button class="mbar__icon-btn" onclick="abrirBuscaGlobal()" title="Buscar" style="background:transparent;border:none;color:#fff;padding:6px;cursor:pointer;">
+      <span class="material-symbols-rounded" style="font-size:22px">search</span>
+    </button>
+  ` : '';
 
   if (liveIndicator) {
     return `
@@ -6381,6 +6402,7 @@ function mobileTopBar(opts = {}) {
             <span class="mbar__live-indicator-dot"></span>
             Em visita
           </span>
+          ${botaoBusca}
         </div>
       </header>
     `;
@@ -6394,6 +6416,7 @@ function mobileTopBar(opts = {}) {
             <span class="material-symbols-rounded" style="font-size:18px">arrow_back_ios_new</span>
           </button>
           <div class="mbar__title">${title || ''}</div>
+          ${botaoBusca}
         </div>
       </header>
     `;
@@ -6418,6 +6441,7 @@ function mobileTopBar(opts = {}) {
             </div>
           </div>
         ` : `<div class="mbar__title">${title || ''}</div>`}
+        ${botaoBusca}
         ${showNotification ? `
           <button class="mbar__icon-btn notif-trigger" id="notifTrigger" onclick="toggleNotifDropdown(event)" title="Notificações" style="position:relative;">
             <span class="material-symbols-rounded" style="font-size:22px">notifications</span>
@@ -6874,6 +6898,62 @@ async function listarProfissionaisAtivos() {
     .order('nome');
   if (error) { console.warn('[profissionais ativos]', error.message); return []; }
   return data || [];
+}
+
+/* ==========================================================================
+   BUSCA GLOBAL — busca varia por perfil (Sprint 8)
+   Admin: busca em visitas (todas), instituições (todas), profissionais
+   Profissional: busca apenas SUAS visitas + instituições ATIVAS (sem profissionais)
+   Ignora acentos / case sensitivity via ilike do Postgres.
+   ========================================================================== */
+async function buscarGlobal(query) {
+  if (!db) return { visitas: [], instituicoes: [], profissionais: [] };
+  const termo = (query || '').trim();
+  if (termo.length < 2) return { visitas: [], instituicoes: [], profissionais: [] };
+  const pattern = `%${termo}%`;
+
+  const user = getCurrentUser();
+  const ehAdmin = !!user && user.perfil === 'admin';
+
+  // Instituições — admin vê todas; profissional vê só as ativas
+  const queryInsts = db.from('instituicoes')
+    .select('id, nome, razao_social, cidade, estado, ativo')
+    .or(`nome.ilike.${pattern},razao_social.ilike.${pattern},cidade.ilike.${pattern}`)
+    .order('nome')
+    .limit(8);
+  if (!ehAdmin) queryInsts.eq('ativo', true);
+
+  // Visitas — admin vê todas; profissional vê só as dele
+  const queryVisitas = db.from('visitas')
+    .select(`
+      id, data_visita, status, resumo, instituicao_id, nutricionista_id,
+      instituicoes(nome, cidade),
+      usuarios:nutricionista_id(nome)
+    `)
+    .or(`resumo.ilike.${pattern},proximos_passos.ilike.${pattern},motivo_nao_realizada.ilike.${pattern}`)
+    .order('data_visita', { ascending: false })
+    .limit(8);
+  if (!ehAdmin && user) queryVisitas.eq('nutricionista_id', user.id);
+
+  // Profissionais — SÓ pra admin
+  const promises = [queryInsts, queryVisitas];
+  if (ehAdmin) {
+    promises.push(
+      db.from('usuarios')
+        .select('id, nome, perfil, status, categorias_profissionais(nome)')
+        .ilike('nome', pattern)
+        .order('nome')
+        .limit(8)
+    );
+  }
+
+  const [resInsts, resVisitas, resProfs] = await Promise.all(promises);
+
+  return {
+    instituicoes: resInsts.data || [],
+    visitas:      resVisitas.data || [],
+    profissionais: ehAdmin ? (resProfs?.data || []) : [],
+  };
 }
 
 // Cancela (deleta) um agendamento — funciona tanto pra 'agendada' quanto 'sugerida'
@@ -8470,7 +8550,7 @@ function renderCheckin() {
             ? `<span style="display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;background:#FEF4E1;color:#92400E;margin-left:6px;"><span class="material-symbols-rounded" style="font-size:11px;">hourglass_top</span>Pendente</span>`
             : '';
           return `
-            <a href="#" onclick="selectInstitution('${inst.id}'); return false;" class="inst-item${isClosest ? ' inst-item--closest' : ''}">
+            <a href="#" onclick="selectInstitution('${inst.id}'); return false;" data-id="${inst.id}" class="inst-item${isClosest ? ' inst-item--closest' : ''}">
               <div class="inst-item__pin inst-item__pin--${zone}">
                 <span class="material-symbols-rounded">location_on</span>
               </div>
@@ -8485,6 +8565,8 @@ function renderCheckin() {
             </a>
           `;
         }).join('');
+        // Se veio da busca global (?inst=X), destaca e scrolla até o item
+        destacarItemDaURL('.inst-item[data-id="%ID%"]', 'inst');
       }
     } catch (err) {
       console.error('[Checkin] Erro:', err);
@@ -9373,7 +9455,7 @@ function renderVisitas() {
         `;
       } else {
         listEl.innerHTML = visitas.map(v => `
-          <a href="#/visitas/relatorio?id=${v.id}" class="visits-list__item">
+          <a href="#/visitas/relatorio?id=${v.id}" data-id="${v.id}" class="visits-list__item">
             <div class="visits-list__icon">
               <span class="material-symbols-rounded">local_hospital</span>
             </div>
@@ -9384,6 +9466,8 @@ function renderVisitas() {
             ${sbadgeForStatus(v)}
           </a>
         `).join('');
+        // Destaca a visita se veio da busca global (?id=X)
+        destacarItemDaURL('.visits-list__item[data-id="%ID%"]');
       }
     } catch (err) {
       listEl.innerHTML = `<div style="padding:20px;text-align:center;color:var(--status-danger);">Erro: ${err.message}</div>`;
@@ -11764,6 +11848,257 @@ window.closeAdminDrawer = function() {
   if (drawer) drawer.classList.remove('is-open');
 };
 
+/* ==========================================================================
+   BUSCA GLOBAL — modal (Sprint 8)
+   Modal tela cheia com input, debounce 300ms, 3 seções de resultados.
+   Clique em resultado leva pra tela correspondente.
+   ========================================================================== */
+/* ==========================================================================
+   Helpers pra destaque de item vindo de busca global (?id=X)
+   Usado pelas telas de destino após navegação vinda da busca.
+   ========================================================================== */
+
+// Lê o parâmetro ?id= do hash atual (ex: #/admin/visitas?id=abc → "abc")
+function getIdDaURL(paramName = 'id') {
+  const h = window.location.hash || '';
+  const q = h.indexOf('?');
+  if (q === -1) return null;
+  const params = new URLSearchParams(h.substring(q + 1));
+  return params.get(paramName);
+}
+
+// Scrolla e destaca um card identificado por data-id. Chama após o render da lista.
+// `seletorBase` deve usar `[data-id="..."]` pra funcionar (ex: '.my-card[data-id="%ID%"]')
+function destacarItemDaURL(seletorComPlaceholder, paramName = 'id') {
+  const id = getIdDaURL(paramName);
+  if (!id) return;
+  // Pequeno delay pra garantir que DOM renderizou
+  setTimeout(() => {
+    const seletor = seletorComPlaceholder.replace('%ID%', CSS.escape(id));
+    const el = document.querySelector(seletor);
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    el.classList.add('busca-destaque');
+    // Remove a classe depois do pulse pra poder reaplicar se voltar
+    setTimeout(() => el.classList.remove('busca-destaque'), 2400);
+  }, 200);
+}
+
+window.abrirBuscaGlobal = function() {
+  // Evita abrir dois
+  if (document.getElementById('buscaGlobalModal')) return;
+
+  const user = getCurrentUser();
+  const ehAdmin = !!user && user.perfil === 'admin';
+  const placeholder = ehAdmin
+    ? 'Buscar visitas, instituições, profissionais...'
+    : 'Buscar suas visitas ou instituições...';
+
+  const overlay = document.createElement('div');
+  overlay.id = 'buscaGlobalModal';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(10,31,92,0.6);backdrop-filter:blur(4px);z-index:9999;display:flex;align-items:flex-start;justify-content:center;padding-top:8vh;';
+
+  overlay.innerHTML = `
+    <div style="background:var(--neutral-0);width:100%;max-width:560px;margin:0 16px;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.3);overflow:hidden;display:flex;flex-direction:column;max-height:80vh;">
+      <!-- Header com input -->
+      <div style="padding:14px 16px;border-bottom:1px solid var(--neutral-200);display:flex;align-items:center;gap:10px;">
+        <span class="material-symbols-rounded" style="font-size:22px;color:var(--neutral-500);">search</span>
+        <input id="buscaGlobalInput" type="text" placeholder="${placeholder}" autocomplete="off"
+               style="flex:1;border:none;outline:none;font-family:var(--font-body);font-size:15px;color:var(--brand-navy);background:transparent;" />
+        <button onclick="fecharBuscaGlobal()" style="background:var(--neutral-100);border:none;border-radius:6px;padding:4px 8px;cursor:pointer;color:var(--neutral-600);font-size:11px;font-weight:700;letter-spacing:.5px;">ESC</button>
+      </div>
+
+      <!-- Resultados -->
+      <div id="buscaGlobalResultados" style="flex:1;overflow-y:auto;padding:10px 0;">
+        <div style="padding:40px 20px;text-align:center;color:var(--neutral-500);font-size:13px;">
+          Digite ao menos 2 caracteres pra começar a buscar.
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+
+  // Fecha ao clicar fora do modal interno
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) fecharBuscaGlobal();
+  });
+
+  // Fecha com ESC
+  const escHandler = (e) => {
+    if (e.key === 'Escape') fecharBuscaGlobal();
+  };
+  document.addEventListener('keydown', escHandler);
+  overlay._escHandler = escHandler;
+
+  // Foca o input e hooka no debounce
+  const input = document.getElementById('buscaGlobalInput');
+  setTimeout(() => input?.focus(), 50);
+
+  let timer = null;
+  input.addEventListener('input', () => {
+    clearTimeout(timer);
+    const q = input.value;
+    if (q.trim().length < 2) {
+      document.getElementById('buscaGlobalResultados').innerHTML = `
+        <div style="padding:40px 20px;text-align:center;color:var(--neutral-500);font-size:13px;">
+          Digite ao menos 2 caracteres pra começar a buscar.
+        </div>
+      `;
+      return;
+    }
+    // Mostra "buscando..." imediato pra feedback visual
+    document.getElementById('buscaGlobalResultados').innerHTML = `
+      <div style="padding:40px 20px;text-align:center;color:var(--neutral-500);font-size:13px;">
+        <span class="material-symbols-rounded" style="font-size:24px;animation:spin 1s linear infinite;">autorenew</span>
+        <div style="margin-top:6px;">Buscando...</div>
+      </div>
+    `;
+    timer = setTimeout(() => executarBuscaGlobal(q), 300);
+  });
+};
+
+window.fecharBuscaGlobal = function() {
+  const overlay = document.getElementById('buscaGlobalModal');
+  if (!overlay) return;
+  if (overlay._escHandler) document.removeEventListener('keydown', overlay._escHandler);
+  overlay.remove();
+};
+
+async function executarBuscaGlobal(query) {
+  const resEl = document.getElementById('buscaGlobalResultados');
+  if (!resEl) return;
+
+  const resultados = await buscarGlobal(query);
+  const total = resultados.visitas.length + resultados.instituicoes.length + resultados.profissionais.length;
+
+  if (total === 0) {
+    resEl.innerHTML = `
+      <div style="padding:40px 20px;text-align:center;color:var(--neutral-500);">
+        <span class="material-symbols-rounded" style="font-size:36px;opacity:.5;">search_off</span>
+        <div style="margin-top:8px;font-size:14px;font-weight:600;color:var(--brand-navy);">Nenhum resultado</div>
+        <div style="margin-top:4px;font-size:12.5px;">Tente outras palavras ou cheque a grafia.</div>
+      </div>
+    `;
+    return;
+  }
+
+  let html = '';
+
+  // Seção: Instituições
+  if (resultados.instituicoes.length > 0) {
+    html += renderBuscaSecao('Instituições', 'apartment', resultados.instituicoes.map(i => {
+      const inativo = i.ativo === false ? '<span style="font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;background:var(--neutral-200);color:var(--neutral-600);margin-left:6px;">INATIVA</span>' : '';
+      const cidade = i.cidade ? `${i.cidade}${i.estado ? '/' + i.estado : ''}` : '—';
+      return `
+        <div onclick="buscaIrInstituicao('${i.id}')" class="busca-item" style="padding:10px 16px;cursor:pointer;display:flex;align-items:center;gap:10px;transition:background 140ms;" onmouseover="this.style.background='var(--neutral-50)'" onmouseout="this.style.background='transparent'">
+          <span class="material-symbols-rounded" style="font-size:20px;color:var(--brand-navy);">apartment</span>
+          <div style="flex:1;min-width:0;">
+            <div style="font-weight:600;color:var(--brand-navy);font-size:13.5px;line-height:1.3;">
+              ${(i.nome || '').replace(/</g,'&lt;')}${inativo}
+            </div>
+            <div style="font-size:11.5px;color:var(--neutral-600);margin-top:1px;">${cidade}</div>
+          </div>
+        </div>
+      `;
+    }).join(''));
+  }
+
+  // Seção: Profissionais
+  if (resultados.profissionais.length > 0) {
+    html += renderBuscaSecao('Profissionais', 'group', resultados.profissionais.map(p => {
+      const perfilLabel = p.perfil === 'admin' ? 'Administrador' : (p.categorias_profissionais?.nome || 'Profissional');
+      const statusBadge = p.status !== 'ativo'
+        ? `<span style="font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;background:var(--neutral-200);color:var(--neutral-600);margin-left:6px;">${String(p.status).toUpperCase()}</span>`
+        : '';
+      return `
+        <div onclick="buscaIrProfissional('${p.id}')" class="busca-item" style="padding:10px 16px;cursor:pointer;display:flex;align-items:center;gap:10px;transition:background 140ms;" onmouseover="this.style.background='var(--neutral-50)'" onmouseout="this.style.background='transparent'">
+          <div style="width:28px;height:28px;border-radius:50%;background:var(--brand-navy);color:#fff;display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:700;font-family:var(--font-display);flex-shrink:0;">${iniciais(p.nome || '?')}</div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-weight:600;color:var(--brand-navy);font-size:13.5px;line-height:1.3;">
+              ${(p.nome || '').replace(/</g,'&lt;')}${statusBadge}
+            </div>
+            <div style="font-size:11.5px;color:var(--neutral-600);margin-top:1px;">${perfilLabel}</div>
+          </div>
+        </div>
+      `;
+    }).join(''));
+  }
+
+  // Seção: Visitas
+  if (resultados.visitas.length > 0) {
+    html += renderBuscaSecao('Visitas', 'description', resultados.visitas.map(v => {
+      const inst = v.instituicoes?.nome || 'Instituição';
+      const prof = v.usuarios?.nome || 'Profissional';
+      const dt = (() => {
+        if (!v.data_visita) return '';
+        const [y, m, d] = String(v.data_visita).split('-').map(Number);
+        return `${String(d).padStart(2,'0')}/${String(m).padStart(2,'0')}/${y}`;
+      })();
+      const trechoResumo = v.resumo ? `"${v.resumo.substring(0, 80)}${v.resumo.length > 80 ? '...' : ''}"` : '';
+      const statusMap = {
+        completa:'Completa', rascunho:'Rascunho', em_revisao:'Em revisão',
+        aprovada_pos_revisao:'Aprovada', agendada:'Agendada', sugerida:'Sugerida',
+      };
+      const statusLabel = statusMap[v.status] || v.status;
+      return `
+        <div onclick="buscaIrVisita('${v.id}')" class="busca-item" style="padding:10px 16px;cursor:pointer;display:flex;align-items:flex-start;gap:10px;transition:background 140ms;" onmouseover="this.style.background='var(--neutral-50)'" onmouseout="this.style.background='transparent'">
+          <span class="material-symbols-rounded" style="font-size:20px;color:var(--brand-navy);margin-top:1px;">description</span>
+          <div style="flex:1;min-width:0;">
+            <div style="font-weight:600;color:var(--brand-navy);font-size:13.5px;line-height:1.3;">
+              ${(inst).replace(/</g,'&lt;')} · ${dt}
+              <span style="font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;background:var(--neutral-100);color:var(--neutral-700);margin-left:6px;">${statusLabel}</span>
+            </div>
+            <div style="font-size:11.5px;color:var(--neutral-600);margin-top:1px;">${(prof).replace(/</g,'&lt;')}</div>
+            ${trechoResumo ? `<div style="font-size:11.5px;color:var(--neutral-500);margin-top:3px;font-style:italic;">${trechoResumo.replace(/</g,'&lt;')}</div>` : ''}
+          </div>
+        </div>
+      `;
+    }).join(''));
+  }
+
+  resEl.innerHTML = html;
+}
+
+function renderBuscaSecao(titulo, icone, itemsHtml) {
+  return `
+    <div style="margin-bottom:8px;">
+      <div style="padding:8px 16px 4px;display:flex;align-items:center;gap:6px;">
+        <span class="material-symbols-rounded" style="font-size:14px;color:var(--neutral-500);">${icone}</span>
+        <div style="font-family:var(--font-display);font-weight:700;color:var(--neutral-600);font-size:11px;text-transform:uppercase;letter-spacing:.6px;">${titulo}</div>
+      </div>
+      ${itemsHtml}
+    </div>
+  `;
+}
+
+// Navegação ao clicar em resultados — rotas diferentes por perfil
+window.buscaIrInstituicao = function(id) {
+  fecharBuscaGlobal();
+  const user = getCurrentUser();
+  if (user?.perfil === 'admin') {
+    window.location.hash = `#/admin/instituicoes?id=${id}`;
+  } else {
+    // Profissional não tem tela dedicada de instituições — vai pro check-in com ela selecionada
+    window.location.hash = `#/checkin?inst=${id}`;
+  }
+};
+window.buscaIrProfissional = function(id) {
+  fecharBuscaGlobal();
+  // Só admin tem essa opção (profissional nem vê profissionais nos resultados)
+  window.location.hash = `#/admin/equipe?id=${id}`;
+};
+window.buscaIrVisita = function(id) {
+  fecharBuscaGlobal();
+  const user = getCurrentUser();
+  if (user?.perfil === 'admin') {
+    window.location.hash = `#/admin/visitas?id=${id}`;
+  } else {
+    // Profissional vai pra lista dele com o ID na URL
+    window.location.hash = `#/visitas?id=${id}`;
+  }
+};
+
 // Drilldown: navega pra tela de visitas usando o período atual do dashboard
 window.irParaVisitasComPeriodoAtual = function() {
   const periodo = window._dashPeriodoAtual || '30';
@@ -12247,7 +12582,7 @@ async function carregarListaVisitas() {
     const cardClass = nivel === 'critical' ? 'review-card--critical' : nivel === 'warning' ? 'review-card--warning' : '';
 
     return `
-      <a href="#/admin/revisao/detalhe?id=${v.id}" class="review-card ${cardClass}">
+      <a href="#/admin/revisao/detalhe?id=${v.id}" data-id="${v.id}" class="review-card ${cardClass}">
         <div class="review-card__header">
           <div class="review-card__icon">
             <span class="material-symbols-rounded">local_hospital</span>
@@ -12274,6 +12609,8 @@ async function carregarListaVisitas() {
       </a>
     `;
   }).join('');
+  // Destaca item vindo de busca global
+  destacarItemDaURL('.review-card[data-id="%ID%"]');
 }
 
 /* ==========================================================================
@@ -14703,9 +15040,37 @@ function renderAdminEquipe() {
   const filtroInicial = window._routeParams?.filtro || 'pendentes';
   window._equipeFilter = filtroInicial;
 
-  setTimeout(async () => {
-    await carregarEquipe();
-  }, 0);
+  // Se veio da busca global (?id=X), descobre o status do user pra abrir na aba certa
+  const idBusca = getIdDaURL('id');
+  if (idBusca) {
+    setTimeout(async () => {
+      try {
+        const { data } = await db.from('usuarios').select('status').eq('id', idBusca).single();
+        if (data?.status) {
+          const abaPorStatus = {
+            pendente: 'pendentes',
+            ativo: 'ativos',
+            inativo: 'desativados',
+            bloqueado: 'desativados',
+          };
+          const abaCorreta = abaPorStatus[data.status];
+          if (abaCorreta && abaCorreta !== window._equipeFilter) {
+            window._equipeFilter = abaCorreta;
+            // Re-marca a aba ativa visualmente
+            document.querySelectorAll('#equipeTabs .review-tab').forEach(btn => btn.classList.remove('is-active'));
+            const btnCerto = document.querySelector(`#equipeTabs .review-tab[onclick*="${abaCorreta}"]`);
+            if (btnCerto) btnCerto.classList.add('is-active');
+          }
+        }
+      } catch {}
+      await carregarEquipe();
+      destacarItemDaURL('.eq-card[data-id="%ID%"]');
+    }, 0);
+  } else {
+    setTimeout(async () => {
+      await carregarEquipe();
+    }, 0);
+  }
 
   return `
     <div class="mobile-app">
@@ -15069,7 +15434,7 @@ function renderEquipeCard(u, filtro) {
     : '<span class="badge badge--danger"><span class="material-symbols-rounded" style="font-size:12px;">block</span>Bloqueado</span>';
 
   return `
-    <div class="eq-card">
+    <div class="eq-card" data-id="${u.id}">
       <div class="eq-card__top">
         <div class="eq-card__avatar">${iniciais_}</div>
         <div class="eq-card__info">
@@ -15283,7 +15648,7 @@ function renderAdminInstituicoes() {
             <strong>${insts.length}</strong> instituição(ões) cadastrada(s)
           </div>
           ${insts.map(inst => `
-            <div class="visits-list__item">
+            <div class="visits-list__item" data-id="${inst.id}">
               <div class="visits-list__icon">
                 <span class="material-symbols-rounded">local_hospital</span>
               </div>
@@ -15297,6 +15662,8 @@ function renderAdminInstituicoes() {
             </div>
           `).join('')}
         `;
+        // Destaca item vindo de busca global (?id=X)
+        destacarItemDaURL('#admInstList .visits-list__item[data-id="%ID%"]');
       }
     } catch (err) {
       listEl.innerHTML = `<div style="padding:20px;color:var(--status-danger);">Erro: ${err.message}</div>`;
