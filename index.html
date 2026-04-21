@@ -5019,6 +5019,20 @@ async function marcarTodasNotificacoesLidas() {
     .eq('lida', false);
 }
 
+// Apaga permanentemente todas as notificações já lidas do user atual
+// (Sprint 8.1) — as não-lidas ficam intactas pra não perder nada que o user ainda não viu
+async function limparNotificacoesLidas() {
+  if (!db) throw new Error('Banco não conectado');
+  const user = getCurrentUser();
+  if (!user) throw new Error('Usuário não logado');
+  const { error, count } = await db.from('notificacoes')
+    .delete({ count: 'exact' })
+    .eq('user_id', user.id)
+    .eq('lida', true);
+  if (error) throw new Error(error.message);
+  return count || 0;
+}
+
 // Formata tempo relativo curto ("há 2h", "há 3d")
 function formatarTempoCurto(iso) {
   if (!iso) return '';
@@ -5149,13 +5163,24 @@ window.toggleNotifDropdown = async function(ev) {
     }).join('');
   }
 
-  // Rodapé com link pra tela completa
+  // Rodapé com link pra tela completa + botão de limpar lidas
+  // Só mostra "Limpar lidas" se tiver ao menos uma lida (senão o botão fica inútil)
+  const temLidas = list.some(n => n.lida);
   dropdown.innerHTML += `
-    <div class="notif-dropdown__footer">
-      <a href="#/notificacoes" onclick="document.getElementById('notifDropdown')?.remove();" style="display:flex;align-items:center;justify-content:center;gap:6px;padding:10px;font-size:12px;font-weight:700;color:var(--status-info);text-decoration:none;">
+    <div class="notif-dropdown__footer" style="display:flex;align-items:stretch;">
+      <a href="#/notificacoes" onclick="document.getElementById('notifDropdown')?.remove();"
+         style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:10px;font-size:12px;font-weight:700;color:var(--status-info);text-decoration:none;">
         Ver todas
         <span class="material-symbols-rounded" style="font-size:15px;">arrow_forward</span>
       </a>
+      ${temLidas ? `
+        <div style="width:1px;background:var(--neutral-200);"></div>
+        <button onclick="handleLimparNotifLidas()"
+                style="flex:1;background:transparent;border:none;display:flex;align-items:center;justify-content:center;gap:6px;padding:10px;font-size:12px;font-weight:700;color:var(--neutral-600);cursor:pointer;font-family:inherit;">
+          <span class="material-symbols-rounded" style="font-size:15px;">delete_sweep</span>
+          Limpar lidas
+        </button>
+      ` : ''}
     </div>
   `;
 
@@ -5195,6 +5220,38 @@ window.marcarTodasLidasUI = async function() {
   if (dd) {
     dd.remove();
     toggleNotifDropdown();
+  }
+};
+
+// Limpa (apaga definitivamente) as notificações já lidas
+window.handleLimparNotifLidas = async function() {
+  // Fecha o dropdown antes do modal pra não ficar sobreposto
+  document.getElementById('notifDropdown')?.remove();
+
+  const ok = await showModalConfirmacao({
+    icone: 'delete_sweep',
+    iconeCor: 'danger',
+    titulo: 'Limpar notificações lidas?',
+    subtitulo: 'Todas as notificações que você já leu serão apagadas permanentemente. As não-lidas permanecem.',
+    btnConfirmar: 'Sim, limpar',
+    btnCancelar: 'Cancelar',
+  });
+  if (!ok) return;
+
+  try {
+    const total = await limparNotificacoesLidas();
+    if (total > 0) {
+      setFlash('success', total === 1 ? '1 notificação removida.' : `${total} notificações removidas.`);
+    } else {
+      setFlash('info', 'Não havia notificações pra remover.');
+    }
+    atualizarBadgeNotificacoes();
+    // Se estiver na tela cheia de notificações (#/notificacoes), recarrega a lista
+    if (document.getElementById('notifPageList')) {
+      await carregarListaNotificacoes();
+    }
+  } catch (err) {
+    alert('Erro ao limpar: ' + err.message);
   }
 };
 
@@ -10510,6 +10567,10 @@ function renderNotificacoes() {
             <span class="material-symbols-rounded" style="font-size:15px;">done_all</span>
             Marcar todas
           </button>
+          <button onclick="handleLimparNotifLidas()" class="av-btn-limpar" id="btnLimparNotifLidas" style="flex-shrink:0;">
+            <span class="material-symbols-rounded" style="font-size:15px;">delete_sweep</span>
+            Limpar lidas
+          </button>
         </div>
 
         <div id="notifPageList" style="display:flex;flex-direction:column;gap:8px;">
@@ -10577,6 +10638,8 @@ async function carregarListaNotificacoes() {
 
   const btnMarcar = document.getElementById('btnMarcarTodasNotif');
   if (btnMarcar) btnMarcar.style.display = cnts.nao_lidas > 0 ? '' : 'none';
+  const btnLimpar = document.getElementById('btnLimparNotifLidas');
+  if (btnLimpar) btnLimpar.style.display = cnts.lidas > 0 ? '' : 'none';
 
   const filtro = window._notifFilter || 'todas';
   const page = window._notifPage || 0;
