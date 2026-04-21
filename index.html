@@ -3931,6 +3931,206 @@ a {
   color: var(--neutral-0);
 }
 
+/* Calendário semanal da agenda admin (Sprint 7 Mini 2b) */
+.ag-cal-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  background: var(--neutral-0);
+  border: 1px solid var(--neutral-200);
+  border-radius: 10px;
+}
+.ag-cal-nav__label {
+  font-family: var(--font-display);
+  font-weight: 700;
+  color: var(--brand-navy);
+  font-size: 13px;
+  text-align: center;
+  flex: 1;
+}
+.ag-cal-nav__btn {
+  background: transparent;
+  border: 1.5px solid var(--neutral-300);
+  border-radius: 8px;
+  padding: 6px 8px;
+  cursor: pointer;
+  color: var(--brand-navy);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 140ms;
+}
+.ag-cal-nav__btn:hover { background: var(--neutral-100); border-color: var(--neutral-400); }
+.ag-cal-nav__btn--today {
+  background: var(--brand-navy);
+  color: #fff;
+  border-color: var(--brand-navy);
+  font-family: var(--font-body);
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 6px 12px;
+}
+.ag-cal-nav__btn--today:hover { background: var(--brand-navy); opacity: .9; }
+.ag-cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+}
+.ag-cal-day {
+  background: var(--neutral-0);
+  border: 1px solid var(--neutral-200);
+  border-radius: 8px;
+  padding: 8px 6px;
+  min-height: 100px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.ag-cal-day--today {
+  border-color: var(--brand-lime);
+  border-width: 2px;
+  background: #F9FBF5;
+}
+.ag-cal-day--passado {
+  opacity: 0.55;
+}
+.ag-cal-day__header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px;
+  padding-bottom: 4px;
+  border-bottom: 1px dashed var(--neutral-200);
+  margin-bottom: 2px;
+  cursor: pointer;
+  border-radius: 4px;
+  padding: 2px 4px 5px;
+  transition: background 140ms;
+}
+.ag-cal-day__header:hover { background: var(--neutral-100); }
+.ag-cal-day__dia-sem {
+  font-family: var(--font-body);
+  font-weight: 700;
+  color: var(--neutral-500);
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+}
+.ag-cal-day__dia-num {
+  font-family: var(--font-display);
+  font-weight: 800;
+  color: var(--brand-navy);
+  font-size: 15px;
+}
+.ag-cal-day--today .ag-cal-day__dia-num {
+  color: var(--brand-lime-dark, #689628);
+}
+.ag-cal-entry {
+  background: #F3F5FA;
+  border-left: 3px solid var(--brand-navy);
+  border-radius: 4px;
+  padding: 4px 5px;
+  cursor: pointer;
+  font-size: 10.5px;
+  line-height: 1.25;
+  transition: background 140ms;
+}
+.ag-cal-entry:hover { background: #E8EDF5; }
+.ag-cal-entry--sugerida {
+  background: #FEF4E1;
+  border-left-color: var(--status-warning);
+}
+.ag-cal-entry--sugerida:hover { background: #FCEBC6; }
+.ag-cal-entry__hora {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: var(--brand-navy);
+  font-size: 10px;
+}
+.ag-cal-entry__prof {
+  color: var(--neutral-700);
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ag-cal-empty {
+  color: var(--neutral-400);
+  font-size: 10px;
+  text-align: center;
+  padding-top: 8px;
+  font-style: italic;
+}
+
+/* Responsivo: em telas pequenas, calendário vira scroll horizontal */
+@media (max-width: 540px) {
+  .ag-cal-grid {
+    grid-template-columns: repeat(7, minmax(110px, 1fr));
+    overflow-x: auto;
+    padding-bottom: 4px;
+  }
+  .ag-cal-day { min-height: 130px; }
+}
+
+/* Seção "por profissional" */
+.ag-prof-group {
+  margin-bottom: 18px;
+  background: var(--neutral-0);
+  border: 1px solid var(--neutral-200);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.ag-prof-group__header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--neutral-50);
+  border-bottom: 1px solid var(--neutral-200);
+}
+.ag-prof-group__avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--brand-navy);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+.ag-prof-group__nome {
+  font-family: var(--font-display);
+  font-weight: 700;
+  color: var(--brand-navy);
+  font-size: 14px;
+  flex: 1;
+}
+.ag-prof-group__count {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--neutral-0);
+  color: var(--neutral-700);
+  padding: 3px 10px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 700;
+  border: 1px solid var(--neutral-200);
+}
+.ag-prof-group__body {
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 /* Filtros secundários (nutricionista, instituição) */
 .review-filters {
   display: flex;
@@ -4510,7 +4710,7 @@ a {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.flags2',
+  APP_VERSION: '1.0.0-alpha.sprint7-mini2b',
   APP_NAME: 'Nutricionais Visitas',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -4833,6 +5033,14 @@ function iconeNotificacao(tipo) {
     objetivo_sugerido:           { icon: 'add_task',         cor: '#F59E0B' },
     visita_reenviada:            { icon: 'reply',            cor: '#2563EB' }, // azul (pra revisar)
     visita_flagueada:            { icon: 'flag_circle',      cor: '#DC2626' }, // vermelho (crítico)
+
+    // --- Notificações pro profissional (migration 25) ---
+    agendamento_atribuido:       { icon: 'event_available',  cor: '#8BC63F' }, // verde-lime (positivo)
+    agendamento_sugerido:        { icon: 'event',            cor: '#F59E0B' }, // âmbar (precisa de ação)
+
+    // --- Notificações pro admin (migration 26) — resposta do profissional ---
+    agendamento_aceito:          { icon: 'thumb_up',         cor: '#22A06B' }, // verde
+    agendamento_recusado:        { icon: 'thumb_down',       cor: '#DC2626' }, // vermelho
   };
   return map[tipo] || { icon: 'notifications', cor: '#2563EB' };
 }
@@ -5891,7 +6099,7 @@ async function listarObjetivosPendentes() {
     .from('objetivos_visita')
     .select('*, sugerido_por_user:sugerido_por(id, nome)')
     .eq('pendente_aprovacao', true)
-    .order('criado_em', { ascending: false });
+    .order('id', { ascending: false });
   if (error) return [];
   return data || [];
 }
@@ -5931,6 +6139,139 @@ async function criarObjetivoSugerido(nome) {
     .single();
   if (error) throw new Error(error.message);
   return data;
+}
+
+/* ==========================================================================
+   CRUD de objetivos (admin) — Sprint 6 Mini 2
+   ========================================================================== */
+
+// Cria objetivo direto como ativo (sem passar por aprovação — admin já é autoridade)
+async function criarObjetivoAdmin(nome) {
+  if (!db) throw new Error('Banco não conectado');
+  const user = getCurrentUser();
+  if (!user || user.perfil !== 'admin') throw new Error('Apenas admin pode adicionar objetivos diretamente');
+  if (!nome || !nome.trim()) throw new Error('Nome do objetivo é obrigatório');
+  const nomeClean = nome.trim();
+  // Dedup case-insensitive
+  const { data: existente } = await db
+    .from('objetivos_visita')
+    .select('id, nome, ativo, pendente_aprovacao')
+    .ilike('nome', nomeClean)
+    .maybeSingle();
+  if (existente) {
+    // Se existe mas arquivado, reativa. Se existe pendente, aprova.
+    if (!existente.ativo || existente.pendente_aprovacao) {
+      await updateOrThrow('objetivos_visita', { ativo: true, pendente_aprovacao: false }, existente.id);
+      return { ...existente, ativo: true, pendente_aprovacao: false, reativado: true };
+    }
+    throw new Error(`Objetivo "${existente.nome}" já existe e está ativo.`);
+  }
+  // Próxima ordem
+  const { data: max } = await db
+    .from('objetivos_visita')
+    .select('ordem')
+    .order('ordem', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const novaOrdem = (max?.ordem || 0) + 1;
+  const { data, error } = await db
+    .from('objetivos_visita')
+    .insert({
+      nome: nomeClean,
+      ativo: true,
+      ordem: novaOrdem,
+      pendente_aprovacao: false,
+      sugerido_por: null,
+    })
+    .select()
+    .single();
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+// Lista objetivos por filtro: 'ativos' | 'pendentes' | 'arquivados'
+// Usa join manual com usuarios (em vez de relationship PostgREST) pra evitar
+// problemas de FK não-registrado ou usuário deletado.
+async function listarObjetivosPorFiltro(filtro) {
+  if (!db) return [];
+  let q = db.from('objetivos_visita').select('*');
+  if (filtro === 'ativos') {
+    q = q.eq('ativo', true).eq('pendente_aprovacao', false);
+  } else if (filtro === 'pendentes') {
+    q = q.eq('pendente_aprovacao', true);
+  } else if (filtro === 'arquivados') {
+    q = q.eq('ativo', false);
+  }
+  q = filtro === 'ativos'
+    ? q.order('ordem', { ascending: true, nullsFirst: false })
+    : q.order('id', { ascending: false });
+  const { data, error } = await q;
+  if (error) { console.warn('[obj listar]', error.message); return []; }
+  const lista = data || [];
+
+  // Join manual com usuarios pra pegar nome de quem sugeriu
+  const userIds = [...new Set(lista.map(o => o.sugerido_por).filter(Boolean))];
+  let users = {};
+  if (userIds.length > 0) {
+    const { data: usrs, error: errUsr } = await db.from('usuarios').select('id, nome').in('id', userIds);
+    if (errUsr) console.warn('[obj join users]', errUsr.message);
+    users = Object.fromEntries((usrs || []).map(u => [u.id, u]));
+  }
+  return lista.map(o => ({
+    ...o,
+    sugerido_por_user: o.sugerido_por ? (users[o.sugerido_por] || null) : null,
+  }));
+}
+
+// Contadores pra badges das abas
+async function contarObjetivosPorStatus() {
+  if (!db) return { ativos: 0, pendentes: 0, arquivados: 0 };
+  const [a, p, r] = await Promise.all([
+    db.from('objetivos_visita').select('*', { count: 'exact', head: true }).eq('ativo', true).eq('pendente_aprovacao', false),
+    db.from('objetivos_visita').select('*', { count: 'exact', head: true }).eq('pendente_aprovacao', true),
+    db.from('objetivos_visita').select('*', { count: 'exact', head: true }).eq('ativo', false),
+  ]);
+  return { ativos: a.count || 0, pendentes: p.count || 0, arquivados: r.count || 0 };
+}
+
+// Reordena trocando o valor de `ordem` entre o objetivo atual e o vizinho (cima/baixo)
+async function reordenarObjetivo(id, direcao /* 'cima' | 'baixo' */) {
+  if (!db) throw new Error('Banco não conectado');
+  // Pega a lista atual de ativos ordenada
+  const lista = await listarObjetivosPorFiltro('ativos');
+  const idx = lista.findIndex(o => String(o.id) === String(id));
+  if (idx < 0) throw new Error('Objetivo não encontrado na lista ativa');
+  const vizinhoIdx = direcao === 'cima' ? idx - 1 : idx + 1;
+  if (vizinhoIdx < 0 || vizinhoIdx >= lista.length) return false; // já está na borda
+  const atual = lista[idx];
+  const vizinho = lista[vizinhoIdx];
+  // Swap dos valores de `ordem`
+  await updateOrThrow('objetivos_visita', { ordem: vizinho.ordem }, atual.id);
+  await updateOrThrow('objetivos_visita', { ordem: atual.ordem },   vizinho.id);
+  return true;
+}
+
+// Conta em quantas visitas o objetivo foi usado (via tabela N:N visitas_objetivos)
+async function contarUsoObjetivo(id) {
+  if (!db) return 0;
+  const { count, error } = await db
+    .from('visitas_objetivos')
+    .select('*', { count: 'exact', head: true })
+    .eq('objetivo_id', id);
+  if (error) { console.warn('[obj uso]', error.message); return 0; }
+  return count || 0;
+}
+
+// Exclui definitivamente (hard delete). Só permite se zero visitas usam o objetivo.
+async function excluirObjetivoDefinitivo(id) {
+  if (!db) throw new Error('Banco não conectado');
+  const uso = await contarUsoObjetivo(id);
+  if (uso > 0) {
+    throw new Error(`Objetivo usado em ${uso} ${uso === 1 ? 'visita' : 'visitas'}. Não pode ser excluído definitivamente pra preservar histórico.`);
+  }
+  const { error } = await db.from('objetivos_visita').delete().eq('id', id);
+  if (error) throw new Error(error.message);
+  return true;
 }
 
 // Saudação baseada na hora
@@ -6288,6 +6629,341 @@ async function finalizarRelatorio(visitaId, dados) {
   await atualizarRelatorio(visitaId, payload);
   await syncObjetivosVisita(visitaId, dados.objetivos_ids || []);
   await syncProfissionaisVisita(visitaId, dados.profissionais_ids || []);
+}
+
+/* ==========================================================================
+   AGENDA — CRUD de agendamentos (Sprint 7 Mini 1)
+   Estratégia: reusa a tabela `visitas` com status='agendada'.
+   - Criar agendamento: INSERT com status='agendada' + data/hora futuras
+   - Iniciar visita agendada: UPDATE status='rascunho' + checkin_timestamp + GPS
+   - Cancelar: DELETE (zero necessidade de histórico de agendamento cancelado)
+   ========================================================================== */
+
+// Lista agendamentos do profissional logado — inclui 'agendada' E 'sugerida'
+// (ele precisa ver as sugestões pendentes de aceite também)
+async function listarAgendamentosDoUser() {
+  if (!db) return [];
+  const user = getCurrentUser();
+  if (!user) return [];
+  const { data, error } = await db
+    .from('visitas')
+    .select(`
+      id, data_visita, horario_inicio, resumo, instituicao_id, status, atribuido_por,
+      instituicoes(id, nome, cidade, latitude, longitude)
+    `)
+    .eq('nutricionista_id', user.id)
+    .in('status', ['agendada', 'sugerida'])
+    .order('data_visita', { ascending: true })
+    .order('horario_inicio', { ascending: true, nullsFirst: false });
+  if (error) { console.warn('[agenda listar]', error.message); return []; }
+  const ags = data || [];
+
+  // Carrega objetivos de cada agendamento (N:N)
+  if (ags.length > 0) {
+    const ids = ags.map(a => a.id);
+    const { data: rels } = await db
+      .from('visitas_objetivos')
+      .select('visita_id, objetivos_visita(id, nome)')
+      .in('visita_id', ids);
+    const porVisita = {};
+    (rels || []).forEach(r => {
+      if (!porVisita[r.visita_id]) porVisita[r.visita_id] = [];
+      if (r.objetivos_visita) porVisita[r.visita_id].push(r.objetivos_visita);
+    });
+    ags.forEach(a => a.objetivos = porVisita[a.id] || []);
+  }
+  return ags;
+}
+
+// Cria um agendamento futuro (status='agendada')
+// Cria agendamento. Se `nutricionista_id` vier preenchido (admin atribuindo),
+// usa esse ID no lugar do user atual e marca `atribuido_por`. Por padrão,
+// admin atribuindo cria como 'sugerida' (profissional precisa aceitar).
+// Passar `sugerir=false` força criação direta como 'agendada' (pulando aceite).
+async function criarAgendamento({ instituicao_id, data, hora, objetivo_id, observacao, nutricionista_id = null, sugerir = true }) {
+  if (!db) throw new Error('Banco não conectado');
+  const user = getCurrentUser();
+  if (!user) throw new Error('Usuário não logado');
+  if (!instituicao_id) throw new Error('Instituição é obrigatória');
+  if (!data) throw new Error('Data é obrigatória');
+  // Aceita "HH:MM" ou "HH:MM:SS"; normaliza pra "HH:MM:SS"
+  const horaNormalizada = hora
+    ? (hora.length === 5 ? `${hora}:00` : hora)
+    : null;
+
+  // Se admin está atribuindo pra outra pessoa, usa esse ID e marca atribuido_por
+  const ehAtribuicao = nutricionista_id && nutricionista_id !== user.id;
+  const statusInicial = (ehAtribuicao && sugerir) ? 'sugerida' : 'agendada';
+
+  const payload = {
+    nutricionista_id: nutricionista_id || user.id,
+    instituicao_id,
+    data_visita: data,
+    horario_inicio: horaNormalizada,
+    status: statusInicial,
+    resumo: observacao || null,
+    atribuido_por: ehAtribuicao ? user.id : null,
+    // Flags neutras (necessárias se alguma migration tem NOT NULL)
+    checkin_manual: false,
+    flag_gps_divergente: false,
+    flag_horario_fora_margem: false,
+    flag_sem_checkin: false,
+    flag_sem_checkout: false,
+  };
+
+  const { data: novo, error } = await db
+    .from('visitas')
+    .insert(payload)
+    .select()
+    .single();
+  if (error) throw new Error(error.message);
+
+  // Vincula objetivo se foi escolhido
+  if (objetivo_id) {
+    await db.from('visitas_objetivos').insert({ visita_id: novo.id, objetivo_id });
+  }
+  return novo;
+}
+
+// Profissional aceita uma sugestão do admin → vira agendamento normal
+async function aceitarSugestao(id) {
+  if (!db) throw new Error('Banco não conectado');
+  const { error } = await db
+    .from('visitas')
+    .update({
+      status: 'agendada',
+      sugestao_decidida_em: new Date().toISOString(),
+    })
+    .eq('id', id)
+    .eq('status', 'sugerida');  // defense in depth — só atualiza se ainda está pendente
+  if (error) throw new Error(error.message);
+  return true;
+}
+
+// Profissional recusa uma sugestão → vira 'recusada' com motivo obrigatório
+async function recusarSugestao(id, motivo) {
+  if (!db) throw new Error('Banco não conectado');
+  if (!motivo || !motivo.trim()) throw new Error('Motivo é obrigatório');
+  const { error } = await db
+    .from('visitas')
+    .update({
+      status: 'recusada',
+      sugestao_motivo_recusa: motivo.trim(),
+      sugestao_decidida_em: new Date().toISOString(),
+    })
+    .eq('id', id)
+    .eq('status', 'sugerida');
+  if (error) throw new Error(error.message);
+  return true;
+}
+
+// Admin reatribui agendamento pra outro profissional. Se estava 'agendada' ou
+// 'sugerida', mantém o mesmo status (profissional novo precisará aceitar se era sugestão).
+// Atualiza atribuido_por pro admin atual pra fechar o loop de notificação.
+async function reatribuirAgendamento(id, novoNutricionistaId) {
+  if (!db) throw new Error('Banco não conectado');
+  if (!novoNutricionistaId) throw new Error('Profissional de destino é obrigatório');
+  const user = getCurrentUser();
+  if (!user) throw new Error('Usuário não logado');
+
+  // Pega o agendamento atual pra saber status e se muda de pessoa
+  const { data: atual, error: errGet } = await db
+    .from('visitas')
+    .select('id, status, nutricionista_id')
+    .eq('id', id)
+    .single();
+  if (errGet) throw new Error(errGet.message);
+  if (!['agendada','sugerida'].includes(atual.status)) {
+    throw new Error('Só dá pra reatribuir visitas ainda não iniciadas.');
+  }
+  if (String(atual.nutricionista_id) === String(novoNutricionistaId)) {
+    throw new Error('Esse profissional já é o responsável por essa visita.');
+  }
+
+  // Se era 'agendada' direto (sem fluxo de aceite), pro novo profissional mantemos
+  // 'agendada' e ele já recebe notificação de atribuído (trigger dispara pelo atribuido_por).
+  // Se era 'sugerida', mantemos 'sugerida' pra que o novo precise aceitar.
+  // Em ambos os casos o trigger de INSERT não vai disparar (porque é UPDATE), então
+  // fazemos o INSERT de notificação manualmente em seguida.
+  const { error } = await db
+    .from('visitas')
+    .update({
+      nutricionista_id: novoNutricionistaId,
+      atribuido_por: user.id,
+      // Reseta estado de decisão anterior (caso tenha sido sugerida antes)
+      sugestao_motivo_recusa: null,
+      sugestao_decidida_em: null,
+    })
+    .eq('id', id)
+    .in('status', ['agendada','sugerida']);
+  if (error) throw new Error(error.message);
+
+  // Notificação pro novo profissional (já que o trigger de INSERT não dispara em UPDATE)
+  // Busca dados pra montar a mensagem
+  const { data: completo } = await db
+    .from('visitas')
+    .select('id, status, data_visita, horario_inicio, instituicao_id, instituicoes(nome)')
+    .eq('id', id)
+    .single();
+
+  if (completo) {
+    const instNome = completo.instituicoes?.nome || 'instituição';
+    const [y, m, d] = String(completo.data_visita).split('-').map(Number);
+    const dataFmt = `${String(d).padStart(2,'0')}/${String(m).padStart(2,'0')}`;
+    const horaFmt = completo.horario_inicio
+      ? ' às ' + String(completo.horario_inicio).substring(0,5)
+      : '';
+
+    const ehSugestao = completo.status === 'sugerida';
+    await db.from('notificacoes').insert({
+      user_id: novoNutricionistaId,
+      tipo: ehSugestao ? 'agendamento_sugerido' : 'agendamento_atribuido',
+      titulo: ehSugestao ? 'Nova visita sugerida — precisa de aceite' : 'Nova visita atribuída',
+      mensagem: ehSugestao
+        ? `Visita em ${instNome} no dia ${dataFmt}${horaFmt}. Abra pra aceitar ou recusar.`
+        : `Nova visita em ${instNome} agendada pra ${dataFmt}${horaFmt}.`,
+      link: '#/agenda',
+      objeto_id: String(id),
+      lida: false,
+    });
+  }
+  return true;
+}
+
+// Lista todos os agendamentos globais (admin) — inclui 'agendada' e 'sugerida'
+async function listarTodosAgendamentos() {
+  if (!db) return [];
+  const { data, error } = await db
+    .from('visitas')
+    .select(`
+      id, data_visita, horario_inicio, resumo, instituicao_id, nutricionista_id, atribuido_por, status,
+      sugestao_motivo_recusa, sugestao_decidida_em,
+      instituicoes(id, nome, cidade),
+      usuarios:nutricionista_id(id, nome)
+    `)
+    .in('status', ['agendada', 'sugerida'])
+    .order('data_visita', { ascending: true })
+    .order('horario_inicio', { ascending: true, nullsFirst: false });
+  if (error) { console.warn('[agenda admin]', error.message); return []; }
+  const ags = data || [];
+  // Carrega objetivos N:N
+  if (ags.length > 0) {
+    const ids = ags.map(a => a.id);
+    const { data: rels } = await db
+      .from('visitas_objetivos')
+      .select('visita_id, objetivos_visita(id, nome)')
+      .in('visita_id', ids);
+    const porVisita = {};
+    (rels || []).forEach(r => {
+      if (!porVisita[r.visita_id]) porVisita[r.visita_id] = [];
+      if (r.objetivos_visita) porVisita[r.visita_id].push(r.objetivos_visita);
+    });
+    ags.forEach(a => a.objetivos = porVisita[a.id] || []);
+  }
+  return ags;
+}
+
+// Lista usuários ativos elegíveis pra receber atribuição de visita.
+// Inclui admins também — eles também fazem visitas (ou em modo simulação).
+async function listarProfissionaisAtivos() {
+  if (!db) return [];
+  const { data, error } = await db
+    .from('usuarios')
+    .select('id, nome, perfil, categoria_id, categorias_profissionais(nome)')
+    .eq('status', 'ativo')
+    .order('nome');
+  if (error) { console.warn('[profissionais ativos]', error.message); return []; }
+  return data || [];
+}
+
+// Cancela (deleta) um agendamento — funciona tanto pra 'agendada' quanto 'sugerida'
+async function cancelarAgendamento(id) {
+  if (!db) throw new Error('Banco não conectado');
+  // Limpa a relação N:N primeiro (caso FK não tenha CASCADE)
+  await db.from('visitas_objetivos').delete().eq('visita_id', id);
+  const { error } = await db
+    .from('visitas')
+    .delete()
+    .eq('id', id)
+    .in('status', ['agendada', 'sugerida']);
+  if (error) throw new Error(error.message);
+  return true;
+}
+
+// Atualiza um agendamento existente (só funciona se ainda estiver com status='agendada')
+async function atualizarAgendamento(id, { instituicao_id, data, hora, objetivo_id, observacao }) {
+  if (!db) throw new Error('Banco não conectado');
+  if (!instituicao_id) throw new Error('Instituição é obrigatória');
+  if (!data) throw new Error('Data é obrigatória');
+  const horaNormalizada = hora
+    ? (hora.length === 5 ? `${hora}:00` : hora)
+    : null;
+
+  // Atualiza só os campos editáveis; mantém checkin_* etc zerados
+  const payload = {
+    instituicao_id,
+    data_visita: data,
+    horario_inicio: horaNormalizada,
+    resumo: observacao || null,
+  };
+
+  // Garante que só atualiza se ainda estiver agendada ou sugerida (evita editar visita já iniciada)
+  const { error } = await db
+    .from('visitas')
+    .update(payload)
+    .eq('id', id)
+    .in('status', ['agendada', 'sugerida']);
+  if (error) throw new Error(error.message);
+
+  // Sync do objetivo (N:N): apaga relações existentes e cria a nova se tiver
+  await db.from('visitas_objetivos').delete().eq('visita_id', id);
+  if (objetivo_id) {
+    const { error: errObj } = await db.from('visitas_objetivos').insert({ visita_id: id, objetivo_id });
+    if (errObj) throw new Error(errObj.message);
+  }
+  return true;
+}
+
+// Transforma um agendamento em visita ativa (check-in). Pega GPS, valida raio, e atualiza status.
+async function iniciarVisitaAgendada(id, userPos /* { lat, lng, accuracy } | null */) {
+  if (!db) throw new Error('Banco não conectado');
+  // Busca o agendamento + coords da instituição pra validar GPS
+  const { data: ag, error: errAg } = await db
+    .from('visitas')
+    .select('id, status, instituicao_id, instituicoes(latitude, longitude)')
+    .eq('id', id)
+    .single();
+  if (errAg) throw new Error(errAg.message);
+  if (ag.status !== 'agendada') throw new Error('Esta visita não está mais agendada.');
+
+  // Calcula flag de GPS divergente se tiver coords
+  let flagGpsDivergente = false;
+  const inst = ag.instituicoes;
+  if (userPos && inst && inst.latitude && inst.longitude) {
+    const dist = calcularDistanciaMetros(userPos.lat, userPos.lng, inst.latitude, inst.longitude);
+    flagGpsDivergente = dist > (CONFIG.GPS_RADIUS_METERS || 500);
+  }
+
+  const d = new Date();
+  const agoraISO = d.toISOString();
+  const dataLocal = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  const horaLocal = `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
+
+  // Sobrescreve data/hora pelo momento real do início (agendamento serve só como ponto de partida)
+  const payload = {
+    status: 'rascunho',
+    data_visita: dataLocal,
+    horario_inicio: horaLocal,
+    checkin_timestamp: agoraISO,
+    checkin_latitude: userPos ? userPos.lat : null,
+    checkin_longitude: userPos ? userPos.lng : null,
+    checkin_precisao_metros: userPos ? Math.round(userPos.accuracy) : null,
+    checkin_manual: !userPos,
+    flag_gps_divergente: flagGpsDivergente,
+  };
+
+  await updateOrThrow('visitas', payload, id);
+  return id;
 }
 
 // Verifica se visita pode ser editada
@@ -6696,6 +7372,8 @@ const routes = {
   '#/admin/profissionais':{ title: 'Profissionais', icon: 'stethoscope', render: renderAdminProfissionais },
   '#/admin/configuracoes':{ title: 'Configurações', icon: 'settings', render: renderAdminConfig },
   '#/admin/pendentes':{ title: 'Pendências de aprovação', icon: 'hourglass_top', render: renderAdminPendentes },
+  '#/admin/objetivos':{ title: 'Objetivos de visita', icon: 'flag', render: renderAdminObjetivos },
+  '#/admin/agenda':   { title: 'Agenda da equipe', icon: 'event_note', render: renderAdminAgenda },
 };
 
 function router() {
@@ -9590,6 +10268,23 @@ window.handleFinalizarRelatorio = async function() {
   try {
     await finalizarRelatorio(ReportState.visitaId, dados);
     setFlash('success', eraCompleta ? 'Alterações salvas!' : 'Relatório finalizado com sucesso!');
+
+    // Sprint 7 Mini 3 — sugestão automática de agendamento
+    // Se o profissional preencheu "próxima visita programada" E a data é futura E
+    // não é refinalização de visita devolvida, oferece criar agendamento automático.
+    const proxData = dados.proxima_visita_programada;
+    if (proxData && !dados.foiDevolvida && !eraCompleta) {
+      // Confere se é futura (compara como YYYY-MM-DD pra evitar fuso horário)
+      const hojeStr = (() => {
+        const d = new Date();
+        return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      })();
+      if (proxData > hojeStr) {
+        // Fire-and-forget: não bloqueia o redirect se o user fechar o modal
+        setTimeout(() => oferecerAgendarProximaVisita(v, proxData), 400);
+      }
+    }
+
     window.location.hash = '#/visitas';
   } catch (err) {
     alert(err.message);
@@ -9599,6 +10294,43 @@ window.handleFinalizarRelatorio = async function() {
       : '<span class="material-symbols-rounded" style="font-size:24px">check_circle</span> Finalizar relatório';
   }
 };
+
+// Oferece criar agendamento automático baseado no campo "próxima visita programada"
+// da visita que acabou de ser finalizada. (Sprint 7 Mini 3)
+async function oferecerAgendarProximaVisita(visita, dataProxima) {
+  const instNome = visita.instituicoes?.nome || 'mesma instituição';
+  // Formata data pra exibição BR
+  const [y, m, d] = String(dataProxima).split('-').map(Number);
+  const dt = new Date(y, m - 1, d);
+  const diasSemana = ['domingo','segunda','terça','quarta','quinta','sexta','sábado'];
+  const meses = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+  const dataBonita = `${diasSemana[dt.getDay()]}, ${dt.getDate()} de ${meses[dt.getMonth()]}`;
+
+  const ok = await showModalConfirmacao({
+    icone: 'event_available',
+    iconeCor: 'success',
+    titulo: 'Agendar próxima visita?',
+    subtitulo: `Você planejou voltar em ${instNome.replace(/"/g,'&quot;')} na ${dataBonita}. Quer adicionar na sua agenda agora?`,
+    btnConfirmar: 'Sim, agendar',
+    btnCancelar: 'Agora não',
+  });
+  if (!ok) return;
+
+  try {
+    await criarAgendamento({
+      instituicao_id: visita.instituicao_id,
+      data: dataProxima,
+      hora: null,  // profissional ajusta na hora se quiser
+      objetivo_id: null,
+      observacao: 'Agendamento criado automaticamente a partir de visita anterior.',
+    });
+    setFlash('success', 'Adicionado à agenda! Confira em "Agenda".');
+  } catch (err) {
+    // Não é crítico — só loga pra não atrapalhar o fluxo
+    console.warn('[sugestao agendamento]', err.message);
+    setFlash('info', 'Não foi possível criar o agendamento automaticamente. Você pode criar manualmente na Agenda.');
+  }
+}
 
 // Excluir visita (só permitido pra rascunhos que nunca foram concluídos nem devolvidos)
 window.handleExcluirVisita = async function() {
@@ -9887,8 +10619,482 @@ window.marcarTodasLidasUI2 = async function() {
 function renderAgenda() {
   const user = requireAuth();
   if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
-  return loggedPlaceholderScreen(user, 'calendar_month', 'Agenda', 'Calendário + lista de visitas agendadas.', '#/agenda');
+  if (user.perfil === 'admin') {
+    // Admin vê uma mensagem direcionada — agenda atual é do profissional
+    return loggedPlaceholderScreen(user, 'calendar_month', 'Agenda',
+      'A visualização da agenda da equipe será adicionada em breve. Por enquanto, cada profissional gerencia a própria agenda.', '#/agenda');
+  }
+
+  setTimeout(async () => {
+    await carregarAgenda();
+  }, 0);
+
+  return `
+    <div class="mobile-app">
+      ${mobileTopBar({ title: 'Agenda', showBack: true })}
+      <main class="mcontent">
+        <div id="agendaHeader" style="margin-bottom:14px;">
+          <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:18px;">Seus próximos compromissos</div>
+          <div style="font-size:12.5px;color:var(--neutral-600);margin-top:2px;">Planeje suas visitas e inicie o check-in com um toque.</div>
+        </div>
+
+        <div id="agendaLista">
+          <div style="padding:30px;text-align:center;color:var(--neutral-500);font-size:13px;">Carregando...</div>
+        </div>
+
+        <button id="agendaFab" onclick="handleNovoAgendamento()"
+                style="position:fixed;bottom:92px;right:20px;width:56px;height:56px;border-radius:50%;border:none;background:var(--brand-lime);color:#fff;box-shadow:0 6px 18px rgba(139,198,63,0.45);cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:50;transition:transform .15s;"
+                title="Novo agendamento"
+                onmouseover="this.style.transform='scale(1.08)'" onmouseout="this.style.transform='scale(1)'">
+          <span class="material-symbols-rounded" style="font-size:28px;">add</span>
+        </button>
+      </main>
+    </div>
+  `;
 }
+
+// Classifica uma data ISO ("YYYY-MM-DD") em um bucket: 'hoje' | 'amanha' | 'semana' | 'futuro' | 'atrasado'
+function bucketDoAgendamento(dataStr) {
+  if (!dataStr) return 'futuro';
+  const hoje = new Date();
+  hoje.setHours(0, 0, 0, 0);
+  const [y, m, d] = String(dataStr).split('-').map(Number);
+  const data = new Date(y, (m || 1) - 1, d || 1);
+  data.setHours(0, 0, 0, 0);
+  const diffDias = Math.round((data - hoje) / 86400000);
+  if (diffDias < 0) return 'atrasado';
+  if (diffDias === 0) return 'hoje';
+  if (diffDias === 1) return 'amanha';
+  if (diffDias <= 7) return 'semana';
+  return 'futuro';
+}
+
+async function carregarAgenda() {
+  const listaEl = document.getElementById('agendaLista');
+  if (!listaEl) return;
+
+  const ags = await listarAgendamentosDoUser();
+
+  if (ags.length === 0) {
+    listaEl.innerHTML = `
+      <div class="empty-state" style="margin:20px 0;">
+        <div class="empty-state__icon"><span class="material-symbols-rounded">calendar_add_on</span></div>
+        <div class="empty-state__title">Sua agenda está vazia</div>
+        <div class="empty-state__desc">Toque no botão <strong>+</strong> no canto da tela pra planejar sua próxima visita.</div>
+      </div>
+    `;
+    return;
+  }
+
+  // Separa sugestões pendentes (top priority) das agendadas normais
+  const sugeridas = ags.filter(a => a.status === 'sugerida');
+  const agendadas = ags.filter(a => a.status === 'agendada');
+
+  // Agrupa as agendadas por bucket de data
+  const grupos = { atrasado: [], hoje: [], amanha: [], semana: [], futuro: [] };
+  agendadas.forEach(a => {
+    const b = bucketDoAgendamento(a.data_visita);
+    grupos[b].push(a);
+  });
+
+  const ordem = ['atrasado', 'hoje', 'amanha', 'semana', 'futuro'];
+  const titulos = {
+    atrasado: 'Atrasados',
+    hoje:     'Hoje',
+    amanha:   'Amanhã',
+    semana:   'Esta semana',
+    futuro:   'Mais adiante',
+  };
+  const cores = {
+    atrasado: 'var(--status-danger)',
+    hoje:     'var(--brand-lime)',
+    amanha:   'var(--status-info)',
+    semana:   'var(--brand-navy)',
+    futuro:   'var(--neutral-500)',
+  };
+
+  let html = '';
+
+  // Bucket especial: sugestões pendentes (sempre no topo, cor âmbar)
+  if (sugeridas.length > 0) {
+    html += `
+      <div style="margin-bottom:20px;padding:12px;background:#FEF4E1;border:1.5px solid rgba(245,158,11,0.3);border-radius:12px;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+          <span class="material-symbols-rounded" style="font-size:18px;color:var(--status-warning);">pending_actions</span>
+          <div style="font-family:var(--font-display);font-weight:700;color:#92400E;font-size:13px;text-transform:uppercase;letter-spacing:.5px;">Aguardando seu aceite</div>
+          <div style="background:var(--status-warning);color:#fff;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;">${sugeridas.length}</div>
+        </div>
+        <div style="font-size:11.5px;color:#92400E;margin-bottom:10px;">O admin sugeriu essas visitas pra você. Aceite ou recuse.</div>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          ${sugeridas.map(a => cardSugestao(a)).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  // Buckets normais (agendamentos confirmados)
+  ordem.forEach(b => {
+    if (grupos[b].length === 0) return;
+    html += `
+      <div style="margin-bottom:20px;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+          <div style="width:8px;height:8px;border-radius:50%;background:${cores[b]};"></div>
+          <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:13px;text-transform:uppercase;letter-spacing:.5px;">${titulos[b]}</div>
+          <div style="background:var(--neutral-100);color:var(--neutral-600);padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;">${grupos[b].length}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          ${grupos[b].map(a => cardAgendamento(a, b)).join('')}
+        </div>
+      </div>
+    `;
+  });
+  listaEl.innerHTML = html;
+}
+
+// Card compacto pra sugestões pendentes — foco nos botões Aceitar/Recusar
+function cardSugestao(ag) {
+  const instNome = ag.instituicoes?.nome || 'Instituição';
+  const instCidade = ag.instituicoes?.cidade || '';
+  const horaBonita = ag.horario_inicio ? String(ag.horario_inicio).substring(0, 5) : '—';
+  const dataBonita = (() => {
+    if (!ag.data_visita) return '';
+    const [y, m, d] = String(ag.data_visita).split('-').map(Number);
+    const dt = new Date(y, m - 1, d);
+    const diasSemana = ['dom','seg','ter','qua','qui','sex','sáb'];
+    return `${diasSemana[dt.getDay()]}, ${String(dt.getDate()).padStart(2,'0')}/${String(dt.getMonth()+1).padStart(2,'0')}`;
+  })();
+  const objs = (ag.objetivos || []).map(o => o.nome).join(' · ');
+  const obs = ag.resumo ? `<div style="font-size:12px;color:var(--neutral-700);margin-top:6px;padding:8px;background:var(--neutral-50);border-radius:6px;font-style:italic;">"${ag.resumo.replace(/"/g,'&quot;').substring(0, 200)}"</div>` : '';
+
+  return `
+    <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:10px;padding:12px 14px;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+        <div style="font-family:var(--font-mono);font-weight:700;color:var(--brand-navy);font-size:18px;">${horaBonita}</div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:14px;line-height:1.3;">${instNome.replace(/"/g,'&quot;')}</div>
+          <div style="font-size:11.5px;color:var(--neutral-600);margin-top:1px;">${instCidade ? instCidade + ' · ' : ''}${dataBonita}</div>
+        </div>
+      </div>
+      ${objs ? `<div style="display:flex;align-items:center;gap:4px;font-size:12px;color:var(--neutral-600);margin-top:4px;">
+        <span class="material-symbols-rounded" style="font-size:14px;color:var(--brand-lime);">flag</span>
+        <span>${objs.replace(/"/g,'&quot;')}</span>
+      </div>` : ''}
+      ${obs}
+      <div style="display:flex;gap:8px;margin-top:12px;">
+        <button onclick="handleAceitarSugestao('${ag.id}')"
+                style="flex:1;padding:10px;border-radius:8px;border:none;background:var(--status-success);color:#fff;font-weight:700;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;">
+          <span class="material-symbols-rounded" style="font-size:16px;">check</span>Aceitar
+        </button>
+        <button onclick="handleRecusarSugestao('${ag.id}')"
+                style="flex:1;padding:10px;border-radius:8px;border:1.5px solid var(--status-danger);background:var(--neutral-0);color:var(--status-danger);font-weight:700;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;">
+          <span class="material-symbols-rounded" style="font-size:16px;">close</span>Recusar
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+function cardAgendamento(ag, bucket) {
+  const instNome = ag.instituicoes?.nome || 'Instituição';
+  const instCidade = ag.instituicoes?.cidade || '';
+  const horaBonita = ag.horario_inicio ? String(ag.horario_inicio).substring(0, 5) : '—';
+  const dataBonita = (() => {
+    if (!ag.data_visita) return '';
+    const [y, m, d] = String(ag.data_visita).split('-').map(Number);
+    const dt = new Date(y, m - 1, d);
+    return `${String(dt.getDate()).padStart(2,'0')}/${String(dt.getMonth()+1).padStart(2,'0')}`;
+  })();
+  const objs = (ag.objetivos || []).map(o => o.nome).join(' · ') || 'Sem objetivo definido';
+  const obs = ag.resumo ? `<div style="font-size:12px;color:var(--neutral-600);margin-top:6px;font-style:italic;">"${ag.resumo.replace(/"/g,'&quot;').substring(0, 120)}${ag.resumo.length > 120 ? '...' : ''}"</div>` : '';
+  const bordaCor = bucket === 'atrasado' ? 'var(--status-danger)'
+                 : bucket === 'hoje'     ? 'var(--brand-lime)'
+                 : 'var(--neutral-300)';
+
+  const podeIniciar = bucket === 'hoje' || bucket === 'atrasado';
+  const btnIniciar = podeIniciar
+    ? `<button onclick="handleIniciarAgendamento('${ag.id}')" style="flex:1;padding:10px;border-radius:8px;border:none;background:var(--brand-lime);color:#fff;font-weight:700;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;">
+         <span class="material-symbols-rounded" style="font-size:16px;">play_arrow</span>Iniciar visita
+       </button>`
+    : `<div style="flex:1;padding:10px;border-radius:8px;background:var(--neutral-100);color:var(--neutral-500);font-size:12px;text-align:center;font-style:italic;">
+         ${dataBonita} · disponível no dia
+       </div>`;
+
+  return `
+    <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-left:4px solid ${bordaCor};border-radius:12px;padding:12px 14px;box-shadow:0 2px 6px rgba(10,31,92,0.04);">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+        <div style="font-family:var(--font-mono);font-weight:700;color:var(--brand-navy);font-size:18px;letter-spacing:-.5px;">${horaBonita}</div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:14px;line-height:1.3;">${instNome.replace(/"/g,'&quot;')}</div>
+          ${instCidade ? `<div style="font-size:11.5px;color:var(--neutral-500);margin-top:1px;">${instCidade}</div>` : ''}
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:4px;font-size:12px;color:var(--neutral-600);margin-top:4px;">
+        <span class="material-symbols-rounded" style="font-size:14px;color:var(--brand-lime);">flag</span>
+        <span>${objs.replace(/"/g,'&quot;')}</span>
+      </div>
+      ${obs}
+      <div style="display:flex;gap:6px;margin-top:10px;">
+        ${btnIniciar}
+        <button onclick="handleEditarAgendamento('${ag.id}')" title="Editar"
+                style="padding:10px;border-radius:8px;border:1.5px solid var(--neutral-300);background:var(--neutral-0);color:var(--brand-navy);cursor:pointer;">
+          <span class="material-symbols-rounded" style="font-size:16px;">edit</span>
+        </button>
+        <button onclick="handleCancelarAgendamento('${ag.id}')" title="Cancelar"
+                style="padding:10px;border-radius:8px;border:1.5px solid var(--status-danger);background:var(--neutral-0);color:var(--status-danger);cursor:pointer;">
+          <span class="material-symbols-rounded" style="font-size:16px;">delete</span>
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+// === Handlers ===
+
+window.handleNovoAgendamento = async function() {
+  // Carrega instituições e objetivos pra os selects
+  const [insts, objs] = await Promise.all([
+    listarInstituicoes(),
+    listarObjetivos(),
+  ]);
+  const instsAtivas = (insts || []).filter(i => i.ativo !== false);
+  const objsAtivos = (objs || []).filter(o => o.ativo !== false && !o.pendente_aprovacao);
+
+  if (instsAtivas.length === 0) {
+    alert('Não há instituições cadastradas ainda. Cadastre uma antes de agendar.');
+    return;
+  }
+
+  const hojeStr = (() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  })();
+
+  const dados = await showModalAgendamento({ instituicoes: instsAtivas, objetivos: objsAtivos, hojeStr });
+  if (!dados) return;
+
+  try {
+    await criarAgendamento(dados);
+    setFlash('success', 'Agendamento criado!');
+    await carregarAgenda();
+  } catch (err) {
+    alert('Erro ao criar agendamento: ' + err.message);
+  }
+};
+
+window.handleEditarAgendamento = async function(id) {
+  // Busca dados atuais + listas de suporte em paralelo
+  const [ags, insts, objs] = await Promise.all([
+    listarAgendamentosDoUser(),
+    listarInstituicoes(),
+    listarObjetivos(),
+  ]);
+  const ag = (ags || []).find(a => String(a.id) === String(id));
+  if (!ag) {
+    alert('Agendamento não encontrado. Pode já ter sido iniciado ou cancelado.');
+    await carregarAgenda();
+    return;
+  }
+  const instsAtivas = (insts || []).filter(i => i.ativo !== false);
+  const objsAtivos = (objs || []).filter(o => o.ativo !== false && !o.pendente_aprovacao);
+
+  const hojeStr = (() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  })();
+
+  const dados = await showModalAgendamento({
+    instituicoes: instsAtivas,
+    objetivos: objsAtivos,
+    hojeStr,
+    agendamento: ag,
+  });
+  if (!dados) return;
+
+  try {
+    await atualizarAgendamento(id, dados);
+    setFlash('success', 'Agendamento atualizado!');
+    await carregarAgenda();
+  } catch (err) {
+    alert('Erro ao atualizar: ' + err.message);
+  }
+};
+
+// Modal dedicado — reusa padrão visual dos outros modais do sistema
+function showModalAgendamento({ instituicoes, objetivos, hojeStr, agendamento = null }) {
+  return new Promise((resolve) => {
+    const isEdit = !!agendamento;
+    const backdrop = document.createElement('div');
+    backdrop.className = 'modal-backdrop';
+    // Em modo editar, permite escolher data atual do agendamento mesmo se for passada (raro mas possível)
+    const minData = isEdit && agendamento.data_visita < hojeStr ? agendamento.data_visita : hojeStr;
+    const instOpts = instituicoes.map(i => {
+      const sel = isEdit && String(agendamento.instituicao_id) === String(i.id) ? ' selected' : '';
+      return `<option value="${i.id}"${sel}>${(i.nome || '').replace(/"/g,'&quot;')}</option>`;
+    }).join('');
+    const objSelId = isEdit && agendamento.objetivos?.[0]?.id;
+    const objOpts = objetivos.map(o => {
+      const sel = objSelId && String(objSelId) === String(o.id) ? ' selected' : '';
+      return `<option value="${o.id}"${sel}>${(o.nome || '').replace(/"/g,'&quot;')}</option>`;
+    }).join('');
+    const valorHora = isEdit && agendamento.horario_inicio
+      ? String(agendamento.horario_inicio).substring(0, 5)
+      : '';
+    const valorObs = isEdit && agendamento.resumo ? agendamento.resumo : '';
+    const valorData = isEdit ? agendamento.data_visita : hojeStr;
+
+    backdrop.innerHTML = `
+      <div class="modal-card" style="max-width:440px;">
+        <div class="modal-card__header">
+          <div class="modal-card__icon" style="background:var(--status-info-bg,#E4ECFD);color:var(--status-info);">
+            <span class="material-symbols-rounded">${isEdit ? 'edit_calendar' : 'event_available'}</span>
+          </div>
+          <div class="modal-card__title">${isEdit ? 'Editar agendamento' : 'Novo agendamento'}</div>
+          <div class="modal-card__subtitle">${isEdit ? 'Ajuste os detalhes da sua próxima visita.' : 'Planeje uma visita futura. Você pode editar tudo ao iniciar.'}</div>
+        </div>
+        <div class="modal-card__body" style="padding:16px;">
+          <div class="report-field" style="margin-bottom:12px;">
+            <label for="agInst">Instituição <span style="color:var(--status-danger);">*</span></label>
+            <select id="agInst" style="width:100%;padding:10px;border:1.5px solid var(--neutral-300);border-radius:8px;font-family:inherit;font-size:14px;">
+              <option value="">Selecione...</option>
+              ${instOpts}
+            </select>
+          </div>
+          <div class="report-field" style="margin-bottom:12px;">
+            <label for="agData">Data <span style="color:var(--status-danger);">*</span></label>
+            <input type="date" id="agData" min="${minData}" value="${valorData}" style="width:100%;padding:10px;border:1.5px solid var(--neutral-300);border-radius:8px;font-family:inherit;font-size:14px;" />
+          </div>
+          <div class="report-field" style="margin-bottom:12px;">
+            <label for="agHora">Hora (opcional)</label>
+            <input type="time" id="agHora" value="${valorHora}" style="width:100%;padding:10px;border:1.5px solid var(--neutral-300);border-radius:8px;font-family:inherit;font-size:14px;" />
+          </div>
+          <div class="report-field" style="margin-bottom:12px;">
+            <label for="agObj">Objetivo (opcional)</label>
+            <select id="agObj" style="width:100%;padding:10px;border:1.5px solid var(--neutral-300);border-radius:8px;font-family:inherit;font-size:14px;">
+              <option value="">—</option>
+              ${objOpts}
+            </select>
+          </div>
+          <div class="report-field">
+            <label for="agObs">Observações (opcional)</label>
+            <textarea id="agObs" placeholder="Ex: apresentar kit novo, conversar com Dra. X..." style="width:100%;padding:10px;border:1.5px solid var(--neutral-300);border-radius:8px;font-family:inherit;font-size:14px;min-height:60px;resize:vertical;">${valorObs.replace(/</g,'&lt;')}</textarea>
+          </div>
+        </div>
+        <div class="modal-card__footer">
+          <button class="modal-btn modal-btn--primary" id="agOk">${isEdit ? 'Salvar alterações' : 'Agendar'}</button>
+          <button class="modal-btn modal-btn--secondary" id="agCancel">Cancelar</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(backdrop);
+    const cleanup = () => backdrop.remove();
+    document.getElementById('agCancel').onclick = () => { cleanup(); resolve(null); };
+    document.getElementById('agOk').onclick = () => {
+      const instituicao_id = document.getElementById('agInst').value;
+      const data = document.getElementById('agData').value;
+      const hora = document.getElementById('agHora').value;
+      const objetivo_id = document.getElementById('agObj').value || null;
+      const observacao = document.getElementById('agObs').value.trim() || null;
+      if (!instituicao_id) { alert('Selecione uma instituição.'); return; }
+      if (!data) { alert('Escolha uma data.'); return; }
+      cleanup();
+      resolve({ instituicao_id, data, hora, objetivo_id, observacao });
+    };
+  });
+}
+
+window.handleIniciarAgendamento = async function(id) {
+  const ok = await showModalConfirmacao({
+    icone: 'play_circle',
+    iconeCor: 'success',
+    titulo: 'Iniciar visita?',
+    subtitulo: 'Vamos pegar sua localização atual e começar o check-in. Você pode editar a hora no relatório depois.',
+    btnConfirmar: 'Iniciar agora',
+    btnCancelar: 'Cancelar',
+  });
+  if (!ok) return;
+
+  let userPos = null;
+  try {
+    userPos = await new Promise((resolve, reject) => {
+      if (!navigator.geolocation) return reject(new Error('GPS não suportado'));
+      navigator.geolocation.getCurrentPosition(
+        p => resolve({ lat: p.coords.latitude, lng: p.coords.longitude, accuracy: p.coords.accuracy }),
+        () => resolve(null),  // se negar GPS, segue sem (vira check-in manual)
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }
+      );
+    });
+  } catch { userPos = null; }
+
+  try {
+    await iniciarVisitaAgendada(id, userPos);
+    setFlash('success', 'Visita iniciada!');
+    window.location.hash = '#/checkin/ativo';
+  } catch (err) {
+    alert('Erro ao iniciar: ' + err.message);
+  }
+};
+
+window.handleCancelarAgendamento = async function(id) {
+  const ok = await showModalConfirmacao({
+    icone: 'event_busy',
+    iconeCor: 'danger',
+    titulo: 'Cancelar agendamento?',
+    subtitulo: 'Esta ação não pode ser desfeita. Se quiser remarcar, crie um novo depois.',
+    btnConfirmar: 'Sim, cancelar',
+    btnCancelar: 'Voltar',
+  });
+  if (!ok) return;
+  try {
+    await cancelarAgendamento(id);
+    setFlash('info', 'Agendamento cancelado.');
+    await carregarAgenda();
+  } catch (err) {
+    alert('Erro ao cancelar: ' + err.message);
+  }
+};
+
+// Profissional aceita sugestão do admin → vira agendamento normal
+window.handleAceitarSugestao = async function(id) {
+  const ok = await showModalConfirmacao({
+    icone: 'check_circle',
+    iconeCor: 'success',
+    titulo: 'Aceitar esta visita?',
+    subtitulo: 'A visita vai entrar na sua agenda e o admin será notificado.',
+    btnConfirmar: 'Sim, aceitar',
+    btnCancelar: 'Voltar',
+  });
+  if (!ok) return;
+  try {
+    await aceitarSugestao(id);
+    setFlash('success', 'Visita aceita! Entrou na sua agenda.');
+    await carregarAgenda();
+  } catch (err) {
+    alert('Erro ao aceitar: ' + err.message);
+  }
+};
+
+// Profissional recusa sugestão — modal com motivo obrigatório
+window.handleRecusarSugestao = async function(id) {
+  const motivo = await showModalInput({
+    icone: 'cancel',
+    iconeCor: 'danger',
+    titulo: 'Recusar visita',
+    subtitulo: 'O admin será notificado com o motivo. Seja breve e específico.',
+    label: 'Motivo da recusa',
+    required: true,
+    btnConfirmar: 'Recusar',
+    valorInicial: '',
+    tipo: 'textarea',
+  });
+  if (!motivo) return;
+  try {
+    await recusarSugestao(id, motivo);
+    setFlash('info', 'Visita recusada. O admin foi notificado.');
+    await carregarAgenda();
+  } catch (err) {
+    alert('Erro ao recusar: ' + err.message);
+  }
+};
 function renderFaturamento() {
   const user = requireAuth();
   if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
@@ -10515,6 +11721,8 @@ function renderAdminDrawer() {
     { href: '#/admin/equipe',         icon: 'groups',                  titulo: 'Equipe',          desc: 'Aprovar cadastros e gerenciar acesso' },
     { href: '#/admin/revisao',        icon: 'rule',                    titulo: 'Fila de Revisão', desc: 'Visitas com divergências' },
     { href: '#/admin/pendentes',      icon: 'hourglass_top',           titulo: 'Pendências',      desc: 'Aprovar instituições e objetivos' },
+    { href: '#/admin/objetivos',      icon: 'flag',                    titulo: 'Objetivos',       desc: 'Gerenciar lista de objetivos de visita' },
+    { href: '#/admin/agenda',          icon: 'event_note',              titulo: 'Agenda da equipe',desc: 'Ver e atribuir visitas agendadas' },
     { href: '#/admin/configuracoes',  icon: 'settings',                titulo: 'Configurações',   desc: 'Parâmetros globais do sistema' },
     { href: '#/logout',               icon: 'logout',                  titulo: 'Sair',            desc: 'Encerrar sessão' },
   ];
@@ -12072,7 +13280,7 @@ function cardPendenteInst(inst) {
 }
 
 function cardPendenteObj(obj) {
-  const autor = obj.sugerido_por_user?.nome || 'Nutri';
+  const autor = obj.sugerido_por_user?.nome || 'Profissional';
   const quando = obj.criado_em ? formatarTempoRelativo(obj.criado_em) : '—';
   return `
     <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-left:4px solid var(--brand-lime);border-radius:12px;padding:14px;box-shadow:0 2px 6px rgba(10,31,92,0.04);">
@@ -12332,12 +13540,25 @@ window.rejeitarInstituicaoPendente = async function(id) {
 };
 
 // === Handlers: aprovar/editar/rejeitar objetivo pendente ===
+
+// Detecta qual tela de admin está aberta e chama o recarregador certo.
+// Evita bug de "rejeitei/aprovei mas o item não sumiu" ao usar esses handlers
+// em telas diferentes (/admin/pendentes vs /admin/objetivos).
+async function recarregarListaObjetivos() {
+  const hash = window.location.hash || '';
+  if (hash.startsWith('#/admin/objetivos') && typeof carregarAdminObjetivos === 'function') {
+    await carregarAdminObjetivos();
+  } else if (typeof carregarAdminPendentes === 'function') {
+    await carregarAdminPendentes();
+  }
+}
+
 window.aprovarObjetivoPendente = async function(id) {
   const ok = await showModalConfirmacao({
     icone: 'check_circle',
     iconeCor: 'success',
     titulo: 'Aprovar objetivo?',
-    subtitulo: 'O objetivo ficará oficial e disponível pra todos os nutricionistas.',
+    subtitulo: 'O objetivo ficará oficial e disponível pra todos os profissionais.',
     btnConfirmar: 'Sim, aprovar',
     btnCancelar: 'Cancelar',
   });
@@ -12345,7 +13566,7 @@ window.aprovarObjetivoPendente = async function(id) {
   try {
     await updateOrThrow('objetivos_visita', { pendente_aprovacao: false }, id);
     setFlash('success', 'Objetivo aprovado.');
-    await carregarAdminPendentes();
+    await recarregarListaObjetivos();
   } catch (err) { alert('Erro: ' + err.message); console.error(err); }
 };
 
@@ -12365,7 +13586,7 @@ window.editarObjetivoPendente = async function(id, nomeAtual) {
   try {
     await updateOrThrow('objetivos_visita', { nome: novoNome, pendente_aprovacao: false }, id);
     setFlash('success', 'Objetivo aprovado.');
-    await carregarAdminPendentes();
+    await recarregarListaObjetivos();
   } catch (err) { alert('Erro: ' + err.message); console.error(err); }
 };
 
@@ -12382,9 +13603,1098 @@ window.rejeitarObjetivoPendente = async function(id) {
   try {
     await updateOrThrow('objetivos_visita', { ativo: false, pendente_aprovacao: false }, id);
     setFlash('info', 'Objetivo rejeitado e desativado.');
-    await carregarAdminPendentes();
+    await recarregarListaObjetivos();
   } catch (err) { alert('Erro: ' + err.message); console.error(err); }
 };
+
+/* ==========================================================================
+   Tela #/admin/objetivos — CRUD completo (Sprint 6 Mini 2)
+   3 abas: Ativos · Pendentes · Arquivados
+   ========================================================================== */
+
+function renderAdminObjetivos() {
+  const user = requireAdmin();
+  if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
+
+  const filtroInicial = window._routeParams?.filtro || 'ativos';
+  window._objFilter = filtroInicial;
+
+  setTimeout(async () => {
+    await carregarAdminObjetivos();
+  }, 0);
+
+  return `
+    <div class="mobile-app">
+      ${mobileTopBar({ title: 'Objetivos', showBack: true })}
+      <main class="mcontent">
+        <div class="review-tabs" id="objTabs" style="overflow-x:auto;scrollbar-width:none;">
+          <button class="review-tab ${filtroInicial === 'ativos' ? 'is-active' : ''}" onclick="trocarObjFiltro('ativos')">
+            Ativos <span class="review-tab__count" id="objCntAtivos">—</span>
+          </button>
+          <button class="review-tab ${filtroInicial === 'pendentes' ? 'is-active' : ''}" onclick="trocarObjFiltro('pendentes')">
+            Pendentes <span class="review-tab__count" id="objCntPendentes">—</span>
+          </button>
+          <button class="review-tab ${filtroInicial === 'arquivados' ? 'is-active' : ''}" onclick="trocarObjFiltro('arquivados')">
+            Arquivados <span class="review-tab__count" id="objCntArquivados">—</span>
+          </button>
+        </div>
+
+        <button id="objBtnAdd" onclick="handleCriarObjetivoAdmin()" class="av-btn-export" style="margin:12px 0;width:100%;padding:12px;font-size:13px;">
+          <span class="material-symbols-rounded">add</span>
+          Novo objetivo
+        </button>
+
+        <div id="objList" style="display:flex;flex-direction:column;gap:10px;">
+          <div style="padding:30px;text-align:center;color:var(--neutral-500);font-size:13px;">Carregando...</div>
+        </div>
+      </main>
+    </div>
+  `;
+}
+
+window.trocarObjFiltro = function(filtro) {
+  window._objFilter = filtro;
+  document.querySelectorAll('#objTabs .review-tab').forEach(t => t.classList.remove('is-active'));
+  if (event && event.currentTarget) event.currentTarget.classList.add('is-active');
+  carregarAdminObjetivos();
+};
+
+async function carregarAdminObjetivos() {
+  const listEl = document.getElementById('objList');
+  if (!listEl) return;
+
+  // Atualiza contadores
+  const cnts = await contarObjetivosPorStatus();
+  const setCnt = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  setCnt('objCntAtivos', cnts.ativos);
+  setCnt('objCntPendentes', cnts.pendentes);
+  setCnt('objCntArquivados', cnts.arquivados);
+
+  // O botão "Novo objetivo" só faz sentido na aba Ativos (pra criar direto)
+  const btnAdd = document.getElementById('objBtnAdd');
+  if (btnAdd) btnAdd.style.display = (window._objFilter === 'ativos') ? 'inline-flex' : 'none';
+
+  // Carrega lista da aba atual
+  const filtro = window._objFilter || 'ativos';
+  const lista = await listarObjetivosPorFiltro(filtro);
+
+  if (lista.length === 0) {
+    listEl.innerHTML = emptyStateObjetivos(filtro);
+    return;
+  }
+
+  listEl.innerHTML = lista.map((o, idx) => cardObjetivoAdmin(o, filtro, idx, lista.length)).join('');
+}
+
+function emptyStateObjetivos(filtro) {
+  const map = {
+    ativos:     { icon: 'flag',         titulo: 'Nenhum objetivo ativo',       desc: 'Clique em "Novo objetivo" pra começar.' },
+    pendentes:  { icon: 'hourglass_top',titulo: 'Nenhum objetivo pendente',    desc: 'Quando um profissional sugerir um objetivo novo, ele aparecerá aqui pra sua revisão.' },
+    arquivados: { icon: 'archive',      titulo: 'Nenhum objetivo arquivado',   desc: 'Objetivos que você arquivar (ou rejeitar) aparecerão aqui. Visitas antigas continuam com o objetivo registrado.' },
+  };
+  const m = map[filtro] || map.ativos;
+  return `
+    <div class="empty-state" style="margin:20px 0;">
+      <div class="empty-state__icon"><span class="material-symbols-rounded">${m.icon}</span></div>
+      <div class="empty-state__title">${m.titulo}</div>
+      <div class="empty-state__desc">${m.desc}</div>
+    </div>
+  `;
+}
+
+function cardObjetivoAdmin(obj, filtro, idx, total) {
+  const nomeSafe = obj.nome.replace(/"/g,'&quot;');
+  const nomeEscaped = obj.nome.replace(/'/g,'&#39;').replace(/"/g,'&quot;');
+  const autor = obj.sugerido_por_user?.nome;
+  const metaParts = [];
+  if (filtro === 'ativos' && obj.ordem != null) metaParts.push(`#${obj.ordem}`);
+  if (autor) metaParts.push(`sugerido por ${autor.replace(/"/g,'&quot;')}`);
+  if (obj.criado_em) metaParts.push(formatarTempoRelativo(obj.criado_em));
+  const meta = metaParts.join(' · ');
+
+  // Botões variam por aba
+  let botoesHtml = '';
+  if (filtro === 'ativos') {
+    const podeSubir = idx > 0;
+    const podeDescer = idx < total - 1;
+    botoesHtml = `
+      <div style="display:flex;gap:4px;flex-shrink:0;">
+        <button onclick="reordenarObjetivoUI('${obj.id}','cima')" ${!podeSubir ? 'disabled' : ''}
+                title="Mover pra cima"
+                style="padding:6px;border-radius:6px;border:1.5px solid var(--neutral-300);background:var(--neutral-0);color:var(--brand-navy);cursor:pointer;${!podeSubir ? 'opacity:.3;cursor:not-allowed;' : ''}">
+          <span class="material-symbols-rounded" style="font-size:18px;">arrow_upward</span>
+        </button>
+        <button onclick="reordenarObjetivoUI('${obj.id}','baixo')" ${!podeDescer ? 'disabled' : ''}
+                title="Mover pra baixo"
+                style="padding:6px;border-radius:6px;border:1.5px solid var(--neutral-300);background:var(--neutral-0);color:var(--brand-navy);cursor:pointer;${!podeDescer ? 'opacity:.3;cursor:not-allowed;' : ''}">
+          <span class="material-symbols-rounded" style="font-size:18px;">arrow_downward</span>
+        </button>
+        <button onclick="editarObjetivoUI('${obj.id}','${nomeEscaped}')"
+                title="Editar nome"
+                style="padding:6px;border-radius:6px;border:1.5px solid var(--neutral-300);background:var(--neutral-0);color:var(--brand-navy);cursor:pointer;">
+          <span class="material-symbols-rounded" style="font-size:18px;">edit</span>
+        </button>
+        <button onclick="arquivarObjetivoUI('${obj.id}','${nomeEscaped}')"
+                title="Arquivar"
+                style="padding:6px;border-radius:6px;border:1.5px solid var(--status-warning);background:var(--neutral-0);color:var(--status-warning);cursor:pointer;">
+          <span class="material-symbols-rounded" style="font-size:18px;">archive</span>
+        </button>
+      </div>
+    `;
+  } else if (filtro === 'pendentes') {
+    botoesHtml = `
+      <div style="display:flex;gap:4px;flex-shrink:0;">
+        <button onclick="aprovarObjetivoPendente('${obj.id}')"
+                title="Aprovar"
+                style="padding:6px 10px;border-radius:6px;border:none;background:var(--status-success);color:#fff;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:4px;font-size:12px;">
+          <span class="material-symbols-rounded" style="font-size:14px;">check</span>Aprovar
+        </button>
+        <button onclick="editarObjetivoPendente('${obj.id}','${nomeEscaped}')"
+                title="Editar e aprovar"
+                style="padding:6px;border-radius:6px;border:1.5px solid var(--neutral-300);background:var(--neutral-0);color:var(--brand-navy);cursor:pointer;">
+          <span class="material-symbols-rounded" style="font-size:18px;">edit</span>
+        </button>
+        <button onclick="rejeitarObjetivoPendente('${obj.id}')"
+                title="Rejeitar"
+                style="padding:6px;border-radius:6px;border:1.5px solid var(--status-danger);background:var(--neutral-0);color:var(--status-danger);cursor:pointer;">
+          <span class="material-symbols-rounded" style="font-size:18px;">close</span>
+        </button>
+      </div>
+    `;
+  } else if (filtro === 'arquivados') {
+    botoesHtml = `
+      <div style="display:flex;gap:4px;flex-shrink:0;">
+        <button onclick="desarquivarObjetivoUI('${obj.id}','${nomeEscaped}')"
+                title="Restaurar"
+                style="padding:6px 10px;border-radius:6px;border:1.5px solid var(--status-success);background:var(--neutral-0);color:var(--status-success);font-weight:700;cursor:pointer;display:flex;align-items:center;gap:4px;font-size:12px;">
+          <span class="material-symbols-rounded" style="font-size:14px;">unarchive</span>Restaurar
+        </button>
+        <button onclick="excluirObjetivoUI('${obj.id}','${nomeEscaped}')"
+                title="Excluir definitivamente"
+                style="padding:6px;border-radius:6px;border:1.5px solid var(--status-danger);background:var(--neutral-0);color:var(--status-danger);cursor:pointer;">
+          <span class="material-symbols-rounded" style="font-size:18px;">delete_forever</span>
+        </button>
+      </div>
+    `;
+  }
+
+  // Badge opcional
+  const badge = filtro === 'pendentes'
+    ? `<span style="font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;background:#FEF4E1;color:#92400E;">AGUARDANDO</span>`
+    : filtro === 'arquivados'
+    ? `<span style="font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;background:var(--neutral-200);color:var(--neutral-600);">ARQUIVADO</span>`
+    : '';
+
+  const borderColor = filtro === 'ativos' ? 'var(--brand-lime)' :
+                      filtro === 'pendentes' ? 'var(--status-warning)' :
+                      'var(--neutral-400)';
+
+  return `
+    <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-left:4px solid ${borderColor};border-radius:12px;padding:12px 14px;box-shadow:0 2px 6px rgba(10,31,92,0.04);display:flex;align-items:center;gap:10px;">
+      <div style="width:36px;height:36px;border-radius:10px;background:#F4F9EA;color:var(--brand-lime);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+        <span class="material-symbols-rounded" style="font-size:20px;">flag</span>
+      </div>
+      <div style="flex:1;min-width:0;">
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+          <span style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:14px;line-height:1.3;">${nomeSafe}</span>
+          ${badge}
+        </div>
+        ${meta ? `<div style="font-size:11.5px;color:var(--neutral-500);margin-top:3px;">${meta}</div>` : ''}
+      </div>
+      ${botoesHtml}
+    </div>
+  `;
+}
+
+// === Handlers da tela ===
+
+window.handleCriarObjetivoAdmin = async function() {
+  const nome = await showModalInput({
+    icone: 'flag',
+    iconeCor: 'success',
+    titulo: 'Novo objetivo',
+    subtitulo: 'Adicionar novo objetivo à lista. Fica ativo imediatamente (sem aprovação).',
+    label: 'Nome do objetivo',
+    required: true,
+    btnConfirmar: 'Criar',
+    valorInicial: '',
+    tipo: 'input',
+  });
+  if (!nome) return;
+  try {
+    const res = await criarObjetivoAdmin(nome);
+    setFlash('success', res.reativado
+      ? `Objetivo "${res.nome}" reativado.`
+      : `Objetivo "${res.nome}" criado.`);
+    await carregarAdminObjetivos();
+  } catch (err) {
+    alert('Erro: ' + err.message);
+  }
+};
+
+window.editarObjetivoUI = async function(id, nomeAtual) {
+  const novoNome = await showModalInput({
+    icone: 'edit',
+    iconeCor: 'info',
+    titulo: 'Editar objetivo',
+    subtitulo: 'Visitas que já usam esse objetivo continuam com o nome atualizado.',
+    label: 'Nome do objetivo',
+    required: true,
+    btnConfirmar: 'Salvar',
+    valorInicial: nomeAtual,
+    tipo: 'input',
+  });
+  if (!novoNome || novoNome.trim() === nomeAtual.trim()) return;
+  try {
+    await updateOrThrow('objetivos_visita', { nome: novoNome.trim() }, id);
+    setFlash('success', 'Objetivo atualizado.');
+    await carregarAdminObjetivos();
+  } catch (err) {
+    alert('Erro: ' + err.message);
+  }
+};
+
+window.arquivarObjetivoUI = async function(id, nome) {
+  const ok = await showModalConfirmacao({
+    icone: 'archive',
+    iconeCor: 'warning',
+    titulo: `Arquivar "${nome}"?`,
+    subtitulo: 'O objetivo não aparecerá mais em novas visitas, mas visitas antigas continuam com ele registrado. Você pode restaurar a qualquer momento.',
+    btnConfirmar: 'Sim, arquivar',
+    btnCancelar: 'Cancelar',
+  });
+  if (!ok) return;
+  try {
+    await updateOrThrow('objetivos_visita', { ativo: false, pendente_aprovacao: false }, id);
+    setFlash('info', 'Objetivo arquivado.');
+    await carregarAdminObjetivos();
+  } catch (err) { alert('Erro: ' + err.message); }
+};
+
+window.desarquivarObjetivoUI = async function(id, nome) {
+  try {
+    await updateOrThrow('objetivos_visita', { ativo: true, pendente_aprovacao: false }, id);
+    setFlash('success', `"${nome}" restaurado.`);
+    await carregarAdminObjetivos();
+  } catch (err) { alert('Erro: ' + err.message); }
+};
+
+window.excluirObjetivoUI = async function(id, nome) {
+  // Primeiro: checa se o objetivo tá em uso em alguma visita
+  const uso = await contarUsoObjetivo(id);
+  if (uso > 0) {
+    await showModalConfirmacao({
+      icone: 'block',
+      iconeCor: 'warning',
+      titulo: 'Não pode excluir',
+      subtitulo: `Este objetivo foi usado em ${uso} ${uso === 1 ? 'visita' : 'visitas'}. Excluir definitivamente apagaria essa relação e quebraria o histórico. Deixe arquivado — ele não aparece pra novos profissionais mesmo assim.`,
+      btnConfirmar: 'Entendi',
+      btnCancelar: null,
+    });
+    return;
+  }
+  // Se zero uso, confirma forte
+  const ok = await showModalConfirmacao({
+    icone: 'delete_forever',
+    iconeCor: 'danger',
+    titulo: `Excluir "${nome}" definitivamente?`,
+    subtitulo: 'Esta ação apaga o objetivo permanentemente do banco. Não é possível desfazer. Confirma?',
+    btnConfirmar: 'Sim, excluir pra sempre',
+    btnCancelar: 'Cancelar',
+  });
+  if (!ok) return;
+  try {
+    await excluirObjetivoDefinitivo(id);
+    setFlash('info', `"${nome}" excluído.`);
+    await carregarAdminObjetivos();
+  } catch (err) {
+    alert('Erro: ' + err.message);
+  }
+};
+
+window.reordenarObjetivoUI = async function(id, direcao) {
+  try {
+    const ok = await reordenarObjetivo(id, direcao);
+    if (ok) await carregarAdminObjetivos();
+  } catch (err) { alert('Erro ao reordenar: ' + err.message); }
+};
+
+/* ==========================================================================
+   Tela #/admin/agenda — Agenda da equipe (Sprint 7 Mini 2a)
+   Lista linear global de todos os agendamentos de todos os profissionais,
+   agrupada por bucket de data. Admin pode criar agendamento atribuído
+   a qualquer profissional.
+   ========================================================================== */
+
+function renderAdminAgenda() {
+  const user = requireAdmin();
+  if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
+
+  // Estado persistente entre re-renders (mas reseta ao recarregar a página)
+  if (!window._adminAgendaView) window._adminAgendaView = 'lista';
+  if (typeof window._adminAgendaWeekOffset !== 'number') window._adminAgendaWeekOffset = 0;
+  const view = window._adminAgendaView;
+
+  setTimeout(async () => {
+    await carregarAdminAgenda();
+  }, 0);
+
+  return `
+    <div class="mobile-app">
+      ${mobileTopBar({ title: 'Agenda da equipe', showBack: true })}
+      <main class="mcontent">
+        <div id="adminAgendaHeader" style="margin-bottom:14px;">
+          <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:18px;">Agenda da equipe</div>
+          <div style="font-size:12.5px;color:var(--neutral-600);margin-top:2px;">Veja todas as visitas agendadas e atribua novas pros profissionais.</div>
+        </div>
+
+        <div class="review-tabs" style="margin-bottom:14px;">
+          <button class="review-tab ${view === 'lista' ? 'is-active' : ''}" onclick="trocarAdminAgendaView('lista')">
+            <span class="material-symbols-rounded" style="font-size:14px;">list</span>
+            Lista
+          </button>
+          <button class="review-tab ${view === 'profissional' ? 'is-active' : ''}" onclick="trocarAdminAgendaView('profissional')">
+            <span class="material-symbols-rounded" style="font-size:14px;">groups</span>
+            Por profissional
+          </button>
+          <button class="review-tab ${view === 'calendario' ? 'is-active' : ''}" onclick="trocarAdminAgendaView('calendario')">
+            <span class="material-symbols-rounded" style="font-size:14px;">calendar_view_week</span>
+            Calendário
+          </button>
+        </div>
+
+        <div id="adminAgendaLista">
+          <div style="padding:30px;text-align:center;color:var(--neutral-500);font-size:13px;">Carregando...</div>
+        </div>
+
+        <button onclick="handleNovoAgendamentoAdmin()"
+                style="position:fixed;bottom:92px;right:20px;width:56px;height:56px;border-radius:50%;border:none;background:var(--brand-lime);color:#fff;box-shadow:0 6px 18px rgba(139,198,63,0.45);cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:50;transition:transform .15s;"
+                title="Atribuir nova visita"
+                onmouseover="this.style.transform='scale(1.08)'" onmouseout="this.style.transform='scale(1)'">
+          <span class="material-symbols-rounded" style="font-size:28px;">add</span>
+        </button>
+      </main>
+    </div>
+  `;
+}
+
+window.trocarAdminAgendaView = function(view) {
+  window._adminAgendaView = view;
+  if (view === 'calendario' && typeof window._adminAgendaWeekOffset !== 'number') {
+    window._adminAgendaWeekOffset = 0;
+  }
+  // Dispara o router pra re-renderizar (mais leve que recarregar)
+  window.dispatchEvent(new HashChangeEvent('hashchange'));
+};
+
+async function carregarAdminAgenda() {
+  const listaEl = document.getElementById('adminAgendaLista');
+  if (!listaEl) return;
+
+  const ags = await listarTodosAgendamentos();
+
+  if (ags.length === 0) {
+    listaEl.innerHTML = `
+      <div class="empty-state" style="margin:20px 0;">
+        <div class="empty-state__icon"><span class="material-symbols-rounded">calendar_add_on</span></div>
+        <div class="empty-state__title">Nenhuma visita agendada ainda</div>
+        <div class="empty-state__desc">Toque no botão <strong>+</strong> pra atribuir a primeira visita.</div>
+      </div>
+    `;
+    return;
+  }
+
+  const view = window._adminAgendaView || 'lista';
+  if (view === 'profissional') listaEl.innerHTML = renderAgendaPorProfissional(ags);
+  else if (view === 'calendario') listaEl.innerHTML = renderAgendaCalendario(ags);
+  else listaEl.innerHTML = renderAgendaLista(ags);
+}
+
+// View 1 — Lista global por bucket de data (comportamento original do Mini 2a)
+function renderAgendaLista(ags) {
+  const grupos = { atrasado: [], hoje: [], amanha: [], semana: [], futuro: [] };
+  ags.forEach(a => {
+    const b = bucketDoAgendamento(a.data_visita);
+    grupos[b].push(a);
+  });
+
+  const ordem = ['atrasado', 'hoje', 'amanha', 'semana', 'futuro'];
+  const titulos = {
+    atrasado: 'Atrasados',
+    hoje:     'Hoje',
+    amanha:   'Amanhã',
+    semana:   'Esta semana',
+    futuro:   'Mais adiante',
+  };
+  const cores = {
+    atrasado: 'var(--status-danger)',
+    hoje:     'var(--brand-lime)',
+    amanha:   'var(--status-info)',
+    semana:   'var(--brand-navy)',
+    futuro:   'var(--neutral-500)',
+  };
+
+  let html = '';
+  ordem.forEach(b => {
+    if (grupos[b].length === 0) return;
+    html += `
+      <div style="margin-bottom:20px;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+          <div style="width:8px;height:8px;border-radius:50%;background:${cores[b]};"></div>
+          <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:13px;text-transform:uppercase;letter-spacing:.5px;">${titulos[b]}</div>
+          <div style="background:var(--neutral-100);color:var(--neutral-600);padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;">${grupos[b].length}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          ${grupos[b].map(a => cardAdminAgendamento(a, b)).join('')}
+        </div>
+      </div>
+    `;
+  });
+  return html;
+}
+
+// View 2 — Lista agrupada por profissional (ordena por nome, mostra avatar e contador)
+function renderAgendaPorProfissional(ags) {
+  const porProf = {};
+  ags.forEach(a => {
+    const pid = a.nutricionista_id;
+    if (!porProf[pid]) {
+      porProf[pid] = {
+        nome: a.usuarios?.nome || 'Profissional',
+        ags: [],
+      };
+    }
+    porProf[pid].ags.push(a);
+  });
+
+  // Ordena profissionais por nome
+  const entradas = Object.entries(porProf).sort((a, b) => (a[1].nome || '').localeCompare(b[1].nome || ''));
+
+  return entradas.map(([pid, info]) => {
+    const iniciais = (info.nome || '?')
+      .split(/\s+/).filter(Boolean).slice(0, 2)
+      .map(p => p.charAt(0).toUpperCase()).join('') || '?';
+    // Ordena agendamentos do profissional por data+hora
+    info.ags.sort((a, b) => {
+      if (a.data_visita !== b.data_visita) return a.data_visita < b.data_visita ? -1 : 1;
+      return (a.horario_inicio || '99:99') < (b.horario_inicio || '99:99') ? -1 : 1;
+    });
+    return `
+      <div class="ag-prof-group">
+        <div class="ag-prof-group__header">
+          <div class="ag-prof-group__avatar">${iniciais}</div>
+          <div class="ag-prof-group__nome">${(info.nome || '').replace(/"/g,'&quot;')}</div>
+          <div class="ag-prof-group__count">
+            <span class="material-symbols-rounded" style="font-size:13px;">event</span>
+            ${info.ags.length}
+          </div>
+        </div>
+        <div class="ag-prof-group__body">
+          ${info.ags.map(a => cardAdminAgendamento(a, bucketDoAgendamento(a.data_visita))).join('')}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// View 3 — Calendário semanal com navegação entre semanas
+function renderAgendaCalendario(ags) {
+  const offset = window._adminAgendaWeekOffset || 0;
+
+  // Calcula o início da semana (segunda) pro offset atual
+  const hoje = new Date();
+  hoje.setHours(0, 0, 0, 0);
+  // Ajusta pra segunda (dow: 0=dom, 1=seg, ..., 6=sab)
+  const diaSemana = hoje.getDay();
+  const diffParaSegunda = diaSemana === 0 ? -6 : (1 - diaSemana);
+  const segundaAtual = new Date(hoje);
+  segundaAtual.setDate(segundaAtual.getDate() + diffParaSegunda);
+  // Aplica offset da navegação (em semanas)
+  const inicioSemana = new Date(segundaAtual);
+  inicioSemana.setDate(inicioSemana.getDate() + offset * 7);
+  const fimSemana = new Date(inicioSemana);
+  fimSemana.setDate(fimSemana.getDate() + 6);
+
+  // Agrupa agendamentos por data (YYYY-MM-DD)
+  const porData = {};
+  ags.forEach(a => {
+    if (!porData[a.data_visita]) porData[a.data_visita] = [];
+    porData[a.data_visita].push(a);
+  });
+
+  // Monta os 7 dias da semana
+  const diasSemanaLabels = ['SEG','TER','QUA','QUI','SEX','SÁB','DOM'];
+  const meses = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+
+  const hojeStr = (() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  })();
+
+  let diasHtml = '';
+  for (let i = 0; i < 7; i++) {
+    const dt = new Date(inicioSemana);
+    dt.setDate(dt.getDate() + i);
+    const dtStr = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+    const isHoje = dtStr === hojeStr;
+    const isPassado = dtStr < hojeStr;
+    const dia = dt.getDate();
+    const agsDoDia = (porData[dtStr] || []).sort((a, b) =>
+      (a.horario_inicio || '99:99') < (b.horario_inicio || '99:99') ? -1 : 1
+    );
+    const cls = ['ag-cal-day'];
+    if (isHoje) cls.push('ag-cal-day--today');
+    if (isPassado && !isHoje) cls.push('ag-cal-day--passado');
+
+    diasHtml += `
+      <div class="${cls.join(' ')}">
+        <div class="ag-cal-day__header" onclick="handleAdminAgDiaDetalhes('${dtStr}')" title="Ver detalhes do dia">
+          <span class="ag-cal-day__dia-sem">${diasSemanaLabels[i]}</span>
+          <span class="ag-cal-day__dia-num">${dia}</span>
+        </div>
+        ${agsDoDia.length === 0
+          ? `<div class="ag-cal-empty" onclick="handleAdminAgDiaDetalhes('${dtStr}')" style="cursor:pointer;">—</div>`
+          : agsDoDia.map(a => {
+              const hora = a.horario_inicio ? String(a.horario_inicio).substring(0, 5) : '';
+              const prof = (a.usuarios?.nome || 'Profissional').split(' ')[0];
+              const clsEntry = a.status === 'sugerida' ? 'ag-cal-entry ag-cal-entry--sugerida' : 'ag-cal-entry';
+              return `<div class="${clsEntry}" onclick="event.stopPropagation();handleAdminAgDetalhes('${a.id}')">
+                <div class="ag-cal-entry__hora">${hora || '—'}</div>
+                <div class="ag-cal-entry__prof">${prof.replace(/"/g,'&quot;')}</div>
+              </div>`;
+            }).join('')}
+      </div>
+    `;
+  }
+
+  // Label da navegação
+  const labelInicio = `${String(inicioSemana.getDate()).padStart(2,'0')} ${meses[inicioSemana.getMonth()]}`;
+  const labelFim = `${String(fimSemana.getDate()).padStart(2,'0')} ${meses[fimSemana.getMonth()]} ${fimSemana.getFullYear()}`;
+
+  return `
+    <div class="ag-cal-nav">
+      <button class="ag-cal-nav__btn" onclick="adminAgendaMoverSemana(-1)" title="Semana anterior">
+        <span class="material-symbols-rounded" style="font-size:20px;">chevron_left</span>
+      </button>
+      <div class="ag-cal-nav__label">${labelInicio} – ${labelFim}</div>
+      ${offset !== 0
+        ? `<button class="ag-cal-nav__btn ag-cal-nav__btn--today" onclick="adminAgendaMoverSemana(0)">Hoje</button>`
+        : ''}
+      <button class="ag-cal-nav__btn" onclick="adminAgendaMoverSemana(1)" title="Próxima semana">
+        <span class="material-symbols-rounded" style="font-size:20px;">chevron_right</span>
+      </button>
+    </div>
+    <div class="ag-cal-grid">
+      ${diasHtml}
+    </div>
+  `;
+}
+
+window.adminAgendaMoverSemana = function(delta) {
+  if (delta === 0) window._adminAgendaWeekOffset = 0;
+  else window._adminAgendaWeekOffset = (window._adminAgendaWeekOffset || 0) + delta;
+  carregarAdminAgenda();
+};
+
+// Card parecido com o do profissional, mas com badge do nome do profissional e origem
+function cardAdminAgendamento(ag, bucket) {
+  const instNome = ag.instituicoes?.nome || 'Instituição';
+  const instCidade = ag.instituicoes?.cidade || '';
+  const profNome = ag.usuarios?.nome || 'Profissional';
+  const horaBonita = ag.horario_inicio ? String(ag.horario_inicio).substring(0, 5) : '—';
+  const dataBonita = (() => {
+    if (!ag.data_visita) return '';
+    const [y, m, d] = String(ag.data_visita).split('-').map(Number);
+    const dt = new Date(y, m - 1, d);
+    return `${String(dt.getDate()).padStart(2,'0')}/${String(dt.getMonth()+1).padStart(2,'0')}`;
+  })();
+  const objs = (ag.objetivos || []).map(o => o.nome).join(' · ') || 'Sem objetivo definido';
+  const obs = ag.resumo
+    ? `<div style="font-size:12px;color:var(--neutral-600);margin-top:6px;font-style:italic;">"${ag.resumo.replace(/"/g,'&quot;').substring(0, 120)}${ag.resumo.length > 120 ? '...' : ''}"</div>`
+    : '';
+  const bordaCor = bucket === 'atrasado' ? 'var(--status-danger)'
+                 : bucket === 'hoje'     ? 'var(--brand-lime)'
+                 : 'var(--neutral-300)';
+
+  // Badge varia pelo status:
+  //   sugerida = aguardando aceite do profissional (âmbar)
+  //   agendada + atribuido_por = já aceita / atribuída direto (azul info)
+  //   agendada sem atribuido_por = profissional criou pra si mesmo (sem badge)
+  let badgeAtribuido = '';
+  if (ag.status === 'sugerida') {
+    badgeAtribuido = `<span style="font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;background:#FEF4E1;color:#92400E;">AGUARDANDO</span>`;
+  } else if (ag.atribuido_por) {
+    badgeAtribuido = `<span style="font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;background:#E4ECFD;color:var(--status-info);">ATRIBUÍDO</span>`;
+  }
+
+  return `
+    <div onclick="handleAdminAgDetalhes('${ag.id}')" style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-left:4px solid ${bordaCor};border-radius:12px;padding:12px 14px;box-shadow:0 2px 6px rgba(10,31,92,0.04);cursor:pointer;transition:transform .15s, box-shadow .15s;" onmouseover="this.style.transform='translateY(-1px)';this.style.boxShadow='0 4px 10px rgba(10,31,92,0.08)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 2px 6px rgba(10,31,92,0.04)'">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+        <div style="font-family:var(--font-mono);font-weight:700;color:var(--brand-navy);font-size:18px;letter-spacing:-.5px;">${horaBonita}</div>
+        <div style="flex:1;min-width:0;">
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+            <span style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:14px;line-height:1.3;">${instNome.replace(/"/g,'&quot;')}</span>
+            ${badgeAtribuido}
+          </div>
+          ${instCidade ? `<div style="font-size:11.5px;color:var(--neutral-500);margin-top:1px;">${instCidade} · ${dataBonita}</div>` : `<div style="font-size:11.5px;color:var(--neutral-500);margin-top:1px;">${dataBonita}</div>`}
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:4px;font-size:12px;color:var(--neutral-600);margin-top:4px;">
+        <span class="material-symbols-rounded" style="font-size:14px;color:var(--status-info);">person</span>
+        <span style="font-weight:600;color:var(--brand-navy);">${profNome.replace(/"/g,'&quot;')}</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:4px;font-size:12px;color:var(--neutral-600);margin-top:3px;">
+        <span class="material-symbols-rounded" style="font-size:14px;color:var(--brand-lime);">flag</span>
+        <span>${objs.replace(/"/g,'&quot;')}</span>
+      </div>
+      ${obs}
+    </div>
+  `;
+}
+
+// Handler — admin cria agendamento atribuindo pra um profissional.
+// `dataPreSelecionada` é opcional, vem do calendário quando o admin clica num dia.
+window.handleNovoAgendamentoAdmin = async function(dataPreSelecionada = null) {
+  const [profs, insts, objs] = await Promise.all([
+    listarProfissionaisAtivos(),
+    listarInstituicoes(),
+    listarObjetivos(),
+  ]);
+  const instsAtivas = (insts || []).filter(i => i.ativo !== false);
+  const objsAtivos = (objs || []).filter(o => o.ativo !== false && !o.pendente_aprovacao);
+
+  if (profs.length === 0) {
+    alert('Não há profissionais ativos pra atribuir visitas.');
+    return;
+  }
+  if (instsAtivas.length === 0) {
+    alert('Não há instituições cadastradas ainda.');
+    return;
+  }
+
+  const hojeStr = (() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  })();
+
+  // Se veio data pré-selecionada e é futura (ou hoje), usa ela como valor inicial
+  const dataInicial = (dataPreSelecionada && dataPreSelecionada >= hojeStr)
+    ? dataPreSelecionada
+    : hojeStr;
+
+  const dados = await showModalAgendamentoAdmin({
+    profissionais: profs,
+    instituicoes: instsAtivas,
+    objetivos: objsAtivos,
+    hojeStr,
+    dataInicial,
+  });
+  if (!dados) return;
+
+  try {
+    await criarAgendamento(dados);
+    setFlash('success', 'Visita atribuída! Profissional foi notificado.');
+    await carregarAdminAgenda();
+  } catch (err) {
+    alert('Erro ao atribuir visita: ' + err.message);
+  }
+};
+
+// Abre modal de detalhes ao clicar num card da agenda admin
+window.handleAdminAgDetalhes = async function(id) {
+  const ags = await listarTodosAgendamentos();
+  const ag = (ags || []).find(a => String(a.id) === String(id));
+  if (!ag) {
+    alert('Agendamento não encontrado.');
+    await carregarAdminAgenda();
+    return;
+  }
+  showModalAdminAgDetalhes(ag);
+};
+
+// Abre modal que mostra todos os agendamentos de um dia específico (clique no header do calendário)
+window.handleAdminAgDiaDetalhes = async function(dataStr) {
+  const ags = await listarTodosAgendamentos();
+  const doDia = (ags || [])
+    .filter(a => a.data_visita === dataStr)
+    .sort((a, b) => (a.horario_inicio || '99:99') < (b.horario_inicio || '99:99') ? -1 : 1);
+  showModalAdminAgDia(dataStr, doDia);
+};
+
+function showModalAdminAgDia(dataStr, ags) {
+  const [y, m, d] = String(dataStr).split('-').map(Number);
+  const dt = new Date(y, m - 1, d);
+  const diasSemana = ['domingo','segunda-feira','terça-feira','quarta-feira','quinta-feira','sexta-feira','sábado'];
+  const meses = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+  const dataBonita = `${diasSemana[dt.getDay()].charAt(0).toUpperCase() + diasSemana[dt.getDay()].slice(1)}, ${dt.getDate()} de ${meses[dt.getMonth()]}`;
+
+  const backdrop = document.createElement('div');
+  backdrop.className = 'modal-backdrop';
+
+  const corpoHtml = ags.length === 0
+    ? `
+      <div style="padding:24px 16px;text-align:center;">
+        <div style="width:56px;height:56px;border-radius:50%;background:var(--neutral-100);display:flex;align-items:center;justify-content:center;margin:0 auto 12px;">
+          <span class="material-symbols-rounded" style="font-size:28px;color:var(--neutral-500);">event_busy</span>
+        </div>
+        <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:15px;margin-bottom:4px;">Nenhuma visita neste dia</div>
+        <div style="font-size:12.5px;color:var(--neutral-600);">Aproveite pra atribuir uma visita nova.</div>
+      </div>
+    `
+    : `
+      <div style="padding:12px 16px;display:flex;flex-direction:column;gap:10px;max-height:60vh;overflow-y:auto;">
+        ${ags.map(a => cardAdminAgDiaCompacto(a)).join('')}
+      </div>
+    `;
+
+  backdrop.innerHTML = `
+    <div class="modal-card" style="max-width:480px;">
+      <div class="modal-card__header">
+        <div class="modal-card__icon" style="background:#E4ECFD;color:var(--status-info);">
+          <span class="material-symbols-rounded">calendar_today</span>
+        </div>
+        <div class="modal-card__title">${dataBonita.replace(/"/g,'&quot;')}</div>
+        <div class="modal-card__subtitle">${ags.length === 0 ? 'Nenhuma visita agendada' : (ags.length === 1 ? '1 visita agendada' : `${ags.length} visitas agendadas`)}</div>
+      </div>
+      ${corpoHtml}
+      <div class="modal-card__footer" style="flex-direction:column;gap:8px;">
+        <button class="modal-btn modal-btn--primary" id="diaAtribuir" style="display:flex;align-items:center;justify-content:center;gap:6px;">
+          <span class="material-symbols-rounded" style="font-size:16px;">add</span> Atribuir visita neste dia
+        </button>
+        <button class="modal-btn modal-btn--secondary" id="diaFechar">Fechar</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(backdrop);
+  const cleanup = () => backdrop.remove();
+  document.getElementById('diaFechar').onclick = cleanup;
+  document.getElementById('diaAtribuir').onclick = () => {
+    cleanup();
+    handleNovoAgendamentoAdmin(dataStr);  // passa a data pré-selecionada
+  };
+}
+
+// Card compacto usado dentro do modal do dia — clicável pra abrir o modal de detalhes
+function cardAdminAgDiaCompacto(ag) {
+  const instNome = ag.instituicoes?.nome || 'Instituição';
+  const instCidade = ag.instituicoes?.cidade || '';
+  const profNome = ag.usuarios?.nome || 'Profissional';
+  const horaBonita = ag.horario_inicio ? String(ag.horario_inicio).substring(0, 5) : '—';
+  const objs = (ag.objetivos || []).map(o => o.nome).join(' · ') || 'Sem objetivo';
+  const obs = ag.resumo
+    ? `<div style="font-size:11.5px;color:var(--neutral-600);margin-top:4px;font-style:italic;">"${ag.resumo.replace(/"/g,'&quot;').substring(0, 90)}${ag.resumo.length > 90 ? '...' : ''}"</div>`
+    : '';
+  let badge = '';
+  if (ag.status === 'sugerida') {
+    badge = `<span style="font-size:9.5px;font-weight:700;padding:2px 6px;border-radius:4px;background:#FEF4E1;color:#92400E;">AGUARDANDO</span>`;
+  } else if (ag.atribuido_por) {
+    badge = `<span style="font-size:9.5px;font-weight:700;padding:2px 6px;border-radius:4px;background:#E4ECFD;color:var(--status-info);">ATRIBUÍDO</span>`;
+  }
+  const bordaCor = ag.status === 'sugerida' ? 'var(--status-warning)' : 'var(--brand-navy)';
+
+  return `
+    <div onclick="handleAdminAgDetalhes('${ag.id}')" style="background:var(--neutral-50);border:1px solid var(--neutral-200);border-left:3px solid ${bordaCor};border-radius:8px;padding:10px 12px;cursor:pointer;transition:background 140ms;" onmouseover="this.style.background='var(--neutral-100)'" onmouseout="this.style.background='var(--neutral-50)'">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px;">
+        <div style="font-family:var(--font-mono);font-weight:700;color:var(--brand-navy);font-size:16px;">${horaBonita}</div>
+        <div style="flex:1;min-width:0;">
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+            <span style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:13.5px;line-height:1.25;">${instNome.replace(/"/g,'&quot;')}</span>
+            ${badge}
+          </div>
+          ${instCidade ? `<div style="font-size:11px;color:var(--neutral-500);margin-top:1px;">${instCidade}</div>` : ''}
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:4px;font-size:11.5px;color:var(--neutral-700);margin-top:4px;">
+        <span class="material-symbols-rounded" style="font-size:13px;color:var(--status-info);">person</span>
+        <span style="font-weight:600;">${profNome.replace(/"/g,'&quot;')}</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:4px;font-size:11.5px;color:var(--neutral-600);margin-top:2px;">
+        <span class="material-symbols-rounded" style="font-size:13px;color:var(--brand-lime);">flag</span>
+        <span>${objs.replace(/"/g,'&quot;')}</span>
+      </div>
+      ${obs}
+    </div>
+  `;
+}
+
+function showModalAdminAgDetalhes(ag) {
+  const backdrop = document.createElement('div');
+  backdrop.className = 'modal-backdrop';
+  const instNome = ag.instituicoes?.nome || 'Instituição';
+  const instCidade = ag.instituicoes?.cidade || '';
+  const profNome = ag.usuarios?.nome || 'Profissional';
+  const horaBonita = ag.horario_inicio ? String(ag.horario_inicio).substring(0, 5) : '—';
+  const dataBonita = (() => {
+    if (!ag.data_visita) return '—';
+    const [y, m, d] = String(ag.data_visita).split('-').map(Number);
+    const dt = new Date(y, m - 1, d);
+    const diasSemana = ['domingo','segunda','terça','quarta','quinta','sexta','sábado'];
+    const meses = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+    return `${diasSemana[dt.getDay()]}, ${dt.getDate()} de ${meses[dt.getMonth()]}`;
+  })();
+  const objs = (ag.objetivos || []).map(o => o.nome).join(' · ') || '—';
+  const statusLabel = ag.status === 'sugerida' ? 'Aguardando aceite' : 'Confirmado';
+  const statusCor = ag.status === 'sugerida' ? '#F59E0B' : '#22A06B';
+
+  backdrop.innerHTML = `
+    <div class="modal-card" style="max-width:440px;">
+      <div class="modal-card__header">
+        <div class="modal-card__icon" style="background:#E4ECFD;color:var(--status-info);">
+          <span class="material-symbols-rounded">event</span>
+        </div>
+        <div class="modal-card__title">Detalhes do agendamento</div>
+        <div class="modal-card__subtitle">${(instNome).replace(/"/g,'&quot;')}</div>
+      </div>
+      <div class="modal-card__body" style="padding:16px;font-size:13.5px;color:var(--brand-navy);">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+          <span style="font-size:11px;font-weight:700;padding:3px 8px;border-radius:999px;background:${statusCor}22;color:${statusCor};">${statusLabel.toUpperCase()}</span>
+        </div>
+        <div style="display:grid;grid-template-columns:auto 1fr;gap:8px 12px;align-items:start;">
+          <span style="color:var(--neutral-500);font-size:12px;">Profissional:</span>
+          <span style="font-weight:600;">${profNome.replace(/"/g,'&quot;')}</span>
+
+          <span style="color:var(--neutral-500);font-size:12px;">Data:</span>
+          <span>${dataBonita}${ag.horario_inicio ? ' às ' + horaBonita : ''}</span>
+
+          <span style="color:var(--neutral-500);font-size:12px;">Cidade:</span>
+          <span>${instCidade || '—'}</span>
+
+          <span style="color:var(--neutral-500);font-size:12px;">Objetivo:</span>
+          <span>${objs.replace(/"/g,'&quot;')}</span>
+
+          ${ag.resumo ? `
+          <span style="color:var(--neutral-500);font-size:12px;">Observação:</span>
+          <span style="font-style:italic;color:var(--neutral-700);">"${ag.resumo.replace(/"/g,'&quot;')}"</span>
+          ` : ''}
+        </div>
+      </div>
+      <div class="modal-card__footer" style="flex-direction:column;gap:8px;">
+        <button class="modal-btn modal-btn--primary" id="detEditar" style="display:flex;align-items:center;justify-content:center;gap:6px;">
+          <span class="material-symbols-rounded" style="font-size:16px;">edit</span> Editar agendamento
+        </button>
+        <button class="modal-btn modal-btn--secondary" id="detReatribuir" style="display:flex;align-items:center;justify-content:center;gap:6px;">
+          <span class="material-symbols-rounded" style="font-size:16px;">swap_horiz</span> Reatribuir pra outro profissional
+        </button>
+        <button class="modal-btn modal-btn--secondary" id="detCancelar" style="display:flex;align-items:center;justify-content:center;gap:6px;color:var(--status-danger);border-color:var(--status-danger);">
+          <span class="material-symbols-rounded" style="font-size:16px;">delete</span> Cancelar agendamento
+        </button>
+        <button class="modal-btn modal-btn--secondary" id="detFechar">Fechar</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(backdrop);
+  const cleanup = () => backdrop.remove();
+  document.getElementById('detFechar').onclick = cleanup;
+  document.getElementById('detEditar').onclick = () => { cleanup(); handleEditarAgendamentoAdmin(ag.id); };
+  document.getElementById('detReatribuir').onclick = () => { cleanup(); handleReatribuirAgendamento(ag.id); };
+  document.getElementById('detCancelar').onclick = () => { cleanup(); handleCancelarAgendamentoAdmin(ag.id); };
+}
+
+// Admin edita agendamento (reusa o modal do profissional em modo edit)
+window.handleEditarAgendamentoAdmin = async function(id) {
+  const [ags, insts, objs] = await Promise.all([
+    listarTodosAgendamentos(),
+    listarInstituicoes(),
+    listarObjetivos(),
+  ]);
+  const ag = (ags || []).find(a => String(a.id) === String(id));
+  if (!ag) {
+    alert('Agendamento não encontrado.');
+    await carregarAdminAgenda();
+    return;
+  }
+  const instsAtivas = (insts || []).filter(i => i.ativo !== false);
+  const objsAtivos = (objs || []).filter(o => o.ativo !== false && !o.pendente_aprovacao);
+  const hojeStr = (() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  })();
+
+  const dados = await showModalAgendamento({
+    instituicoes: instsAtivas,
+    objetivos: objsAtivos,
+    hojeStr,
+    agendamento: ag,
+  });
+  if (!dados) return;
+  try {
+    await atualizarAgendamento(id, dados);
+    setFlash('success', 'Agendamento atualizado.');
+    await carregarAdminAgenda();
+  } catch (err) {
+    alert('Erro ao atualizar: ' + err.message);
+  }
+};
+
+// Admin reatribui agendamento pra outro profissional
+window.handleReatribuirAgendamento = async function(id) {
+  const profs = await listarProfissionaisAtivos();
+  if ((profs || []).length === 0) {
+    alert('Não há profissionais ativos.');
+    return;
+  }
+  const novoId = await showModalEscolherProfissional({ profissionais: profs });
+  if (!novoId) return;
+  try {
+    await reatribuirAgendamento(id, novoId);
+    setFlash('success', 'Reatribuído! Novo profissional foi notificado.');
+    await carregarAdminAgenda();
+  } catch (err) {
+    alert('Erro ao reatribuir: ' + err.message);
+  }
+};
+
+function showModalEscolherProfissional({ profissionais }) {
+  return new Promise((resolve) => {
+    const backdrop = document.createElement('div');
+    backdrop.className = 'modal-backdrop';
+    const profOpts = profissionais.map(p => {
+      const sufixo = p.perfil === 'admin'
+        ? ' (Admin)'
+        : (p.categorias_profissionais?.nome ? ` (${p.categorias_profissionais.nome})` : '');
+      return `<option value="${p.id}">${(p.nome || '').replace(/"/g,'&quot;')}${sufixo}</option>`;
+    }).join('');
+    backdrop.innerHTML = `
+      <div class="modal-card" style="max-width:400px;">
+        <div class="modal-card__header">
+          <div class="modal-card__icon" style="background:#E4ECFD;color:var(--status-info);">
+            <span class="material-symbols-rounded">swap_horiz</span>
+          </div>
+          <div class="modal-card__title">Reatribuir visita</div>
+          <div class="modal-card__subtitle">Escolha o novo profissional. Ele será notificado.</div>
+        </div>
+        <div class="modal-card__body" style="padding:16px;">
+          <div class="report-field">
+            <label for="reProf">Novo profissional <span style="color:var(--status-danger);">*</span></label>
+            <select id="reProf" style="width:100%;padding:10px;border:1.5px solid var(--neutral-300);border-radius:8px;font-family:inherit;font-size:14px;">
+              <option value="">Selecione...</option>
+              ${profOpts}
+            </select>
+          </div>
+        </div>
+        <div class="modal-card__footer">
+          <button class="modal-btn modal-btn--primary" id="reOk">Reatribuir</button>
+          <button class="modal-btn modal-btn--secondary" id="reCancel">Cancelar</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(backdrop);
+    const cleanup = () => backdrop.remove();
+    document.getElementById('reCancel').onclick = () => { cleanup(); resolve(null); };
+    document.getElementById('reOk').onclick = () => {
+      const v = document.getElementById('reProf').value;
+      if (!v) { alert('Selecione o profissional.'); return; }
+      cleanup();
+      resolve(v);
+    };
+  });
+}
+
+// Admin cancela agendamento
+window.handleCancelarAgendamentoAdmin = async function(id) {
+  const ok = await showModalConfirmacao({
+    icone: 'event_busy',
+    iconeCor: 'danger',
+    titulo: 'Cancelar agendamento?',
+    subtitulo: 'A visita será removida da agenda do profissional. Esta ação não pode ser desfeita.',
+    btnConfirmar: 'Sim, cancelar',
+    btnCancelar: 'Voltar',
+  });
+  if (!ok) return;
+  try {
+    await cancelarAgendamento(id);
+    setFlash('info', 'Agendamento cancelado.');
+    await carregarAdminAgenda();
+  } catch (err) {
+    alert('Erro ao cancelar: ' + err.message);
+  }
+};
+
+// Modal igual ao do profissional + select extra de "Profissional"
+function showModalAgendamentoAdmin({ profissionais, instituicoes, objetivos, hojeStr, dataInicial = null }) {
+  return new Promise((resolve) => {
+    const backdrop = document.createElement('div');
+    backdrop.className = 'modal-backdrop';
+    const valorData = dataInicial || hojeStr;
+    const profOpts = profissionais.map(p => {
+      // Se é admin, mostra "(Admin)" em vez da categoria.
+      // Pra demais perfis, mostra a categoria profissional se disponível.
+      const sufixo = p.perfil === 'admin'
+        ? ' (Admin)'
+        : (p.categorias_profissionais?.nome ? ` (${p.categorias_profissionais.nome})` : '');
+      return `<option value="${p.id}">${(p.nome || '').replace(/"/g,'&quot;')}${sufixo}</option>`;
+    }).join('');
+    const instOpts = instituicoes.map(i => `<option value="${i.id}">${(i.nome || '').replace(/"/g,'&quot;')}</option>`).join('');
+    const objOpts = objetivos.map(o => `<option value="${o.id}">${(o.nome || '').replace(/"/g,'&quot;')}</option>`).join('');
+
+    backdrop.innerHTML = `
+      <div class="modal-card" style="max-width:440px;">
+        <div class="modal-card__header">
+          <div class="modal-card__icon" style="background:var(--status-info-bg,#E4ECFD);color:var(--status-info);">
+            <span class="material-symbols-rounded">event_available</span>
+          </div>
+          <div class="modal-card__title">Atribuir nova visita</div>
+          <div class="modal-card__subtitle">O profissional será notificado e verá a visita na agenda dele.</div>
+        </div>
+        <div class="modal-card__body" style="padding:16px;">
+          <div class="report-field" style="margin-bottom:12px;">
+            <label for="agAdmProf">Profissional <span style="color:var(--status-danger);">*</span></label>
+            <select id="agAdmProf" style="width:100%;padding:10px;border:1.5px solid var(--neutral-300);border-radius:8px;font-family:inherit;font-size:14px;">
+              <option value="">Selecione...</option>
+              ${profOpts}
+            </select>
+          </div>
+          <div class="report-field" style="margin-bottom:12px;">
+            <label for="agAdmInst">Instituição <span style="color:var(--status-danger);">*</span></label>
+            <select id="agAdmInst" style="width:100%;padding:10px;border:1.5px solid var(--neutral-300);border-radius:8px;font-family:inherit;font-size:14px;">
+              <option value="">Selecione...</option>
+              ${instOpts}
+            </select>
+          </div>
+          <div class="report-field" style="margin-bottom:12px;">
+            <label for="agAdmData">Data <span style="color:var(--status-danger);">*</span></label>
+            <input type="date" id="agAdmData" min="${hojeStr}" value="${valorData}" style="width:100%;padding:10px;border:1.5px solid var(--neutral-300);border-radius:8px;font-family:inherit;font-size:14px;" />
+          </div>
+          <div class="report-field" style="margin-bottom:12px;">
+            <label for="agAdmHora">Hora (opcional)</label>
+            <input type="time" id="agAdmHora" style="width:100%;padding:10px;border:1.5px solid var(--neutral-300);border-radius:8px;font-family:inherit;font-size:14px;" />
+          </div>
+          <div class="report-field" style="margin-bottom:12px;">
+            <label for="agAdmObj">Objetivo (opcional)</label>
+            <select id="agAdmObj" style="width:100%;padding:10px;border:1.5px solid var(--neutral-300);border-radius:8px;font-family:inherit;font-size:14px;">
+              <option value="">—</option>
+              ${objOpts}
+            </select>
+          </div>
+          <div class="report-field">
+            <label for="agAdmObs">Observações (opcional)</label>
+            <textarea id="agAdmObs" placeholder="Instruções pro profissional, contexto da visita..." style="width:100%;padding:10px;border:1.5px solid var(--neutral-300);border-radius:8px;font-family:inherit;font-size:14px;min-height:60px;resize:vertical;"></textarea>
+          </div>
+        </div>
+        <div class="modal-card__footer">
+          <button class="modal-btn modal-btn--primary" id="agAdmOk">Atribuir visita</button>
+          <button class="modal-btn modal-btn--secondary" id="agAdmCancel">Cancelar</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(backdrop);
+    const cleanup = () => backdrop.remove();
+    document.getElementById('agAdmCancel').onclick = () => { cleanup(); resolve(null); };
+    document.getElementById('agAdmOk').onclick = () => {
+      const nutricionista_id = document.getElementById('agAdmProf').value;
+      const instituicao_id = document.getElementById('agAdmInst').value;
+      const data = document.getElementById('agAdmData').value;
+      const hora = document.getElementById('agAdmHora').value;
+      const objetivo_id = document.getElementById('agAdmObj').value || null;
+      const observacao = document.getElementById('agAdmObs').value.trim() || null;
+      if (!nutricionista_id) { alert('Selecione o profissional.'); return; }
+      if (!instituicao_id) { alert('Selecione a instituição.'); return; }
+      if (!data) { alert('Escolha a data.'); return; }
+      cleanup();
+      resolve({ nutricionista_id, instituicao_id, data, hora, objetivo_id, observacao });
+    };
+  });
+}
 
 function renderAdminEquipe() {
   const user = requireAdmin();
