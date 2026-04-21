@@ -1299,8 +1299,7 @@ a {
 .mbar {
   background: var(--brand-navy);
   color: var(--neutral-0);
-  /* Safe area pro notch + padding balanceado top/bottom pra conteúdo parecer centralizado */
-  padding: calc(env(safe-area-inset-top, 0px) + 14px) 20px 14px;
+  padding: calc(env(safe-area-inset-top, 12px) + 12px) 20px 14px;
   position: sticky;
   top: 0;
   z-index: 30;
@@ -7282,7 +7281,7 @@ function mobileTopBar(opts = {}) {
         ` : ''}
         ${showLogo ? `
           <div style="flex:1;">
-            <div style="height:24px;display:inline-flex;align-items:center;gap:8px;color:#fff;">
+            <div style="display:inline-flex;align-items:center;gap:8px;color:#fff;">
               <img src="icons/logo-color.png" alt="Nutricionais" style="height:28px;width:auto;display:block;" />
               <span style="font-family:var(--font-display);font-weight:700;font-size:15px;letter-spacing:0.5px;">NUTRICIONAIS</span>
             </div>
