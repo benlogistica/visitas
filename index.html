@@ -5098,10 +5098,24 @@ window.toggleNotifDropdown = async function(ev) {
   `;
   document.body.appendChild(dropdown);
 
-  // Posiciona abaixo do sininho
+  // Posiciona abaixo do sininho, garantindo que fique dentro do viewport
   const rect = trigger.getBoundingClientRect();
   dropdown.style.top = `${rect.bottom + 4}px`;
-  dropdown.style.right = `${Math.max(8, window.innerWidth - rect.right)}px`;
+
+  // A largura real que o dropdown vai ocupar (respeita o max-width do CSS)
+  const larguraIdeal = 340;
+  const margemLateral = 8;
+  const larguraReal = Math.min(larguraIdeal, window.innerWidth - margemLateral * 2);
+
+  // Tenta alinhar a borda direita com a do sininho, mas garante que a borda esquerda
+  // do dropdown nunca fique fora do viewport
+  const rightIdeal = Math.max(margemLateral, window.innerWidth - rect.right);
+  const leftSeUsarRightIdeal = window.innerWidth - rightIdeal - larguraReal;
+  // Se ao usar rightIdeal o dropdown sairia pela esquerda, clampa: usa margem fixa
+  const rightFinal = leftSeUsarRightIdeal < margemLateral
+    ? margemLateral
+    : rightIdeal;
+  dropdown.style.right = `${rightFinal}px`;
 
   // Carrega conteúdo
   const list = await listarNotificacoes(15);
