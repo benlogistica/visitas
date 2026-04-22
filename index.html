@@ -5376,6 +5376,43 @@ a {
   margin-top: 2px;
 }
 
+/* Tabelas desktop (Instituições, Equipe, Profissionais, etc.) */
+.ds-table__row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--neutral-100);
+  transition: background 120ms;
+}
+.ds-table__row:last-child { border-bottom: 0; }
+.ds-table__row:not(.ds-table__row--head):hover { background: var(--neutral-50, #FAFBFC); }
+.ds-table__row--head {
+  background: var(--neutral-50, #FAFBFC);
+  border-bottom: 1px solid var(--neutral-200);
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+.ds-table__row--head .ds-table__cell {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--neutral-500);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.ds-table__cell {
+  min-width: 0;
+  font-size: 13px;
+  color: var(--neutral-700);
+}
+.ds-table__cell--name {
+  flex: 1.5;
+  min-width: 260px;
+}
+.ds-table__btn:hover {
+  filter: brightness(0.95);
+}
+
 </style>
 </head>
 <body>
@@ -5408,7 +5445,7 @@ a {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.13c.2-logo-label',
+  APP_VERSION: '1.0.0-alpha.sprint9.16.2-logo-color-desktop',
   APP_NAME: 'Nutricionais Visitas',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -5565,7 +5602,7 @@ async function sincronizarSessaoComBanco() {
   if (!sess || !db) return;
   try {
     const { data, error } = await db.from('usuarios')
-      .select('id, nome, cpf, email, perfil, permissoes, foto_url, status')
+      .select('id, nome, cpf, email, perfil, super_admin, permissoes, foto_url, status')
       .eq('id', sess.id)
       .single();
     if (error || !data) return;
@@ -5575,12 +5612,20 @@ async function sincronizarSessaoComBanco() {
       logout();
       return;
     }
+    // Se o perfil mudou (ex: foi rebaixado de admin pra nutri), força logout
+    // pra sessão não ficar com permissões obsoletas
+    if (sess.perfil !== data.perfil) {
+      console.warn('[sync sessão] perfil mudou no banco, forçando relogin');
+      logout();
+      return;
+    }
     // Atualiza campos que podem ter mudado, mantendo loggedAt original
     const atualizado = {
       ...sess,
       nome: data.nome,
       email: data.email,
       perfil: data.perfil,
+      super_admin: data.super_admin === true,
       permissoes: data.permissoes,
       foto_url: data.foto_url || null,
     };
@@ -5603,6 +5648,17 @@ function getCurrentUser() {
     return { ...user, perfil: 'nutricionista', _simulando: true };
   }
   return user;
+}
+
+// Sprint 9.14: helpers de permissão admin/super_admin
+// Super admin: perfil='admin' + super_admin=true (um só no sistema)
+// Admin: perfil='admin' + super_admin=false (quantos quiser, designados pelos admins)
+// Membro: perfil='nutricionista' (equipe de campo)
+function isSuperAdmin(user = getCurrentUser()) {
+  return !!(user && user.perfil === 'admin' && user.super_admin === true);
+}
+function isAdmin(user = getCurrentUser()) {
+  return !!(user && user.perfil === 'admin');
 }
 
 // Retorna o user real (sem considerar modo simulação) — útil pra toggle do modo
@@ -7383,7 +7439,7 @@ async function renderDashNutrisInativos(visitasPeriodo) {
     const { data: nutris, error } = await db
       .from('usuarios')
       .select('id, nome, foto_url, ultimo_login')
-      .eq('perfil', 'profissional')
+      .eq('perfil', 'nutricionista')
       .eq('status', 'ativo')
       .order('nome');
     if (error) throw new Error(error.message);
@@ -8289,9 +8345,7 @@ function desktopSidebar(activeId) {
   return `
     <aside class="ds-sidebar">
       <div class="ds-sidebar__logo">
-        <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" style="height:28px;width:auto;flex-shrink:0;" aria-hidden="true">
-          <path d="M100 175 C100 175, 20 125, 20 70 C20 45, 40 25, 65 25 C80 25, 92 32, 100 45 C108 32, 120 25, 135 25 C160 25, 180 45, 180 70 C180 125, 100 175, 100 175 Z" fill="#8BC63F"/>
-        </svg>
+        <img src="icons/logo-color.png" alt="Nutricionais" style="height:28px;width:28px;object-fit:contain;display:block;flex-shrink:0;" />
         <span class="ds-sidebar__logo-text">NUTRICIONAIS</span>
       </div>
       <div class="ds-sidebar__divider"></div>
@@ -8594,7 +8648,7 @@ async function carregarAdminDashboardDesktop() {
     // Query de nutris ativos (pra KPI "Nutricionistas ativos")
     const queryNutris = db.from('usuarios')
       .select('id', { count: 'exact', head: true })
-      .eq('perfil', 'profissional')
+      .eq('perfil', 'nutricionista')
       .eq('status', 'ativo');
 
     // Query de instituições ativas
@@ -9131,6 +9185,30 @@ function haversineMetros(lat1, lng1, lat2, lng2) {
   return 2 * R * Math.asin(Math.sqrt(a));
 }
 
+// Sprint 9.13: helper central pra download CSV com compatibilidade pt-BR (Excel)
+// - Usa ";" como separador (Excel pt-BR usa "," como decimal, então vírgula bagunça)
+// - BOM UTF-8 no início pro Excel detectar corretamente o encoding (acentos funcionam)
+// - NOTA: evitamos a linha "sep=;" porque ela faz o Excel ignorar o BOM e abrir como ANSI
+//   (acentos viram "SÃ£o" ao invés de "São"). Excel pt-BR já usa ";" como padrão, então
+//   o hint nem é necessário.
+// - Line endings \r\n pra compatibilidade Windows
+function baixarCsv(filename, header, rows) {
+  const SEP = ';';
+  const escape = (v) => `"${String(v == null ? '' : v).replace(/"/g, '""')}"`;
+  const lines = [
+    header.map(escape).join(SEP),
+    ...rows.map(r => r.map(escape).join(SEP)),
+  ];
+  const csv = lines.join('\r\n');
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 // Sprint 9.13 Parte 3: Fila de Revisão desktop
 // Layout: filtros em barra + contador de resultados + cards de visita (full-width)
 function renderAdminRevisaoDesktop() {
@@ -9143,6 +9221,7 @@ function renderAdminRevisaoDesktop() {
       nutri: 'todos',           // 'todos' ou id do nutri
       flags: new Set(['noCheckin', 'gps', 'time', 'manual']), // chips ligados
       filtroBase: 'com_flags',  // 'com_flags' | 'em_revisao' | 'resolvidas' | 'todas'
+      ordenacao: 'severidade',  // 'severidade' | 'data_desc' | 'data_asc'
     };
   }
 
@@ -9203,14 +9282,14 @@ function renderAdminRevisaoDesktop() {
             ${flagChips.map(c => {
               const on = s.flags.has(c.k);
               return `
-                <button onclick="toggleFlagRevisaoDesktop('${c.k}')" id="dsdRevChip_${c.k}"
-                        data-on="${on ? '1' : '0'}" data-cor="${c.cor}" data-bg="${c.bg.replace(/"/g,'&quot;')}"
-                        style="height:36px;padding:0 12px;border-radius:9999px;border:1px solid ${on ? c.cor + '55' : 'var(--neutral-200)'};background:${on ? c.bg : '#fff'};color:${on ? c.cor : 'var(--neutral-500)'};display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;font-family:inherit;cursor:pointer;transition:all 120ms;">
-                  <span style="width:8px;height:8px;border-radius:50%;background:${c.cor};"></span>
-                  ${c.label}
-                  <span id="${c.badgeId}" style="font-family:'JetBrains Mono',monospace;font-size:10.5px;background:${on ? '#fff' : 'var(--neutral-100)'};padding:1px 6px;border-radius:9999px;margin-left:2px;min-width:18px;text-align:center;">—</span>
-                  ${on ? '<span class="material-symbols-rounded" style="font-size:14px;">close</span>' : ''}
-                </button>
+                <div id="dsdRevChip_${c.k}" style="display:inline-flex;align-items:center;height:36px;border-radius:9999px;border:1px solid ${on ? c.cor + '55' : 'var(--neutral-200)'};background:${on ? c.bg : '#fff'};color:${on ? c.cor : 'var(--neutral-500)'};font-size:12px;font-weight:600;overflow:hidden;transition:all 120ms;">
+                  <button onclick="isolarFlagRevisaoDesktop('${c.k}')" title="Mostrar só visitas com essa flag" style="height:100%;padding:0 4px 0 12px;border:0;background:transparent;color:inherit;display:inline-flex;align-items:center;gap:6px;font-size:inherit;font-weight:inherit;font-family:inherit;cursor:pointer;">
+                    <span style="width:8px;height:8px;border-radius:50%;background:${c.cor};"></span>
+                    ${c.label}
+                    <span id="${c.badgeId}" style="font-family:'JetBrains Mono',monospace;font-size:10.5px;background:${on ? '#fff' : 'var(--neutral-100)'};padding:1px 6px;border-radius:9999px;margin-left:2px;min-width:18px;text-align:center;">—</span>
+                  </button>
+                  ${on ? `<button onclick="event.stopPropagation();desligarFlagRevisaoDesktop('${c.k}')" title="Ocultar essa flag" style="height:100%;padding:0 10px 0 4px;border:0;background:transparent;color:${c.cor};cursor:pointer;display:inline-flex;align-items:center;"><span class="material-symbols-rounded" style="font-size:14px;">close</span></button>` : ''}
+                </div>
               `;
             }).join('')}
           </div>
@@ -9265,7 +9344,7 @@ async function carregarAdminRevisaoDesktop() {
       listarVisitasAdmin(state.filtroBase),
       db.from('usuarios')
         .select('id, nome')
-        .eq('perfil', 'profissional')
+        .eq('perfil', 'nutricionista')
         .eq('status', 'ativo')
         .order('nome')
         .then(r => r.data || []),
@@ -9331,13 +9410,42 @@ async function carregarAdminRevisaoDesktop() {
       });
     }
 
-    // Ordena por peso (severidade) desc
-    filtradas.sort((a, b) => b._peso - a._peso);
+    // Sprint 9.15.2: ordenação dinâmica (severidade padrão, ou data asc/desc)
+    const ord = state.ordenacao || 'severidade';
+    if (ord === 'data_desc') {
+      filtradas.sort((a, b) => {
+        const da = a.checkin_timestamp ? new Date(a.checkin_timestamp).getTime() : 0;
+        const db_ = b.checkin_timestamp ? new Date(b.checkin_timestamp).getTime() : 0;
+        return db_ - da;
+      });
+    } else if (ord === 'data_asc') {
+      filtradas.sort((a, b) => {
+        const da = a.checkin_timestamp ? new Date(a.checkin_timestamp).getTime() : 0;
+        const db_ = b.checkin_timestamp ? new Date(b.checkin_timestamp).getTime() : 0;
+        return da - db_;
+      });
+    } else {
+      // Padrão: severidade (mais críticas primeiro)
+      filtradas.sort((a, b) => b._peso - a._peso);
+    }
 
-    // Atualiza contador
+    // Atualiza contador + dropdown de ordenação
     const cntEl = document.getElementById('dsdRevCount');
     if (cntEl) {
-      cntEl.innerHTML = `Exibindo <strong style="color:var(--brand-navy);">${filtradas.length}${filtradas.length !== visitas.length ? ' de ' + visitas.length : ''}</strong> visita${filtradas.length === 1 ? '' : 's'} · ordenadas por <strong style="color:var(--brand-navy);">severidade</strong> <span style="color:var(--neutral-400);">↓</span>`;
+      const opts = [
+        { v: 'severidade', label: 'severidade', icon: '↓' },
+        { v: 'data_desc',  label: 'data (mais recentes)', icon: '↓' },
+        { v: 'data_asc',   label: 'data (mais antigas)', icon: '↑' },
+      ];
+      const selOpts = opts.map(o => `<option value="${o.v}"${o.v === ord ? ' selected' : ''}>${o.label}</option>`).join('');
+      cntEl.innerHTML = `
+        Exibindo <strong style="color:var(--brand-navy);">${filtradas.length}${filtradas.length !== visitas.length ? ' de ' + visitas.length : ''}</strong> visita${filtradas.length === 1 ? '' : 's'}
+        <span style="color:var(--neutral-400);margin:0 4px;">·</span>
+        ordenadas por
+        <select onchange="trocarOrdenacaoRevisaoDesktop(this.value)" style="background:transparent;border:0;color:var(--brand-navy);font-weight:700;font-family:inherit;font-size:12.5px;cursor:pointer;padding:2px 2px 2px 6px;border-bottom:1px dashed var(--neutral-300);outline:none;">
+          ${selOpts}
+        </select>
+      `;
     }
 
     // Renderiza cards
@@ -9592,9 +9700,38 @@ window.trocarNutriRevisaoDesktop = function(id) {
   carregarAdminRevisaoDesktop();
 };
 
+// Sprint 9.15.2: troca ordenação da lista de revisão
+window.trocarOrdenacaoRevisaoDesktop = function(v) {
+  window._reviewDesktopState.ordenacao = v;
+  carregarAdminRevisaoDesktop();
+};
+
 window.toggleFlagRevisaoDesktop = function(k) {
   const s = window._reviewDesktopState;
   if (s.flags.has(k)) s.flags.delete(k); else s.flags.add(k);
+  carregarAdminRevisaoDesktop();
+};
+
+// Sprint 9.15.1: click no chip ISOLA essa flag (só mostra ela).
+// Se já está isolada, restaura todas.
+window.isolarFlagRevisaoDesktop = function(k) {
+  const s = window._reviewDesktopState;
+  const todas = ['noCheckin', 'gps', 'time', 'manual'];
+  const soEla = s.flags.size === 1 && s.flags.has(k);
+  if (soEla) {
+    // Já tá isolada → restaura todas
+    s.flags = new Set(todas);
+  } else {
+    // Isola só ela
+    s.flags = new Set([k]);
+  }
+  carregarAdminRevisaoDesktop();
+};
+
+// Sprint 9.15.1: click no X desliga essa flag especificamente
+window.desligarFlagRevisaoDesktop = function(k) {
+  const s = window._reviewDesktopState;
+  s.flags.delete(k);
   carregarAdminRevisaoDesktop();
 };
 
@@ -9712,22 +9849,1502 @@ window.exportarRevisaoCsvDesktop = function() {
   const header = ['ID', 'Nutricionista', 'Instituição', 'Data', 'Check-in', 'Check-out', 'Flags', 'Nível'];
   const rows = lista.map(v => [
     v.id,
-    (v.usuarios?.nome || '—').replace(/"/g, '""'),
-    (v.instituicoes?.nome || '—').replace(/"/g, '""'),
+    v.usuarios?.nome || '—',
+    v.instituicoes?.nome || '—',
     v.data_visita || '—',
     v.checkin_timestamp || '—',
     v.checkout_timestamp || '—',
-    v._flags.map(f => f.titulo).join('; ') || '—',
+    v._flags.map(f => f.titulo).join(' | ') || '—',
     v._nivel || '—',
-  ].map(x => `"${String(x)}"`));
-  const csv = [header.map(h => `"${h}"`).join(','), ...rows.map(r => r.join(','))].join('\n');
-  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `revisao-visitas-${new Date().toISOString().substring(0, 10)}.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
+  ]);
+  baixarCsv(`revisao-visitas-${new Date().toISOString().substring(0, 10)}.csv`, header, rows);
+  setFlash('success', 'CSV baixado.');
+};
+
+// Sprint 9.13 Parte 4: Instituições desktop
+// Layout: abas (Ativas/Pendentes/Desativadas) + busca + botão "+ Nova" + tabela
+function renderAdminInstituicoesDesktop() {
+  const user = requireAdmin();
+  if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
+
+  // Estado inicial: vem da URL (?filtro=pendentes) ou default 'ativas'
+  const filtroPorRota = window._routeParams?.filtro || null;
+  if (!window._instDesktopState) window._instDesktopState = { filtro: 'ativas', busca: '' };
+  if (filtroPorRota) window._instDesktopState.filtro = filtroPorRota;
+
+  setTimeout(() => {
+    atualizarBadgesSidebarDesktop();
+    carregarAdminInstituicoesDesktop();
+  }, 0);
+
+  const s = window._instDesktopState;
+  const tabs = [
+    { id: 'ativas',      label: 'Ativas',      badgeId: 'dsdInstCntAtivas' },
+    { id: 'pendentes',   label: 'Pendentes',   badgeId: 'dsdInstCntPend' },
+    { id: 'desativadas', label: 'Desativadas', badgeId: 'dsdInstCntDesat' },
+  ];
+  const titleExtra = `
+    <div style="display:inline-flex;gap:4px;background:var(--neutral-100);border-radius:9999px;padding:3px;">
+      ${tabs.map(t => `
+        <button onclick="trocarAbaInstDesktop('${t.id}')" id="dsdInstTab_${t.id}" style="padding:5px 14px;border:0;background:${s.filtro === t.id ? 'var(--brand-navy)' : 'transparent'};color:${s.filtro === t.id ? '#fff' : 'var(--neutral-600)'};border-radius:9999px;font-size:11.5px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px;">
+          ${t.label}
+          <span id="${t.badgeId}" style="font-family:'JetBrains Mono',monospace;font-size:10px;background:${s.filtro === t.id ? 'rgba(255,255,255,0.18)' : 'var(--neutral-200)'};padding:1px 6px;border-radius:9999px;min-width:18px;text-align:center;">—</span>
+        </button>
+      `).join('')}
+    </div>
+  `;
+
+  const content = `
+    <div style="display:flex;flex-direction:column;gap:18px;">
+
+      <!-- Barra de ações -->
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:260px;position:relative;">
+          <span class="material-symbols-rounded" style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--neutral-500);font-size:18px;pointer-events:none;">search</span>
+          <input type="text" id="dsdInstBusca" placeholder="Buscar por nome, cidade, CNPJ..." value="${(s.busca || '').replace(/"/g,'&quot;')}" oninput="buscarInstDesktop(this.value)" style="width:100%;height:42px;padding:0 14px 0 42px;border:1px solid var(--neutral-200);border-radius:10px;background:#fff;font-family:inherit;font-size:13.5px;color:var(--brand-navy);" />
+        </div>
+        <button onclick="exportarInstCsvDesktop()" style="height:42px;padding:0 16px;border:1px solid var(--neutral-200);background:#fff;color:var(--neutral-600);border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px;">
+          <span class="material-symbols-rounded" style="font-size:17px;">download</span>
+          Exportar CSV
+        </button>
+        <button onclick="novaInstituicaoAdmin()" style="height:42px;padding:0 18px;background:var(--brand-lime);color:#fff;border:0;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px;box-shadow:0 2px 6px rgba(139,198,63,0.25);">
+          <span class="material-symbols-rounded" style="font-size:18px;">add_location_alt</span>
+          Nova instituição
+        </button>
+      </div>
+
+      <!-- Tabela -->
+      <div style="background:#fff;border-radius:12px;border:1px solid var(--neutral-200);box-shadow:0 1px 3px rgba(10,31,92,0.04);overflow:hidden;">
+        <div id="dsdInstTable" style="min-height:260px;">
+          <div style="padding:50px;text-align:center;color:var(--neutral-500);font-size:13px;">
+            <span class="material-symbols-rounded" style="font-size:28px;color:var(--neutral-400);">hourglass_empty</span>
+            <div style="margin-top:6px;">Carregando...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Contador rodapé -->
+      <div id="dsdInstFooter" style="font-size:12px;color:var(--neutral-500);text-align:right;padding:0 4px;">—</div>
+    </div>
+  `;
+
+  return desktopShell({
+    title: 'Instituições',
+    breadcrumb: ['Admin', 'Cadastros', 'Instituições'],
+    titleExtra,
+    content,
+    activeId: 'institutions',
+  });
+}
+
+async function carregarAdminInstituicoesDesktop() {
+  const tableEl = document.getElementById('dsdInstTable');
+  const footerEl = document.getElementById('dsdInstFooter');
+  if (!tableEl) return;
+  const s = window._instDesktopState;
+
+  try {
+    const todas = await listarInstituicoes({ incluirDesativadas: true });
+    const ativas      = todas.filter(i => i.ativo && !i.pendente_aprovacao);
+    const pendentes   = todas.filter(i => i.ativo && i.pendente_aprovacao);
+    const desativadas = todas.filter(i => !i.ativo);
+
+    // Atualiza contadores das abas
+    const cnt = (id, n) => { const el = document.getElementById(id); if (el) el.textContent = n; };
+    cnt('dsdInstCntAtivas',      ativas.length);
+    cnt('dsdInstCntPend',        pendentes.length);
+    cnt('dsdInstCntDesat',       desativadas.length);
+
+    // Smart default: comportamento inteligente de qual aba mostrar
+    //  1. Se veio filtro explícito da URL → respeita
+    //  2. Se é primeira carga e há pendentes → abre em Pendentes (prioriza ação)
+    //  3. Se a aba atual é Pendentes mas não há mais pendentes → volta pra Ativas
+    //     (caso clássico: admin aprovou a última pendência — evita tela vazia)
+    if (!window._routeParams?.filtro) {
+      if (!window._instDesktopInitialized && pendentes.length > 0 && s.filtro === 'ativas') {
+        s.filtro = 'pendentes';
+        trocarAbaInstDesktop('pendentes', true);
+      } else if (s.filtro === 'pendentes' && pendentes.length === 0) {
+        // Aba Pendentes esvaziou — volta automaticamente pra Ativas
+        s.filtro = 'ativas';
+        trocarAbaInstDesktop('ativas', true);
+      }
+    }
+    window._instDesktopInitialized = true;
+
+    let insts = s.filtro === 'pendentes' ? pendentes
+             : s.filtro === 'desativadas' ? desativadas
+             : ativas;
+
+    // Busca local
+    const busca = (s.busca || '').trim().toLowerCase();
+    if (busca) {
+      insts = insts.filter(i => {
+        const texto = [i.nome, i.cidade, i.bairro, i.logradouro, i.cnpj].filter(Boolean).join(' ').toLowerCase();
+        return texto.includes(busca);
+      });
+    }
+
+    // Guarda pra export
+    window._instDesktopCurrent = insts;
+
+    // Empty state
+    if (insts.length === 0) {
+      const empties = {
+        ativas:      { icon: 'local_hospital',   t: busca ? 'Nenhum resultado' : 'Nenhuma instituição ativa', d: busca ? 'Tente outros termos de busca.' : 'Cadastre a primeira agora.' },
+        pendentes:   { icon: 'hourglass_top',    t: busca ? 'Nenhum resultado' : 'Nenhuma pendente',          d: busca ? 'Tente outros termos.' : 'Instituições sugeridas por nutris aparecem aqui.' },
+        desativadas: { icon: 'archive',          t: busca ? 'Nenhum resultado' : 'Nenhuma desativada',        d: busca ? 'Tente outros termos.' : 'Instituições desativadas aparecem aqui.' },
+      };
+      const e = empties[s.filtro];
+      tableEl.innerHTML = `
+        <div style="padding:60px 20px;text-align:center;">
+          <span class="material-symbols-rounded" style="font-size:40px;color:var(--neutral-400);">${e.icon}</span>
+          <div style="margin-top:10px;font-family:'Poppins',sans-serif;font-weight:600;font-size:16px;color:var(--brand-navy);">${e.t}</div>
+          <div style="font-size:13px;color:var(--neutral-500);margin-top:4px;">${e.d}</div>
+        </div>
+      `;
+      if (footerEl) footerEl.textContent = busca ? `Busca não retornou resultados nessa aba.` : '';
+      return;
+    }
+
+    // Cabeçalho da tabela
+    const header = `
+      <div class="ds-table__row ds-table__row--head">
+        <div class="ds-table__cell ds-table__cell--name">Instituição</div>
+        <div class="ds-table__cell" style="flex:1.2;">Endereço</div>
+        <div class="ds-table__cell" style="width:140px;">CNPJ</div>
+        <div class="ds-table__cell" style="width:100px;">GPS</div>
+        <div class="ds-table__cell" style="width:160px;text-align:right;">Ações</div>
+      </div>
+    `;
+
+    const rows = insts.map(inst => {
+      const temCoords = inst.latitude != null && inst.longitude != null && !(inst.latitude === 0 && inst.longitude === 0);
+      const gpsHtml = temCoords
+        ? `<span style="display:inline-flex;align-items:center;gap:3px;font-size:10.5px;color:var(--status-success);background:var(--status-success-bg,#E6F6EF);padding:2px 8px;border-radius:9999px;font-weight:700;"><span class="material-symbols-rounded" style="font-size:13px;">gps_fixed</span>OK</span>`
+        : `<span style="display:inline-flex;align-items:center;gap:3px;font-size:10.5px;color:var(--status-warning);background:var(--status-warning-bg,#FEF4E1);padding:2px 8px;border-radius:9999px;font-weight:700;"><span class="material-symbols-rounded" style="font-size:13px;">gps_off</span>Sem GPS</span>`;
+      const endereco = [inst.bairro, inst.cidade, inst.estado].filter(Boolean).join(' · ') || '—';
+      const tipoBadge = inst.tipo === 'publica'
+        ? '<span style="display:inline-flex;padding:1px 7px;border-radius:9999px;font-size:9.5px;font-weight:700;text-transform:uppercase;background:var(--brand-navy);color:#fff;letter-spacing:0.04em;">Pública</span>'
+        : inst.tipo === 'privada'
+        ? '<span style="display:inline-flex;padding:1px 7px;border-radius:9999px;font-size:9.5px;font-weight:700;text-transform:uppercase;background:var(--brand-lime);color:#fff;letter-spacing:0.04em;">Privada</span>'
+        : '';
+      const pendenteBadge = inst.pendente_aprovacao
+        ? '<span style="display:inline-flex;padding:1px 7px;border-radius:9999px;font-size:9.5px;font-weight:700;text-transform:uppercase;background:var(--status-warning-bg,#FEF4E1);color:var(--status-warning);letter-spacing:0.04em;">Pendente</span>'
+        : '';
+
+      // Ações variam por estado
+      let acoes = '';
+      if (inst.pendente_aprovacao && inst.ativo) {
+        // Pendente: aprovar rápido ou editar pra completar
+        acoes = `
+          <button onclick="event.stopPropagation();aprovarInstRapidoDesktop('${inst.id}');" title="Aprovar sem editar" style="height:30px;width:30px;border:0;background:var(--status-success-bg,#E6F6EF);color:var(--status-success);border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;" class="ds-table__btn">
+            <span class="material-symbols-rounded" style="font-size:17px;">check</span>
+          </button>
+          <button onclick="event.stopPropagation();editarInstituicaoAdmin('${inst.id}');" title="Editar / completar" style="height:30px;width:30px;border:0;background:var(--neutral-100);color:var(--brand-navy);border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;" class="ds-table__btn">
+            <span class="material-symbols-rounded" style="font-size:17px;">edit</span>
+          </button>
+          <button onclick="event.stopPropagation();rejeitarInstRapidoDesktop('${inst.id}', '${inst.nome.replace(/'/g,'\\\'').replace(/"/g,'&quot;')}');" title="Rejeitar" style="height:30px;width:30px;border:0;background:var(--status-danger-bg,#FCE8E8);color:var(--status-danger);border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;" class="ds-table__btn">
+            <span class="material-symbols-rounded" style="font-size:17px;">close</span>
+          </button>
+        `;
+      } else if (inst.ativo) {
+        // Ativa: editar + desativar
+        acoes = `
+          <button onclick="event.stopPropagation();editarInstituicaoAdmin('${inst.id}');" title="Editar" style="height:30px;width:30px;border:0;background:var(--neutral-100);color:var(--brand-navy);border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;" class="ds-table__btn">
+            <span class="material-symbols-rounded" style="font-size:17px;">edit</span>
+          </button>
+          <button onclick="event.stopPropagation();window.desativarInstituicaoAdmin('${inst.id}', '${(inst.nome || '').replace(/'/g,'\\\'').replace(/"/g,'&quot;')}');" title="Desativar" style="height:30px;width:30px;border:0;background:var(--neutral-100);color:var(--neutral-500);border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;" class="ds-table__btn">
+            <span class="material-symbols-rounded" style="font-size:17px;">block</span>
+          </button>
+        `;
+      } else {
+        // Desativada: reativar
+        acoes = `
+          <button onclick="event.stopPropagation();window.reativarInstituicaoAdmin('${inst.id}', '${(inst.nome || '').replace(/'/g,'\\\'').replace(/"/g,'&quot;')}');" title="Reativar" style="height:30px;padding:0 12px;border:0;background:var(--status-success-bg,#E6F6EF);color:var(--status-success);border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:4px;font-size:11.5px;font-weight:700;font-family:inherit;" class="ds-table__btn">
+            <span class="material-symbols-rounded" style="font-size:16px;">restart_alt</span>Reativar
+          </button>
+        `;
+      }
+
+      const rowOpacity = !inst.ativo ? 'opacity:0.65;' : '';
+      return `
+        <div class="ds-table__row" data-id="${inst.id}" onclick="editarInstituicaoAdmin('${inst.id}')" style="cursor:pointer;${rowOpacity}">
+          <div class="ds-table__cell ds-table__cell--name">
+            <div style="display:flex;align-items:center;gap:10px;min-width:0;">
+              <div style="width:36px;height:36px;border-radius:9px;background:var(--neutral-100);color:var(--brand-navy);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <span class="material-symbols-rounded" style="font-size:18px;">local_hospital</span>
+              </div>
+              <div style="min-width:0;flex:1;">
+                <div style="font-weight:600;color:var(--brand-navy);font-size:13.5px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                  <span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:280px;">${(inst.nome || '').replace(/</g,'&lt;')}</span>
+                  ${pendenteBadge}
+                  ${tipoBadge}
+                </div>
+                ${inst.razao_social && inst.razao_social !== inst.nome ? `<div style="font-size:11px;color:var(--neutral-500);margin-top:2px;">${inst.razao_social.replace(/</g,'&lt;')}</div>` : ''}
+              </div>
+            </div>
+          </div>
+          <div class="ds-table__cell" style="flex:1.2;color:var(--neutral-600);font-size:12.5px;">${endereco}</div>
+          <div class="ds-table__cell" style="width:140px;font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--neutral-600);">${inst.cnpj || '—'}</div>
+          <div class="ds-table__cell" style="width:100px;">${gpsHtml}</div>
+          <div class="ds-table__cell" style="width:160px;text-align:right;">
+            <div style="display:inline-flex;gap:4px;justify-content:flex-end;">${acoes}</div>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    tableEl.innerHTML = header + rows;
+    if (footerEl) footerEl.textContent = `${insts.length} ${insts.length === 1 ? 'instituição' : 'instituições'} exibida${insts.length === 1 ? '' : 's'}${busca ? ` (busca: "${busca}")` : ''}`;
+  } catch (err) {
+    tableEl.innerHTML = `<div style="padding:20px;background:var(--status-danger-bg,#FCE8E8);color:var(--status-danger);">Erro: ${err.message}</div>`;
+  }
+}
+
+window.trocarAbaInstDesktop = function(filtro, silent = false) {
+  window._instDesktopState.filtro = filtro;
+  ['ativas', 'pendentes', 'desativadas'].forEach(id => {
+    const btn = document.getElementById(`dsdInstTab_${id}`);
+    if (!btn) return;
+    if (id === filtro) {
+      btn.style.background = 'var(--brand-navy)';
+      btn.style.color = '#fff';
+      const badge = btn.querySelector('span');
+      if (badge) badge.style.background = 'rgba(255,255,255,0.18)';
+    } else {
+      btn.style.background = 'transparent';
+      btn.style.color = 'var(--neutral-600)';
+      const badge = btn.querySelector('span');
+      if (badge) badge.style.background = 'var(--neutral-200)';
+    }
+  });
+  if (!silent) carregarAdminInstituicoesDesktop();
+};
+
+// Busca local (debounce)
+let _instBuscaTimer = null;
+window.buscarInstDesktop = function(termo) {
+  clearTimeout(_instBuscaTimer);
+  _instBuscaTimer = setTimeout(() => {
+    window._instDesktopState.busca = termo || '';
+    carregarAdminInstituicoesDesktop();
+  }, 220);
+};
+
+// Aprovar instituição pendente "rápido" (sem editar) — aprova mantendo os dados atuais
+window.aprovarInstRapidoDesktop = async function(id) {
+  if (await bloqueioSimulacao('aprovar instituição')) return;
+  try {
+    const { data: inst, error } = await db.from('instituicoes').select('*').eq('id', id).maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!inst) throw new Error('Instituição não encontrada.');
+    const ok = await showModalConfirmacao({
+      icone: 'verified',
+      iconeCor: 'success',
+      titulo: `Aprovar "${inst.nome}"?`,
+      subtitulo: 'A instituição ficará visível pra todos os profissionais agendarem visitas.',
+      btnConfirmar: 'Aprovar',
+      btnCancelar: 'Cancelar',
+    });
+    if (!ok) return;
+    const { error: updErr } = await db.from('instituicoes').update({
+      pendente_aprovacao: false,
+      atualizado_em: new Date().toISOString(),
+    }).eq('id', id);
+    if (updErr) throw new Error(updErr.message);
+    setFlash('success', `"${inst.nome}" aprovada!`);
+    carregarAdminInstituicoesDesktop();
+    atualizarBadgesSidebarDesktop();
+  } catch (err) {
+    setFlash('error', 'Erro: ' + err.message);
+  }
+};
+
+window.rejeitarInstRapidoDesktop = async function(id, nome) {
+  if (await bloqueioSimulacao('rejeitar instituição')) return;
+  const ok = await showModalConfirmacao({
+    icone: 'cancel',
+    iconeCor: 'danger',
+    titulo: `Rejeitar "${nome}"?`,
+    subtitulo: 'A instituição será desativada (soft-delete). Você pode reativá-la depois na aba "Desativadas".',
+    btnConfirmar: 'Rejeitar',
+    btnCancelar: 'Cancelar',
+  });
+  if (!ok) return;
+  try {
+    const { error } = await db.from('instituicoes').update({
+      ativo: false,
+      atualizado_em: new Date().toISOString(),
+    }).eq('id', id);
+    if (error) throw new Error(error.message);
+    setFlash('success', 'Rejeitada.');
+    carregarAdminInstituicoesDesktop();
+    atualizarBadgesSidebarDesktop();
+  } catch (err) {
+    setFlash('error', 'Erro: ' + err.message);
+  }
+};
+
+// Export CSV das instituições exibidas atualmente
+window.exportarInstCsvDesktop = function() {
+  const lista = window._instDesktopCurrent || [];
+  if (lista.length === 0) { setFlash('info', 'Nada pra exportar.'); return; }
+  const header = ['ID','Nome','Razão Social','CNPJ','Tipo','Logradouro','Bairro','Cidade','Estado','CEP','Latitude','Longitude','Ativa','Pendente'];
+  const rows = lista.map(i => [
+    i.id, i.nome || '', i.razao_social || '', i.cnpj || '', i.tipo || '',
+    i.logradouro || '', i.bairro || '', i.cidade || '', i.estado || '', i.cep || '',
+    i.latitude || '', i.longitude || '',
+    i.ativo ? 'Sim' : 'Não', i.pendente_aprovacao ? 'Sim' : 'Não',
+  ]);
+  baixarCsv(`instituicoes-${new Date().toISOString().substring(0, 10)}.csv`, header, rows);
+  setFlash('success', 'CSV baixado.');
+};
+
+// Sprint 9.13 Parte 5: Equipe desktop
+// Layout: abas (Pendentes/Ativos/Desativados) + busca + tabela com foto/nome/perfil/categoria/ações
+function renderAdminEquipeDesktop() {
+  const user = requireAdmin();
+  if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
+
+  const filtroPorRota = window._routeParams?.filtro || null;
+  if (!window._equipeDesktopState) window._equipeDesktopState = { filtro: 'ativos', busca: '' };
+  if (filtroPorRota && ['pendentes','ativos','desativados'].includes(filtroPorRota)) {
+    window._equipeDesktopState.filtro = filtroPorRota;
+  }
+
+  setTimeout(() => {
+    atualizarBadgesSidebarDesktop();
+    carregarAdminEquipeDesktop();
+  }, 0);
+
+  const s = window._equipeDesktopState;
+  const tabs = [
+    { id: 'pendentes',   label: 'Pendentes',   badgeId: 'dsdEqCntPend' },
+    { id: 'ativos',      label: 'Ativos',      badgeId: 'dsdEqCntAtiv' },
+    { id: 'desativados', label: 'Desativados', badgeId: 'dsdEqCntDesat' },
+  ];
+  const titleExtra = `
+    <div style="display:inline-flex;gap:4px;background:var(--neutral-100);border-radius:9999px;padding:3px;">
+      ${tabs.map(t => `
+        <button onclick="trocarAbaEqDesktop('${t.id}')" id="dsdEqTab_${t.id}" style="padding:5px 14px;border:0;background:${s.filtro === t.id ? 'var(--brand-navy)' : 'transparent'};color:${s.filtro === t.id ? '#fff' : 'var(--neutral-600)'};border-radius:9999px;font-size:11.5px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px;">
+          ${t.label}
+          <span id="${t.badgeId}" style="font-family:'JetBrains Mono',monospace;font-size:10px;background:${s.filtro === t.id ? 'rgba(255,255,255,0.18)' : 'var(--neutral-200)'};padding:1px 6px;border-radius:9999px;min-width:18px;text-align:center;">—</span>
+        </button>
+      `).join('')}
+    </div>
+  `;
+
+  const content = `
+    <div style="display:flex;flex-direction:column;gap:18px;">
+
+      <!-- Barra de ações -->
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:260px;position:relative;">
+          <span class="material-symbols-rounded" style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--neutral-500);font-size:18px;pointer-events:none;">search</span>
+          <input type="text" id="dsdEqBusca" placeholder="Buscar por nome, CPF, email..." value="${(s.busca || '').replace(/"/g,'&quot;')}" oninput="buscarEqDesktop(this.value)" style="width:100%;height:42px;padding:0 14px 0 42px;border:1px solid var(--neutral-200);border-radius:10px;background:#fff;font-family:inherit;font-size:13.5px;color:var(--brand-navy);" />
+        </div>
+        <button onclick="exportarEquipeCsvDesktop()" style="height:42px;padding:0 16px;border:1px solid var(--neutral-200);background:#fff;color:var(--neutral-600);border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px;">
+          <span class="material-symbols-rounded" style="font-size:17px;">download</span>
+          Exportar CSV
+        </button>
+      </div>
+
+      <!-- Tabela -->
+      <div style="background:#fff;border-radius:12px;border:1px solid var(--neutral-200);box-shadow:0 1px 3px rgba(10,31,92,0.04);overflow:hidden;">
+        <div id="dsdEqTable" style="min-height:260px;">
+          <div style="padding:50px;text-align:center;color:var(--neutral-500);font-size:13px;">
+            <span class="material-symbols-rounded" style="font-size:28px;color:var(--neutral-400);">hourglass_empty</span>
+            <div style="margin-top:6px;">Carregando...</div>
+          </div>
+        </div>
+      </div>
+
+      <div id="dsdEqFooter" style="font-size:12px;color:var(--neutral-500);text-align:right;padding:0 4px;">—</div>
+    </div>
+  `;
+
+  return desktopShell({
+    title: 'Equipe',
+    breadcrumb: ['Admin', 'Cadastros', 'Equipe'],
+    titleExtra,
+    content,
+    activeId: 'team',
+  });
+}
+
+async function carregarAdminEquipeDesktop() {
+  const tableEl = document.getElementById('dsdEqTable');
+  const footerEl = document.getElementById('dsdEqFooter');
+  if (!tableEl) return;
+  const s = window._equipeDesktopState;
+
+  try {
+    const counts = await contarUsuariosPorStatus();
+    const cnt = (id, n) => { const el = document.getElementById(id); if (el) el.textContent = n; };
+    cnt('dsdEqCntPend', counts.pendentes);
+    cnt('dsdEqCntAtiv', counts.ativos);
+    cnt('dsdEqCntDesat', counts.desativados);
+
+    // Smart default (mesma regra da tela de Instituições):
+    //  - Primeira carga + há pendentes → abre em Pendentes
+    //  - Aba Pendentes ficou vazia → volta automaticamente pra Ativos
+    if (!window._routeParams?.filtro) {
+      if (!window._equipeDesktopInitialized && counts.pendentes > 0 && s.filtro === 'ativos') {
+        s.filtro = 'pendentes';
+        trocarAbaEqDesktop('pendentes', true);
+      } else if (s.filtro === 'pendentes' && counts.pendentes === 0) {
+        s.filtro = 'ativos';
+        trocarAbaEqDesktop('ativos', true);
+      }
+    }
+    window._equipeDesktopInitialized = true;
+
+    const statuses = s.filtro === 'pendentes' ? ['pendente']
+                  : s.filtro === 'ativos'    ? ['ativo']
+                  : ['inativo', 'bloqueado'];
+    let usuarios = await listarUsuariosPorStatus(statuses);
+
+    // Busca local
+    const busca = (s.busca || '').trim().toLowerCase();
+    if (busca) {
+      usuarios = usuarios.filter(u => {
+        const texto = [u.nome, u.cpf, u.email, u.telefone, u.categorias_profissionais?.nome].filter(Boolean).join(' ').toLowerCase();
+        return texto.includes(busca);
+      });
+    }
+
+    window._equipeDesktopCurrent = usuarios;
+
+    if (usuarios.length === 0) {
+      const empties = {
+        pendentes:   { icon: 'inbox',      t: busca ? 'Nenhum resultado' : 'Nenhum cadastro pendente', d: busca ? 'Tente outros termos.' : 'Quando alguém se cadastrar, aparece aqui.' },
+        ativos:      { icon: 'groups',     t: busca ? 'Nenhum resultado' : 'Nenhum membro ativo',      d: busca ? 'Tente outros termos.' : 'Aprovar cadastros na aba Pendentes.' },
+        desativados: { icon: 'archive',    t: busca ? 'Nenhum resultado' : 'Ninguém desativado',       d: busca ? 'Tente outros termos.' : 'Membros desativados aparecem aqui pra reativar.' },
+      };
+      const e = empties[s.filtro];
+      tableEl.innerHTML = `
+        <div style="padding:60px 20px;text-align:center;">
+          <span class="material-symbols-rounded" style="font-size:40px;color:var(--neutral-400);">${e.icon}</span>
+          <div style="margin-top:10px;font-family:'Poppins',sans-serif;font-weight:600;font-size:16px;color:var(--brand-navy);">${e.t}</div>
+          <div style="font-size:13px;color:var(--neutral-500);margin-top:4px;">${e.d}</div>
+        </div>
+      `;
+      if (footerEl) footerEl.textContent = busca ? 'Busca não retornou resultados.' : '';
+      return;
+    }
+
+    const header = `
+      <div class="ds-table__row ds-table__row--head">
+        <div class="ds-table__cell ds-table__cell--name">Membro</div>
+        <div class="ds-table__cell" style="width:150px;">Perfil</div>
+        <div class="ds-table__cell" style="flex:1;">Categoria</div>
+        <div class="ds-table__cell" style="width:110px;">Cadastro</div>
+        <div class="ds-table__cell" style="width:110px;">Último login</div>
+        <div class="ds-table__cell" style="width:200px;text-align:right;">Ações</div>
+      </div>
+    `;
+
+    const rows = usuarios.map(u => {
+      const inits = (u.nome || '?').split(' ').filter(Boolean).slice(0, 2).map(s => s[0].toUpperCase()).join('');
+      const avatar = u.foto_url
+        ? `<div style="width:36px;height:36px;border-radius:50%;background-image:url('${u.foto_url}');background-size:cover;background-position:center;flex-shrink:0;"></div>`
+        : `<div style="width:36px;height:36px;border-radius:50%;background:var(--brand-navy);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;font-family:'Poppins',sans-serif;flex-shrink:0;">${inits}</div>`;
+
+      const perfilBadge = u.super_admin
+        ? '<span title="Super administrador — acesso total e protegido" style="display:inline-flex;align-items:center;gap:3px;padding:3px 10px;border-radius:9999px;font-size:10.5px;font-weight:700;text-transform:uppercase;background:linear-gradient(135deg, var(--brand-lime), var(--brand-navy));color:#fff;letter-spacing:0.04em;"><span class="material-symbols-rounded" style="font-size:12px;">shield</span>Super admin</span>'
+        : u.perfil === 'admin'
+        ? '<span style="display:inline-flex;align-items:center;gap:3px;padding:3px 10px;border-radius:9999px;font-size:10.5px;font-weight:700;text-transform:uppercase;background:var(--brand-navy);color:#fff;letter-spacing:0.04em;"><span class="material-symbols-rounded" style="font-size:12px;">admin_panel_settings</span>Admin</span>'
+        : '<span style="display:inline-flex;padding:3px 10px;border-radius:9999px;font-size:10.5px;font-weight:700;text-transform:uppercase;background:var(--brand-lime);color:#fff;letter-spacing:0.04em;">Membro</span>';
+
+      const categoria = u.categorias_profissionais?.nome || '<span style="color:var(--neutral-400);">—</span>';
+      const dataCad = u.criado_em ? new Date(u.criado_em).toLocaleDateString('pt-BR') : '—';
+      const ultimoLogin = u.ultimo_login ? new Date(u.ultimo_login).toLocaleDateString('pt-BR') : '<span style="color:var(--neutral-400);">nunca</span>';
+
+      // Ações variam por status e por nível de acesso (Sprint 9.14: super admin / admin / membro)
+      const ehSuperAdmin = u.super_admin === true;
+      const ehAdmin = u.perfil === 'admin';
+      const me = getCurrentUser();
+      const souEu = me && me.id === u.id;
+      let acoes = '';
+
+      if (ehSuperAdmin) {
+        // Super admin é intocável (protegido por RLS também)
+        acoes = `<span title="Super administrador não pode ser modificado" style="font-size:10.5px;color:var(--neutral-500);font-style:italic;padding:6px 10px;display:inline-flex;align-items:center;gap:4px;"><span class="material-symbols-rounded" style="font-size:14px;color:var(--brand-lime);">shield</span>Protegido</span>`;
+      } else if (s.filtro === 'pendentes') {
+        acoes = `
+          <button onclick="event.stopPropagation();aprovarProfissional('${u.id}');" title="Aprovar" style="height:30px;padding:0 12px;border:0;background:var(--status-success-bg,#E6F6EF);color:var(--status-success);border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:700;font-family:inherit;" class="ds-table__btn">
+            <span class="material-symbols-rounded" style="font-size:16px;">check_circle</span>Aprovar
+          </button>
+          <button onclick="event.stopPropagation();rejeitarProfissional('${u.id}');" title="Rejeitar" style="height:30px;width:30px;border:0;background:var(--status-danger-bg,#FCE8E8);color:var(--status-danger);border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;" class="ds-table__btn">
+            <span class="material-symbols-rounded" style="font-size:17px;">close</span>
+          </button>
+        `;
+      } else if (s.filtro === 'ativos') {
+        // Ações comuns (categoria, foto) + promover/rebaixar conforme nível
+        const acoesAdmin = ehAdmin
+          // Admin: pode ser rebaixado (exceto super, tratado acima)
+          ? `<button onclick="event.stopPropagation();rebaixarParaMembro('${u.id}');" title="${souEu ? 'Rebaixar minha conta' : 'Rebaixar a membro'}" style="height:30px;width:30px;border:0;background:var(--status-warning-bg,#FEF4E1);color:var(--status-warning);border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;" class="ds-table__btn">
+               <span class="material-symbols-rounded" style="font-size:17px;">arrow_downward</span>
+             </button>`
+          // Membro: pode ser promovido
+          : `<button onclick="event.stopPropagation();promoverParaAdmin('${u.id}');" title="Promover a admin" style="height:30px;width:30px;border:0;background:var(--brand-navy);color:#fff;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;" class="ds-table__btn">
+               <span class="material-symbols-rounded" style="font-size:17px;">admin_panel_settings</span>
+             </button>`;
+
+        // Desativar: admin não pode se auto-desativar (evita lock-out sem querer)
+        const btnDesativar = souEu && ehAdmin
+          ? '' // esconde o botão de desativar quando é sua própria conta admin
+          : `<button onclick="event.stopPropagation();desativarProfissional('${u.id}');" title="Desativar" style="height:30px;width:30px;border:0;background:var(--neutral-100);color:var(--neutral-500);border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;" class="ds-table__btn">
+               <span class="material-symbols-rounded" style="font-size:17px;">person_off</span>
+             </button>`;
+
+        acoes = `
+          ${acoesAdmin}
+          <button onclick="event.stopPropagation();editarCategoriaProfissional('${u.id}');" title="Trocar categoria" style="height:30px;width:30px;border:0;background:var(--neutral-100);color:var(--brand-navy);border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;" class="ds-table__btn">
+            <span class="material-symbols-rounded" style="font-size:17px;">category</span>
+          </button>
+          <button onclick="event.stopPropagation();alterarFotoDeOutro('${u.id}', '${(u.nome || '').replace(/'/g,'\\\'').replace(/"/g,'&quot;')}', ${u.foto_url ? `'${u.foto_url.replace(/'/g,'\\\'').replace(/"/g,'&quot;')}'` : 'null'});" title="Alterar foto" style="height:30px;width:30px;border:0;background:var(--neutral-100);color:var(--brand-navy);border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;" class="ds-table__btn">
+            <span class="material-symbols-rounded" style="font-size:17px;">photo_camera</span>
+          </button>
+          ${btnDesativar}
+        `;
+      } else {
+        acoes = `
+          <button onclick="event.stopPropagation();reativarProfissional('${u.id}');" title="Reativar" style="height:30px;padding:0 12px;border:0;background:var(--status-success-bg,#E6F6EF);color:var(--status-success);border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:700;font-family:inherit;" class="ds-table__btn">
+            <span class="material-symbols-rounded" style="font-size:16px;">restart_alt</span>Reativar
+          </button>
+        `;
+      }
+
+      const rowOpacity = s.filtro === 'desativados' ? 'opacity:0.65;' : '';
+      return `
+        <div class="ds-table__row" data-id="${u.id}" style="${rowOpacity}">
+          <div class="ds-table__cell ds-table__cell--name">
+            <div style="display:flex;align-items:center;gap:10px;min-width:0;">
+              ${avatar}
+              <div style="min-width:0;flex:1;">
+                <div style="font-weight:600;color:var(--brand-navy);font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${(u.nome || '—').replace(/</g,'&lt;')}</div>
+                <div style="font-size:11px;color:var(--neutral-500);margin-top:2px;font-family:'JetBrains Mono',monospace;">${u.cpf || '—'} · ${u.email || '—'}</div>
+              </div>
+            </div>
+          </div>
+          <div class="ds-table__cell" style="width:150px;">${perfilBadge}</div>
+          <div class="ds-table__cell" style="flex:1;color:var(--neutral-600);font-size:12.5px;">${categoria}</div>
+          <div class="ds-table__cell" style="width:110px;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--neutral-600);">${dataCad}</div>
+          <div class="ds-table__cell" style="width:110px;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--neutral-600);">${ultimoLogin}</div>
+          <div class="ds-table__cell" style="width:200px;text-align:right;">
+            <div style="display:inline-flex;gap:4px;justify-content:flex-end;align-items:center;">${acoes}</div>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    tableEl.innerHTML = header + rows;
+    if (footerEl) footerEl.textContent = `${usuarios.length} ${usuarios.length === 1 ? 'membro' : 'membros'} exibido${usuarios.length === 1 ? '' : 's'}${busca ? ` (busca: "${busca}")` : ''}`;
+  } catch (err) {
+    tableEl.innerHTML = `<div style="padding:20px;background:var(--status-danger-bg,#FCE8E8);color:var(--status-danger);">Erro: ${err.message}</div>`;
+  }
+}
+
+window.trocarAbaEqDesktop = function(filtro, silent = false) {
+  window._equipeDesktopState.filtro = filtro;
+  ['pendentes', 'ativos', 'desativados'].forEach(id => {
+    const btn = document.getElementById(`dsdEqTab_${id}`);
+    if (!btn) return;
+    if (id === filtro) {
+      btn.style.background = 'var(--brand-navy)';
+      btn.style.color = '#fff';
+      const badge = btn.querySelector('span');
+      if (badge) badge.style.background = 'rgba(255,255,255,0.18)';
+    } else {
+      btn.style.background = 'transparent';
+      btn.style.color = 'var(--neutral-600)';
+      const badge = btn.querySelector('span');
+      if (badge) badge.style.background = 'var(--neutral-200)';
+    }
+  });
+  if (!silent) carregarAdminEquipeDesktop();
+};
+
+let _eqBuscaTimer = null;
+window.buscarEqDesktop = function(termo) {
+  clearTimeout(_eqBuscaTimer);
+  _eqBuscaTimer = setTimeout(() => {
+    window._equipeDesktopState.busca = termo || '';
+    carregarAdminEquipeDesktop();
+  }, 220);
+};
+
+window.exportarEquipeCsvDesktop = function() {
+  const lista = window._equipeDesktopCurrent || [];
+  if (lista.length === 0) { setFlash('info', 'Nada pra exportar.'); return; }
+  const header = ['Nome','CPF','Email','Telefone','Perfil','Status','Categoria','Cadastrado em','Último login'];
+  const rows = lista.map(u => [
+    u.nome || '', u.cpf || '', u.email || '', u.telefone || '',
+    u.perfil || '', u.status || '', u.categorias_profissionais?.nome || '',
+    u.criado_em ? new Date(u.criado_em).toLocaleString('pt-BR') : '',
+    u.ultimo_login ? new Date(u.ultimo_login).toLocaleString('pt-BR') : '',
+  ]);
+  baixarCsv(`equipe-${new Date().toISOString().substring(0, 10)}.csv`, header, rows);
+  setFlash('success', 'CSV baixado.');
+};
+
+// Sprint 9.14: Pendências desktop — hub unificado (instituições + objetivos + reaberturas)
+function renderAdminPendentesDesktop() {
+  const user = requireAdmin();
+  if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
+
+  setTimeout(() => {
+    atualizarBadgesSidebarDesktop();
+    carregarAdminPendentesDesktop();
+  }, 0);
+
+  const content = `
+    <div style="display:flex;flex-direction:column;gap:20px;max-width:1100px;">
+
+      <!-- Introdução -->
+      <div style="background:#fff;border-radius:12px;border:1px solid var(--neutral-200);padding:20px;display:flex;gap:14px;align-items:flex-start;">
+        <div style="width:44px;height:44px;border-radius:50%;background:var(--status-warning-bg,#FEF4E1);color:var(--status-warning);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <span class="material-symbols-rounded" style="font-size:22px;">hourglass_top</span>
+        </div>
+        <div style="flex:1;">
+          <div style="font-family:'Poppins',sans-serif;font-weight:600;font-size:16px;color:var(--brand-navy);">Central de pendências</div>
+          <div style="font-size:13px;color:var(--neutral-600);margin-top:2px;line-height:1.5;">Aqui você aprova cadastros sugeridos pela equipe e responde pedidos de reabertura de visitas.</div>
+        </div>
+      </div>
+
+      <!-- Instituições pendentes -->
+      <div class="ds-chart-card">
+        <div class="ds-chart-card__header">
+          <div>
+            <div class="ds-chart-card__title">
+              <span class="material-symbols-rounded" style="font-size:18px;vertical-align:-3px;color:var(--status-warning);margin-right:6px;">local_hospital</span>
+              Instituições aguardando aprovação
+            </div>
+            <div class="ds-chart-card__subtitle" id="dsdPendInstSub">—</div>
+          </div>
+          <a href="#/admin/instituicoes?filtro=pendentes" style="font-size:12px;font-weight:600;color:var(--brand-navy);text-decoration:none;display:inline-flex;align-items:center;gap:4px;padding:6px 10px;border-radius:8px;">
+            Ver todas <span class="material-symbols-rounded" style="font-size:16px;">arrow_forward</span>
+          </a>
+        </div>
+        <div id="dsdPendInstList"><div style="padding:24px;text-align:center;color:var(--neutral-400);font-size:12px;">Carregando...</div></div>
+      </div>
+
+      <!-- Objetivos pendentes -->
+      <div class="ds-chart-card">
+        <div class="ds-chart-card__header">
+          <div>
+            <div class="ds-chart-card__title">
+              <span class="material-symbols-rounded" style="font-size:18px;vertical-align:-3px;color:var(--status-warning);margin-right:6px;">flag</span>
+              Objetivos aguardando aprovação
+            </div>
+            <div class="ds-chart-card__subtitle" id="dsdPendObjSub">—</div>
+          </div>
+          <a href="#/admin/objetivos" style="font-size:12px;font-weight:600;color:var(--brand-navy);text-decoration:none;display:inline-flex;align-items:center;gap:4px;padding:6px 10px;border-radius:8px;">
+            Ver todos <span class="material-symbols-rounded" style="font-size:16px;">arrow_forward</span>
+          </a>
+        </div>
+        <div id="dsdPendObjList"><div style="padding:24px;text-align:center;color:var(--neutral-400);font-size:12px;">Carregando...</div></div>
+      </div>
+
+      <!-- Reaberturas -->
+      <div class="ds-chart-card">
+        <div class="ds-chart-card__header">
+          <div>
+            <div class="ds-chart-card__title">
+              <span class="material-symbols-rounded" style="font-size:18px;vertical-align:-3px;color:var(--status-info);margin-right:6px;">lock_open</span>
+              Solicitações de reabertura
+            </div>
+            <div class="ds-chart-card__subtitle" id="dsdPendReabSub">—</div>
+          </div>
+        </div>
+        <div id="dsdPendReabList"><div style="padding:24px;text-align:center;color:var(--neutral-400);font-size:12px;">Carregando...</div></div>
+      </div>
+
+    </div>
+  `;
+
+  return desktopShell({
+    title: 'Pendências',
+    breadcrumb: ['Admin', 'Operação', 'Pendências'],
+    content,
+    activeId: 'pendentes',
+  });
+}
+
+async function carregarAdminPendentesDesktop() {
+  try {
+    const [instPend, objPend, reabPend] = await Promise.all([
+      listarInstituicoesPendentes().catch(() => []),
+      listarObjetivosPendentes().catch(() => []),
+      listarSolicitacoesReaberturaPendentes().catch(() => []),
+    ]);
+
+    // === Instituições pendentes ===
+    const instEl = document.getElementById('dsdPendInstList');
+    const instSub = document.getElementById('dsdPendInstSub');
+    if (instSub) instSub.textContent = instPend.length === 0 ? 'Nenhuma pendente' : `${instPend.length} ${instPend.length === 1 ? 'pendente' : 'pendentes'}`;
+    if (instEl) {
+      if (instPend.length === 0) {
+        instEl.innerHTML = `<div style="padding:24px;text-align:center;color:var(--status-success);font-size:13px;display:flex;align-items:center;gap:8px;justify-content:center;"><span class="material-symbols-rounded" style="font-size:20px;">check_circle</span>Nenhuma instituição pendente.</div>`;
+      } else {
+        instEl.innerHTML = instPend.slice(0, 5).map(inst => {
+          const endereco = [inst.bairro, inst.cidade].filter(Boolean).join(' · ') || 'Sem endereço';
+          return `
+            <div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--neutral-100);">
+              <div style="width:36px;height:36px;border-radius:9px;background:var(--neutral-100);color:var(--brand-navy);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <span class="material-symbols-rounded" style="font-size:18px;">local_hospital</span>
+              </div>
+              <div style="flex:1;min-width:0;">
+                <div style="font-weight:600;color:var(--brand-navy);font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${(inst.nome || '').replace(/</g,'&lt;')}</div>
+                <div style="font-size:11.5px;color:var(--neutral-500);">${endereco}</div>
+              </div>
+              <button onclick="aprovarInstRapidoDesktop('${inst.id}')" style="height:32px;padding:0 14px;border:0;background:var(--status-success);color:#fff;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;font-family:inherit;">
+                <span class="material-symbols-rounded" style="font-size:15px;">check</span>Aprovar
+              </button>
+              <button onclick="editarInstituicaoAdmin('${inst.id}')" style="height:32px;padding:0 12px;border:1px solid var(--neutral-200);background:#fff;color:var(--brand-navy);border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;font-family:inherit;">
+                <span class="material-symbols-rounded" style="font-size:15px;">edit</span>Completar
+              </button>
+            </div>
+          `;
+        }).join('') + (instPend.length > 5 ? `<div style="padding:12px 0 4px;text-align:right;"><a href="#/admin/instituicoes?filtro=pendentes" style="font-size:12px;font-weight:600;color:var(--brand-navy);text-decoration:none;">Ver mais ${instPend.length - 5} pendentes →</a></div>` : '');
+      }
+    }
+
+    // === Objetivos pendentes ===
+    const objEl = document.getElementById('dsdPendObjList');
+    const objSub = document.getElementById('dsdPendObjSub');
+    if (objSub) objSub.textContent = objPend.length === 0 ? 'Nenhum pendente' : `${objPend.length} ${objPend.length === 1 ? 'pendente' : 'pendentes'}`;
+    if (objEl) {
+      if (objPend.length === 0) {
+        objEl.innerHTML = `<div style="padding:24px;text-align:center;color:var(--status-success);font-size:13px;display:flex;align-items:center;gap:8px;justify-content:center;"><span class="material-symbols-rounded" style="font-size:20px;">check_circle</span>Nenhum objetivo pendente.</div>`;
+      } else {
+        objEl.innerHTML = objPend.slice(0, 5).map(obj => {
+          return `
+            <div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--neutral-100);">
+              <div style="width:36px;height:36px;border-radius:9px;background:rgba(139,198,63,0.15);color:var(--brand-lime);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <span class="material-symbols-rounded" style="font-size:18px;">flag</span>
+              </div>
+              <div style="flex:1;min-width:0;">
+                <div style="font-weight:600;color:var(--brand-navy);font-size:13.5px;">${(obj.nome || '').replace(/</g,'&lt;')}</div>
+                <div style="font-size:11.5px;color:var(--neutral-500);">Sugerido por ${obj.criado_por_nome || '—'}</div>
+              </div>
+              <button onclick="aprovarObjetivoPendente('${obj.id}')" style="height:32px;padding:0 14px;border:0;background:var(--status-success);color:#fff;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;font-family:inherit;">
+                <span class="material-symbols-rounded" style="font-size:15px;">check</span>Aprovar
+              </button>
+              <button onclick="rejeitarObjetivoPendente('${obj.id}')" style="height:32px;padding:0 12px;border:1px solid var(--status-danger);background:#fff;color:var(--status-danger);border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;font-family:inherit;">
+                <span class="material-symbols-rounded" style="font-size:15px;">close</span>Rejeitar
+              </button>
+            </div>
+          `;
+        }).join('') + (objPend.length > 5 ? `<div style="padding:12px 0 4px;text-align:right;"><a href="#/admin/objetivos" style="font-size:12px;font-weight:600;color:var(--brand-navy);text-decoration:none;">Ver mais ${objPend.length - 5} pendentes →</a></div>` : '');
+      }
+    }
+
+    // === Reaberturas ===
+    const reabEl = document.getElementById('dsdPendReabList');
+    const reabSub = document.getElementById('dsdPendReabSub');
+    if (reabSub) reabSub.textContent = reabPend.length === 0 ? 'Nenhuma solicitação' : `${reabPend.length} ${reabPend.length === 1 ? 'solicitação' : 'solicitações'}`;
+    if (reabEl) {
+      if (reabPend.length === 0) {
+        reabEl.innerHTML = `<div style="padding:24px;text-align:center;color:var(--status-success);font-size:13px;display:flex;align-items:center;gap:8px;justify-content:center;"><span class="material-symbols-rounded" style="font-size:20px;">check_circle</span>Nenhuma solicitação de reabertura.</div>`;
+      } else {
+        reabEl.innerHTML = reabPend.map(r => {
+          const tempo = r.solicitado_em ? formatarTempoRelativo(r.solicitado_em) : '—';
+          return `
+            <div style="padding:12px 0;border-bottom:1px solid var(--neutral-100);">
+              <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:8px;">
+                <div style="width:36px;height:36px;border-radius:9px;background:var(--status-info-bg,#E4ECFD);color:var(--status-info);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                  <span class="material-symbols-rounded" style="font-size:18px;">lock_open</span>
+                </div>
+                <div style="flex:1;min-width:0;">
+                  <div style="font-weight:600;color:var(--brand-navy);font-size:13.5px;">${(r.solicitante?.nome || 'Membro').replace(/</g,'&lt;')} pediu reabertura</div>
+                  <div style="font-size:11.5px;color:var(--neutral-500);">${tempo}</div>
+                </div>
+                <a href="#/admin/revisao" style="height:32px;padding:0 14px;border:0;background:var(--brand-navy);color:#fff;border-radius:8px;text-decoration:none;display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;">
+                  Ver na fila <span class="material-symbols-rounded" style="font-size:15px;">arrow_forward</span>
+                </a>
+              </div>
+              ${r.justificativa ? `<div style="background:var(--neutral-50,#FAFBFC);padding:10px 12px;border-radius:8px;font-size:12px;color:var(--neutral-700);line-height:1.5;border-left:3px solid var(--status-info);">"${r.justificativa.replace(/</g,'&lt;')}"</div>` : ''}
+            </div>
+          `;
+        }).join('');
+      }
+    }
+  } catch (err) {
+    console.error('[pendências desktop]', err);
+  }
+}
+
+// Sprint 9.15: Profissionais (externos) desktop
+// Layout: abas Ativos/Desativados + busca + botão "+ Novo" + tabela
+function renderAdminProfissionaisDesktop() {
+  const user = requireAdmin();
+  if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
+
+  const filtroPorRota = window._routeParams?.filtro || null;
+  if (!window._profDesktopState) window._profDesktopState = { filtro: 'ativos', busca: '' };
+  if (filtroPorRota && ['ativos','desativados'].includes(filtroPorRota)) {
+    window._profDesktopState.filtro = filtroPorRota;
+  }
+
+  setTimeout(() => {
+    atualizarBadgesSidebarDesktop();
+    carregarAdminProfissionaisDesktop();
+  }, 0);
+
+  const s = window._profDesktopState;
+  const tabs = [
+    { id: 'ativos',      label: 'Ativos',      badgeId: 'dsdProfCntAtiv' },
+    { id: 'desativados', label: 'Desativados', badgeId: 'dsdProfCntDesat' },
+  ];
+  const titleExtra = `
+    <div style="display:inline-flex;gap:4px;background:var(--neutral-100);border-radius:9999px;padding:3px;">
+      ${tabs.map(t => `
+        <button onclick="trocarAbaProfDesktop('${t.id}')" id="dsdProfTab_${t.id}" style="padding:5px 14px;border:0;background:${s.filtro === t.id ? 'var(--brand-navy)' : 'transparent'};color:${s.filtro === t.id ? '#fff' : 'var(--neutral-600)'};border-radius:9999px;font-size:11.5px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px;">
+          ${t.label}
+          <span id="${t.badgeId}" style="font-family:'JetBrains Mono',monospace;font-size:10px;background:${s.filtro === t.id ? 'rgba(255,255,255,0.18)' : 'var(--neutral-200)'};padding:1px 6px;border-radius:9999px;min-width:18px;text-align:center;">—</span>
+        </button>
+      `).join('')}
+    </div>
+  `;
+
+  const content = `
+    <div style="display:flex;flex-direction:column;gap:18px;">
+      <!-- Info banner -->
+      <div style="background:#fff;border:1px solid var(--neutral-200);border-radius:10px;padding:14px 16px;display:flex;gap:12px;align-items:center;">
+        <span class="material-symbols-rounded" style="font-size:22px;color:var(--status-info);flex-shrink:0;">info</span>
+        <div style="flex:1;font-size:12.5px;color:var(--neutral-600);line-height:1.5;">
+          <strong>Profissionais de saúde</strong> são médicos, enfermeiros, farmacêuticos e outros profissionais <strong>externos</strong> (da instituição visitada). A equipe referencia eles nos relatórios de visita. Não confundir com a aba <strong>Equipe</strong>, que gerencia os membros do sistema.
+        </div>
+      </div>
+
+      <!-- Barra de ações -->
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:260px;position:relative;">
+          <span class="material-symbols-rounded" style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--neutral-500);font-size:18px;pointer-events:none;">search</span>
+          <input type="text" id="dsdProfBusca" placeholder="Buscar por nome, profissão ou hospital..." value="${(s.busca || '').replace(/"/g,'&quot;')}" oninput="buscarProfDesktop(this.value)" style="width:100%;height:42px;padding:0 14px 0 42px;border:1px solid var(--neutral-200);border-radius:10px;background:#fff;font-family:inherit;font-size:13.5px;color:var(--brand-navy);" />
+        </div>
+        <button onclick="exportarProfCsvDesktop()" style="height:42px;padding:0 16px;border:1px solid var(--neutral-200);background:#fff;color:var(--neutral-600);border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px;">
+          <span class="material-symbols-rounded" style="font-size:17px;">download</span>
+          Exportar CSV
+        </button>
+        <button onclick="novoProfissionalAdmin()" style="height:42px;padding:0 18px;background:var(--brand-lime);color:#fff;border:0;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px;box-shadow:0 2px 6px rgba(139,198,63,0.25);">
+          <span class="material-symbols-rounded" style="font-size:18px;">person_add</span>
+          Novo profissional
+        </button>
+      </div>
+
+      <!-- Tabela -->
+      <div style="background:#fff;border-radius:12px;border:1px solid var(--neutral-200);box-shadow:0 1px 3px rgba(10,31,92,0.04);overflow:hidden;">
+        <div id="dsdProfTable" style="min-height:260px;">
+          <div style="padding:50px;text-align:center;color:var(--neutral-500);font-size:13px;">
+            <span class="material-symbols-rounded" style="font-size:28px;color:var(--neutral-400);">hourglass_empty</span>
+            <div style="margin-top:6px;">Carregando...</div>
+          </div>
+        </div>
+      </div>
+
+      <div id="dsdProfFooter" style="font-size:12px;color:var(--neutral-500);text-align:right;padding:0 4px;">—</div>
+    </div>
+  `;
+
+  return desktopShell({
+    title: 'Profissionais',
+    breadcrumb: ['Admin', 'Cadastros', 'Profissionais'],
+    titleExtra,
+    content,
+    activeId: 'professions',
+  });
+}
+
+async function carregarAdminProfissionaisDesktop() {
+  const tableEl = document.getElementById('dsdProfTable');
+  const footerEl = document.getElementById('dsdProfFooter');
+  if (!tableEl) return;
+  const s = window._profDesktopState;
+
+  try {
+    // Query direta: todos os profissionais com instituição vinculada
+    const { data: todos, error } = await db
+      .from('profissionais')
+      .select('*, instituicoes(nome, cidade)')
+      .order('nome');
+    if (error) throw new Error(error.message);
+
+    const ativos      = (todos || []).filter(p => p.ativo !== false);
+    const desativados = (todos || []).filter(p => p.ativo === false);
+
+    const cnt = (id, n) => { const el = document.getElementById(id); if (el) el.textContent = n; };
+    cnt('dsdProfCntAtiv', ativos.length);
+    cnt('dsdProfCntDesat', desativados.length);
+
+    let profs = s.filtro === 'desativados' ? desativados : ativos;
+
+    // Busca local
+    const busca = (s.busca || '').trim().toLowerCase();
+    if (busca) {
+      profs = profs.filter(p => {
+        const profissao = labelProfissao(p);
+        const texto = [p.nome, profissao, p.instituicoes?.nome, p.instituicoes?.cidade, p.telefone, p.email].filter(Boolean).join(' ').toLowerCase();
+        return texto.includes(busca);
+      });
+    }
+
+    window._profDesktopCurrent = profs;
+
+    if (profs.length === 0) {
+      // Empty state — se não tem NENHUM profissional, mostra onboarding
+      if ((todos || []).length === 0) {
+        tableEl.innerHTML = `
+          <div style="padding:60px 20px;text-align:center;">
+            <span class="material-symbols-rounded" style="font-size:40px;color:var(--neutral-400);">stethoscope</span>
+            <div style="margin-top:10px;font-family:'Poppins',sans-serif;font-weight:600;font-size:16px;color:var(--brand-navy);">Nenhum profissional cadastrado</div>
+            <div style="font-size:13px;color:var(--neutral-500);margin-top:4px;max-width:460px;margin-left:auto;margin-right:auto;line-height:1.5;">Cadastre médicos, enfermeiros e outros profissionais das instituições. A equipe usa essa lista nos relatórios de visita.</div>
+            <div style="margin-top:20px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
+              <button onclick="novoProfissionalAdmin()" style="height:42px;padding:0 20px;background:var(--brand-lime);color:#fff;border:0;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px;">
+                <span class="material-symbols-rounded" style="font-size:18px;">person_add</span>
+                Cadastrar agora
+              </button>
+              <button onclick="seedProfissionaisTeste && seedProfissionaisTeste()" style="height:42px;padding:0 20px;background:#fff;color:var(--neutral-600);border:1px solid var(--neutral-200);border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px;">
+                <span class="material-symbols-rounded" style="font-size:18px;">auto_awesome</span>
+                Popular de teste
+              </button>
+            </div>
+          </div>
+        `;
+        if (footerEl) footerEl.textContent = '';
+        return;
+      }
+      // Empty state da aba específica
+      const empties = {
+        ativos:      { icon: 'stethoscope', t: busca ? 'Nenhum resultado' : 'Nenhum profissional ativo', d: busca ? 'Tente outros termos.' : 'Cadastre um profissional ou ative alguém desativado.' },
+        desativados: { icon: 'archive',     t: busca ? 'Nenhum resultado' : 'Nenhum desativado',         d: busca ? 'Tente outros termos.' : 'Profissionais desativados aparecem aqui.' },
+      };
+      const e = empties[s.filtro];
+      tableEl.innerHTML = `
+        <div style="padding:60px 20px;text-align:center;">
+          <span class="material-symbols-rounded" style="font-size:40px;color:var(--neutral-400);">${e.icon}</span>
+          <div style="margin-top:10px;font-family:'Poppins',sans-serif;font-weight:600;font-size:16px;color:var(--brand-navy);">${e.t}</div>
+          <div style="font-size:13px;color:var(--neutral-500);margin-top:4px;">${e.d}</div>
+        </div>
+      `;
+      if (footerEl) footerEl.textContent = busca ? 'Busca não retornou resultados.' : '';
+      return;
+    }
+
+    // Cabeçalho
+    const header = `
+      <div class="ds-table__row ds-table__row--head">
+        <div class="ds-table__cell ds-table__cell--name">Profissional</div>
+        <div class="ds-table__cell" style="width:170px;">Profissão</div>
+        <div class="ds-table__cell" style="flex:1;">Hospital</div>
+        <div class="ds-table__cell" style="width:170px;">Contato</div>
+        <div class="ds-table__cell" style="width:120px;text-align:right;">Ações</div>
+      </div>
+    `;
+
+    const rows = profs.map(p => {
+      const inits = (p.nome || '?').split(' ').filter(Boolean).slice(0, 2).map(s => s[0].toUpperCase()).join('');
+      const profLabel = labelProfissao(p);
+      const hospital = p.instituicoes?.nome || '<span style="color:var(--neutral-400);">Sem vínculo</span>';
+      const cidade = p.instituicoes?.cidade || '';
+
+      // Chip colorido da profissão (cada uma uma cor)
+      const coresProfissao = {
+        Nutricionista: { cor: 'var(--brand-lime)', bg: 'rgba(139,198,63,0.14)' },
+        Medico:        { cor: 'var(--status-info)', bg: 'var(--status-info-bg,#E4ECFD)' },
+        Farmaceutico:  { cor: '#7C3AED', bg: '#F3E8FF' },
+        Enfermeiro:    { cor: 'var(--status-success)', bg: 'var(--status-success-bg,#E6F6EF)' },
+        Comprador:     { cor: '#EA580C', bg: '#FFF1E6' },
+        Outro:         { cor: 'var(--neutral-500)', bg: 'var(--neutral-100)' },
+      };
+      const chipCores = coresProfissao[p.profissao] || coresProfissao.Outro;
+      const profChip = `<span style="display:inline-flex;padding:3px 10px;border-radius:9999px;font-size:11px;font-weight:600;background:${chipCores.bg};color:${chipCores.cor};">${profLabel}</span>`;
+
+      // Contato: telefone + email (stacked)
+      const contato = (p.telefone || p.email)
+        ? `<div style="display:flex;flex-direction:column;gap:2px;font-size:11.5px;line-height:1.3;">
+             ${p.telefone ? `<span style="font-family:'JetBrains Mono',monospace;color:var(--neutral-700);">${p.telefone}</span>` : ''}
+             ${p.email ? `<span style="color:var(--neutral-500);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:170px;" title="${p.email.replace(/"/g,'&quot;')}">${p.email.replace(/</g,'&lt;')}</span>` : ''}
+           </div>`
+        : '<span style="color:var(--neutral-400);font-size:12px;">—</span>';
+
+      // Ações
+      let acoes = '';
+      if (s.filtro === 'desativados') {
+        acoes = `
+          <button onclick="event.stopPropagation();reativarProfissionalExterno('${p.id}', '${(p.nome || '').replace(/'/g,'\\\'').replace(/"/g,'&quot;')}');" title="Reativar" style="height:30px;padding:0 12px;border:0;background:var(--status-success-bg,#E6F6EF);color:var(--status-success);border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:700;font-family:inherit;" class="ds-table__btn">
+            <span class="material-symbols-rounded" style="font-size:16px;">restart_alt</span>Reativar
+          </button>
+        `;
+      } else {
+        acoes = `
+          <button onclick="event.stopPropagation();editarProfissionalAdmin('${p.id}');" title="Editar" style="height:30px;width:30px;border:0;background:var(--neutral-100);color:var(--brand-navy);border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;" class="ds-table__btn">
+            <span class="material-symbols-rounded" style="font-size:17px;">edit</span>
+          </button>
+          <button onclick="event.stopPropagation();desativarProfissionalExterno('${p.id}', '${(p.nome || '').replace(/'/g,'\\\'').replace(/"/g,'&quot;')}');" title="Desativar" style="height:30px;width:30px;border:0;background:var(--neutral-100);color:var(--neutral-500);border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;" class="ds-table__btn">
+            <span class="material-symbols-rounded" style="font-size:17px;">person_off</span>
+          </button>
+        `;
+      }
+
+      const rowOpacity = s.filtro === 'desativados' ? 'opacity:0.65;' : '';
+      return `
+        <div class="ds-table__row" data-id="${p.id}" onclick="editarProfissionalAdmin('${p.id}')" style="cursor:pointer;${rowOpacity}">
+          <div class="ds-table__cell ds-table__cell--name">
+            <div style="display:flex;align-items:center;gap:10px;min-width:0;">
+              <div style="width:36px;height:36px;border-radius:50%;background:var(--brand-navy);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;font-family:'Poppins',sans-serif;flex-shrink:0;">${inits}</div>
+              <div style="min-width:0;flex:1;">
+                <div style="font-weight:600;color:var(--brand-navy);font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${(p.nome || '—').replace(/</g,'&lt;')}</div>
+              </div>
+            </div>
+          </div>
+          <div class="ds-table__cell" style="width:170px;">${profChip}</div>
+          <div class="ds-table__cell" style="flex:1;min-width:0;">
+            <div style="font-size:12.5px;color:var(--neutral-700);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${hospital.replace ? hospital.replace(/</g,'&lt;') : hospital}</div>
+            ${cidade ? `<div style="font-size:11px;color:var(--neutral-500);margin-top:2px;">${cidade}</div>` : ''}
+          </div>
+          <div class="ds-table__cell" style="width:170px;">${contato}</div>
+          <div class="ds-table__cell" style="width:120px;text-align:right;">
+            <div style="display:inline-flex;gap:4px;justify-content:flex-end;align-items:center;">${acoes}</div>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    tableEl.innerHTML = header + rows;
+    if (footerEl) footerEl.textContent = `${profs.length} ${profs.length === 1 ? 'profissional' : 'profissionais'} exibido${profs.length === 1 ? '' : 's'}${busca ? ` (busca: "${busca}")` : ''}`;
+  } catch (err) {
+    tableEl.innerHTML = `<div style="padding:20px;background:var(--status-danger-bg,#FCE8E8);color:var(--status-danger);">Erro: ${err.message}</div>`;
+  }
+}
+
+window.trocarAbaProfDesktop = function(filtro, silent = false) {
+  window._profDesktopState.filtro = filtro;
+  ['ativos', 'desativados'].forEach(id => {
+    const btn = document.getElementById(`dsdProfTab_${id}`);
+    if (!btn) return;
+    if (id === filtro) {
+      btn.style.background = 'var(--brand-navy)';
+      btn.style.color = '#fff';
+      const badge = btn.querySelector('span');
+      if (badge) badge.style.background = 'rgba(255,255,255,0.18)';
+    } else {
+      btn.style.background = 'transparent';
+      btn.style.color = 'var(--neutral-600)';
+      const badge = btn.querySelector('span');
+      if (badge) badge.style.background = 'var(--neutral-200)';
+    }
+  });
+  if (!silent) carregarAdminProfissionaisDesktop();
+};
+
+let _profBuscaTimer = null;
+window.buscarProfDesktop = function(termo) {
+  clearTimeout(_profBuscaTimer);
+  _profBuscaTimer = setTimeout(() => {
+    window._profDesktopState.busca = termo || '';
+    carregarAdminProfissionaisDesktop();
+  }, 220);
+};
+
+window.exportarProfCsvDesktop = function() {
+  const lista = window._profDesktopCurrent || [];
+  if (lista.length === 0) { setFlash('info', 'Nada pra exportar.'); return; }
+  const header = ['Nome','Profissão','Hospital','Cidade','Telefone','Email','Ativo'];
+  const rows = lista.map(p => [
+    p.nome || '',
+    labelProfissao(p),
+    p.instituicoes?.nome || '',
+    p.instituicoes?.cidade || '',
+    p.telefone || '',
+    p.email || '',
+    p.ativo === false ? 'Não' : 'Sim',
+  ]);
+  baixarCsv(`profissionais-${new Date().toISOString().substring(0, 10)}.csv`, header, rows);
+  setFlash('success', 'CSV baixado.');
+};
+
+// Sprint 9.16 (Parte 7): Todas as visitas desktop
+// Layout: barra de filtros horizontal + tabela com colunas (data, profissional, hospital, duração, status, flags)
+function renderAdminVisitasDesktop() {
+  const user = requireAdmin();
+  if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
+
+  // Estado — aproveita mesmas chaves do mobile, mas guarda separado pra desktop
+  if (!window._visitasDesktopState) {
+    window._visitasDesktopState = {
+      periodo: window._routeParams?.periodo || '30',
+      status: window._routeParams?.status || 'todos',
+      profissional_id: window._routeParams?.profissional_id || 'todos',
+      instituicao_id: window._routeParams?.instituicao_id || 'todos',
+      gps: window._routeParams?.gps || 'todos',
+      busca: '',
+    };
+  }
+  // Se veio da URL, respeita
+  if (window._routeParams?.periodo) window._visitasDesktopState.periodo = window._routeParams.periodo;
+  if (window._routeParams?.status) window._visitasDesktopState.status = window._routeParams.status;
+
+  setTimeout(() => {
+    atualizarBadgesSidebarDesktop();
+    popularFiltrosVisitasDesktop();
+    carregarListaVisitasDesktop();
+  }, 0);
+
+  const s = window._visitasDesktopState;
+
+  // Seletor de período no title
+  const periodos = [
+    { id: '7',   label: '7 dias' },
+    { id: '30',  label: '30 dias' },
+    { id: 'mes', label: 'Mês' },
+    { id: 'tri', label: 'Trimestre' },
+    { id: 'all', label: 'Tudo' },
+  ];
+  const titleExtra = `
+    <div style="display:inline-flex;gap:4px;background:var(--neutral-100);border-radius:9999px;padding:3px;">
+      ${periodos.map(p => `
+        <button onclick="trocarPeriodoVisitasDesktop('${p.id}')" id="dsdVstPeriod_${p.id}" style="padding:5px 12px;border:0;background:${s.periodo === p.id ? 'var(--brand-navy)' : 'transparent'};color:${s.periodo === p.id ? '#fff' : 'var(--neutral-600)'};border-radius:9999px;font-size:11.5px;font-weight:600;cursor:pointer;font-family:inherit;">${p.label}</button>
+      `).join('')}
+    </div>
+  `;
+
+  const content = `
+    <div style="display:flex;flex-direction:column;gap:18px;">
+
+      <!-- Filtros avançados -->
+      <div style="background:#fff;border-radius:12px;padding:14px 18px;border:1px solid var(--neutral-200);box-shadow:0 1px 3px rgba(10,31,92,0.04);display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap;">
+        <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:180px;">
+          <label style="font-size:10.5px;font-weight:600;color:var(--neutral-500);text-transform:uppercase;letter-spacing:0.05em;">Status</label>
+          <select id="dsdVstStatus" onchange="trocarFiltroVisitasDesktop('status', this.value)" style="height:38px;padding:0 12px;border:1px solid var(--neutral-200);border-radius:10px;background:#fff;font-family:inherit;font-size:13px;color:var(--brand-navy);cursor:pointer;">
+            <option value="todos"${s.status === 'todos' ? ' selected' : ''}>Todos os status</option>
+            <option value="completa"${s.status === 'completa' ? ' selected' : ''}>Completa</option>
+            <option value="aprovada_pos_revisao"${s.status === 'aprovada_pos_revisao' ? ' selected' : ''}>Aprovada pós-revisão</option>
+            <option value="em_revisao"${s.status === 'em_revisao' ? ' selected' : ''}>Devolvida p/ revisão</option>
+            <option value="rascunho"${s.status === 'rascunho' ? ' selected' : ''}>Rascunho</option>
+            <option value="realizada"${s.status === 'realizada' ? ' selected' : ''}>Realizadas</option>
+            <option value="cancelada"${s.status === 'cancelada' ? ' selected' : ''}>Canceladas</option>
+          </select>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:180px;">
+          <label style="font-size:10.5px;font-weight:600;color:var(--neutral-500);text-transform:uppercase;letter-spacing:0.05em;">Profissional</label>
+          <select id="dsdVstProf" onchange="trocarFiltroVisitasDesktop('profissional_id', this.value)" style="height:38px;padding:0 12px;border:1px solid var(--neutral-200);border-radius:10px;background:#fff;font-family:inherit;font-size:13px;color:var(--brand-navy);cursor:pointer;">
+            <option value="todos">Todos</option>
+          </select>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:180px;">
+          <label style="font-size:10.5px;font-weight:600;color:var(--neutral-500);text-transform:uppercase;letter-spacing:0.05em;">Instituição</label>
+          <select id="dsdVstInst" onchange="trocarFiltroVisitasDesktop('instituicao_id', this.value)" style="height:38px;padding:0 12px;border:1px solid var(--neutral-200);border-radius:10px;background:#fff;font-family:inherit;font-size:13px;color:var(--brand-navy);cursor:pointer;">
+            <option value="todos">Todas</option>
+          </select>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:4px;min-width:150px;">
+          <label style="font-size:10.5px;font-weight:600;color:var(--neutral-500);text-transform:uppercase;letter-spacing:0.05em;">GPS</label>
+          <select id="dsdVstGps" onchange="trocarFiltroVisitasDesktop('gps', this.value)" style="height:38px;padding:0 12px;border:1px solid var(--neutral-200);border-radius:10px;background:#fff;font-family:inherit;font-size:13px;color:var(--brand-navy);cursor:pointer;">
+            <option value="todos"${s.gps === 'todos' ? ' selected' : ''}>Qualquer</option>
+            <option value="validado"${s.gps === 'validado' ? ' selected' : ''}>GPS OK</option>
+            <option value="problema"${s.gps === 'problema' ? ' selected' : ''}>Com problema</option>
+            <option value="divergente"${s.gps === 'divergente' ? ' selected' : ''}>GPS divergente</option>
+            <option value="manual"${s.gps === 'manual' ? ' selected' : ''}>Check-in manual</option>
+          </select>
+        </div>
+
+        <button onclick="limparFiltrosVisitasDesktop()" style="height:38px;background:transparent;border:0;color:var(--neutral-500);font-size:12.5px;font-weight:600;font-family:inherit;cursor:pointer;text-decoration:underline;text-underline-offset:3px;padding:0 8px;">Limpar filtros</button>
+      </div>
+
+      <!-- Busca + Export + Contador -->
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:260px;position:relative;">
+          <span class="material-symbols-rounded" style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--neutral-500);font-size:18px;pointer-events:none;">search</span>
+          <input type="text" id="dsdVstBusca" placeholder="Buscar por instituição, profissional..." value="${(s.busca || '').replace(/"/g,'&quot;')}" oninput="buscarVisitasDesktop(this.value)" style="width:100%;height:42px;padding:0 14px 0 42px;border:1px solid var(--neutral-200);border-radius:10px;background:#fff;font-family:inherit;font-size:13.5px;color:var(--brand-navy);" />
+        </div>
+        <div id="dsdVstCount" style="font-size:12.5px;color:var(--neutral-600);white-space:nowrap;">—</div>
+        <button onclick="exportarVisitasCsvDesktop()" style="height:42px;padding:0 16px;border:1px solid var(--neutral-200);background:#fff;color:var(--neutral-600);border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px;">
+          <span class="material-symbols-rounded" style="font-size:17px;">download</span>
+          Exportar CSV
+        </button>
+      </div>
+
+      <!-- Tabela -->
+      <div style="background:#fff;border-radius:12px;border:1px solid var(--neutral-200);box-shadow:0 1px 3px rgba(10,31,92,0.04);overflow:hidden;">
+        <div id="dsdVstTable" style="min-height:260px;">
+          <div style="padding:50px;text-align:center;color:var(--neutral-500);font-size:13px;">
+            <span class="material-symbols-rounded" style="font-size:28px;color:var(--neutral-400);">hourglass_empty</span>
+            <div style="margin-top:6px;">Carregando...</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  `;
+
+  return desktopShell({
+    title: 'Todas as visitas',
+    breadcrumb: ['Admin', 'Operação', 'Todas as visitas'],
+    titleExtra,
+    content,
+    activeId: 'visits',
+  });
+}
+
+async function popularFiltrosVisitasDesktop() {
+  try {
+    const selProf = document.getElementById('dsdVstProf');
+    const selInst = document.getElementById('dsdVstInst');
+    const s = window._visitasDesktopState;
+    if (selProf && selProf.options.length <= 1) {
+      const { data: profs } = await db.from('usuarios')
+        .select('id, nome')
+        .eq('perfil', 'nutricionista')
+        .eq('status', 'ativo')
+        .order('nome');
+      (profs || []).forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p.id;
+        opt.textContent = p.nome;
+        if (s.profissional_id === p.id) opt.selected = true;
+        selProf.appendChild(opt);
+      });
+    }
+    if (selInst && selInst.options.length <= 1) {
+      const { data: insts } = await db.from('instituicoes')
+        .select('id, nome')
+        .eq('ativo', true).eq('pendente_aprovacao', false)
+        .order('nome');
+      (insts || []).forEach(i => {
+        const opt = document.createElement('option');
+        opt.value = i.id;
+        opt.textContent = i.nome;
+        if (s.instituicao_id === i.id) opt.selected = true;
+        selInst.appendChild(opt);
+      });
+    }
+  } catch (err) {
+    console.warn('[visitas desktop filtros]', err);
+  }
+}
+
+async function carregarListaVisitasDesktop() {
+  const tableEl = document.getElementById('dsdVstTable');
+  const cntEl = document.getElementById('dsdVstCount');
+  if (!tableEl) return;
+
+  const f = window._visitasDesktopState;
+  const dataInicio = calcularDataInicio(f.periodo);
+
+  let query = db.from('visitas').select(`
+    id, status, data_visita, checkin_timestamp, checkout_timestamp,
+    checkin_manual, flag_gps_divergente, flag_horario_fora_margem,
+    flag_sem_checkin, flag_sem_checkout,
+    visita_realizada, revisao_motivo, revisao_resolvida_em,
+    nutricionista_id, instituicao_id,
+    usuarios:nutricionista_id(nome, foto_url),
+    instituicoes(nome, cidade)
+  `);
+  if (dataInicio) query = query.gte('checkin_timestamp', dataInicio);
+  if (f.profissional_id !== 'todos') query = query.eq('nutricionista_id', f.profissional_id);
+  if (f.instituicao_id !== 'todos') query = query.eq('instituicao_id', f.instituicao_id);
+
+  if (f.status === 'realizada') query = query.eq('visita_realizada', true);
+  else if (f.status === 'cancelada') query = query.eq('visita_realizada', false);
+  else if (f.status === 'em_revisao') query = query.eq('status', 'rascunho').not('revisao_motivo', 'is', null);
+  else if (f.status === 'rascunho') query = query.eq('status', 'rascunho').is('revisao_motivo', null);
+  else if (f.status !== 'todos') query = query.eq('status', f.status);
+
+  if (f.gps === 'validado') query = query.eq('checkin_manual', false).eq('flag_gps_divergente', false);
+  else if (f.gps === 'problema') query = query.or('flag_gps_divergente.eq.true,checkin_manual.eq.true');
+  else if (f.gps === 'divergente') query = query.eq('flag_gps_divergente', true);
+  else if (f.gps === 'manual') query = query.eq('checkin_manual', true);
+
+  query = query.order('checkin_timestamp', { ascending: false, nullsFirst: false }).limit(500);
+
+  const { data, error } = await query;
+  if (error) {
+    tableEl.innerHTML = `<div style="padding:20px;background:var(--status-danger-bg,#FCE8E8);color:var(--status-danger);">Erro: ${error.message}</div>`;
+    return;
+  }
+  let visitas = data || [];
+
+  // Busca local
+  const busca = (f.busca || '').trim().toLowerCase();
+  if (busca) {
+    visitas = visitas.filter(v => {
+      const texto = [v.instituicoes?.nome, v.instituicoes?.cidade, v.usuarios?.nome].filter(Boolean).join(' ').toLowerCase();
+      return texto.includes(busca);
+    });
+  }
+
+  window._visitasDesktopCurrent = visitas;
+
+  if (cntEl) {
+    cntEl.innerHTML = `<strong style="color:var(--brand-navy);">${visitas.length}</strong> ${visitas.length === 1 ? 'visita' : 'visitas'}${busca ? ` (busca: "${busca}")` : ''}`;
+  }
+
+  if (visitas.length === 0) {
+    tableEl.innerHTML = `
+      <div style="padding:60px 20px;text-align:center;">
+        <span class="material-symbols-rounded" style="font-size:40px;color:var(--neutral-400);">search_off</span>
+        <div style="margin-top:10px;font-family:'Poppins',sans-serif;font-weight:600;font-size:16px;color:var(--brand-navy);">Nenhuma visita encontrada</div>
+        <div style="font-size:13px;color:var(--neutral-500);margin-top:4px;">Ajuste os filtros pra ver mais resultados.</div>
+      </div>
+    `;
+    return;
+  }
+
+  // Mapa de status → badge
+  const statusBadge = (v) => {
+    const s_ = v.status;
+    const rev = v.visita_realizada;
+    if (s_ === 'aprovada_pos_revisao') return { cor: 'var(--status-success)', bg: 'var(--status-success-bg,#E6F6EF)', label: 'Aprovada' };
+    if (s_ === 'completa') return { cor: 'var(--status-success)', bg: 'var(--status-success-bg,#E6F6EF)', label: 'Completa' };
+    if (s_ === 'rascunho' && v.revisao_motivo && !v.revisao_resolvida_em) return { cor: 'var(--status-warning)', bg: 'var(--status-warning-bg,#FEF4E1)', label: 'Em revisão' };
+    if (s_ === 'rascunho') return { cor: 'var(--neutral-500)', bg: 'var(--neutral-100)', label: 'Rascunho' };
+    if (rev === false) return { cor: 'var(--status-danger)', bg: 'var(--status-danger-bg,#FCE8E8)', label: 'Cancelada' };
+    return { cor: 'var(--neutral-500)', bg: 'var(--neutral-100)', label: s_ || '—' };
+  };
+
+  // Cabeçalho
+  const header = `
+    <div class="ds-table__row ds-table__row--head">
+      <div class="ds-table__cell" style="width:140px;">Data / hora</div>
+      <div class="ds-table__cell" style="flex:1;min-width:200px;">Profissional</div>
+      <div class="ds-table__cell" style="flex:1.3;min-width:220px;">Instituição</div>
+      <div class="ds-table__cell" style="width:100px;">Duração</div>
+      <div class="ds-table__cell" style="width:130px;">Status</div>
+      <div class="ds-table__cell" style="width:160px;">Flags</div>
+      <div class="ds-table__cell" style="width:50px;text-align:right;"></div>
+    </div>
+  `;
+
+  const rows = visitas.map(v => {
+    const nutriNome = v.usuarios?.nome || '—';
+    const nutriFoto = v.usuarios?.foto_url;
+    const nutriInit = (nutriNome || '?').split(' ').filter(Boolean).slice(0, 2).map(s => s[0].toUpperCase()).join('');
+    const instNome = v.instituicoes?.nome || '—';
+    const instCidade = v.instituicoes?.cidade || '';
+
+    const dataFmt = v.checkin_timestamp
+      ? new Date(v.checkin_timestamp).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })
+      : (v.data_visita || '—');
+
+    const dur = calcularDuracaoMin(v.checkin_timestamp, v.checkout_timestamp);
+    const durFmt = dur !== null ? formatarDuracao(dur) : '<span style="color:var(--neutral-400);">—</span>';
+
+    const sb = statusBadge(v);
+    const statusHtml = `<span style="display:inline-flex;padding:3px 10px;border-radius:9999px;font-size:10.5px;font-weight:700;background:${sb.bg};color:${sb.cor};letter-spacing:0.02em;">${sb.label}</span>`;
+
+    const flags = getFlagsAtivas(v);
+    const flagsHtml = flags.length > 0
+      ? flags.slice(0, 3).map(fl => {
+          const palette = {
+            critical: { cor: 'var(--status-danger)' },
+            warning:  { cor: 'var(--status-warning)' },
+            info:     { cor: 'var(--status-info)' },
+          }[fl.nivel] || { cor: 'var(--neutral-500)' };
+          return `<span title="${fl.titulo}" style="width:8px;height:8px;border-radius:50%;background:${palette.cor};display:inline-block;margin-right:4px;"></span>`;
+        }).join('') + (flags.length > 3 ? `<span style="font-size:10.5px;color:var(--neutral-500);margin-left:4px;">+${flags.length - 3}</span>` : '')
+      : '<span style="color:var(--neutral-400);font-size:12px;">—</span>';
+
+    const avatar = nutriFoto
+      ? `<div style="width:28px;height:28px;border-radius:50%;background-image:url('${nutriFoto}');background-size:cover;background-position:center;flex-shrink:0;"></div>`
+      : `<div style="width:28px;height:28px;border-radius:50%;background:var(--brand-navy);color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;font-family:'Poppins',sans-serif;flex-shrink:0;">${nutriInit}</div>`;
+
+    return `
+      <a href="#/admin/revisao/detalhe?id=${v.id}" class="ds-table__row" data-id="${v.id}" style="cursor:pointer;text-decoration:none;color:inherit;">
+        <div class="ds-table__cell" style="width:140px;font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--neutral-700);">${dataFmt}</div>
+        <div class="ds-table__cell" style="flex:1;min-width:200px;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            ${avatar}
+            <span style="font-weight:600;color:var(--brand-navy);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${nutriNome.replace(/</g,'&lt;')}</span>
+          </div>
+        </div>
+        <div class="ds-table__cell" style="flex:1.3;min-width:220px;">
+          <div style="font-size:13px;color:var(--neutral-700);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${instNome.replace(/</g,'&lt;')}</div>
+          ${instCidade ? `<div style="font-size:11px;color:var(--neutral-500);margin-top:2px;">${instCidade}</div>` : ''}
+        </div>
+        <div class="ds-table__cell" style="width:100px;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--neutral-600);">${durFmt}</div>
+        <div class="ds-table__cell" style="width:130px;">${statusHtml}</div>
+        <div class="ds-table__cell" style="width:160px;">${flagsHtml}</div>
+        <div class="ds-table__cell" style="width:50px;text-align:right;">
+          <span class="material-symbols-rounded" style="font-size:18px;color:var(--neutral-300);">chevron_right</span>
+        </div>
+      </a>
+    `;
+  }).join('');
+
+  tableEl.innerHTML = header + rows;
+}
+
+window.trocarPeriodoVisitasDesktop = function(p) {
+  window._visitasDesktopState.periodo = p;
+  ['7','30','mes','tri','all'].forEach(id => {
+    const btn = document.getElementById(`dsdVstPeriod_${id}`);
+    if (!btn) return;
+    if (id === p) {
+      btn.style.background = 'var(--brand-navy)';
+      btn.style.color = '#fff';
+    } else {
+      btn.style.background = 'transparent';
+      btn.style.color = 'var(--neutral-600)';
+    }
+  });
+  carregarListaVisitasDesktop();
+};
+
+window.trocarFiltroVisitasDesktop = function(campo, valor) {
+  window._visitasDesktopState[campo] = valor;
+  carregarListaVisitasDesktop();
+};
+
+window.limparFiltrosVisitasDesktop = function() {
+  window._visitasDesktopState.status = 'todos';
+  window._visitasDesktopState.profissional_id = 'todos';
+  window._visitasDesktopState.instituicao_id = 'todos';
+  window._visitasDesktopState.gps = 'todos';
+  window._visitasDesktopState.busca = '';
+  // Reseta UI
+  ['dsdVstStatus','dsdVstProf','dsdVstInst','dsdVstGps'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = 'todos';
+  });
+  const busca = document.getElementById('dsdVstBusca');
+  if (busca) busca.value = '';
+  carregarListaVisitasDesktop();
+};
+
+let _vstBuscaTimer = null;
+window.buscarVisitasDesktop = function(termo) {
+  clearTimeout(_vstBuscaTimer);
+  _vstBuscaTimer = setTimeout(() => {
+    window._visitasDesktopState.busca = termo || '';
+    carregarListaVisitasDesktop();
+  }, 220);
+};
+
+window.exportarVisitasCsvDesktop = function() {
+  const lista = window._visitasDesktopCurrent || [];
+  if (lista.length === 0) { setFlash('info', 'Nada pra exportar.'); return; }
+  const header = ['Data check-in','Data check-out','Duração (min)','Profissional','Instituição','Cidade','Status','Realizada','GPS manual','GPS divergente','Horário fora margem','Sem check-in'];
+  const rows = lista.map(v => [
+    v.checkin_timestamp ? new Date(v.checkin_timestamp).toLocaleString('pt-BR') : '',
+    v.checkout_timestamp ? new Date(v.checkout_timestamp).toLocaleString('pt-BR') : '',
+    calcularDuracaoMin(v.checkin_timestamp, v.checkout_timestamp) ?? '',
+    v.usuarios?.nome || '',
+    v.instituicoes?.nome || '',
+    v.instituicoes?.cidade || '',
+    v.status || '',
+    v.visita_realizada === true ? 'Sim' : v.visita_realizada === false ? 'Não' : '',
+    v.checkin_manual ? 'Sim' : 'Não',
+    v.flag_gps_divergente ? 'Sim' : 'Não',
+    v.flag_horario_fora_margem ? 'Sim' : 'Não',
+    (v.flag_sem_checkin || v.flag_sem_checkout) ? 'Sim' : 'Não',
+  ]);
+  baixarCsv(`visitas-${new Date().toISOString().substring(0, 10)}.csv`, header, rows);
   setFlash('success', 'CSV baixado.');
 };
 
@@ -10885,7 +12502,12 @@ const routes = {
 const DESKTOP_RENDERERS = {
   '#/admin': renderAdminDashboardDesktop,
   '#/admin/revisao': renderAdminRevisaoDesktop,
-  // Partes 4+ vão adicionar: '#/admin/instituicoes': renderAdminInstituicoesDesktop, etc.
+  '#/admin/instituicoes': renderAdminInstituicoesDesktop,
+  '#/admin/equipe': renderAdminEquipeDesktop,
+  '#/admin/pendentes': renderAdminPendentesDesktop,
+  '#/admin/profissionais': renderAdminProfissionaisDesktop,
+  '#/admin/visitas': renderAdminVisitasDesktop,
+  // Partes 8+ vão adicionar: agenda, objetivos, configuracoes
 };
 
 function getRendererForRoute(hash, route) {
@@ -21258,16 +22880,18 @@ async function listarUsuariosPorStatus(statuses) {
   if (!db) return [];
   const { data, error } = await db
     .from('usuarios')
-    .select('id, nome, cpf, email, telefone, perfil, status, categoria_id, criado_em, ultimo_login, foto_url, categorias_profissionais(nome)')
+    .select('id, nome, cpf, email, telefone, perfil, super_admin, status, categoria_id, criado_em, ultimo_login, foto_url, categorias_profissionais(nome)')
     .in('status', statuses)
     .order('criado_em', { ascending: false });
   if (error) { console.warn('[equipe]', error.message); return []; }
-  // Admins primeiro, depois o resto na ordem original (criado_em desc)
+  // Super admin primeiro, depois admins, depois o resto (por criado_em desc)
   const lista = data || [];
   return lista.sort((a, b) => {
+    if (a.super_admin && !b.super_admin) return -1;
+    if (b.super_admin && !a.super_admin) return 1;
     if (a.perfil === 'admin' && b.perfil !== 'admin') return -1;
     if (b.perfil === 'admin' && a.perfil !== 'admin') return 1;
-    return 0; // mantém ordem do banco
+    return 0;
   });
 }
 
@@ -21828,6 +23452,110 @@ window.reativarProfissional = async function(id) {
   carregarEquipe();
 };
 
+// Sprint 9.14: Promover membro → admin
+// Qualquer admin pode promover qualquer membro.
+window.promoverParaAdmin = async function(id) {
+  if (await bloqueioSimulacao('promover para admin')) return;
+  if (!isAdmin()) { setFlash('error', 'Só admins podem promover usuários.'); return; }
+  try {
+    const { data: alvo, error: e1 } = await db.from('usuarios').select('id, nome, perfil, super_admin').eq('id', id).maybeSingle();
+    if (e1) throw new Error(e1.message);
+    if (!alvo) throw new Error('Usuário não encontrado.');
+    if (alvo.perfil === 'admin') { setFlash('info', 'Esse usuário já é admin.'); return; }
+
+    const ok = await showModalConfirmacao({
+      icone: 'admin_panel_settings',
+      iconeCor: 'warning',
+      titulo: `Promover "${alvo.nome}" a admin?`,
+      subtitulo: 'Administradores têm acesso total ao sistema: podem aprovar cadastros, revisar visitas, gerenciar instituições e até promover/rebaixar outros admins. Tem certeza?',
+      btnConfirmar: 'Sim, promover',
+      btnCancelar: 'Cancelar',
+    });
+    if (!ok) return;
+
+    // Usa .select() pra poder detectar se a RLS bloqueou silenciosamente (0 linhas)
+    const { data, error } = await db.from('usuarios').update({
+      perfil: 'admin',
+    }).eq('id', id).select();
+
+    if (error) throw new Error(error.message);
+    if (!data || data.length === 0) {
+      throw new Error('UPDATE não afetou nenhum registro. Abra o console (F12) pra ver detalhes.');
+    }
+
+    setFlash('success', `${alvo.nome} agora é admin.`);
+    if (typeof carregarEquipe === 'function') carregarEquipe();
+    if (typeof carregarAdminEquipeDesktop === 'function') carregarAdminEquipeDesktop();
+    atualizarBadgesSidebarDesktop();
+  } catch (err) {
+    setFlash('error', 'Erro ao promover: ' + err.message);
+  }
+};
+
+// Sprint 9.14: Rebaixar admin → membro
+// Qualquer admin pode rebaixar outro admin — EXCETO o super admin (protegido por trigger e UI).
+window.rebaixarParaMembro = async function(id) {
+  if (await bloqueioSimulacao('rebaixar admin')) return;
+  if (!isAdmin()) { setFlash('error', 'Só admins podem rebaixar usuários.'); return; }
+  try {
+    const { data: alvo, error: e1 } = await db.from('usuarios').select('id, nome, perfil, super_admin').eq('id', id).maybeSingle();
+    if (e1) throw new Error(e1.message);
+    if (!alvo) throw new Error('Usuário não encontrado.');
+    if (alvo.perfil !== 'admin') { setFlash('info', 'Esse usuário não é admin.'); return; }
+    if (alvo.super_admin) {
+      setFlash('error', 'O super admin não pode ser rebaixado.');
+      return;
+    }
+    const me = getCurrentUser();
+    if (me && me.id === id) {
+      const okAuto = await showModalConfirmacao({
+        icone: 'warning', iconeCor: 'warning',
+        titulo: 'Rebaixar sua própria conta?',
+        subtitulo: 'Você perderá acesso admin imediatamente e precisará que outro admin te promova de volta.',
+        btnConfirmar: 'Sim, rebaixar minha conta',
+        btnCancelar: 'Cancelar',
+      });
+      if (!okAuto) return;
+    } else {
+      const ok = await showModalConfirmacao({
+        icone: 'arrow_downward',
+        iconeCor: 'warning',
+        titulo: `Rebaixar "${alvo.nome}" a membro?`,
+        subtitulo: 'Essa pessoa perderá o acesso administrativo imediatamente. Continuará podendo registrar visitas como membro comum.',
+        btnConfirmar: 'Sim, rebaixar',
+        btnCancelar: 'Cancelar',
+      });
+      if (!ok) return;
+    }
+
+    const { data, error } = await db.from('usuarios').update({
+      perfil: 'nutricionista',
+    }).eq('id', id).select();
+
+    if (error) throw new Error(error.message);
+    if (!data || data.length === 0) {
+      throw new Error('UPDATE não afetou nenhum registro. Abra o console (F12) pra ver detalhes.');
+    }
+
+    setFlash('success', `${alvo.nome} agora é membro.`);
+    if (me && me.id === id) {
+      setFlash('info', 'Você foi rebaixado. Faça login de novo pra atualizar seu acesso.');
+      setTimeout(() => {
+        sessionStorage.clear();
+        localStorage.removeItem('user');
+        window.location.hash = '#/login';
+        window.location.reload();
+      }, 1500);
+      return;
+    }
+    if (typeof carregarEquipe === 'function') carregarEquipe();
+    if (typeof carregarAdminEquipeDesktop === 'function') carregarAdminEquipeDesktop();
+    atualizarBadgesSidebarDesktop();
+  } catch (err) {
+    setFlash('error', 'Erro ao rebaixar: ' + err.message);
+  }
+};
+
 window.excluirProfissional = async function(id) {
   // Primeira confirmação
   const ok1 = await showModalConfirmacao({
@@ -21868,13 +23596,20 @@ window.editarCategoriaProfissional = async function(id) {
   const novaCat = await showModalSelectCategoria(u, cats);
   if (!novaCat) return;
   if (novaCat === u.categoria_id) return; // sem mudança
-  const { error } = await db.from('usuarios').update({ categoria_id: novaCat }).eq('id', id);
+  // Usa .select() pra detectar RLS bloqueando silenciosamente
+  const { data, error } = await db.from('usuarios').update({ categoria_id: novaCat }).eq('id', id).select();
   if (error) {
     setFlash('error', 'Erro ao atualizar: ' + error.message);
-  } else {
-    setFlash('success', 'Categoria atualizada.');
+    return;
   }
-  carregarEquipe();
+  if (!data || data.length === 0) {
+    setFlash('error', 'Atualização não foi gravada — provavelmente há RLS bloqueando. Rode a migration 34 no Supabase.');
+    return;
+  }
+  setFlash('success', 'Categoria atualizada.');
+  // Re-renderiza tanto mobile quanto desktop (só chama o que existir)
+  if (typeof carregarEquipe === 'function') carregarEquipe();
+  if (typeof carregarAdminEquipeDesktop === 'function') carregarAdminEquipeDesktop();
 };
 
 // Modal simples pra escolher categoria
@@ -22779,8 +24514,13 @@ window.novoProfissionalAdmin = async function() {
     setFlash('success', `"${dados.nome}" cadastrado.`);
     // Vai pra aba Ativos pra ver o recém-cadastrado
     window._profFilter = 'ativos';
-    atualizarAbaAtivaProf('ativos');
-    await carregarProfissionaisAdmin();
+    if (typeof atualizarAbaAtivaProf === 'function') atualizarAbaAtivaProf('ativos');
+    // Também atualiza estado + aba do desktop
+    if (window._profDesktopState) window._profDesktopState.filtro = 'ativos';
+    if (typeof trocarAbaProfDesktop === 'function') trocarAbaProfDesktop('ativos', true);
+    // Recarrega listas (só a que existir no DOM atual)
+    if (typeof carregarProfissionaisAdmin === 'function') await carregarProfissionaisAdmin();
+    if (typeof carregarAdminProfissionaisDesktop === 'function') await carregarAdminProfissionaisDesktop();
   } catch (err) {
     await showModalConfirmacao({
       icone: 'error', iconeCor: 'danger',
@@ -22820,7 +24560,9 @@ window.editarProfissionalAdmin = async function(id) {
     const { error: upErr } = await db.from('profissionais').update(resultado).eq('id', id);
     if (upErr) throw new Error(upErr.message);
     setFlash('success', `"${resultado.nome}" atualizado.`);
-    await carregarProfissionaisAdmin();
+    // Recarrega lista mobile e desktop (só a que existir no DOM atual)
+    if (typeof carregarProfissionaisAdmin === 'function') await carregarProfissionaisAdmin();
+    if (typeof carregarAdminProfissionaisDesktop === 'function') await carregarAdminProfissionaisDesktop();
   } catch (err) {
     await showModalConfirmacao({
       icone: 'error', iconeCor: 'danger',
@@ -22855,7 +24597,8 @@ window.desativarProfissionalExterno = async function(id, nome) {
     const { error } = await db.from('profissionais').update({ ativo: false }).eq('id', id);
     if (error) throw new Error(error.message);
     setFlash('success', `"${nome || 'Profissional'}" desativado.`);
-    await carregarProfissionaisAdmin();
+    if (typeof carregarProfissionaisAdmin === 'function') await carregarProfissionaisAdmin();
+    if (typeof carregarAdminProfissionaisDesktop === 'function') await carregarAdminProfissionaisDesktop();
   } catch (err) {
     await showModalConfirmacao({
       icone: 'error', iconeCor: 'danger',
@@ -22880,7 +24623,8 @@ window.reativarProfissionalExterno = async function(id, nome) {
     const { error } = await db.from('profissionais').update({ ativo: true }).eq('id', id);
     if (error) throw new Error(error.message);
     setFlash('success', `"${nome || 'Profissional'}" reativado.`);
-    await carregarProfissionaisAdmin();
+    if (typeof carregarProfissionaisAdmin === 'function') await carregarProfissionaisAdmin();
+    if (typeof carregarAdminProfissionaisDesktop === 'function') await carregarAdminProfissionaisDesktop();
   } catch (err) {
     await showModalConfirmacao({
       icone: 'error', iconeCor: 'danger',
