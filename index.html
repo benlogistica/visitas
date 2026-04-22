@@ -2635,6 +2635,114 @@ a {
 .page-break-before { page-break-before: always; }
 .avoid-break { page-break-inside: avoid; }
 
+/* Sprint 9.21.6: Otimização mobile do relatório — só afeta a tela, não o print */
+@media screen and (max-width: 768px) {
+  .relatorio-page {
+    padding: 10px 8px 40px;
+  }
+  .relatorio-actions {
+    margin-bottom: 10px;
+    gap: 6px;
+  }
+  .relatorio-btn {
+    padding: 10px 14px;
+    font-size: 12px;
+    flex: 1;
+    justify-content: center;
+  }
+  .relatorio-dica {
+    margin-bottom: 10px;
+    padding: 10px 12px;
+    font-size: 11.5px;
+    line-height: 1.45;
+  }
+  .relatorio-paper {
+    padding: 20px 16px;
+    border-radius: 10px;
+    font-size: 13px;
+  }
+  .relatorio-header {
+    padding-bottom: 12px;
+    margin-bottom: 18px;
+  }
+  .relatorio-header__brand {
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  .relatorio-header__title {
+    font-size: 18px;
+  }
+  .relatorio-header__subtitle {
+    font-size: 10px;
+    letter-spacing: 0.04em;
+  }
+  .relatorio-header__meta {
+    font-size: 11.5px;
+    gap: 6px 14px;
+    flex-direction: column;
+  }
+  .relatorio-section {
+    margin-bottom: 20px;
+  }
+  .relatorio-section__title {
+    font-size: 14px;
+    margin-bottom: 10px;
+  }
+  .relatorio-subtitle {
+    font-size: 12.5px;
+  }
+  .relatorio-prosa {
+    font-size: 12.5px;
+    line-height: 1.55;
+  }
+  /* KPIs: 2 colunas em vez de 4 pra caber bem no celular */
+  .relatorio-kpis {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .relatorio-kpi {
+    padding: 10px;
+  }
+  .relatorio-kpi__value {
+    font-size: 18px;
+  }
+  .relatorio-kpi__label {
+    font-size: 9.5px;
+  }
+  .relatorio-kpi__hint {
+    font-size: 9.5px;
+  }
+  /* Blocos de 2 colunas: empilham no mobile */
+  .relatorio-two-col {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  .relatorio-table {
+    font-size: 11.5px;
+  }
+  .relatorio-table th {
+    font-size: 9.5px;
+  }
+  .relatorio-table th,
+  .relatorio-table td {
+    padding: 5px 6px;
+  }
+  .relatorio-table--compact th,
+  .relatorio-table--compact td {
+    padding: 3px 4px;
+    font-size: 10.5px;
+  }
+  .relatorio-footer {
+    font-size: 10px;
+    margin-top: 20px;
+  }
+  /* Gráficos SVG: altura reduzida */
+  .relatorio-section svg {
+    max-width: 100%;
+    height: auto;
+  }
+}
+
 @media print {
   body, html {
     background: #fff !important;
@@ -5445,7 +5553,7 @@ a {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.21.5-frase-fundo-claro',
+  APP_VERSION: '1.0.0-alpha.sprint9.21.6-relatorio-mobile',
   APP_NAME: 'Nutricionais Visitas',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -19266,14 +19374,10 @@ function renderAdminDashboardRelatorio() {
   if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
 
   const periodo = window._routeParams?.periodo || '30';
-  const autoPrint = window._routeParams?.auto === '1';
 
   setTimeout(async () => {
     await carregarRelatorio(periodo, user);
-    if (autoPrint) {
-      // Espera um tico pras fontes / ícones carregarem antes de abrir o print
-      setTimeout(() => { window.print(); }, 800);
-    }
+    // Sprint 9.21.6: removido auto-print; usuário só imprime quando clica no botão
   }, 0);
 
   const labelPeriodo = {
@@ -20004,10 +20108,10 @@ window.irParaPendenciasInteligente = async function() {
   }
 };
 
-// Exporta dashboard em PDF: abre a página de relatório com o período atual e aciona print automático
+// Exporta dashboard em PDF: abre a página de relatório (Sprint 9.21.6: sem auto-print)
 window.exportarRelatorioDashboard = function() {
   const periodo = window._dashPeriodoAtual || '30';
-  window.location.hash = `#/admin/dashboard/relatorio?periodo=${periodo}&auto=1`;
+  window.location.hash = `#/admin/dashboard/relatorio?periodo=${periodo}`;
 };
 function renderAdminRevisao() {
   const user = requireAdmin();
