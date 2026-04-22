@@ -5347,6 +5347,35 @@ a {
   min-width: 0;
 }
 
+/* Chart cards (dashboard desktop) */
+.ds-chart-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 1px 3px rgba(10,31,92,0.04);
+  border: 1px solid var(--neutral-200);
+  display: flex;
+  flex-direction: column;
+}
+.ds-chart-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 16px;
+  gap: 12px;
+}
+.ds-chart-card__title {
+  font-family: 'Poppins', sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--brand-navy);
+}
+.ds-chart-card__subtitle {
+  font-size: 11.5px;
+  color: var(--neutral-500);
+  margin-top: 2px;
+}
+
 </style>
 </head>
 <body>
@@ -5379,7 +5408,7 @@ a {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.12-dashboard-admin-evo',
+  APP_VERSION: '1.0.0-alpha.sprint9.13c.2-logo-label',
   APP_NAME: 'Nutricionais Visitas',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -8213,6 +8242,1496 @@ function stopTimer() {
 }
 
 /* ==========================================================================
+   DESKTOP SHELL — Sprint 9.13 Parte 1
+   ========================================================================== */
+
+// Detecta se tela é larga o suficiente pra layout desktop
+// Breakpoint 1024px (tablet paisagem + desktop)
+function isDesktop() {
+  return window.innerWidth >= 1024;
+}
+
+// Mapeia hash da rota pra id do item ativo na sidebar
+function sidebarActiveFromHash(hash) {
+  if (hash === '#/admin' || hash === '#/') return 'dashboard';
+  if (hash.startsWith('#/admin/revisao')) return 'review';
+  if (hash.startsWith('#/admin/equipe')) return 'team';
+  if (hash.startsWith('#/admin/instituicoes')) return 'institutions';
+  if (hash.startsWith('#/admin/profissionais')) return 'professions';
+  if (hash.startsWith('#/admin/visitas')) return 'visits';
+  if (hash.startsWith('#/admin/agenda')) return 'agenda';
+  if (hash.startsWith('#/admin/objetivos')) return 'objectives';
+  if (hash.startsWith('#/admin/pendentes')) return 'pendentes';
+  if (hash.startsWith('#/admin/configuracoes')) return 'settings';
+  return '';
+}
+
+// Sidebar do desktop — itens fixos + badges dinâmicos (populados async)
+function desktopSidebar(activeId) {
+  const user = getCurrentUser();
+  const items = [
+    { id: 'dashboard',    href: '#/admin',                icon: 'dashboard',       label: 'Dashboard' },
+    { id: 'review',       href: '#/admin/revisao',        icon: 'rule',            label: 'Revisão',       badgeId: 'dsBadgeReview' },
+    { id: 'pendentes',    href: '#/admin/pendentes',      icon: 'hourglass_top',   label: 'Pendências',    badgeId: 'dsBadgePend' },
+    { id: 'team',         href: '#/admin/equipe',         icon: 'groups',          label: 'Equipe',        badgeId: 'dsBadgeTeam' },
+    { id: 'institutions', href: '#/admin/instituicoes',   icon: 'local_hospital',  label: 'Instituições' },
+    { id: 'professions',  href: '#/admin/profissionais',  icon: 'stethoscope',     label: 'Profissionais' },
+    { id: 'visits',       href: '#/admin/visitas',        icon: 'location_on',     label: 'Todas as visitas' },
+    { id: 'agenda',       href: '#/admin/agenda',         icon: 'calendar_month',  label: 'Agenda global' },
+    { id: 'objectives',   href: '#/admin/objetivos',      icon: 'flag',            label: 'Objetivos' },
+    { id: 'settings',     href: '#/admin/configuracoes',  icon: 'settings',        label: 'Configurações' },
+  ];
+  const userInitials = user ? iniciais(user.nome || 'A') : 'A';
+  const userName = user?.nome || 'Admin';
+  const userEmail = user?.email || '';
+  const userFoto = user?.foto_url || '';
+
+  return `
+    <aside class="ds-sidebar">
+      <div class="ds-sidebar__logo">
+        <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" style="height:28px;width:auto;flex-shrink:0;" aria-hidden="true">
+          <path d="M100 175 C100 175, 20 125, 20 70 C20 45, 40 25, 65 25 C80 25, 92 32, 100 45 C108 32, 120 25, 135 25 C160 25, 180 45, 180 70 C180 125, 100 175, 100 175 Z" fill="#8BC63F"/>
+        </svg>
+        <span class="ds-sidebar__logo-text">NUTRICIONAIS</span>
+      </div>
+      <div class="ds-sidebar__divider"></div>
+      <nav class="ds-sidebar__nav">
+        ${items.map(it => `
+          <a href="${it.href}" class="ds-sidebar__item ${activeId === it.id ? 'is-active' : ''}">
+            <span class="ds-sidebar__item-icon material-symbols-rounded" style="font-size:19px;">${it.icon}</span>
+            <span class="ds-sidebar__item-label">${it.label}</span>
+            ${it.badgeId ? `<span class="ds-sidebar__item-badge" id="${it.badgeId}" style="display:none;">—</span>` : ''}
+          </a>
+        `).join('')}
+      </nav>
+      <div class="ds-sidebar__user">
+        <div class="ds-sidebar__user-avatar" ${userFoto ? `style="background-image:url('${userFoto}')"` : ''}>
+          ${userFoto ? '' : userInitials}
+        </div>
+        <div class="ds-sidebar__user-info">
+          <div class="ds-sidebar__user-name">${userName}</div>
+          <div class="ds-sidebar__user-role">${userEmail}</div>
+        </div>
+        <a href="#/logout" class="ds-sidebar__user-logout" title="Sair">
+          <span class="material-symbols-rounded" style="font-size:18px;">logout</span>
+        </a>
+      </div>
+    </aside>
+  `;
+}
+
+// Topbar do desktop
+function desktopTopbar({ title, breadcrumb = [], titleExtra = '' } = {}) {
+  const user = getCurrentUser();
+  const userInitials = user ? iniciais(user.nome || 'A') : 'A';
+  const userName = (user?.nome || '').split(' ').slice(0, 2).join(' ');
+  const userFoto = user?.foto_url || '';
+
+  const breadcrumbHtml = breadcrumb.length > 0 ? `
+    <div class="ds-topbar__breadcrumb">
+      ${breadcrumb.map((b, i) => `
+        <span style="color:${i === breadcrumb.length - 1 ? 'var(--neutral-600)' : 'var(--neutral-400)'};">${b}</span>
+        ${i < breadcrumb.length - 1 ? '<span class="material-symbols-rounded ds-topbar__breadcrumb-sep" style="font-size:13px;">chevron_right</span>' : ''}
+      `).join('')}
+    </div>
+  ` : '';
+
+  return `
+    <header class="ds-topbar">
+      <div class="ds-topbar__title-wrap">
+        <div style="display:flex;align-items:baseline;gap:10px;">
+          <div class="ds-topbar__title">${title || ''}</div>
+          ${titleExtra}
+        </div>
+        ${breadcrumbHtml}
+      </div>
+
+      <div class="ds-topbar__search" onclick="document.getElementById('dsSearchInput')?.focus()">
+        <span class="material-symbols-rounded" style="font-size:17px;color:var(--neutral-500);">search</span>
+        <input id="dsSearchInput" placeholder="Buscar hospital, nutricionista, visita…" onfocus="abrirBuscaGlobal()" readonly />
+        <kbd>⌘K</kbd>
+      </div>
+
+      <div class="ds-topbar__divider"></div>
+
+      <button class="ds-topbar__icon-btn" onclick="toggleNotifDropdown(event)" title="Notificações">
+        <span class="material-symbols-rounded" style="font-size:20px;">notifications</span>
+        <span class="notif-badge-desktop" id="notifBadgeDesktop" style="display:none;">0</span>
+      </button>
+
+      <button class="ds-topbar__avatar-btn" onclick="togglePerfilDropdown(event)">
+        <div class="ds-topbar__avatar" ${userFoto ? `style="background-image:url('${userFoto}')"` : ''}>
+          ${userFoto ? '' : userInitials}
+        </div>
+        <div class="ds-topbar__avatar-info">
+          <div class="ds-topbar__avatar-name">${userName}</div>
+          <div class="ds-topbar__avatar-role">${user?.perfil === 'admin' ? 'Admin' : 'Nutri'}</div>
+        </div>
+        <span class="material-symbols-rounded" style="font-size:16px;color:var(--neutral-500);">expand_more</span>
+      </button>
+    </header>
+  `;
+}
+
+// Shell completo do desktop — sidebar + topbar + área de conteúdo
+// Uso: `return desktopShell({ title, breadcrumb, content, activeId })`
+function desktopShell({ title, breadcrumb, titleExtra, content, activeId }) {
+  return `
+    <div class="ds-shell">
+      ${desktopSidebar(activeId || sidebarActiveFromHash(window.location.hash || '#/'))}
+      <div class="ds-main">
+        ${desktopTopbar({ title, breadcrumb, titleExtra })}
+        <main class="ds-content">
+          ${content || ''}
+        </main>
+      </div>
+    </div>
+  `;
+}
+
+// Popula badges dinâmicos da sidebar (contadores de pendência, revisão, equipe)
+// Chamado depois que o desktopShell é renderizado
+async function atualizarBadgesSidebarDesktop() {
+  try {
+    const [instPend, objPend, eqCnts, reabPend, revisao] = await Promise.all([
+      listarInstituicoesPendentes().catch(() => []),
+      listarObjetivosPendentes().catch(() => []),
+      contarUsuariosPorStatus().catch(() => ({ pendentes: 0 })),
+      listarSolicitacoesReaberturaPendentes().catch(() => []),
+      // Fila de revisão: conta visitas em_revisao (admin devolveu pro nutri) OU em_flag
+      db.from('visitas').select('id', { count: 'exact', head: true })
+        .or('status.eq.em_revisao,flag_gps_divergente.eq.true')
+        .then(r => r.count || 0)
+        .catch(() => 0),
+    ]);
+
+    const setBadge = (id, n, cls = '') => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      if (n > 0) {
+        el.textContent = n > 99 ? '99+' : String(n);
+        el.style.display = '';
+        // Aplica classe de cor se especificada
+        el.classList.remove('ds-sidebar__item-badge--warning', 'ds-sidebar__item-badge--info');
+        if (cls) el.classList.add(cls);
+      } else {
+        el.style.display = 'none';
+      }
+    };
+
+    setBadge('dsBadgePend', instPend.length + objPend.length + reabPend.length, 'ds-sidebar__item-badge--warning');
+    setBadge('dsBadgeTeam', eqCnts.pendentes || 0, 'ds-sidebar__item-badge--info');
+    setBadge('dsBadgeReview', revisao);
+  } catch (err) {
+    console.warn('[sidebar desktop badges]', err);
+  }
+}
+
+// Sprint 9.13 Parte 2: Dashboard admin desktop completo
+// Layout: coluna principal (KPIs + 4 gráficos) + widget lateral "Ações pendentes"
+function renderAdminDashboardDesktop() {
+  const user = requireAdmin();
+  if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
+
+  // Período default: últimos 30 dias (mesmo padrão do mobile)
+  if (!window._dashDesktopPeriodo) window._dashDesktopPeriodo = '30';
+
+  // Carrega dados async + popula sidebar
+  setTimeout(() => {
+    atualizarBadgesSidebarDesktop();
+    carregarAdminDashboardDesktop();
+  }, 0);
+
+  // Período selector (mesmos botões do mobile, sem "Hoje")
+  const periodos = [
+    { id: '7',   label: '7 dias' },
+    { id: '30',  label: '30 dias' },
+    { id: 'mes', label: 'Mês' },
+    { id: 'tri', label: 'Trimestre' },
+    { id: 'all', label: 'Tudo' },
+  ];
+  const titleExtra = `
+    <div style="display:inline-flex;gap:4px;background:var(--neutral-100);border-radius:9999px;padding:3px;">
+      ${periodos.map(p => `
+        <button onclick="trocarPeriodoDashDesktop('${p.id}')" id="dsdPeriod_${p.id}" style="padding:5px 12px;border:0;background:${window._dashDesktopPeriodo === p.id ? 'var(--brand-navy)' : 'transparent'};color:${window._dashDesktopPeriodo === p.id ? '#fff' : 'var(--neutral-600)'};border-radius:9999px;font-size:11.5px;font-weight:600;cursor:pointer;font-family:inherit;">${p.label}</button>
+      `).join('')}
+    </div>
+  `;
+
+  const content = `
+    <div style="display:flex;flex-direction:row;gap:24px;align-items:flex-start;">
+      <!-- COLUNA PRINCIPAL -->
+      <div style="flex:1;display:flex;flex-direction:column;gap:20px;min-width:0;">
+
+        <!-- 4 KPIs em linha -->
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;" id="dsdKpiRow">
+          <div style="background:#fff;border-radius:12px;padding:40px 20px;border:1px solid var(--neutral-200);text-align:center;color:var(--neutral-400);font-size:12px;">Carregando KPIs...</div>
+          <div style="background:#fff;border-radius:12px;padding:40px 20px;border:1px solid var(--neutral-200);text-align:center;color:var(--neutral-400);font-size:12px;">&nbsp;</div>
+          <div style="background:#fff;border-radius:12px;padding:40px 20px;border:1px solid var(--neutral-200);text-align:center;color:var(--neutral-400);font-size:12px;">&nbsp;</div>
+          <div style="background:#fff;border-radius:12px;padding:40px 20px;border:1px solid var(--neutral-200);text-align:center;color:var(--neutral-400);font-size:12px;">&nbsp;</div>
+        </div>
+
+        <!-- Grid 2x2 de cards de gráficos -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+          <!-- Visitas por nutricionista -->
+          <div class="ds-chart-card">
+            <div class="ds-chart-card__header">
+              <div>
+                <div class="ds-chart-card__title">Visitas por nutricionista</div>
+                <div class="ds-chart-card__subtitle" id="dsdRankingSubtitle">—</div>
+              </div>
+            </div>
+            <div id="dsdRankingNutri" style="min-height:320px;">Carregando...</div>
+          </div>
+
+          <!-- Visitas por semana (linha) -->
+          <div class="ds-chart-card">
+            <div class="ds-chart-card__header">
+              <div>
+                <div class="ds-chart-card__title">Visitas por semana</div>
+                <div class="ds-chart-card__subtitle" id="dsdVsSubtitle">—</div>
+              </div>
+              <div style="display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--neutral-600);">
+                <span style="width:9px;height:9px;border-radius:50%;background:var(--brand-lime);display:inline-block;"></span>
+                Visitas aprovadas
+              </div>
+            </div>
+            <div id="dsdVisitasSemana" style="min-height:260px;display:flex;align-items:center;justify-content:center;color:var(--neutral-400);font-size:12px;">Carregando...</div>
+          </div>
+
+          <!-- Distribuição por objetivo (donut) -->
+          <div class="ds-chart-card">
+            <div class="ds-chart-card__header">
+              <div>
+                <div class="ds-chart-card__title">Distribuição por objetivo</div>
+                <div class="ds-chart-card__subtitle">Tipo declarado em cada visita</div>
+              </div>
+            </div>
+            <div id="dsdDonutObj" style="min-height:180px;display:flex;align-items:center;justify-content:center;color:var(--neutral-400);font-size:12px;">Carregando...</div>
+          </div>
+
+          <!-- Heatmap dias × horas -->
+          <div class="ds-chart-card">
+            <div class="ds-chart-card__header">
+              <div>
+                <div class="ds-chart-card__title">Dias × horários mais frequentes</div>
+                <div class="ds-chart-card__subtitle" id="dsdHeatSubtitle">Heatmap · últimos 90 dias</div>
+              </div>
+            </div>
+            <div id="dsdHeatmap" style="min-height:220px;display:flex;align-items:center;justify-content:center;color:var(--neutral-400);font-size:12px;">Carregando...</div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- WIDGET LATERAL: Ações pendentes -->
+      <aside style="width:300px;flex-shrink:0;position:sticky;top:88px;background:#fff;border-radius:12px;padding:20px;border:1px solid var(--neutral-200);box-shadow:0 1px 3px rgba(10,31,92,0.04);">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+          <div style="font-family:'Poppins',sans-serif;font-weight:600;font-size:15px;color:var(--brand-navy);">Ações pendentes</div>
+          <span id="dsdPendCount" style="background:var(--brand-navy);color:#fff;font-size:11px;font-weight:700;padding:2px 9px;border-radius:9999px;min-width:24px;text-align:center;">—</span>
+        </div>
+        <div style="font-size:11.5px;color:var(--neutral-500);margin-bottom:16px;">Requerem sua atenção</div>
+        <div id="dsdAcoesPendentes" style="display:flex;flex-direction:column;gap:10px;">
+          <div style="padding:24px;text-align:center;color:var(--neutral-400);font-size:12px;">Carregando...</div>
+        </div>
+      </aside>
+    </div>
+  `;
+
+  return desktopShell({
+    title: 'Dashboard',
+    breadcrumb: ['Admin', 'Dashboard'],
+    titleExtra,
+    content,
+    activeId: 'dashboard',
+  });
+}
+
+// Handler do seletor de período do dashboard desktop
+window.trocarPeriodoDashDesktop = function(periodo) {
+  window._dashDesktopPeriodo = periodo;
+  // Atualiza botões visualmente (sem re-renderizar tudo)
+  ['7','30','mes','tri','all'].forEach(p => {
+    const btn = document.getElementById(`dsdPeriod_${p}`);
+    if (btn) {
+      if (p === periodo) {
+        btn.style.background = 'var(--brand-navy)';
+        btn.style.color = '#fff';
+      } else {
+        btn.style.background = 'transparent';
+        btn.style.color = 'var(--neutral-600)';
+      }
+    }
+  });
+  carregarAdminDashboardDesktop();
+};
+
+// Carrega dados do dashboard desktop e popula todos os gráficos
+async function carregarAdminDashboardDesktop() {
+  const periodo = window._dashDesktopPeriodo || '30';
+  const dataInicio = calcularDataInicio(periodo);
+  const periodoAnt = calcularPeriodoAnterior(periodo);
+
+  try {
+    // Query principal de visitas no período
+    let query = db.from('visitas').select(`
+      id, status, data_visita, checkin_timestamp, checkout_timestamp, checkin_manual,
+      flag_gps_divergente, visita_realizada,
+      nutricionista_id, instituicao_id,
+      usuarios:nutricionista_id(nome, foto_url),
+      instituicoes(nome)
+    `);
+    if (dataInicio) query = query.gte('checkin_timestamp', dataInicio);
+
+    // Query período anterior (pra comparações dos KPIs)
+    let queryAnt = null;
+    if (periodoAnt) {
+      queryAnt = db.from('visitas').select('id', { count: 'exact', head: true })
+        .gte('checkin_timestamp', periodoAnt.inicio)
+        .lte('checkin_timestamp', periodoAnt.fim);
+    }
+
+    // Query de nutris ativos (pra KPI "Nutricionistas ativos")
+    const queryNutris = db.from('usuarios')
+      .select('id', { count: 'exact', head: true })
+      .eq('perfil', 'profissional')
+      .eq('status', 'ativo');
+
+    // Query de instituições ativas
+    const queryInsts = db.from('instituicoes')
+      .select('id', { count: 'exact', head: true })
+      .eq('ativo', true)
+      .eq('pendente_aprovacao', false);
+
+    // Query de instituições novas no período
+    const queryInstsNovas = dataInicio
+      ? db.from('instituicoes').select('id', { count: 'exact', head: true })
+          .eq('ativo', true).eq('pendente_aprovacao', false)
+          .gte('criado_em', dataInicio)
+      : Promise.resolve({ count: 0 });
+
+    const [visitasRes, totalAntRes, nutrisRes, instsRes, instsNovasRes] = await Promise.all([
+      query,
+      queryAnt || Promise.resolve({ count: null }),
+      queryNutris,
+      queryInsts,
+      queryInstsNovas,
+    ]);
+
+    if (visitasRes.error) throw new Error(visitasRes.error.message);
+    const visitas = visitasRes.data || [];
+    const totalAtual = visitas.length;
+    const totalAnt = totalAntRes.count;
+    const nutrisAtivos = nutrisRes.count || 0;
+    const instsAtivas = instsRes.count || 0;
+    const instsNovas = instsNovasRes.count || 0;
+
+    // Conta em revisão (admin devolveu OU flag crítico)
+    const { count: emRevisao } = await db.from('visitas')
+      .select('id', { count: 'exact', head: true })
+      .or('status.eq.em_revisao,flag_gps_divergente.eq.true');
+
+    // Renderiza os 4 KPIs
+    renderDsdKpis({
+      totalAtual, totalAnt,
+      emRevisao: emRevisao || 0,
+      nutrisAtivos,
+      instsAtivas,
+      instsNovas,
+    });
+
+    // Renderiza cada gráfico
+    renderDsdRankingNutri(visitas);
+    renderDsdVisitasSemana(visitas);
+    renderDsdDonutObjetivos(dataInicio);
+    renderDsdHeatmap();
+    renderDsdAcoesPendentes();
+  } catch (err) {
+    console.error('[dash desktop]', err);
+    const grid = document.getElementById('dsdKpiRow');
+    if (grid) grid.innerHTML = `<div style="grid-column:span 4;padding:20px;background:var(--status-danger-bg,#FCE8E8);color:var(--status-danger);border-radius:12px;">Erro: ${err.message}</div>`;
+  }
+}
+
+// Renderiza os 4 KPIs topo do dashboard
+function renderDsdKpis({ totalAtual, totalAnt, emRevisao, nutrisAtivos, instsAtivas, instsNovas }) {
+  const grid = document.getElementById('dsdKpiRow');
+  if (!grid) return;
+
+  // Calcula % variação total vs anterior
+  let deltaHtml = '';
+  if (totalAnt !== null) {
+    if (totalAnt === 0 && totalAtual > 0) {
+      deltaHtml = `<span style="color:var(--status-success);font-weight:700;">+novo</span> <span style="color:var(--neutral-500);">vs. período anterior</span>`;
+    } else if (totalAnt > 0) {
+      const diff = totalAtual - totalAnt;
+      const pct = Math.round((diff / totalAnt) * 100);
+      const cor = diff >= 0 ? 'var(--status-success)' : 'var(--status-danger)';
+      const icon = diff >= 0 ? 'trending_up' : 'trending_down';
+      const sinal = diff >= 0 ? '+' : '';
+      deltaHtml = `<span class="material-symbols-rounded" style="font-size:14px;color:${cor};vertical-align:-2px;">${icon}</span><span style="color:${cor};font-weight:700;">${sinal}${pct}%</span> <span style="color:var(--neutral-500);">vs. período anterior</span>`;
+    }
+  }
+
+  const instDelta = instsNovas > 0
+    ? `<span class="material-symbols-rounded" style="font-size:14px;color:var(--status-success);vertical-align:-2px;">trending_up</span><span style="color:var(--status-success);font-weight:700;">+${instsNovas} nova${instsNovas === 1 ? '' : 's'}</span> <span style="color:var(--neutral-500);">este período</span>`
+    : '';
+
+  // Monta KPI card (reusável)
+  const kpiCard = ({ icon, label, value, sublabel, deltaHtml: d, accent = 'lime', badge }) => {
+    const circleBg = accent === 'danger' ? 'var(--status-danger)' : 'var(--brand-lime)';
+    const shadow = accent === 'danger' ? 'none' : '0 4px 10px rgba(139,198,63,0.2)';
+    return `
+      <div style="background:#fff;border-radius:12px;padding:18px 20px;box-shadow:0 1px 3px rgba(10,31,92,0.04);border:1px solid var(--neutral-200);display:flex;flex-direction:column;gap:14px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <div style="width:44px;height:44px;border-radius:50%;background:${circleBg};display:flex;align-items:center;justify-content:center;box-shadow:${shadow};">
+            <span class="material-symbols-rounded" style="font-size:22px;color:#fff;">${icon}</span>
+          </div>
+          ${badge ? `<span style="background:var(--status-danger-bg,#FCE8E8);color:var(--status-danger);font-size:10.5px;font-weight:700;padding:3px 8px;border-radius:9999px;text-transform:uppercase;letter-spacing:0.04em;">${badge}</span>` : ''}
+        </div>
+        <div>
+          <div style="font-family:'Poppins',sans-serif;font-size:32px;font-weight:700;color:var(--brand-navy);line-height:1;font-variant-numeric:tabular-nums;letter-spacing:-0.02em;">${value}</div>
+          <div style="font-size:12.5px;font-weight:600;color:var(--neutral-600);margin-top:8px;">${label}</div>
+          ${d ? `<div style="margin-top:6px;font-size:11.5px;display:flex;align-items:center;gap:4px;flex-wrap:wrap;">${d}</div>` : ''}
+          ${sublabel && !d ? `<div style="margin-top:6px;font-size:11.5px;color:var(--neutral-500);">${sublabel}</div>` : ''}
+        </div>
+      </div>
+    `;
+  };
+
+  grid.innerHTML = [
+    kpiCard({
+      icon: 'location_on',
+      label: 'Visitas no período',
+      value: totalAtual,
+      deltaHtml,
+    }),
+    kpiCard({
+      icon: 'rule',
+      label: 'Em revisão',
+      value: emRevisao,
+      sublabel: emRevisao === 0 ? 'fila limpa' : 'aguardando decisão',
+      accent: emRevisao > 0 ? 'danger' : 'lime',
+      badge: emRevisao >= 5 ? 'Crítico' : null,
+    }),
+    kpiCard({
+      icon: 'groups',
+      label: 'Nutricionistas ativos',
+      value: nutrisAtivos,
+      sublabel: 'com acesso ao sistema',
+    }),
+    kpiCard({
+      icon: 'local_hospital',
+      label: 'Instituições ativas',
+      value: instsAtivas,
+      deltaHtml: instDelta,
+    }),
+  ].join('');
+}
+
+// Renderiza ranking Top 10 nutris (barras horizontais com avatar + posição)
+function renderDsdRankingNutri(visitas) {
+  const container = document.getElementById('dsdRankingNutri');
+  const subtitle = document.getElementById('dsdRankingSubtitle');
+  if (!container) return;
+
+  // Agrupa por nutricionista
+  const porNutri = {};
+  visitas.forEach(v => {
+    if (!v.nutricionista_id) return;
+    if (!porNutri[v.nutricionista_id]) {
+      porNutri[v.nutricionista_id] = {
+        id: v.nutricionista_id,
+        nome: v.usuarios?.nome || 'Sem nome',
+        foto: v.usuarios?.foto_url || null,
+        count: 0,
+      };
+    }
+    porNutri[v.nutricionista_id].count++;
+  });
+  const ranking = Object.values(porNutri).sort((a, b) => b.count - a.count).slice(0, 10);
+  if (subtitle) {
+    const mesNomes = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+    const agora = new Date();
+    subtitle.textContent = `Top ${ranking.length} · ${mesNomes[agora.getMonth()]}/${agora.getFullYear()}`;
+  }
+  if (ranking.length === 0) {
+    container.innerHTML = '<div style="padding:40px 0;text-align:center;color:var(--neutral-400);font-size:12px;">Sem visitas no período.</div>';
+    return;
+  }
+  const max = ranking[0].count || 1;
+
+  container.innerHTML = ranking.map((n, idx) => {
+    const pos = idx + 1;
+    const avatar = n.foto
+      ? `<div style="width:26px;height:26px;border-radius:50%;background-image:url('${n.foto}');background-size:cover;background-position:center;flex-shrink:0;"></div>`
+      : `<div style="width:26px;height:26px;border-radius:50%;background:var(--brand-navy);color:#fff;display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:700;font-family:'Poppins',sans-serif;flex-shrink:0;">${iniciais(n.nome)}</div>`;
+    const primeiroNome = n.nome.split(' ').slice(0, 2).join(' ');
+    return `
+      <div style="display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:${idx < ranking.length - 1 ? '1px solid var(--neutral-100)' : 'none'};">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11.5px;font-weight:600;color:var(--neutral-400);min-width:16px;text-align:right;">${pos}</span>
+        ${avatar}
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:12.5px;color:var(--brand-navy);font-weight:600;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${primeiroNome.replace(/</g,'&lt;')}</div>
+          <div style="height:5px;background:var(--neutral-100);border-radius:3px;overflow:hidden;">
+            <div style="height:100%;width:${(n.count / max * 100).toFixed(1)}%;background:var(--brand-navy);border-radius:3px;transition:width 600ms ease-out;"></div>
+          </div>
+        </div>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:var(--brand-navy);min-width:28px;text-align:right;">${n.count}</span>
+      </div>
+    `;
+  }).join('');
+}
+
+// Renderiza gráfico de linha: visitas por semana (últimas 12 semanas)
+function renderDsdVisitasSemana(visitasPeriodo) {
+  const container = document.getElementById('dsdVisitasSemana');
+  const subtitle = document.getElementById('dsdVsSubtitle');
+  if (!container) return;
+
+  // Últimas 12 semanas: ISO week start (segunda-feira)
+  const agora = new Date();
+  const semanas = [];
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date(agora);
+    d.setDate(d.getDate() - (i * 7));
+    // Ajusta pra segunda-feira da semana
+    const dia = d.getDay();
+    const diff = dia === 0 ? 6 : dia - 1;
+    d.setDate(d.getDate() - diff);
+    d.setHours(0, 0, 0, 0);
+    semanas.push(d);
+  }
+
+  // Conta visitas aprovadas (visita_realizada=true) por semana
+  const contagem = semanas.map(() => 0);
+  visitasPeriodo.forEach(v => {
+    if (!v.checkin_timestamp || v.visita_realizada !== true) return;
+    const d = new Date(v.checkin_timestamp);
+    for (let i = 0; i < semanas.length; i++) {
+      const fim = i < semanas.length - 1 ? semanas[i + 1] : new Date(agora.getTime() + 86400000);
+      if (d >= semanas[i] && d < fim) { contagem[i]++; break; }
+    }
+  });
+
+  if (subtitle) {
+    const inicio = semanas[0];
+    const fim = semanas[semanas.length - 1];
+    const fmtData = (dt) => `${String(dt.getDate()).padStart(2,'0')}/${String(dt.getMonth()+1).padStart(2,'0')}`;
+    subtitle.textContent = `Últimas 12 semanas · ${fmtData(inicio)} – ${fmtData(fim)}`;
+  }
+
+  const total = contagem.reduce((s, n) => s + n, 0);
+  if (total === 0) {
+    container.innerHTML = '<div style="padding:40px 0;text-align:center;color:var(--neutral-400);font-size:12px;">Sem visitas aprovadas no período.</div>';
+    return;
+  }
+
+  // SVG: 620×240
+  const W = 620, H = 240, padL = 40, padR = 20, padT = 30, padB = 30;
+  const max = Math.max(...contagem, 1);
+  const min = 0;
+  const chartW = W - padL - padR, chartH = H - padT - padB;
+  const xs = contagem.map((_, i) => padL + (i * chartW / (contagem.length - 1)));
+  const ys = contagem.map(v => padT + chartH - ((v - min) / (max - min || 1)) * chartH);
+  const lastIdx = contagem.length - 1;
+
+  // Linha da área
+  const linePath = xs.map((x, i) => `${i === 0 ? 'M' : 'L'} ${x} ${ys[i]}`).join(' ');
+  // Área preenchida (fecha em baixo)
+  const areaPath = `${linePath} L ${xs[lastIdx]} ${H - padB} L ${xs[0]} ${H - padB} Z`;
+
+  // Grid lines (3 horizontais)
+  const gridLines = [0, 0.5, 1].map(t => {
+    const y = padT + chartH * (1 - t);
+    const val = Math.round(min + (max - min) * t);
+    return `
+      <line x1="${padL}" y1="${y}" x2="${W - padR}" y2="${y}" stroke="var(--neutral-100)" stroke-width="1" stroke-dasharray="${t === 0 ? '0' : '3 3'}" />
+      <text x="${padL - 6}" y="${y + 3}" font-size="10" fill="var(--neutral-400)" text-anchor="end" font-family="JetBrains Mono">${val}</text>
+    `;
+  }).join('');
+
+  // Labels X (semanas)
+  const labels = xs.map((x, i) => `
+    <text x="${x}" y="${H - 8}" font-size="9" fill="var(--neutral-400)" text-anchor="middle" font-family="JetBrains Mono">S${i+1}</text>
+  `).join('');
+
+  // Tooltip do último ponto
+  const ultimo = contagem[lastIdx];
+  const tooltipX = xs[lastIdx], tooltipY = ys[lastIdx];
+
+  container.style.display = 'block';
+  container.innerHTML = `
+    <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:260px;display:block;">
+      <defs>
+        <linearGradient id="dsdAreaGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="var(--brand-lime)" stop-opacity="0.3" />
+          <stop offset="100%" stop-color="var(--brand-lime)" stop-opacity="0" />
+        </linearGradient>
+      </defs>
+      ${gridLines}
+      <path d="${areaPath}" fill="url(#dsdAreaGrad)" />
+      <path d="${linePath}" fill="none" stroke="var(--brand-lime)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" />
+      ${xs.map((x, i) => `<circle cx="${x}" cy="${ys[i]}" r="3" fill="#fff" stroke="var(--brand-lime)" stroke-width="2" />`).join('')}
+      <!-- Destaque no último ponto -->
+      <circle cx="${tooltipX}" cy="${tooltipY}" r="8" fill="var(--brand-lime)" fill-opacity="0.18" />
+      <circle cx="${tooltipX}" cy="${tooltipY}" r="4.5" fill="#fff" stroke="var(--brand-lime)" stroke-width="2.5" />
+      <g transform="translate(${Math.max(padL, Math.min(tooltipX - 40, W - padR - 80))} ${Math.max(8, tooltipY - 32)})">
+        <rect width="80" height="22" rx="6" fill="var(--brand-navy)" />
+        <text x="40" y="14" font-size="11" font-weight="700" fill="#fff" text-anchor="middle" font-family="JetBrains Mono">${ultimo} visitas</text>
+      </g>
+      ${labels}
+    </svg>
+  `;
+}
+
+// Donut chart de distribuição por objetivo
+async function renderDsdDonutObjetivos(dataInicio) {
+  const container = document.getElementById('dsdDonutObj');
+  if (!container) return;
+  try {
+    let query = db.from('visitas_objetivos').select('objetivo_id, objetivos_visita(nome), visitas!inner(checkin_timestamp)');
+    if (dataInicio) query = query.gte('visitas.checkin_timestamp', dataInicio);
+    const { data, error } = await query;
+    if (error) throw new Error(error.message);
+    if (!data || data.length === 0) {
+      container.style.display = 'flex';
+      container.innerHTML = '<div style="padding:40px 0;text-align:center;color:var(--neutral-400);font-size:12px;">Sem dados no período.</div>';
+      return;
+    }
+    const contagem = {};
+    data.forEach(vo => {
+      const nome = vo.objetivos_visita?.nome || '(sem nome)';
+      contagem[nome] = (contagem[nome] || 0) + 1;
+    });
+    const total = Object.values(contagem).reduce((s, n) => s + n, 0);
+    // Top 8 + agrupa resto como "Outros"
+    const ordenado = Object.entries(contagem).sort((a,b) => b[1] - a[1]);
+    const slices = ordenado.slice(0, 7);
+    const outros = ordenado.slice(7).reduce((s, [, n]) => s + n, 0);
+    if (outros > 0) slices.push(['Outros', outros]);
+
+    const cores = ['#0A1F5C', '#1E3A8A', '#0891B2', '#14B8A6', '#22C55E', '#8BC63F', '#BEF264', '#D1D5DB'];
+
+    // SVG donut
+    const R = 58, r = 38, cx = 80, cy = 80;
+    let acc = -Math.PI / 2;
+    const paths = slices.map(([label, value], i) => {
+      const ang = (value / total) * Math.PI * 2;
+      const a0 = acc, a1 = acc + ang;
+      acc = a1;
+      const x0 = cx + R * Math.cos(a0), y0 = cy + R * Math.sin(a0);
+      const x1 = cx + R * Math.cos(a1), y1 = cy + R * Math.sin(a1);
+      const xi1 = cx + r * Math.cos(a1), yi1 = cy + r * Math.sin(a1);
+      const xi0 = cx + r * Math.cos(a0), yi0 = cy + r * Math.sin(a0);
+      const large = ang > Math.PI ? 1 : 0;
+      const d = `M ${x0} ${y0} A ${R} ${R} 0 ${large} 1 ${x1} ${y1} L ${xi1} ${yi1} A ${r} ${r} 0 ${large} 0 ${xi0} ${yi0} Z`;
+      return { d, color: cores[i] || '#D1D5DB', label, value };
+    });
+
+    container.style.display = 'flex';
+    container.style.alignItems = 'center';
+    container.style.gap = '20px';
+    container.innerHTML = `
+      <svg width="160" height="160" viewBox="0 0 160 160" style="flex-shrink:0;">
+        ${paths.map(p => `<path d="${p.d}" fill="${p.color}" stroke="#fff" stroke-width="1.5" />`).join('')}
+        <text x="80" y="76" font-size="10" fill="var(--neutral-500)" text-anchor="middle" font-family="Inter" font-weight="600">TOTAL</text>
+        <text x="80" y="94" font-size="20" fill="var(--brand-navy)" text-anchor="middle" font-family="Poppins" font-weight="700">${total}</text>
+      </svg>
+      <div style="flex:1;display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;min-width:0;">
+        ${paths.map(p => `
+          <div style="display:flex;align-items:center;gap:7px;font-size:11.5px;color:var(--neutral-700);min-width:0;">
+            <span style="width:9px;height:9px;border-radius:3px;background:${p.color};flex-shrink:0;"></span>
+            <span style="flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${p.label.replace(/"/g,'&quot;')}">${p.label}</span>
+            <span style="font-family:'JetBrains Mono',monospace;font-weight:600;color:var(--brand-navy);font-size:11px;">${p.value}</span>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  } catch (err) {
+    container.innerHTML = `<div style="padding:20px;color:var(--status-danger);font-size:12px;">Erro: ${err.message}</div>`;
+  }
+}
+
+// Heatmap dias × horas (últimos 90 dias)
+async function renderDsdHeatmap() {
+  const container = document.getElementById('dsdHeatmap');
+  const subtitle = document.getElementById('dsdHeatSubtitle');
+  if (!container) return;
+  try {
+    // Últimos 90 dias
+    const inicio = new Date();
+    inicio.setDate(inicio.getDate() - 90);
+    inicio.setHours(0,0,0,0);
+
+    const { data, error } = await db.from('visitas')
+      .select('checkin_timestamp')
+      .gte('checkin_timestamp', inicio.toISOString());
+    if (error) throw new Error(error.message);
+
+    const visitas = data || [];
+    // matrix[dayIdx][hourIdx] — dia: 0=Seg..6=Dom; hora: 0=8h..11=19h
+    const horas = Array.from({ length: 12 }, (_, i) => 8 + i); // 8..19
+    const matrix = Array.from({ length: 7 }, () => Array(12).fill(0));
+    visitas.forEach(v => {
+      if (!v.checkin_timestamp) return;
+      const d = new Date(v.checkin_timestamp);
+      const dow = d.getDay(); // 0=dom..6=sab
+      const dayIdx = dow === 0 ? 6 : dow - 1; // 0=seg..6=dom
+      const h = d.getHours();
+      if (h >= 8 && h <= 19) matrix[dayIdx][h - 8]++;
+    });
+    const max = Math.max(1, ...matrix.flat());
+    const nomes = ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'];
+    const cellW = 28, cellH = 22, gap = 3;
+
+    if (subtitle) subtitle.textContent = `Heatmap · últimos 90 dias · ${visitas.length} visitas`;
+
+    container.style.display = 'block';
+    container.innerHTML = `
+      <div style="overflow-x:hidden;">
+        <div style="display:flex;flex-direction:column;gap:${gap}px;">
+          <div style="display:grid;grid-template-columns:32px repeat(${horas.length}, ${cellW}px);gap:${gap}px;align-items:center;">
+            <div></div>
+            ${horas.map(h => `<div style="font-size:9px;color:var(--neutral-400);text-align:center;font-family:'JetBrains Mono',monospace;">${h}h</div>`).join('')}
+          </div>
+          ${nomes.map((dn, d) => `
+            <div style="display:grid;grid-template-columns:32px repeat(${horas.length}, ${cellW}px);gap:${gap}px;align-items:center;">
+              <div style="font-size:10.5px;color:var(--neutral-500);font-weight:600;">${dn}</div>
+              ${horas.map((h, hi) => {
+                const v = matrix[d][hi];
+                const t = v / max;
+                const bg = v === 0 ? 'var(--neutral-100)' : `rgba(139, 198, 63, ${0.15 + t * 0.85})`;
+                const fg = t > 0.55 ? '#fff' : 'var(--neutral-500)';
+                return `<div title="${dn} ${h}h · ${v} visitas" style="height:${cellH}px;border-radius:4px;background:${bg};display:flex;align-items:center;justify-content:center;font-size:9px;font-family:'JetBrains Mono',monospace;font-weight:600;color:${fg};">${v > 0 ? v : ''}</div>`;
+              }).join('')}
+            </div>
+          `).join('')}
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;margin-top:10px;font-size:10px;color:var(--neutral-500);">
+          <span>Menos</span>
+          ${[0.1, 0.3, 0.5, 0.7, 0.95].map(t => `<span style="width:14px;height:12px;border-radius:3px;background:${t === 0.1 ? 'var(--neutral-100)' : `rgba(139, 198, 63, ${t})`};display:inline-block;"></span>`).join('')}
+          <span>Mais</span>
+        </div>
+      </div>
+    `;
+  } catch (err) {
+    container.innerHTML = `<div style="padding:20px;color:var(--status-danger);font-size:12px;">Erro: ${err.message}</div>`;
+  }
+}
+
+// Widget lateral de ações pendentes
+async function renderDsdAcoesPendentes() {
+  const container = document.getElementById('dsdAcoesPendentes');
+  const countEl = document.getElementById('dsdPendCount');
+  if (!container) return;
+  try {
+    const [instPend, objPend, eqCnts, reabPend, revRes] = await Promise.all([
+      listarInstituicoesPendentes().catch(() => []),
+      listarObjetivosPendentes().catch(() => []),
+      contarUsuariosPorStatus().catch(() => ({ pendentes: 0 })),
+      listarSolicitacoesReaberturaPendentes().catch(() => []),
+      db.from('visitas').select('id', { count: 'exact', head: true })
+        .or('status.eq.em_revisao,flag_gps_divergente.eq.true'),
+    ]);
+
+    const revisaoCount = revRes?.count || 0;
+    const totalPend = revisaoCount + instPend.length + objPend.length + eqCnts.pendentes + reabPend.length;
+    if (countEl) countEl.textContent = String(totalPend);
+
+    if (totalPend === 0) {
+      container.innerHTML = `
+        <div style="padding:28px 16px;text-align:center;background:var(--status-success-bg,#E6F6EF);border-radius:10px;">
+          <span class="material-symbols-rounded" style="font-size:32px;color:var(--status-success);">check_circle</span>
+          <div style="margin-top:8px;font-size:13px;color:var(--brand-navy);font-weight:600;">Tudo em dia!</div>
+          <div style="font-size:11.5px;color:var(--neutral-600);margin-top:2px;">Nenhuma ação pendente.</div>
+        </div>
+      `;
+      return;
+    }
+
+    // Monta cards de ação
+    const cards = [];
+    if (revisaoCount > 0) {
+      cards.push({
+        tint: 'var(--status-warning)', tintBg: 'var(--status-warning-bg,#FEF4E1)', icon: 'rule',
+        title: `${revisaoCount} visita${revisaoCount === 1 ? '' : 's'} ${revisaoCount === 1 ? 'aguardando' : 'aguardando'} revisão`,
+        sub: 'Check-in com flags ou em_revisao',
+        cta: 'Ver fila',
+        href: '#/admin/revisao',
+      });
+    }
+    if (instPend.length > 0 || objPend.length > 0) {
+      const p = instPend.length + objPend.length;
+      cards.push({
+        tint: 'var(--status-warning)', tintBg: 'var(--status-warning-bg,#FEF4E1)', icon: 'hourglass_top',
+        title: `${p} cadastro${p === 1 ? '' : 's'} pendente${p === 1 ? '' : 's'}`,
+        sub: `${instPend.length} inst · ${objPend.length} obj`,
+        cta: 'Revisar',
+        href: instPend.length > 0 ? '#/admin/instituicoes?filtro=pendentes' : '#/admin/pendentes',
+      });
+    }
+    if (eqCnts.pendentes > 0) {
+      cards.push({
+        tint: 'var(--status-info)', tintBg: 'var(--status-info-bg,#E4ECFD)', icon: 'person_add',
+        title: `${eqCnts.pendentes} usuário${eqCnts.pendentes === 1 ? '' : 's'} aguardando aprovação`,
+        sub: 'Cadastros novos na equipe',
+        cta: 'Aprovar',
+        href: '#/admin/equipe?filtro=pendentes',
+      });
+    }
+    if (reabPend.length > 0) {
+      cards.push({
+        tint: 'var(--status-info)', tintBg: 'var(--status-info-bg,#E4ECFD)', icon: 'lock_open',
+        title: `${reabPend.length} solicitação${reabPend.length === 1 ? '' : 'ões'} de reabertura`,
+        sub: 'Nutris pediram pra reabrir visitas',
+        cta: 'Ver solicitações',
+        href: '#/admin/revisao',
+      });
+    }
+
+    container.innerHTML = cards.map(c => `
+      <a href="${c.href}" style="text-decoration:none;display:block;padding:14px;background:${c.tintBg};border-radius:10px;transition:transform 140ms;">
+        <div style="display:flex;align-items:flex-start;gap:10px;">
+          <span class="material-symbols-rounded" style="font-size:22px;color:${c.tint};flex-shrink:0;">${c.icon}</span>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:13px;font-weight:600;color:var(--brand-navy);line-height:1.3;">${c.title}</div>
+            <div style="font-size:11px;color:var(--neutral-600);margin-top:3px;">${c.sub}</div>
+          </div>
+        </div>
+        <div style="margin-top:10px;display:flex;justify-content:flex-start;">
+          <span style="background:${c.tint};color:#fff;font-size:11.5px;font-weight:700;padding:6px 14px;border-radius:8px;display:inline-flex;align-items:center;gap:4px;">
+            ${c.cta}
+            <span class="material-symbols-rounded" style="font-size:14px;">arrow_forward</span>
+          </span>
+        </div>
+      </a>
+    `).join('');
+  } catch (err) {
+    container.innerHTML = `<div style="padding:16px;color:var(--status-danger);font-size:12px;">Erro: ${err.message}</div>`;
+  }
+}
+
+// Sprint 9.13 Parte 3: helpers locais pra Fila de Revisão desktop
+// Hora curta "HH:MM" de um timestamp
+function fmtHoraCurta(ts) {
+  if (!ts) return '—';
+  const d = new Date(ts);
+  if (isNaN(d)) return '—';
+  return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+// Distância entre 2 pontos lat/lng em metros (Haversine)
+function haversineMetros(lat1, lng1, lat2, lng2) {
+  if (lat1 == null || lng1 == null || lat2 == null || lng2 == null) return null;
+  const R = 6371000; // raio da Terra em m
+  const toRad = (deg) => deg * Math.PI / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng/2)**2;
+  return 2 * R * Math.asin(Math.sqrt(a));
+}
+
+// Sprint 9.13 Parte 3: Fila de Revisão desktop
+// Layout: filtros em barra + contador de resultados + cards de visita (full-width)
+function renderAdminRevisaoDesktop() {
+  const user = requireAdmin();
+  if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
+
+  // Estado inicial dos filtros
+  if (!window._reviewDesktopState) {
+    window._reviewDesktopState = {
+      nutri: 'todos',           // 'todos' ou id do nutri
+      flags: new Set(['noCheckin', 'gps', 'time', 'manual']), // chips ligados
+      filtroBase: 'com_flags',  // 'com_flags' | 'em_revisao' | 'resolvidas' | 'todas'
+    };
+  }
+
+  setTimeout(() => {
+    atualizarBadgesSidebarDesktop();
+    carregarAdminRevisaoDesktop();
+  }, 0);
+
+  // Título extra: tabs de filtro base (Com flags / Em revisão / Resolvidas / Todas)
+  const s = window._reviewDesktopState;
+  const tabsBase = [
+    { id: 'com_flags',  label: 'Com flags',   badgeId: 'dsdRevTabCntComFlags' },
+    { id: 'em_revisao', label: 'Em revisão',  badgeId: 'dsdRevTabCntEmRevisao' },
+    { id: 'resolvidas', label: 'Resolvidas',  badgeId: 'dsdRevTabCntResolvidas' },
+    { id: 'todas',      label: 'Todas',       badgeId: 'dsdRevTabCntTodas' },
+  ];
+  const titleExtra = `
+    <div style="display:inline-flex;gap:4px;background:var(--neutral-100);border-radius:9999px;padding:3px;">
+      ${tabsBase.map(t => `
+        <button onclick="trocarFiltroBaseRevisaoDesktop('${t.id}')" id="dsdRevTab_${t.id}" style="padding:5px 14px;border:0;background:${s.filtroBase === t.id ? 'var(--brand-navy)' : 'transparent'};color:${s.filtroBase === t.id ? '#fff' : 'var(--neutral-600)'};border-radius:9999px;font-size:11.5px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px;">
+          ${t.label}
+          <span id="${t.badgeId}" style="font-family:'JetBrains Mono',monospace;font-size:10px;background:${s.filtroBase === t.id ? 'rgba(255,255,255,0.18)' : 'var(--neutral-200)'};padding:1px 6px;border-radius:9999px;min-width:18px;text-align:center;">—</span>
+        </button>
+      `).join('')}
+    </div>
+  `;
+
+  // Chips de flag (cores diferentes por severidade)
+  const flagChips = [
+    { k: 'noCheckin', cor: 'var(--status-danger)',  bg: 'var(--status-danger-bg,#FCE8E8)',   label: 'Sem check-in',    badgeId: 'dsdRevFlagCnt_noCheckin' },
+    { k: 'gps',       cor: 'var(--status-warning)', bg: 'var(--status-warning-bg,#FEF4E1)',  label: 'GPS divergente',  badgeId: 'dsdRevFlagCnt_gps' },
+    { k: 'time',      cor: '#EA580C',               bg: '#FFF1E6',                           label: 'Fora da margem',  badgeId: 'dsdRevFlagCnt_time' },
+    { k: 'manual',    cor: 'var(--status-info)',    bg: 'var(--status-info-bg,#E4ECFD)',     label: 'Check-in manual', badgeId: 'dsdRevFlagCnt_manual' },
+  ];
+
+  const content = `
+    <div style="display:flex;flex-direction:column;gap:20px;">
+
+      <!-- Barra de filtros -->
+      <div style="background:#fff;border-radius:12px;padding:14px 18px;border:1px solid var(--neutral-200);box-shadow:0 1px 3px rgba(10,31,92,0.04);display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+        <!-- Select Profissional -->
+        <div style="display:flex;flex-direction:column;gap:4px;">
+          <div style="font-size:10.5px;font-weight:600;color:var(--neutral-500);text-transform:uppercase;letter-spacing:0.05em;">Profissional</div>
+          <div style="position:relative;">
+            <select id="dsdRevNutriSelect" onchange="trocarNutriRevisaoDesktop(this.value)" style="height:36px;padding:0 32px 0 38px;border-radius:10px;border:1px solid var(--neutral-200);background:#fff url('data:image/svg+xml;utf8,<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'18\\' height=\\'18\\' viewBox=\\'0 0 24 24\\' fill=\\'none\\' stroke=\\'%236B7280\\' stroke-width=\\'2\\'><polyline points=\\'6 9 12 15 18 9\\'/></svg>') no-repeat right 10px center;font-size:13px;font-family:inherit;font-weight:500;color:var(--brand-navy);cursor:pointer;min-width:220px;appearance:none;-webkit-appearance:none;">
+              <option value="todos">Todos</option>
+            </select>
+            <span class="material-symbols-rounded" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--neutral-500);font-size:16px;pointer-events:none;">person</span>
+          </div>
+        </div>
+
+        <div style="width:1px;height:42px;background:var(--neutral-200);"></div>
+
+        <!-- Chips de flag -->
+        <div style="display:flex;flex-direction:column;gap:4px;">
+          <div style="font-size:10.5px;font-weight:600;color:var(--neutral-500);text-transform:uppercase;letter-spacing:0.05em;">Tipo de flag</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            ${flagChips.map(c => {
+              const on = s.flags.has(c.k);
+              return `
+                <button onclick="toggleFlagRevisaoDesktop('${c.k}')" id="dsdRevChip_${c.k}"
+                        data-on="${on ? '1' : '0'}" data-cor="${c.cor}" data-bg="${c.bg.replace(/"/g,'&quot;')}"
+                        style="height:36px;padding:0 12px;border-radius:9999px;border:1px solid ${on ? c.cor + '55' : 'var(--neutral-200)'};background:${on ? c.bg : '#fff'};color:${on ? c.cor : 'var(--neutral-500)'};display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;font-family:inherit;cursor:pointer;transition:all 120ms;">
+                  <span style="width:8px;height:8px;border-radius:50%;background:${c.cor};"></span>
+                  ${c.label}
+                  <span id="${c.badgeId}" style="font-family:'JetBrains Mono',monospace;font-size:10.5px;background:${on ? '#fff' : 'var(--neutral-100)'};padding:1px 6px;border-radius:9999px;margin-left:2px;min-width:18px;text-align:center;">—</span>
+                  ${on ? '<span class="material-symbols-rounded" style="font-size:14px;">close</span>' : ''}
+                </button>
+              `;
+            }).join('')}
+          </div>
+        </div>
+
+        <div style="flex:1;"></div>
+
+        <button onclick="limparFiltrosRevisaoDesktop()" style="background:transparent;border:0;color:var(--neutral-500);font-size:12.5px;font-weight:600;font-family:inherit;cursor:pointer;text-decoration:underline;text-underline-offset:3px;">Limpar filtros</button>
+      </div>
+
+      <!-- Barra de contagem + ações em massa -->
+      <div style="display:flex;align-items:center;justify-content:space-between;font-size:12.5px;color:var(--neutral-600);padding:0 4px;">
+        <div id="dsdRevCount">—</div>
+        <div style="display:flex;align-items:center;gap:14px;">
+          <button style="display:inline-flex;align-items:center;gap:5px;background:transparent;border:0;color:var(--neutral-600);font-size:12.5px;font-weight:600;font-family:inherit;cursor:pointer;padding:6px 8px;" onclick="exportarRevisaoCsvDesktop()">
+            <span class="material-symbols-rounded" style="font-size:15px;">download</span>Exportar
+          </button>
+          <button style="display:inline-flex;align-items:center;gap:5px;background:var(--brand-navy);color:#fff;border:0;padding:7px 14px;border-radius:9999px;font-size:12.5px;font-weight:600;font-family:inherit;cursor:pointer;" onclick="aprovarLoteSemCriticasDesktop()">
+            <span class="material-symbols-rounded" style="font-size:15px;">done_all</span>Aprovar tudo sem flags críticas
+          </button>
+        </div>
+      </div>
+
+      <!-- Lista de cards -->
+      <div id="dsdRevList" style="display:flex;flex-direction:column;gap:16px;">
+        <div style="padding:40px;text-align:center;color:var(--neutral-500);font-size:13px;background:#fff;border-radius:12px;border:1px solid var(--neutral-200);">
+          <span class="material-symbols-rounded" style="font-size:28px;color:var(--neutral-400);">hourglass_empty</span>
+          <div style="margin-top:6px;">Carregando...</div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  return desktopShell({
+    title: 'Revisão de visitas',
+    breadcrumb: ['Admin', 'Operação', 'Revisão'],
+    titleExtra,
+    content,
+    activeId: 'review',
+  });
+}
+
+// Carrega lista de visitas + popula select de nutris + contadores + renderiza cards
+async function carregarAdminRevisaoDesktop() {
+  const state = window._reviewDesktopState;
+  const listEl = document.getElementById('dsdRevList');
+  if (!listEl) return;
+
+  try {
+    const [counts, visitas, nutris] = await Promise.all([
+      contarVisitasPorFiltro(),
+      listarVisitasAdmin(state.filtroBase),
+      db.from('usuarios')
+        .select('id, nome')
+        .eq('perfil', 'profissional')
+        .eq('status', 'ativo')
+        .order('nome')
+        .then(r => r.data || []),
+    ]);
+
+    // Popula contadores das abas
+    const setBadge = (id, n) => { const el = document.getElementById(id); if (el) el.textContent = n; };
+    setBadge('dsdRevTabCntComFlags', counts.com_flags);
+    setBadge('dsdRevTabCntEmRevisao', counts.em_revisao);
+    setBadge('dsdRevTabCntResolvidas', counts.resolvidas);
+    setBadge('dsdRevTabCntTodas', counts.todas);
+
+    // Popula select de nutris (só a primeira vez)
+    const sel = document.getElementById('dsdRevNutriSelect');
+    if (sel && sel.options.length <= 1) {
+      nutris.forEach(n => {
+        const opt = document.createElement('option');
+        opt.value = n.id;
+        opt.textContent = n.nome;
+        sel.appendChild(opt);
+      });
+      sel.value = state.nutri;
+    }
+
+    // Aplica filtros locais: nutri + chips
+    let filtradas = visitas;
+    if (state.nutri !== 'todos') {
+      filtradas = filtradas.filter(v => v.nutricionista_id === state.nutri);
+    }
+
+    // Para cada visita, calcula flags e mapeia pro nosso esquema de chips
+    filtradas.forEach(v => {
+      v._flags = getFlagsAtivas(v);
+      v._nivel = getNivelCritico(v._flags);
+      v._peso = (v._flags.filter(f => f.nivel === 'critical').length * 100)
+              + (v._flags.filter(f => f.nivel === 'warning').length * 10)
+              + v._flags.length;
+      // Mapeia pra chip: noCheckin / gps / time / manual
+      v._chipKeys = new Set();
+      if (v.flag_sem_checkin || v.flag_sem_checkout) v._chipKeys.add('noCheckin');
+      if (v.flag_gps_divergente) v._chipKeys.add('gps');
+      if (v.flag_horario_fora_margem) v._chipKeys.add('time');
+      if (v.checkin_manual) v._chipKeys.add('manual');
+    });
+
+    // Conta visitas por chip (antes do filtro de chip) — pra mostrar nos badges dos chips
+    const chipCounts = { noCheckin: 0, gps: 0, time: 0, manual: 0 };
+    filtradas.forEach(v => {
+      v._chipKeys.forEach(k => chipCounts[k]++);
+    });
+    Object.entries(chipCounts).forEach(([k, n]) => {
+      setBadge(`dsdRevFlagCnt_${k}`, n);
+    });
+
+    // Aplica filtro de chip: só mostra visita que tem pelo menos um chip selecionado
+    // (ou visitas sem flag alguma, se estiver no filtro 'todas')
+    if (state.filtroBase === 'com_flags') {
+      filtradas = filtradas.filter(v => {
+        if (v._chipKeys.size === 0) return false;
+        // Se algum chip estiver desligado, filtra fora se TODOS os chips da visita estiverem desligados
+        const temAlgumLigado = Array.from(v._chipKeys).some(k => state.flags.has(k));
+        return temAlgumLigado;
+      });
+    }
+
+    // Ordena por peso (severidade) desc
+    filtradas.sort((a, b) => b._peso - a._peso);
+
+    // Atualiza contador
+    const cntEl = document.getElementById('dsdRevCount');
+    if (cntEl) {
+      cntEl.innerHTML = `Exibindo <strong style="color:var(--brand-navy);">${filtradas.length}${filtradas.length !== visitas.length ? ' de ' + visitas.length : ''}</strong> visita${filtradas.length === 1 ? '' : 's'} · ordenadas por <strong style="color:var(--brand-navy);">severidade</strong> <span style="color:var(--neutral-400);">↓</span>`;
+    }
+
+    // Renderiza cards
+    if (filtradas.length === 0) {
+      listEl.innerHTML = `
+        <div style="padding:40px;text-align:center;background:#fff;border:1px solid var(--neutral-200);border-radius:12px;">
+          <span class="material-symbols-rounded" style="font-size:40px;color:var(--status-success);">verified</span>
+          <div style="margin-top:10px;font-family:'Poppins',sans-serif;font-weight:600;font-size:16px;color:var(--brand-navy);">Nenhuma visita encontrada</div>
+          <div style="font-size:13px;color:var(--neutral-500);margin-top:4px;">Ajuste os filtros pra ver mais resultados.</div>
+        </div>
+      `;
+      return;
+    }
+    listEl.innerHTML = filtradas.map(v => renderVisitCardDesktop(v)).join('');
+
+    // Guarda lista atual pra ações em massa
+    window._reviewDesktopCurrent = filtradas;
+  } catch (err) {
+    listEl.innerHTML = `<div style="padding:20px;background:var(--status-danger-bg,#FCE8E8);color:var(--status-danger);border-radius:12px;">Erro: ${err.message}</div>`;
+  }
+}
+
+// Renderiza 1 card de visita no layout desktop
+function renderVisitCardDesktop(v) {
+  const nivel = v._nivel || 'info';
+  const nivelStyle = {
+    critical: { borda: 'var(--status-danger)', tagBg: 'var(--status-danger-bg,#FCE8E8)', tagColor: 'var(--status-danger)', tagLabel: 'CRÍTICO' },
+    warning:  { borda: 'var(--status-warning)', tagBg: 'var(--status-warning-bg,#FEF4E1)', tagColor: '#B45309', tagLabel: 'ATENÇÃO' },
+    info:     { borda: 'var(--status-info)', tagBg: 'var(--status-info-bg,#E4ECFD)', tagColor: 'var(--status-info)', tagLabel: 'INFO' },
+    null:     { borda: 'transparent', tagBg: 'var(--neutral-100)', tagColor: 'var(--neutral-500)', tagLabel: '—' },
+  }[nivel] || { borda: 'transparent', tagBg: 'var(--neutral-100)', tagColor: 'var(--neutral-500)', tagLabel: '—' };
+
+  const nutriNome = v.usuarios?.nome || v.nutricionista?.nome || '—';
+  const instName = v.instituicoes?.nome || 'Instituição';
+  const dataFmt = v.checkin_timestamp ? formatarDataCurta(v.checkin_timestamp) : (v.data_visita || '—');
+  const visitId = `#VST-${String(v.id || '').substring(0, 8).toUpperCase()}`;
+
+  const severityLabel = v._flags.length === 0
+    ? ''
+    : `${v._flags.length} FLAG${v._flags.length === 1 ? '' : 'S'} · ${nivelStyle.tagLabel}`;
+
+  const flagsHtml = v._flags.map(f => {
+    const palette = {
+      critical: { cor: 'var(--status-danger)', bg: 'var(--status-danger-bg,#FCE8E8)' },
+      warning:  { cor: 'var(--status-warning)', bg: 'var(--status-warning-bg,#FEF4E1)' },
+      info:     { cor: 'var(--status-info)', bg: 'var(--status-info-bg,#E4ECFD)' },
+    }[f.nivel] || { cor: 'var(--neutral-500)', bg: 'var(--neutral-100)' };
+    return `
+      <span style="display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 10px;border-radius:9999px;background:${palette.bg};color:${palette.cor};font-size:11.5px;font-weight:600;border:1px solid ${palette.cor}22;">
+        <span class="material-symbols-rounded" style="font-size:13px;">${f.icone}</span>
+        ${f.titulo}
+      </span>
+    `;
+  }).join('');
+
+  const resumoHtml = v.resumo ? `
+    <div style="background:var(--neutral-50,#FAFBFC);border-radius:10px;padding:14px;border:1px solid var(--neutral-200);">
+      <div style="font-size:10.5px;font-weight:700;color:var(--neutral-500);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;">Resumo da visita</div>
+      <div style="font-size:13px;color:var(--neutral-700);line-height:1.55;max-height:4.5em;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;">"${(v.resumo || '').replace(/"/g, '&quot;').replace(/</g, '&lt;')}"</div>
+      <a href="#/admin/revisao/detalhe?id=${v.id}" style="margin-top:8px;background:transparent;border:0;color:var(--brand-navy);font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:4px;padding:0;text-decoration:none;">
+        Ler completo <span class="material-symbols-rounded" style="font-size:14px;">arrow_forward</span>
+      </a>
+    </div>
+  ` : `
+    <div style="background:var(--neutral-50,#FAFBFC);border-radius:10px;padding:14px;border:1px solid var(--neutral-200);display:flex;flex-direction:column;gap:8px;">
+      ${v.revisao_motivo ? `
+        <div style="font-size:10.5px;font-weight:700;color:var(--status-warning);text-transform:uppercase;letter-spacing:0.05em;">Motivo da revisão</div>
+        <div style="font-size:13px;color:var(--neutral-700);line-height:1.5;">"${v.revisao_motivo.replace(/"/g, '&quot;').replace(/</g, '&lt;')}"</div>
+      ` : `
+        <div style="font-size:10.5px;font-weight:700;color:var(--neutral-500);text-transform:uppercase;letter-spacing:0.05em;">Possíveis causas</div>
+        <div style="font-size:13px;color:var(--neutral-600);line-height:1.5;">${v._flags.length > 0 ? v._flags[0].descricao : 'Sem detalhes adicionais.'}</div>
+      `}
+      ${v.checkin_timestamp || v.checkout_timestamp ? `
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:6px;padding-top:10px;border-top:1px solid var(--neutral-200);">
+          <div>
+            <div style="font-size:9.5px;color:var(--neutral-500);text-transform:uppercase;letter-spacing:0.05em;font-weight:700;">Check-in</div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--brand-navy);font-weight:600;margin-top:2px;">${v.checkin_timestamp ? fmtHoraCurta(v.checkin_timestamp) : '—'}</div>
+          </div>
+          <div>
+            <div style="font-size:9.5px;color:var(--neutral-500);text-transform:uppercase;letter-spacing:0.05em;font-weight:700;">Check-out</div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--brand-navy);font-weight:600;margin-top:2px;">${v.checkout_timestamp ? fmtHoraCurta(v.checkout_timestamp) : '—'}</div>
+          </div>
+          <div>
+            <div style="font-size:9.5px;color:var(--neutral-500);text-transform:uppercase;letter-spacing:0.05em;font-weight:700;">Duração</div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--brand-navy);font-weight:600;margin-top:2px;">${(() => {
+              const d = calcularDuracaoMin(v.checkin_timestamp, v.checkout_timestamp);
+              return d !== null ? formatarDuracao(d) : '—';
+            })()}</div>
+          </div>
+        </div>
+      ` : ''}
+    </div>
+  `;
+
+  // Mini-map (só renderiza se tiver alguma coord)
+  const mapHtml = renderMiniMapaDesktop(v);
+
+  // Iniciais do nutri pra avatar
+  const init = iniciais(nutriNome);
+
+  return `
+    <div style="background:#fff;border-radius:12px;border:1px solid var(--neutral-200);border-left:4px solid ${nivelStyle.borda};box-shadow:0 1px 3px rgba(10,31,92,0.04);padding:20px;display:flex;flex-direction:column;gap:14px;">
+      <!-- Header: avatar + nome + hospital + badge -->
+      <div style="display:flex;align-items:flex-start;gap:14px;">
+        <div style="width:44px;height:44px;border-radius:50%;background:var(--neutral-100);color:var(--brand-navy);display:flex;align-items:center;justify-content:center;font-family:'Poppins',sans-serif;font-weight:700;font-size:14px;flex-shrink:0;">${init}</div>
+        <div style="flex:1;min-width:0;">
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+            <div style="font-family:'Poppins',sans-serif;font-weight:600;font-size:16px;color:var(--brand-navy);">${nutriNome.replace(/</g, '&lt;')}</div>
+            <span style="color:var(--neutral-300);font-size:14px;">·</span>
+            <div style="font-size:14px;color:var(--neutral-700);font-weight:500;">${instName.replace(/</g, '&lt;')}</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;margin-top:4px;">
+            <div style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--neutral-500);">
+              <span class="material-symbols-rounded" style="font-size:14px;color:var(--neutral-400);">event</span>
+              <span style="font-family:'JetBrains Mono',monospace;font-size:12px;">${dataFmt}</span>
+            </div>
+            <div style="display:inline-flex;align-items:center;gap:4px;font-size:11.5px;color:var(--neutral-400);font-family:'JetBrains Mono',monospace;">${visitId}</div>
+          </div>
+        </div>
+        ${severityLabel ? `
+          <span style="background:${nivelStyle.tagBg};color:${nivelStyle.tagColor};border:1px solid ${nivelStyle.tagColor}33;padding:4px 10px;border-radius:9999px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;flex-shrink:0;">${severityLabel}</span>
+        ` : ''}
+      </div>
+
+      <!-- Flags -->
+      ${flagsHtml ? `<div style="display:flex;gap:6px;flex-wrap:wrap;">${flagsHtml}</div>` : ''}
+
+      <!-- Conteúdo: resumo + mini-map -->
+      <div style="display:grid;grid-template-columns:${mapHtml ? '1fr 320px' : '1fr'};gap:16px;">
+        ${resumoHtml}
+        ${mapHtml}
+      </div>
+
+      <!-- Ações -->
+      <div style="display:flex;gap:8px;align-items:center;padding-top:14px;border-top:1px solid var(--neutral-100);">
+        <a href="#/admin/revisao/detalhe?id=${v.id}" style="height:38px;padding:0 16px;border-radius:9999px;font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:6px;text-decoration:none;background:transparent;color:var(--neutral-600);border:1px solid var(--neutral-200);">
+          <span class="material-symbols-rounded" style="font-size:16px;">visibility</span>Ver detalhes
+        </a>
+        <div style="flex:1;"></div>
+        <button onclick="manterEmRevisaoDesktop('${v.id}')" style="height:38px;padding:0 16px;border-radius:9999px;font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:6px;cursor:pointer;background:var(--brand-navy);color:#fff;border:0;font-family:inherit;">
+          <span class="material-symbols-rounded" style="font-size:16px;">pause</span>Manter em revisão
+        </button>
+        <button onclick="aprovarVisitaRapidaDesktop('${v.id}')" style="height:38px;padding:0 16px;border-radius:9999px;font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:6px;cursor:pointer;background:var(--brand-lime);color:#fff;border:0;font-family:inherit;">
+          <span class="material-symbols-rounded" style="font-size:16px;">check</span>${v._nivel === 'critical' ? 'Aprovar mesmo assim' : 'Aprovar'}
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+// Mini-map SVG estilizado pra cards de visita no desktop
+// (inspirado no MiniMap da referência — não é Leaflet, é só uma ilustração com coords reais se tiver)
+function renderMiniMapaDesktop(v) {
+  const inst = v.instituicoes || {};
+  const temInstCoord = inst.latitude !== null && inst.latitude !== undefined;
+  const temCheckin = v.checkin_latitude !== null && v.checkin_latitude !== undefined;
+
+  // Se não tem coords, não renderiza
+  if (!temInstCoord && !temCheckin) return '';
+
+  const critical = v._nivel === 'critical';
+  const lineColor = critical ? 'var(--status-danger)' : 'var(--status-warning)';
+
+  // Calcula distância (se tem ambas) ou null
+  let distKm = null;
+  if (temInstCoord && temCheckin) {
+    const dm = haversineMetros(inst.latitude, inst.longitude, v.checkin_latitude, v.checkin_longitude);
+    if (dm !== null) distKm = dm < 1000 ? `${Math.round(dm)} m` : `${(dm / 1000).toFixed(1)} km`;
+  }
+
+  // Posição dos pinos na ilustração (fixa, só visual)
+  const [p1x, p1y, p2x, p2y] = critical ? [60, 90, 230, 50] : [110, 100, 210, 70];
+
+  return `
+    <div style="position:relative;border-radius:10px;overflow:hidden;border:1px solid var(--neutral-200);height:180px;background:#EAEEF2;">
+      <svg viewBox="0 0 320 180" width="100%" height="100%" preserveAspectRatio="xMidYMid slice">
+        <defs>
+          <pattern id="mapGrid_${v.id}" width="40" height="40" patternUnits="userSpaceOnUse">
+            <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#D7DCE2" stroke-width="0.5" />
+          </pattern>
+        </defs>
+        <rect width="320" height="180" fill="#E8EDF2" />
+        <rect width="320" height="180" fill="url(#mapGrid_${v.id})" />
+        <path d="M -10 70 Q 100 50 200 80 T 340 90" stroke="#fff" stroke-width="10" fill="none" />
+        <path d="M -10 70 Q 100 50 200 80 T 340 90" stroke="#D7DCE2" stroke-width="1" fill="none" />
+        <path d="M 40 -10 L 90 200" stroke="#fff" stroke-width="6" fill="none" />
+        <path d="M 260 -10 L 210 200" stroke="#fff" stroke-width="6" fill="none" />
+        <path d="M -10 140 L 340 130" stroke="#fff" stroke-width="6" fill="none" />
+        <ellipse cx="260" cy="140" rx="50" ry="30" fill="#D4E9C7" opacity="0.8" />
+        <ellipse cx="40" cy="40" rx="35" ry="20" fill="#D4E9C7" opacity="0.6" />
+        ${temInstCoord && temCheckin ? `
+          <line x1="${p1x}" y1="${p1y}" x2="${p2x}" y2="${p2y}" stroke="${lineColor}" stroke-width="2" stroke-dasharray="5 4" />
+          ${distKm ? `
+            <g transform="translate(${(p1x + p2x) / 2 - 28} ${(p1y + p2y) / 2 - 12})">
+              <rect width="56" height="20" rx="10" fill="#fff" stroke="${lineColor}" stroke-width="1" />
+              <text x="28" y="13" font-size="11" font-weight="700" fill="${lineColor}" text-anchor="middle" font-family="JetBrains Mono">${distKm}</text>
+            </g>
+          ` : ''}
+        ` : ''}
+        ${temCheckin ? `
+          <g transform="translate(${p1x} ${p1y})">
+            <circle r="16" fill="var(--status-info)" fill-opacity="0.18" />
+            <circle r="9" fill="var(--status-info)" stroke="#fff" stroke-width="2.5" />
+            <circle r="3" fill="#fff" />
+          </g>
+        ` : ''}
+        ${temInstCoord ? `
+          <g transform="translate(${p2x} ${p2y})">
+            <path d="M 0 -18 C -8 -18 -14 -12 -14 -5 C -14 3 0 14 0 14 C 0 14 14 3 14 -5 C 14 -12 8 -18 0 -18 Z" fill="var(--status-success)" stroke="#fff" stroke-width="2" />
+            <circle r="4" cy="-5" fill="#fff" />
+          </g>
+        ` : ''}
+      </svg>
+      <div style="position:absolute;top:8px;left:8px;background:rgba(255,255,255,0.95);border-radius:6px;padding:5px 8px;font-size:10px;color:var(--neutral-700);display:flex;flex-direction:column;gap:3px;font-weight:500;">
+        ${temCheckin ? `<span style="display:inline-flex;align-items:center;gap:5px;"><span style="width:7px;height:7px;border-radius:50%;background:var(--status-info);"></span>Check-in</span>` : ''}
+        ${temInstCoord ? `<span style="display:inline-flex;align-items:center;gap:5px;"><span style="width:7px;height:7px;border-radius:50%;background:var(--status-success);"></span>Instituição</span>` : ''}
+      </div>
+      ${temInstCoord ? `
+        <a href="https://www.google.com/maps/search/?api=1&query=${inst.latitude},${inst.longitude}" target="_blank" rel="noopener" style="position:absolute;bottom:8px;right:8px;background:#fff;border-radius:6px;padding:4px 6px;font-size:10px;color:var(--neutral-500);font-family:inherit;box-shadow:0 1px 3px rgba(0,0,0,0.15);display:inline-flex;align-items:center;gap:2px;text-decoration:none;">
+          <span class="material-symbols-rounded" style="font-size:11px;">open_in_new</span>Abrir no mapa
+        </a>
+      ` : ''}
+    </div>
+  `;
+}
+
+// Handlers dos filtros do desktop
+window.trocarFiltroBaseRevisaoDesktop = function(filtro) {
+  window._reviewDesktopState.filtroBase = filtro;
+  // Atualiza visual das abas
+  ['com_flags', 'em_revisao', 'resolvidas', 'todas'].forEach(id => {
+    const btn = document.getElementById(`dsdRevTab_${id}`);
+    if (btn) {
+      if (id === filtro) {
+        btn.style.background = 'var(--brand-navy)';
+        btn.style.color = '#fff';
+        const badge = btn.querySelector('span');
+        if (badge) badge.style.background = 'rgba(255,255,255,0.18)';
+      } else {
+        btn.style.background = 'transparent';
+        btn.style.color = 'var(--neutral-600)';
+        const badge = btn.querySelector('span');
+        if (badge) badge.style.background = 'var(--neutral-200)';
+      }
+    }
+  });
+  carregarAdminRevisaoDesktop();
+};
+
+window.trocarNutriRevisaoDesktop = function(id) {
+  window._reviewDesktopState.nutri = id;
+  carregarAdminRevisaoDesktop();
+};
+
+window.toggleFlagRevisaoDesktop = function(k) {
+  const s = window._reviewDesktopState;
+  if (s.flags.has(k)) s.flags.delete(k); else s.flags.add(k);
+  carregarAdminRevisaoDesktop();
+};
+
+window.limparFiltrosRevisaoDesktop = function() {
+  window._reviewDesktopState.nutri = 'todos';
+  window._reviewDesktopState.flags = new Set(['noCheckin', 'gps', 'time', 'manual']);
+  const sel = document.getElementById('dsdRevNutriSelect');
+  if (sel) sel.value = 'todos';
+  carregarAdminRevisaoDesktop();
+};
+
+// Aprovar visita direto do card (sem ir pra detalhe)
+window.aprovarVisitaRapidaDesktop = async function(visitaId) {
+  if (await bloqueioSimulacao('aprovar visita')) return;
+  const ok = await showModalConfirmacao({
+    icone: 'verified',
+    iconeCor: 'success',
+    titulo: 'Aprovar visita',
+    subtitulo: 'A visita ficará imutável após a aprovação — não será mais possível editar nem devolver.',
+    btnConfirmar: 'Sim, aprovar',
+    btnCancelar: 'Cancelar',
+  });
+  if (!ok) return;
+  const user = getCurrentUser();
+  try {
+    const { data, error } = await db.from('visitas').update({
+      status: 'aprovada_pos_revisao',
+      revisao_resolvida_por: user.id,
+      revisao_resolvida_em: new Date().toISOString(),
+      atualizado_em: new Date().toISOString(),
+    }).eq('id', visitaId).select();
+    if (error) throw new Error(error.message);
+    if (!data || data.length === 0) throw new Error('Update não afetou nenhum registro.');
+    setFlash('success', 'Visita aprovada!');
+    carregarAdminRevisaoDesktop();
+    atualizarBadgesSidebarDesktop();
+  } catch (err) {
+    setFlash('error', 'Erro ao aprovar: ' + err.message);
+  }
+};
+
+// Manter em revisão = devolver pro nutri com motivo
+window.manterEmRevisaoDesktop = async function(visitaId) {
+  if (await bloqueioSimulacao('devolver visita')) return;
+  const motivo = await showModalInput({
+    icone: 'rate_review',
+    iconeCor: 'info',
+    titulo: 'Devolver ao profissional',
+    subtitulo: 'Descreva o que precisa ser verificado ou corrigido. O nutricionista verá esse motivo.',
+    label: 'Motivo da revisão',
+    placeholder: 'Ex: Horário declarado não bate com o check-in...',
+    required: true,
+    btnConfirmar: 'Devolver pro profissional',
+  });
+  if (!motivo) return;
+  const user = getCurrentUser();
+  try {
+    const { data, error } = await db.from('visitas').update({
+      status: 'rascunho',
+      revisao_solicitada_por: user.id,
+      revisao_solicitada_em: new Date().toISOString(),
+      revisao_resolvida_em: null,
+      revisao_motivo: motivo,
+      atualizado_em: new Date().toISOString(),
+    }).eq('id', visitaId).select();
+    if (error) throw new Error(error.message);
+    if (!data || data.length === 0) throw new Error('Update não afetou nenhum registro.');
+    setFlash('success', 'Visita devolvida pro profissional.');
+    carregarAdminRevisaoDesktop();
+    atualizarBadgesSidebarDesktop();
+  } catch (err) {
+    setFlash('error', 'Erro ao devolver: ' + err.message);
+  }
+};
+
+// Aprovar tudo que não tem flag crítica (ação em massa)
+window.aprovarLoteSemCriticasDesktop = async function() {
+  if (await bloqueioSimulacao('aprovar lote')) return;
+  const lista = (window._reviewDesktopCurrent || []).filter(v => v._nivel !== 'critical');
+  if (lista.length === 0) {
+    setFlash('info', 'Nenhuma visita sem flag crítica pra aprovar.');
+    return;
+  }
+  const ok = await showModalConfirmacao({
+    icone: 'done_all',
+    iconeCor: 'success',
+    titulo: `Aprovar ${lista.length} visita${lista.length === 1 ? '' : 's'}?`,
+    subtitulo: 'Só serão aprovadas visitas SEM flags críticas. Ação irreversível.',
+    btnConfirmar: `Aprovar ${lista.length}`,
+    btnCancelar: 'Cancelar',
+  });
+  if (!ok) return;
+  const user = getCurrentUser();
+  const ids = lista.map(v => v.id);
+  try {
+    const { error } = await db.from('visitas').update({
+      status: 'aprovada_pos_revisao',
+      revisao_resolvida_por: user.id,
+      revisao_resolvida_em: new Date().toISOString(),
+      atualizado_em: new Date().toISOString(),
+    }).in('id', ids);
+    if (error) throw new Error(error.message);
+    setFlash('success', `${lista.length} visita${lista.length === 1 ? '' : 's'} aprovada${lista.length === 1 ? '' : 's'}!`);
+    carregarAdminRevisaoDesktop();
+    atualizarBadgesSidebarDesktop();
+  } catch (err) {
+    setFlash('error', 'Erro: ' + err.message);
+  }
+};
+
+// Exporta lista atual pra CSV
+window.exportarRevisaoCsvDesktop = function() {
+  const lista = window._reviewDesktopCurrent || [];
+  if (lista.length === 0) { setFlash('info', 'Nada pra exportar.'); return; }
+  const header = ['ID', 'Nutricionista', 'Instituição', 'Data', 'Check-in', 'Check-out', 'Flags', 'Nível'];
+  const rows = lista.map(v => [
+    v.id,
+    (v.usuarios?.nome || '—').replace(/"/g, '""'),
+    (v.instituicoes?.nome || '—').replace(/"/g, '""'),
+    v.data_visita || '—',
+    v.checkin_timestamp || '—',
+    v.checkout_timestamp || '—',
+    v._flags.map(f => f.titulo).join('; ') || '—',
+    v._nivel || '—',
+  ].map(x => `"${String(x)}"`));
+  const csv = [header.map(h => `"${h}"`).join(','), ...rows.map(r => r.join(','))].join('\n');
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `revisao-visitas-${new Date().toISOString().substring(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  setFlash('success', 'CSV baixado.');
+};
+
+/* ==========================================================================
    MOBILE SHELL — Header + bottom nav reutilizáveis
    ========================================================================== */
 
@@ -9202,7 +10721,7 @@ async function listarVisitasAdmin(filtro = 'com_flags') {
   if (!db) return [];
 
   let query = db.from('visitas').select(
-    '*, instituicoes(id, nome, cidade), usuarios:nutricionista_id(id, nome)'
+    '*, instituicoes(id, nome, cidade, latitude, longitude), usuarios:nutricionista_id(id, nome)'
   );
 
   if (filtro === 'com_flags') {
@@ -9361,6 +10880,21 @@ const routes = {
   '#/nutri/indicadores':    { title: 'Indicadores',   icon: 'bar_chart',      render: renderNutriIndicadores },
 };
 
+// Sprint 9.13: decide renderer apropriado (mobile ou desktop) pra cada rota
+// Admin + tela grande = desktop renderer (se existir). Senão, cai no mobile.
+const DESKTOP_RENDERERS = {
+  '#/admin': renderAdminDashboardDesktop,
+  '#/admin/revisao': renderAdminRevisaoDesktop,
+  // Partes 4+ vão adicionar: '#/admin/instituicoes': renderAdminInstituicoesDesktop, etc.
+};
+
+function getRendererForRoute(hash, route) {
+  const user = getCurrentUser();
+  if (!user || user.perfil !== 'admin') return route.render;
+  if (!isDesktop()) return route.render;
+  return DESKTOP_RENDERERS[hash] || route.render;
+}
+
 function router() {
   const fullHash = window.location.hash || '#/';
   // Separa hash e query (ex: #/visitas/relatorio?id=abc)
@@ -9388,7 +10922,9 @@ function router() {
 
   if (route) {
     document.title = `${route.title} · ${CONFIG.APP_NAME}`;
-    app.innerHTML = route.render(hash);
+    // Sprint 9.13: se tela grande + admin, tenta renderer desktop
+    const render = getRendererForRoute(hash, route);
+    app.innerHTML = render(hash);
   } else {
     app.innerHTML = render404(hash);
     document.title = `Não encontrado · ${CONFIG.APP_NAME}`;
@@ -22054,6 +23590,21 @@ async function boot() {
 
   window.addEventListener('hashchange', router);
   router();
+
+  // Sprint 9.13: re-renderiza quando o viewport cruza o breakpoint desktop↔mobile
+  // (ex.: girou tablet, abriu dev tools, redimensionou janela)
+  let _lastWasDesktop = isDesktop();
+  let _resizeTimer;
+  window.addEventListener('resize', () => {
+    clearTimeout(_resizeTimer);
+    _resizeTimer = setTimeout(() => {
+      const nowDesktop = isDesktop();
+      if (nowDesktop !== _lastWasDesktop) {
+        _lastWasDesktop = nowDesktop;
+        router();
+      }
+    }, 200);
+  });
 
   // Se já tem sessão ativa, liga o polling de notificações + sincroniza dados do user
   if (getCurrentUser()) {
