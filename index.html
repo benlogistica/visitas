@@ -5445,7 +5445,7 @@ a {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.18.1-agenda-filtro-prof',
+  APP_VERSION: '1.0.0-alpha.sprint9.21.3-faturar-desabilitado',
   APP_NAME: 'Nutricionais Visitas',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -6861,6 +6861,16 @@ async function listarSolicitacoesReaberturaPendentes() {
 function calcularDataInicio(periodo) {
   const hoje = new Date();
   const inicio = new Date(hoje);
+
+  // Sprint 9.20.7: suporte a mês específico no formato "mes:YYYY-MM" (ex: "mes:2026-03")
+  if (typeof periodo === 'string' && periodo.startsWith('mes:')) {
+    const [ano, mes] = periodo.slice(4).split('-').map(Number);
+    if (ano && mes) {
+      const d = new Date(ano, mes - 1, 1, 0, 0, 0, 0);
+      return d.toISOString();
+    }
+  }
+
   switch (periodo) {
     case '7':   inicio.setDate(hoje.getDate() - 7); break;
     case '30':  inicio.setDate(hoje.getDate() - 30); break;
@@ -6878,11 +6888,36 @@ function calcularDataInicio(periodo) {
   return inicio.toISOString();
 }
 
+// Sprint 9.20.7: calcula data fim do período (só aplica pra "mes:YYYY-MM" específico)
+// Retorna null se o período é aberto até hoje (não precisa de filtro fim)
+function calcularDataFim(periodo) {
+  if (typeof periodo === 'string' && periodo.startsWith('mes:')) {
+    const [ano, mes] = periodo.slice(4).split('-').map(Number);
+    if (ano && mes) {
+      // Último milissegundo do último dia do mês
+      const fim = new Date(ano, mes, 0, 23, 59, 59, 999);
+      return fim.toISOString();
+    }
+  }
+  return null;
+}
+
 // Sprint 9.12: calcula a janela do período IMEDIATAMENTE anterior, com mesma duração.
 // Retorna { inicio, fim } em ISO, ou null se período = 'all'.
 function calcularPeriodoAnterior(periodo) {
   const hoje = new Date();
   if (periodo === 'all') return null;
+
+  // Sprint 9.20.7: mês específico → mês anterior ao selecionado
+  if (typeof periodo === 'string' && periodo.startsWith('mes:')) {
+    const [ano, mes] = periodo.slice(4).split('-').map(Number);
+    if (ano && mes) {
+      const inicioAnt = new Date(ano, mes - 2, 1, 0, 0, 0, 0);
+      const fimAnt = new Date(ano, mes - 1, 0, 23, 59, 59, 999);
+      return { inicio: inicioAnt.toISOString(), fim: fimAnt.toISOString() };
+    }
+  }
+
   if (periodo === '7' || periodo === '30') {
     const dias = periodo === '7' ? 7 : 30;
     const fim = new Date(hoje);
@@ -6912,6 +6947,21 @@ function calcularPeriodoAnterior(periodo) {
 // Pra 'all', usa o intervalo entre a primeira visita e hoje.
 function calcularDiasDoPeriodo(periodo, dataInicioISO, visitas) {
   const hoje = new Date();
+
+  // Sprint 9.20.7: mês específico
+  if (typeof periodo === 'string' && periodo.startsWith('mes:')) {
+    const [ano, mes] = periodo.slice(4).split('-').map(Number);
+    if (ano && mes) {
+      // Se for mês passado: total de dias do mês. Se for mês atual: dias até hoje.
+      const fim = new Date(ano, mes, 0);
+      const hojeMesmoMes = (hoje.getFullYear() === ano && hoje.getMonth() === mes - 1);
+      if (hojeMesmoMes) {
+        return hoje.getDate();
+      }
+      return fim.getDate();
+    }
+  }
+
   if (periodo === '7') return 7;
   if (periodo === '30') return 30;
   if (periodo === 'mes') {
@@ -8483,12 +8533,76 @@ async function atualizarBadgesSidebarDesktop() {
 
 // Sprint 9.13 Parte 2: Dashboard admin desktop completo
 // Layout: coluna principal (KPIs + 4 gráficos) + widget lateral "Ações pendentes"
+// Sprint 9.20.1: Estado de customização do layout do dashboard
+// Persiste em localStorage. Cada item é uma SEÇÃO inteira, não sub-gráfico.
+const DASH_SECTIONS_DEFAULT = [
+  { id: 'kpis',             label: 'KPIs do topo (6 cards)',             icon: 'analytics',       visible: true },
+  { id: 'rankings',         label: 'Rankings (Nutris + Instituições)',   icon: 'leaderboard',     visible: true },
+  { id: 'semana-objetivo',  label: 'Visitas/semana + Objetivos (donut)', icon: 'show_chart',      visible: true },
+  { id: 'heatmap-pies',     label: 'Heatmap + Pizzas (Status/GPS/Tipo)', icon: 'grid_on',         visible: true },
+  { id: 'inativos',         label: 'Nutricionistas sem atividade',       icon: 'person_off',      visible: true },
+];
+
+const DASH_LAYOUT_KEY = 'nutri_dash_layout_v2';
+
+function getDashLayout() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(DASH_LAYOUT_KEY) || 'null');
+    if (!Array.isArray(saved)) return [...DASH_SECTIONS_DEFAULT];
+    // Merge: mantém ordem e visibilidade salvas, mas adiciona seções novas que foram criadas depois
+    const savedIds = saved.map(s => s.id);
+    const merged = saved.filter(s => DASH_SECTIONS_DEFAULT.find(d => d.id === s.id))
+      .map(s => {
+        const def = DASH_SECTIONS_DEFAULT.find(d => d.id === s.id);
+        return { ...def, visible: s.visible !== false };
+      });
+    // Adiciona seções novas (não salvas) no fim
+    DASH_SECTIONS_DEFAULT.forEach(def => {
+      if (!savedIds.includes(def.id)) merged.push({ ...def });
+    });
+    return merged;
+  } catch {
+    return [...DASH_SECTIONS_DEFAULT];
+  }
+}
+
+function saveDashLayout(layout) {
+  try {
+    localStorage.setItem(DASH_LAYOUT_KEY, JSON.stringify(layout.map(s => ({ id: s.id, visible: s.visible }))));
+  } catch (err) {
+    console.warn('[dash layout save]', err);
+  }
+}
+
+// Aplica o layout atual ao DOM: reordena e esconde seções
+function aplicarDashLayout() {
+  const layout = getDashLayout();
+  const container = document.getElementById('dsdMainContent');
+  if (!container) return;
+
+  layout.forEach((sec, idx) => {
+    const el = container.querySelector(`[data-dash-section="${sec.id}"]`);
+    if (!el) return;
+    el.style.order = String(idx);
+    // Preserva o display original (grid/flex) ao esconder/mostrar
+    // Guarda o display original no data-attribute no primeiro uso
+    if (!el.dataset.originalDisplay) {
+      const computed = window.getComputedStyle(el).display;
+      el.dataset.originalDisplay = computed || 'block';
+    }
+    el.style.display = sec.visible ? el.dataset.originalDisplay : 'none';
+  });
+}
+
 function renderAdminDashboardDesktop() {
   const user = requireAdmin();
   if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
 
-  // Período default: últimos 30 dias (mesmo padrão do mobile)
-  if (!window._dashDesktopPeriodo) window._dashDesktopPeriodo = '30';
+  // Sprint 9.20.7: período default = mês atual (formato mes:YYYY-MM)
+  if (!window._dashDesktopPeriodo) {
+    const hoje = new Date();
+    window._dashDesktopPeriodo = `mes:${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2,'0')}`;
+  }
 
   // Carrega dados async + popula sidebar
   setTimeout(() => {
@@ -8496,37 +8610,64 @@ function renderAdminDashboardDesktop() {
     carregarAdminDashboardDesktop();
   }, 0);
 
-  // Período selector (mesmos botões do mobile, sem "Hoje")
+  // Período selector — botões de atalho + dropdown mês/ano
   const periodos = [
     { id: '7',   label: '7 dias' },
     { id: '30',  label: '30 dias' },
-    { id: 'mes', label: 'Mês' },
+    { id: 'mes-atalho', label: 'Mês' }, // atalho: pula pro mês atual no dropdown
     { id: 'tri', label: 'Trimestre' },
     { id: 'all', label: 'Tudo' },
   ];
+
+  const periodoAtual = window._dashDesktopPeriodo;
+  const ehMesEspecifico = typeof periodoAtual === 'string' && periodoAtual.startsWith('mes:');
+
+  // Função de destaque: "Mês" fica ativo quando período começa com "mes:"
+  const isAtivo = (id) => {
+    if (id === 'mes-atalho') return ehMesEspecifico;
+    return periodoAtual === id;
+  };
+
+  // Dropdown de mês/ano: últimos 24 meses disponíveis
+  const hoje = new Date();
+  const mesVigente = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2,'0')}`;
+  const valorDropdown = ehMesEspecifico ? periodoAtual.slice(4) : mesVigente;
+  const mesNomes = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  const opcoesMes = [];
+  for (let off = 0; off >= -23; off--) {
+    const m = new Date(hoje.getFullYear(), hoje.getMonth() + off, 1);
+    const valor = `${m.getFullYear()}-${String(m.getMonth() + 1).padStart(2,'0')}`;
+    const label = `${mesNomes[m.getMonth()]}/${m.getFullYear()}`;
+    opcoesMes.push(`<option value="${valor}"${valor === valorDropdown ? ' selected' : ''}>${label}</option>`);
+  }
+
   const titleExtra = `
     <div style="display:inline-flex;gap:4px;background:var(--neutral-100);border-radius:9999px;padding:3px;">
       ${periodos.map(p => `
-        <button onclick="trocarPeriodoDashDesktop('${p.id}')" id="dsdPeriod_${p.id}" style="padding:5px 12px;border:0;background:${window._dashDesktopPeriodo === p.id ? 'var(--brand-navy)' : 'transparent'};color:${window._dashDesktopPeriodo === p.id ? '#fff' : 'var(--neutral-600)'};border-radius:9999px;font-size:11.5px;font-weight:600;cursor:pointer;font-family:inherit;">${p.label}</button>
+        <button onclick="trocarPeriodoDashDesktop('${p.id}')" id="dsdPeriod_${p.id}" style="padding:5px 12px;border:0;background:${isAtivo(p.id) ? 'var(--brand-navy)' : 'transparent'};color:${isAtivo(p.id) ? '#fff' : 'var(--neutral-600)'};border-radius:9999px;font-size:11.5px;font-weight:600;cursor:pointer;font-family:inherit;">${p.label}</button>
       `).join('')}
     </div>
+    <select onchange="trocarMesDashDesktop(this.value)" title="Escolher mês específico" style="height:32px;padding:0 10px;border:1px solid ${ehMesEspecifico ? 'var(--brand-navy)' : 'var(--neutral-200)'};border-radius:9999px;background:${ehMesEspecifico ? 'var(--brand-navy)' : '#fff'};color:${ehMesEspecifico ? '#fff' : 'var(--neutral-600)'};font-family:inherit;font-size:11.5px;font-weight:600;cursor:pointer;margin-left:6px;outline:none;">
+      ${opcoesMes.join('')}
+    </select>
+    <button onclick="abrirCustomizarDashDesktop()" title="Personalizar indicadores" style="width:38px;height:38px;border-radius:10px;border:1px solid var(--neutral-200);background:#fff;color:var(--neutral-600);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;margin-left:8px;transition:all 120ms;" onmouseover="this.style.borderColor='var(--brand-navy)';this.style.color='var(--brand-navy)'" onmouseout="this.style.borderColor='var(--neutral-200)';this.style.color='var(--neutral-600)'">
+      <span class="material-symbols-rounded" style="font-size:20px;">tune</span>
+    </button>
   `;
 
   const content = `
     <div style="display:flex;flex-direction:row;gap:24px;align-items:flex-start;">
       <!-- COLUNA PRINCIPAL -->
-      <div style="flex:1;display:flex;flex-direction:column;gap:20px;min-width:0;">
+      <div id="dsdMainContent" style="flex:1;display:flex;flex-direction:column;gap:20px;min-width:0;">
 
-        <!-- 4 KPIs em linha -->
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;" id="dsdKpiRow">
-          <div style="background:#fff;border-radius:12px;padding:40px 20px;border:1px solid var(--neutral-200);text-align:center;color:var(--neutral-400);font-size:12px;">Carregando KPIs...</div>
-          <div style="background:#fff;border-radius:12px;padding:40px 20px;border:1px solid var(--neutral-200);text-align:center;color:var(--neutral-400);font-size:12px;">&nbsp;</div>
-          <div style="background:#fff;border-radius:12px;padding:40px 20px;border:1px solid var(--neutral-200);text-align:center;color:var(--neutral-400);font-size:12px;">&nbsp;</div>
-          <div style="background:#fff;border-radius:12px;padding:40px 20px;border:1px solid var(--neutral-200);text-align:center;color:var(--neutral-400);font-size:12px;">&nbsp;</div>
+        <!-- 6 KPIs em linha (grid responsivo) -->
+        <div data-dash-section="kpis" style="display:grid;grid-template-columns:repeat(6,1fr);gap:12px;" id="dsdKpiRow">
+          <div style="background:#fff;border-radius:12px;padding:40px 16px;border:1px solid var(--neutral-200);text-align:center;color:var(--neutral-400);font-size:12px;">Carregando KPIs...</div>
+          ${Array.from({length:5}).map(() => '<div style="background:#fff;border-radius:12px;padding:40px 16px;border:1px solid var(--neutral-200);text-align:center;color:var(--neutral-400);font-size:12px;">&nbsp;</div>').join('')}
         </div>
 
-        <!-- Grid 2x2 de cards de gráficos -->
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+        <!-- Rankings (Nutris + Instituições) -->
+        <div data-dash-section="rankings" style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
           <!-- Visitas por nutricionista -->
           <div class="ds-chart-card">
             <div class="ds-chart-card__header">
@@ -8535,22 +8676,36 @@ function renderAdminDashboardDesktop() {
                 <div class="ds-chart-card__subtitle" id="dsdRankingSubtitle">—</div>
               </div>
             </div>
-            <div id="dsdRankingNutri" style="min-height:320px;">Carregando...</div>
+            <div id="dsdRankingNutri" style="min-height:100px;">Carregando...</div>
           </div>
 
-          <!-- Visitas por semana (linha) -->
+          <!-- Visitas por instituição (Sprint 9.20) -->
           <div class="ds-chart-card">
             <div class="ds-chart-card__header">
               <div>
-                <div class="ds-chart-card__title">Visitas por semana</div>
-                <div class="ds-chart-card__subtitle" id="dsdVsSubtitle">—</div>
+                <div class="ds-chart-card__title">Visitas por instituição</div>
+                <div class="ds-chart-card__subtitle" id="dsdRankingInstSubtitle">—</div>
+              </div>
+            </div>
+            <div id="dsdRankingInst" style="min-height:100px;">Carregando...</div>
+          </div>
+        </div>
+
+        <!-- Visitas por semana + Distribuição por objetivo (lado a lado) -->
+        <div data-dash-section="semana-objetivo" style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+          <!-- Visitas por período (dia/semana/mês - Sprint 9.20.6) -->
+          <div class="ds-chart-card">
+            <div class="ds-chart-card__header">
+              <div>
+                <div class="ds-chart-card__title">Visitas realizadas</div>
+                <div class="ds-chart-card__subtitle">Agrupadas por período</div>
               </div>
               <div style="display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--neutral-600);">
                 <span style="width:9px;height:9px;border-radius:50%;background:var(--brand-lime);display:inline-block;"></span>
                 Visitas aprovadas
               </div>
             </div>
-            <div id="dsdVisitasSemana" style="min-height:260px;display:flex;align-items:center;justify-content:center;color:var(--neutral-400);font-size:12px;">Carregando...</div>
+            <div id="dsdVisitasSemana" style="min-height:200px;display:flex;align-items:center;justify-content:center;color:var(--neutral-400);font-size:12px;">Carregando...</div>
           </div>
 
           <!-- Distribuição por objetivo (donut) -->
@@ -8563,16 +8718,69 @@ function renderAdminDashboardDesktop() {
             </div>
             <div id="dsdDonutObj" style="min-height:180px;display:flex;align-items:center;justify-content:center;color:var(--neutral-400);font-size:12px;">Carregando...</div>
           </div>
+        </div>
 
-          <!-- Heatmap dias × horas -->
-          <div class="ds-chart-card">
-            <div class="ds-chart-card__header">
-              <div>
-                <div class="ds-chart-card__title">Dias × horários mais frequentes</div>
-                <div class="ds-chart-card__subtitle" id="dsdHeatSubtitle">Heatmap · últimos 90 dias</div>
+        <!-- Sprint 9.20.8: Heatmap + Status + Checkin numa linha de 3, Tipo + Inativos numa linha de 2 -->
+        <div data-dash-section="heatmap-pies" style="display:flex;flex-direction:column;gap:20px;">
+          <!-- Linha 1: Heatmap + Status (barras) + Check-in (pizza) -->
+          <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:20px;">
+            <!-- Heatmap -->
+            <div class="ds-chart-card">
+              <div class="ds-chart-card__header">
+                <div>
+                  <div class="ds-chart-card__title">Dias × horários mais frequentes</div>
+                  <div class="ds-chart-card__subtitle" id="dsdHeatSubtitle">Heatmap · últimos 90 dias</div>
+                </div>
               </div>
+              <div id="dsdHeatmap" style="min-height:220px;display:flex;align-items:center;justify-content:center;color:var(--neutral-400);font-size:12px;">Carregando...</div>
             </div>
-            <div id="dsdHeatmap" style="min-height:220px;display:flex;align-items:center;justify-content:center;color:var(--neutral-400);font-size:12px;">Carregando...</div>
+
+            <!-- Status das visitas (BARRAS HORIZONTAIS) -->
+            <div class="ds-chart-card">
+              <div class="ds-chart-card__header">
+                <div>
+                  <div class="ds-chart-card__title">Status das visitas</div>
+                  <div class="ds-chart-card__subtitle">Distribuição no período</div>
+                </div>
+              </div>
+              <div id="dsdPieStatus" style="min-height:220px;">Carregando...</div>
+            </div>
+
+            <!-- Check-in (pizza) -->
+            <div class="ds-chart-card">
+              <div class="ds-chart-card__header">
+                <div>
+                  <div class="ds-chart-card__title">Qualidade do check-in</div>
+                  <div class="ds-chart-card__subtitle">GPS validado vs manual</div>
+                </div>
+              </div>
+              <div id="dsdPieCheckin" style="min-height:220px;">Carregando...</div>
+            </div>
+          </div>
+
+          <!-- Linha 2: Tipo de instituição + Nutris sem atividade -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+            <!-- Tipo de instituição (pizza) -->
+            <div class="ds-chart-card">
+              <div class="ds-chart-card__header">
+                <div>
+                  <div class="ds-chart-card__title">Tipo de instituição</div>
+                  <div class="ds-chart-card__subtitle">Privada / pública / etc</div>
+                </div>
+              </div>
+              <div id="dsdPieTipoInst" style="min-height:220px;">Carregando...</div>
+            </div>
+
+            <!-- Nutris sem atividade -->
+            <div class="ds-chart-card" id="dsdNutrisInativosCard">
+              <div class="ds-chart-card__header">
+                <div>
+                  <div class="ds-chart-card__title">Nutricionistas sem atividade</div>
+                  <div class="ds-chart-card__subtitle" id="dsdInativosSubtitle">—</div>
+                </div>
+              </div>
+              <div id="dsdNutrisInativos" style="min-height:220px;">Carregando...</div>
+            </div>
           </div>
         </div>
 
@@ -8601,29 +8809,196 @@ function renderAdminDashboardDesktop() {
   });
 }
 
-// Handler do seletor de período do dashboard desktop
-window.trocarPeriodoDashDesktop = function(periodo) {
-  window._dashDesktopPeriodo = periodo;
-  // Atualiza botões visualmente (sem re-renderizar tudo)
-  ['7','30','mes','tri','all'].forEach(p => {
-    const btn = document.getElementById(`dsdPeriod_${p}`);
-    if (btn) {
-      if (p === periodo) {
-        btn.style.background = 'var(--brand-navy)';
-        btn.style.color = '#fff';
-      } else {
-        btn.style.background = 'transparent';
-        btn.style.color = 'var(--neutral-600)';
-      }
-    }
+// Sprint 9.20.1: Modal de customização do dashboard com drag & drop + toggle
+window.abrirCustomizarDashDesktop = function() {
+  // Remove modal anterior se existir
+  const existing = document.getElementById('dashCustomModal');
+  if (existing) existing.remove();
+
+  const layout = getDashLayout();
+
+  const backdrop = document.createElement('div');
+  backdrop.id = 'dashCustomModal';
+  backdrop.style.cssText = 'position:fixed;inset:0;background:rgba(10,31,92,0.35);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px;animation:dashModalFade 180ms ease-out;';
+
+  const card = document.createElement('div');
+  card.style.cssText = 'background:#fff;border-radius:16px;box-shadow:0 20px 60px rgba(10,31,92,0.25);width:100%;max-width:540px;max-height:85vh;display:flex;flex-direction:column;overflow:hidden;animation:dashModalPop 220ms cubic-bezier(.2,.8,.3,1);';
+  card.innerHTML = `
+    <div style="padding:20px 24px;border-bottom:1px solid var(--neutral-100);display:flex;align-items:center;gap:12px;">
+      <div style="width:40px;height:40px;border-radius:10px;background:rgba(139,198,63,0.18);color:var(--brand-lime);display:flex;align-items:center;justify-content:center;">
+        <span class="material-symbols-rounded" style="font-size:22px;">tune</span>
+      </div>
+      <div style="flex:1;">
+        <div style="font-family:'Poppins',sans-serif;font-weight:600;font-size:16px;color:var(--brand-navy);">Personalizar dashboard</div>
+        <div style="font-size:12px;color:var(--neutral-500);margin-top:1px;">Arraste pra reordenar · marque o que quer ver</div>
+      </div>
+      <button onclick="fecharCustomizarDashDesktop()" style="width:32px;height:32px;border-radius:8px;border:0;background:var(--neutral-100);color:var(--neutral-600);cursor:pointer;display:flex;align-items:center;justify-content:center;">
+        <span class="material-symbols-rounded" style="font-size:18px;">close</span>
+      </button>
+    </div>
+
+    <div id="dashCustomList" style="padding:16px 24px;overflow-y:auto;flex:1;">
+      ${layout.map((sec, idx) => `
+        <div class="dash-cust-item" data-id="${sec.id}" draggable="true"
+             style="display:flex;align-items:center;gap:12px;padding:12px;border:1px solid var(--neutral-200);border-radius:10px;background:#fff;margin-bottom:8px;cursor:grab;user-select:none;transition:all 140ms;"
+             ondragstart="dashItemDragStart(event)"
+             ondragover="dashItemDragOver(event)"
+             ondragleave="dashItemDragLeave(event)"
+             ondrop="dashItemDrop(event)"
+             ondragend="dashItemDragEnd(event)">
+          <span class="material-symbols-rounded" style="font-size:20px;color:var(--neutral-400);cursor:grab;">drag_indicator</span>
+          <div style="width:36px;height:36px;border-radius:9px;background:${sec.visible ? 'rgba(139,198,63,0.15)' : 'var(--neutral-100)'};color:${sec.visible ? 'var(--brand-lime)' : 'var(--neutral-400)'};display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all 140ms;">
+            <span class="material-symbols-rounded" style="font-size:18px;">${sec.icon}</span>
+          </div>
+          <div style="flex:1;font-size:13.5px;font-weight:500;color:${sec.visible ? 'var(--brand-navy)' : 'var(--neutral-500)'};">${sec.label}</div>
+          <label style="cursor:pointer;display:inline-flex;align-items:center;">
+            <input type="checkbox" ${sec.visible ? 'checked' : ''}
+                   onchange="dashItemToggle('${sec.id}', this.checked)"
+                   style="appearance:none;-webkit-appearance:none;width:40px;height:22px;border-radius:9999px;background:${sec.visible ? 'var(--brand-lime)' : 'var(--neutral-200)'};position:relative;cursor:pointer;transition:all 140ms;outline:none;border:0;" />
+            <style>
+              .dash-cust-item input[type="checkbox"]::after {
+                content:'';position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:#fff;
+                box-shadow:0 1px 3px rgba(0,0,0,0.2);transition:transform 140ms;
+              }
+              .dash-cust-item input[type="checkbox"]:checked::after { transform:translateX(18px); }
+              .dash-cust-item.dragging { opacity:0.4; }
+              .dash-cust-item.drag-over { border-color:var(--brand-lime);background:rgba(139,198,63,0.08);transform:translateY(-2px); }
+              @keyframes dashModalFade { from{opacity:0;} to{opacity:1;} }
+              @keyframes dashModalPop { from{opacity:0;transform:scale(0.95);} to{opacity:1;transform:scale(1);} }
+            </style>
+          </label>
+        </div>
+      `).join('')}
+    </div>
+
+    <div style="padding:16px 24px;border-top:1px solid var(--neutral-100);display:flex;gap:10px;align-items:center;">
+      <button onclick="dashResetLayout()" style="height:40px;padding:0 14px;background:transparent;border:1px solid var(--neutral-200);color:var(--neutral-600);border-radius:10px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:5px;">
+        <span class="material-symbols-rounded" style="font-size:16px;">restart_alt</span>
+        Restaurar padrão
+      </button>
+      <div style="flex:1;"></div>
+      <button onclick="fecharCustomizarDashDesktop()" style="height:40px;padding:0 20px;background:var(--brand-navy);color:#fff;border:0;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">
+        Pronto
+      </button>
+    </div>
+  `;
+  backdrop.appendChild(card);
+  backdrop.onclick = (e) => { if (e.target === backdrop) window.fecharCustomizarDashDesktop(); };
+  document.body.appendChild(backdrop);
+};
+
+window.fecharCustomizarDashDesktop = function() {
+  const m = document.getElementById('dashCustomModal');
+  if (m) m.remove();
+  aplicarDashLayout();
+};
+
+// Drag & drop: armazena item sendo arrastado num data attribute
+let _dashDragEl = null;
+window.dashItemDragStart = function(ev) {
+  _dashDragEl = ev.currentTarget;
+  ev.currentTarget.classList.add('dragging');
+  ev.dataTransfer.effectAllowed = 'move';
+  ev.dataTransfer.setData('text/plain', ev.currentTarget.dataset.id);
+};
+window.dashItemDragOver = function(ev) {
+  ev.preventDefault();
+  ev.dataTransfer.dropEffect = 'move';
+  const target = ev.currentTarget;
+  if (target !== _dashDragEl) target.classList.add('drag-over');
+};
+window.dashItemDragLeave = function(ev) {
+  ev.currentTarget.classList.remove('drag-over');
+};
+window.dashItemDrop = function(ev) {
+  ev.preventDefault();
+  const target = ev.currentTarget;
+  target.classList.remove('drag-over');
+  if (!_dashDragEl || target === _dashDragEl) return;
+  // Decide se insere antes ou depois baseado na posição do mouse
+  const rect = target.getBoundingClientRect();
+  const meio = rect.top + rect.height / 2;
+  const parent = target.parentNode;
+  if (ev.clientY < meio) {
+    parent.insertBefore(_dashDragEl, target);
+  } else {
+    parent.insertBefore(_dashDragEl, target.nextSibling);
+  }
+  dashSalvarOrdem();
+};
+window.dashItemDragEnd = function(ev) {
+  ev.currentTarget.classList.remove('dragging');
+  document.querySelectorAll('.dash-cust-item').forEach(el => el.classList.remove('drag-over'));
+  _dashDragEl = null;
+};
+
+function dashSalvarOrdem() {
+  const list = document.getElementById('dashCustomList');
+  if (!list) return;
+  const items = Array.from(list.querySelectorAll('.dash-cust-item'));
+  const layout = items.map(el => {
+    const id = el.dataset.id;
+    const def = DASH_SECTIONS_DEFAULT.find(d => d.id === id) || { id };
+    const checkbox = el.querySelector('input[type="checkbox"]');
+    return { ...def, visible: checkbox ? checkbox.checked : true };
   });
-  carregarAdminDashboardDesktop();
+  saveDashLayout(layout);
+}
+
+window.dashItemToggle = function(id, visible) {
+  // Atualiza visual do item na lista
+  const list = document.getElementById('dashCustomList');
+  if (list) {
+    const item = list.querySelector(`[data-id="${id}"]`);
+    if (item) {
+      const iconBg = item.querySelector('div[style*="border-radius:9px"]');
+      const label = item.querySelectorAll('div[style*="flex:1"]')[0];
+      const toggle = item.querySelector('input[type="checkbox"]');
+      if (iconBg) {
+        iconBg.style.background = visible ? 'rgba(139,198,63,0.15)' : 'var(--neutral-100)';
+        iconBg.style.color = visible ? 'var(--brand-lime)' : 'var(--neutral-400)';
+      }
+      if (label) label.style.color = visible ? 'var(--brand-navy)' : 'var(--neutral-500)';
+      if (toggle) toggle.style.background = visible ? 'var(--brand-lime)' : 'var(--neutral-200)';
+    }
+  }
+  dashSalvarOrdem();
+};
+
+window.dashResetLayout = function() {
+  try {
+    localStorage.removeItem(DASH_LAYOUT_KEY);
+  } catch {}
+  // Fecha e reabre o modal pra atualizar
+  fecharCustomizarDashDesktop();
+  setTimeout(() => abrirCustomizarDashDesktop(), 100);
+};
+
+// Handler do seletor de período do dashboard desktop
+// Sprint 9.20.7: reescrito pra suportar o atalho 'mes-atalho' (vira mês vigente no formato mes:YYYY-MM)
+window.trocarPeriodoDashDesktop = function(periodo) {
+  if (periodo === 'mes-atalho') {
+    // Atalho "Mês" → seleciona mês atual no formato mes:YYYY-MM
+    const h = new Date();
+    window._dashDesktopPeriodo = `mes:${h.getFullYear()}-${String(h.getMonth() + 1).padStart(2,'0')}`;
+  } else {
+    window._dashDesktopPeriodo = periodo;
+  }
+  // Re-renderiza a view inteira pra atualizar dropdown e botões corretamente
+  document.getElementById('app').innerHTML = renderAdminDashboardDesktop();
+};
+
+// Sprint 9.20.7: trocar via dropdown de mês/ano (formato YYYY-MM)
+window.trocarMesDashDesktop = function(valorMes) {
+  window._dashDesktopPeriodo = `mes:${valorMes}`;
+  document.getElementById('app').innerHTML = renderAdminDashboardDesktop();
 };
 
 // Carrega dados do dashboard desktop e popula todos os gráficos
 async function carregarAdminDashboardDesktop() {
-  const periodo = window._dashDesktopPeriodo || '30';
+  const periodo = window._dashDesktopPeriodo || 'mes-atual';
   const dataInicio = calcularDataInicio(periodo);
+  const dataFim = calcularDataFim(periodo);
   const periodoAnt = calcularPeriodoAnterior(periodo);
 
   try {
@@ -8636,6 +9011,7 @@ async function carregarAdminDashboardDesktop() {
       instituicoes(nome)
     `);
     if (dataInicio) query = query.gte('checkin_timestamp', dataInicio);
+    if (dataFim) query = query.lte('checkin_timestamp', dataFim);
 
     // Query período anterior (pra comparações dos KPIs)
     let queryAnt = null;
@@ -8685,30 +9061,55 @@ async function carregarAdminDashboardDesktop() {
       .select('id', { count: 'exact', head: true })
       .or('status.eq.em_revisao,flag_gps_divergente.eq.true');
 
-    // Renderiza os 4 KPIs
+    // Sprint 9.20: cálculos extras pra KPIs 5 e 6 (tempo médio + qualidade GPS)
+    const duracoes = visitas
+      .map(v => calcularDuracaoMin(v.checkin_timestamp, v.checkout_timestamp))
+      .filter(d => d !== null && d > 0 && d < 8 * 60); // filtra outliers (>8h)
+    const tempoMedio = duracoes.length > 0
+      ? Math.round(duracoes.reduce((s, d) => s + d, 0) / duracoes.length)
+      : null;
+
+    const divergentes = visitas.filter(v => v.flag_gps_divergente).length;
+    const manuais     = visitas.filter(v => v.checkin_manual).length;
+    const qualidadeGps = totalAtual > 0
+      ? Math.round(((totalAtual - divergentes - manuais) / totalAtual) * 100)
+      : null;
+
+    // Renderiza os 6 KPIs
     renderDsdKpis({
       totalAtual, totalAnt,
       emRevisao: emRevisao || 0,
       nutrisAtivos,
       instsAtivas,
       instsNovas,
+      tempoMedio,
+      tempoMedioBase: duracoes.length,
+      qualidadeGps,
+      divergentes,
+      manuais,
     });
 
     // Renderiza cada gráfico
     renderDsdRankingNutri(visitas);
+    renderDsdRankingInst(visitas);
     renderDsdVisitasSemana(visitas);
     renderDsdDonutObjetivos(dataInicio);
     renderDsdHeatmap();
+    renderDsdPiesStatusCheckinTipo(visitas);
+    renderDsdNutrisInativos(visitas);
     renderDsdAcoesPendentes();
+
+    // Sprint 9.20.1: aplica layout customizado (ordem + visibilidade salvas pelo usuário)
+    aplicarDashLayout();
   } catch (err) {
     console.error('[dash desktop]', err);
     const grid = document.getElementById('dsdKpiRow');
-    if (grid) grid.innerHTML = `<div style="grid-column:span 4;padding:20px;background:var(--status-danger-bg,#FCE8E8);color:var(--status-danger);border-radius:12px;">Erro: ${err.message}</div>`;
+    if (grid) grid.innerHTML = `<div style="grid-column:span 6;padding:20px;background:var(--status-danger-bg,#FCE8E8);color:var(--status-danger);border-radius:12px;">Erro: ${err.message}</div>`;
   }
 }
 
-// Renderiza os 4 KPIs topo do dashboard
-function renderDsdKpis({ totalAtual, totalAnt, emRevisao, nutrisAtivos, instsAtivas, instsNovas }) {
+// Renderiza os 6 KPIs topo do dashboard (Sprint 9.20: aumentado de 4 pra 6)
+function renderDsdKpis({ totalAtual, totalAnt, emRevisao, nutrisAtivos, instsAtivas, instsNovas, tempoMedio, tempoMedioBase, qualidadeGps, divergentes, manuais }) {
   const grid = document.getElementById('dsdKpiRow');
   if (!grid) return;
 
@@ -8723,35 +9124,58 @@ function renderDsdKpis({ totalAtual, totalAnt, emRevisao, nutrisAtivos, instsAti
       const cor = diff >= 0 ? 'var(--status-success)' : 'var(--status-danger)';
       const icon = diff >= 0 ? 'trending_up' : 'trending_down';
       const sinal = diff >= 0 ? '+' : '';
-      deltaHtml = `<span class="material-symbols-rounded" style="font-size:14px;color:${cor};vertical-align:-2px;">${icon}</span><span style="color:${cor};font-weight:700;">${sinal}${pct}%</span> <span style="color:var(--neutral-500);">vs. período anterior</span>`;
+      deltaHtml = `<span class="material-symbols-rounded" style="font-size:14px;color:${cor};vertical-align:-2px;">${icon}</span><span style="color:${cor};font-weight:700;">${sinal}${pct}%</span> <span style="color:var(--neutral-500);">vs. anterior</span>`;
     }
   }
 
   const instDelta = instsNovas > 0
-    ? `<span class="material-symbols-rounded" style="font-size:14px;color:var(--status-success);vertical-align:-2px;">trending_up</span><span style="color:var(--status-success);font-weight:700;">+${instsNovas} nova${instsNovas === 1 ? '' : 's'}</span> <span style="color:var(--neutral-500);">este período</span>`
+    ? `<span class="material-symbols-rounded" style="font-size:14px;color:var(--status-success);vertical-align:-2px;">trending_up</span><span style="color:var(--status-success);font-weight:700;">+${instsNovas} nova${instsNovas === 1 ? '' : 's'}</span>`
     : '';
 
-  // Monta KPI card (reusável)
-  const kpiCard = ({ icon, label, value, sublabel, deltaHtml: d, accent = 'lime', badge }) => {
-    const circleBg = accent === 'danger' ? 'var(--status-danger)' : 'var(--brand-lime)';
-    const shadow = accent === 'danger' ? 'none' : '0 4px 10px rgba(139,198,63,0.2)';
+  // Monta KPI card (reusável) — layout vertical com ícone no topo, valor grande, label embaixo
+  // Se `clickable: true`, vira botão clicável com cursor:pointer e hover sutil
+  const kpiCard = ({ icon, label, value, sublabel, deltaHtml: d, accent = 'lime', badge, clickable, dataAttr }) => {
+    const circleBg = accent === 'danger' ? 'var(--status-danger)'
+                   : accent === 'warning' ? 'var(--status-warning)'
+                   : accent === 'info'    ? 'var(--status-info)'
+                   : 'var(--brand-lime)';
+    const shadow = accent === 'lime' ? '0 3px 8px rgba(139,198,63,0.2)' : 'none';
+    const clickStyle = clickable ? 'cursor:pointer;transition:all 140ms;' : '';
+    const clickHover = clickable ? 'onmouseover="this.style.transform=\'translateY(-2px)\';this.style.boxShadow=\'0 4px 12px rgba(10,31,92,0.08)\'" onmouseout="this.style.transform=\'\';this.style.boxShadow=\'0 1px 3px rgba(10,31,92,0.04)\'"' : '';
     return `
-      <div style="background:#fff;border-radius:12px;padding:18px 20px;box-shadow:0 1px 3px rgba(10,31,92,0.04);border:1px solid var(--neutral-200);display:flex;flex-direction:column;gap:14px;">
-        <div style="display:flex;align-items:center;justify-content:space-between;">
-          <div style="width:44px;height:44px;border-radius:50%;background:${circleBg};display:flex;align-items:center;justify-content:center;box-shadow:${shadow};">
-            <span class="material-symbols-rounded" style="font-size:22px;color:#fff;">${icon}</span>
+      <div ${dataAttr || ''} ${clickHover} style="background:#fff;border-radius:12px;padding:14px 14px;box-shadow:0 1px 3px rgba(10,31,92,0.04);border:1px solid var(--neutral-200);display:flex;flex-direction:column;gap:10px;min-width:0;position:relative;${clickStyle}">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;">
+          <div style="width:36px;height:36px;border-radius:50%;background:${circleBg};display:flex;align-items:center;justify-content:center;box-shadow:${shadow};flex-shrink:0;">
+            <span class="material-symbols-rounded" style="font-size:18px;color:#fff;">${icon}</span>
           </div>
-          ${badge ? `<span style="background:var(--status-danger-bg,#FCE8E8);color:var(--status-danger);font-size:10.5px;font-weight:700;padding:3px 8px;border-radius:9999px;text-transform:uppercase;letter-spacing:0.04em;">${badge}</span>` : ''}
+          ${badge ? `<span style="background:var(--status-danger-bg,#FCE8E8);color:var(--status-danger);font-size:9.5px;font-weight:700;padding:2px 6px;border-radius:9999px;text-transform:uppercase;letter-spacing:0.04em;flex-shrink:0;">${badge}</span>` : ''}
+          ${clickable ? `<span class="material-symbols-rounded" style="font-size:14px;color:var(--neutral-400);flex-shrink:0;">arrow_drop_down</span>` : ''}
         </div>
-        <div>
-          <div style="font-family:'Poppins',sans-serif;font-size:32px;font-weight:700;color:var(--brand-navy);line-height:1;font-variant-numeric:tabular-nums;letter-spacing:-0.02em;">${value}</div>
-          <div style="font-size:12.5px;font-weight:600;color:var(--neutral-600);margin-top:8px;">${label}</div>
-          ${d ? `<div style="margin-top:6px;font-size:11.5px;display:flex;align-items:center;gap:4px;flex-wrap:wrap;">${d}</div>` : ''}
-          ${sublabel && !d ? `<div style="margin-top:6px;font-size:11.5px;color:var(--neutral-500);">${sublabel}</div>` : ''}
+        <div style="min-width:0;">
+          <div style="font-family:'Poppins',sans-serif;font-size:26px;font-weight:700;color:var(--brand-navy);line-height:1;font-variant-numeric:tabular-nums;letter-spacing:-0.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${value}</div>
+          <div style="font-size:11.5px;font-weight:600;color:var(--neutral-600);margin-top:6px;line-height:1.3;">${label}</div>
+          ${d ? `<div style="margin-top:5px;font-size:10.5px;display:flex;align-items:center;gap:3px;flex-wrap:wrap;line-height:1.2;">${d}</div>` : ''}
+          ${sublabel && !d ? `<div style="margin-top:5px;font-size:10.5px;color:var(--neutral-500);line-height:1.2;">${sublabel}</div>` : ''}
         </div>
       </div>
     `;
   };
+
+  // Formata tempo médio ("1h 20min")
+  const tempoFmt = tempoMedio !== null ? formatarDuracao(tempoMedio) : '—';
+  const tempoHint = tempoMedioBase > 0
+    ? `base: ${tempoMedioBase} ${tempoMedioBase === 1 ? 'visita' : 'visitas'}`
+    : 'sem check-out';
+
+  // Qualidade GPS — colorido conforme nível
+  const qgValor = qualidadeGps !== null ? `${qualidadeGps}%` : '—';
+  const qgAccent = qualidadeGps === null ? 'lime'
+                 : qualidadeGps >= 80 ? 'lime'
+                 : qualidadeGps >= 60 ? 'warning'
+                 : 'danger';
+  const qgHint = (divergentes + manuais) === 0
+    ? 'sem problemas'
+    : `${divergentes} diverg · ${manuais} manual`;
 
   grid.innerHTML = [
     kpiCard({
@@ -8769,18 +9193,170 @@ function renderDsdKpis({ totalAtual, totalAnt, emRevisao, nutrisAtivos, instsAti
       badge: emRevisao >= 5 ? 'Crítico' : null,
     }),
     kpiCard({
+      icon: 'timer',
+      label: 'Tempo médio',
+      value: tempoFmt,
+      sublabel: tempoHint,
+      accent: 'info',
+    }),
+    kpiCard({
+      icon: 'my_location',
+      label: 'Qualidade GPS',
+      value: qgValor,
+      sublabel: qgHint,
+      accent: qgAccent,
+    }),
+    kpiCard({
       icon: 'groups',
-      label: 'Nutricionistas ativos',
+      label: 'Profissionais',
       value: nutrisAtivos,
-      sublabel: 'com acesso ao sistema',
+      sublabel: 'ativos no sistema',
+      clickable: true,
+      dataAttr: 'data-kpi="profissionais"',
     }),
     kpiCard({
       icon: 'local_hospital',
-      label: 'Instituições ativas',
+      label: 'Instituições',
       value: instsAtivas,
       deltaHtml: instDelta,
+      sublabel: instDelta ? null : 'hospitais ativos no sistema',
     }),
   ].join('');
+
+  // Sprint 9.20.4: liga popover no KPI de Profissionais (mostra breakdown por categoria)
+  const kpiProf = grid.querySelector('[data-kpi="profissionais"]');
+  if (kpiProf) {
+    kpiProf.addEventListener('click', (e) => {
+      e.stopPropagation();
+      togglePopoverProfissionais(kpiProf);
+    });
+  }
+}
+
+// Sprint 9.20.4: popover com breakdown de profissionais por categoria
+// Abre on click, fecha ao clicar fora ou num ESC.
+async function togglePopoverProfissionais(anchor) {
+  // Se já está aberto, fecha
+  const existing = document.getElementById('dsdPopoverProf');
+  if (existing) {
+    existing.remove();
+    return;
+  }
+
+  // Cria o popover com loading
+  const pop = document.createElement('div');
+  pop.id = 'dsdPopoverProf';
+  pop.style.cssText = 'position:absolute;z-index:500;background:#fff;border-radius:12px;box-shadow:0 10px 30px rgba(10,31,92,0.15);border:1px solid var(--neutral-200);min-width:280px;max-width:340px;padding:14px 16px;animation:dashPopFade 160ms ease-out;';
+  pop.innerHTML = `
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--neutral-100);">
+      <span class="material-symbols-rounded" style="font-size:18px;color:var(--brand-lime);">groups</span>
+      <div style="font-family:'Poppins',sans-serif;font-weight:600;font-size:13px;color:var(--brand-navy);">Profissionais ativos por categoria</div>
+    </div>
+    <div id="dsdPopoverProfBody" style="font-size:12px;color:var(--neutral-500);text-align:center;padding:10px 0;">Carregando...</div>
+    <style>@keyframes dashPopFade { from{opacity:0;transform:translateY(-4px);} to{opacity:1;transform:translateY(0);} }</style>
+  `;
+
+  // Posiciona abaixo do anchor
+  const rect = anchor.getBoundingClientRect();
+  const scrollY = window.scrollY || document.documentElement.scrollTop;
+  const scrollX = window.scrollX || document.documentElement.scrollLeft;
+  pop.style.top = `${rect.bottom + scrollY + 8}px`;
+  pop.style.left = `${rect.left + scrollX}px`;
+  document.body.appendChild(pop);
+
+  // Click fora fecha
+  const closeOnClickOutside = (ev) => {
+    if (!pop.contains(ev.target) && ev.target !== anchor && !anchor.contains(ev.target)) {
+      pop.remove();
+      document.removeEventListener('click', closeOnClickOutside);
+      document.removeEventListener('keydown', closeOnEsc);
+    }
+  };
+  const closeOnEsc = (ev) => {
+    if (ev.key === 'Escape') {
+      pop.remove();
+      document.removeEventListener('click', closeOnClickOutside);
+      document.removeEventListener('keydown', closeOnEsc);
+    }
+  };
+  // setTimeout pra evitar capturar o click que abriu
+  setTimeout(() => {
+    document.addEventListener('click', closeOnClickOutside);
+    document.addEventListener('keydown', closeOnEsc);
+  }, 10);
+
+  // Busca os dados
+  try {
+    const { data: usuarios, error } = await db.from('usuarios')
+      .select('id, perfil, categoria_id, categorias_profissionais(nome)')
+      .eq('status', 'ativo');
+
+    if (error) throw new Error(error.message);
+
+    // Agrupa por categoria (inclui admins na contagem total, sem categoria)
+    const porCategoria = {};
+    let semCategoria = 0;
+    let admins = 0;
+    (usuarios || []).forEach(u => {
+      if (u.perfil === 'admin') admins++;
+      const cat = u.categorias_profissionais?.nome;
+      if (cat) {
+        porCategoria[cat] = (porCategoria[cat] || 0) + 1;
+      } else if (u.perfil === 'nutricionista') {
+        semCategoria++;
+      }
+    });
+
+    const entries = Object.entries(porCategoria).sort(([,a], [,b]) => b - a);
+    const total = (usuarios || []).length;
+
+    const bodyEl = document.getElementById('dsdPopoverProfBody');
+    if (!bodyEl) return;
+
+    if (total === 0) {
+      bodyEl.innerHTML = '<div style="padding:10px 0;color:var(--neutral-400);">Nenhum profissional ativo.</div>';
+      return;
+    }
+
+    const linhas = entries.map(([cat, qtd]) => `
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--neutral-100);">
+        <span style="font-size:12.5px;color:var(--neutral-700);">${cat.replace(/</g,'&lt;')}</span>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:12.5px;font-weight:700;color:var(--brand-navy);">${qtd}</span>
+      </div>
+    `).join('');
+
+    const semCatLinha = semCategoria > 0 ? `
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--neutral-100);">
+        <span style="font-size:12.5px;color:var(--neutral-500);font-style:italic;">Sem categoria</span>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:12.5px;font-weight:700;color:var(--neutral-500);">${semCategoria}</span>
+      </div>
+    ` : '';
+
+    const adminsLinha = admins > 0 ? `
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--neutral-100);">
+        <span style="font-size:12.5px;color:var(--neutral-700);display:inline-flex;align-items:center;gap:4px;">
+          <span class="material-symbols-rounded" style="font-size:14px;color:var(--brand-navy);">shield_person</span>
+          Administradores
+        </span>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:12.5px;font-weight:700;color:var(--brand-navy);">${admins}</span>
+      </div>
+    ` : '';
+
+    bodyEl.innerHTML = `
+      <div style="display:flex;flex-direction:column;">
+        ${linhas}
+        ${semCatLinha}
+        ${adminsLinha}
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0 2px;margin-top:4px;">
+          <span style="font-size:11.5px;color:var(--neutral-500);font-weight:600;text-transform:uppercase;letter-spacing:0.05em;">Total</span>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:700;color:var(--brand-navy);">${total}</span>
+        </div>
+      </div>
+    `;
+  } catch (err) {
+    const bodyEl = document.getElementById('dsdPopoverProfBody');
+    if (bodyEl) bodyEl.innerHTML = `<div style="padding:10px;color:var(--status-danger);">Erro: ${err.message}</div>`;
+  }
 }
 
 // Renderiza ranking Top 10 nutris (barras horizontais com avatar + posição)
@@ -8815,6 +9391,14 @@ function renderDsdRankingNutri(visitas) {
   }
   const max = ranking[0].count || 1;
 
+  // Sprint 9.20.6: top 5 linhas visíveis + scroll pros demais, padding extra pro scrollbar
+  const rowHeight = 46;
+  const maxVisibleHeight = rowHeight * 5 + 8;
+
+  container.style.maxHeight = `${maxVisibleHeight}px`;
+  container.style.overflowY = ranking.length > 5 ? 'auto' : 'visible';
+  container.style.paddingRight = ranking.length > 5 ? '12px' : '0';
+
   container.innerHTML = ranking.map((n, idx) => {
     const pos = idx + 1;
     const avatar = n.foto
@@ -8838,106 +9422,247 @@ function renderDsdRankingNutri(visitas) {
 }
 
 // Renderiza gráfico de linha: visitas por semana (últimas 12 semanas)
+// Sprint 9.20.6: gráfico com granularidade selecionável (dia/semana/mês)
+// + dropdown pra escolher qual mês específico quando em modo "Mês"
 function renderDsdVisitasSemana(visitasPeriodo) {
+  const container = document.getElementById('dsdVisitasSemana');
+  if (!container) return;
+
+  // Cacheia visitas pra trocar granularidade sem refetch
+  window._dsdSemanaVisitas = visitasPeriodo;
+  if (!window._dsdSemanaGranularidade) window._dsdSemanaGranularidade = 'dia';
+  if (!window._dsdSemanaMesOffset) window._dsdSemanaMesOffset = 0; // 0 = mês atual, -1 = mês passado
+
+  renderGraficoVisitasTemporal();
+}
+
+function renderGraficoVisitasTemporal() {
   const container = document.getElementById('dsdVisitasSemana');
   const subtitle = document.getElementById('dsdVsSubtitle');
   if (!container) return;
 
-  // Últimas 12 semanas: ISO week start (segunda-feira)
+  const visitasPeriodo = window._dsdSemanaVisitas || [];
+  const gran = window._dsdSemanaGranularidade || 'dia';
+  const mesOffset = window._dsdSemanaMesOffset || 0;
+
   const agora = new Date();
-  const semanas = [];
-  for (let i = 11; i >= 0; i--) {
-    const d = new Date(agora);
-    d.setDate(d.getDate() - (i * 7));
-    // Ajusta pra segunda-feira da semana
-    const dia = d.getDay();
-    const diff = dia === 0 ? 6 : dia - 1;
-    d.setDate(d.getDate() - diff);
-    d.setHours(0, 0, 0, 0);
-    semanas.push(d);
+  let buckets = []; // [{ inicio: Date, fim: Date, label: string, labelX: string, count: 0 }]
+  let headerLabel = '';
+
+  const fmtData = (dt) => `${String(dt.getDate()).padStart(2,'0')}/${String(dt.getMonth()+1).padStart(2,'0')}`;
+  const mesNomes = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+  const mesNomesLongos = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+
+  if (gran === 'dia') {
+    // Últimos 30 dias
+    for (let i = 29; i >= 0; i--) {
+      const d = new Date(agora);
+      d.setDate(d.getDate() - i);
+      d.setHours(0, 0, 0, 0);
+      const fim = new Date(d);
+      fim.setDate(fim.getDate() + 1);
+      buckets.push({
+        inicio: d, fim,
+        label: fmtData(d),
+        labelX: (i % 3 === 0) ? String(d.getDate()).padStart(2,'0') : '', // mostra label a cada 3 dias
+        count: 0,
+      });
+    }
+    headerLabel = `Últimos 30 dias · ${fmtData(buckets[0].inicio)} – ${fmtData(buckets[buckets.length - 1].inicio)}`;
+  } else if (gran === 'semana') {
+    // Últimas 12 semanas (segunda a domingo)
+    for (let i = 11; i >= 0; i--) {
+      const d = new Date(agora);
+      d.setDate(d.getDate() - (i * 7));
+      const dia = d.getDay();
+      const diff = dia === 0 ? 6 : dia - 1;
+      d.setDate(d.getDate() - diff);
+      d.setHours(0, 0, 0, 0);
+      const fim = new Date(d);
+      fim.setDate(fim.getDate() + 7);
+      buckets.push({
+        inicio: d, fim,
+        label: `${fmtData(d)} – ${fmtData(new Date(fim.getTime() - 86400000))}`,
+        labelX: `S${12 - i}`,
+        count: 0,
+      });
+    }
+    headerLabel = `Últimas 12 semanas · ${fmtData(buckets[0].inicio)} – ${fmtData(buckets[buckets.length - 1].inicio)}`;
+  } else if (gran === 'mes') {
+    // Dias do mês selecionado (mesOffset: 0 = mês atual, -1 = anterior, etc)
+    const mes = new Date(agora.getFullYear(), agora.getMonth() + mesOffset, 1);
+    const proxMes = new Date(mes.getFullYear(), mes.getMonth() + 1, 1);
+    const diasNoMes = Math.round((proxMes - mes) / 86400000);
+    for (let dia = 1; dia <= diasNoMes; dia++) {
+      const d = new Date(mes.getFullYear(), mes.getMonth(), dia);
+      const fim = new Date(mes.getFullYear(), mes.getMonth(), dia + 1);
+      buckets.push({
+        inicio: d, fim,
+        label: fmtData(d),
+        labelX: (dia % 3 === 1 || dia === diasNoMes) ? String(dia).padStart(2,'0') : '',
+        count: 0,
+      });
+    }
+    headerLabel = `${mesNomesLongos[mes.getMonth()]}/${mes.getFullYear()}`;
   }
 
-  // Conta visitas aprovadas (visita_realizada=true) por semana
-  const contagem = semanas.map(() => 0);
+  // Conta visitas aprovadas
   visitasPeriodo.forEach(v => {
     if (!v.checkin_timestamp || v.visita_realizada !== true) return;
     const d = new Date(v.checkin_timestamp);
-    for (let i = 0; i < semanas.length; i++) {
-      const fim = i < semanas.length - 1 ? semanas[i + 1] : new Date(agora.getTime() + 86400000);
-      if (d >= semanas[i] && d < fim) { contagem[i]++; break; }
+    for (const b of buckets) {
+      if (d >= b.inicio && d < b.fim) { b.count++; break; }
     }
   });
 
-  if (subtitle) {
-    const inicio = semanas[0];
-    const fim = semanas[semanas.length - 1];
-    const fmtData = (dt) => `${String(dt.getDate()).padStart(2,'0')}/${String(dt.getMonth()+1).padStart(2,'0')}`;
-    subtitle.textContent = `Últimas 12 semanas · ${fmtData(inicio)} – ${fmtData(fim)}`;
+  // Monta dropdown de mês (últimos 12 meses disponíveis)
+  let dropdownMesHtml = '';
+  if (gran === 'mes') {
+    const opts = [];
+    for (let off = 0; off >= -11; off--) {
+      const m = new Date(agora.getFullYear(), agora.getMonth() + off, 1);
+      const label = `${mesNomesLongos[m.getMonth()]}/${m.getFullYear()}`;
+      opts.push(`<option value="${off}"${off === mesOffset ? ' selected' : ''}>${label}</option>`);
+    }
+    dropdownMesHtml = `
+      <select onchange="trocarMesDsdGrafico(this.value)" style="height:28px;padding:0 8px;border:1px solid var(--neutral-200);border-radius:8px;background:#fff;font-family:inherit;font-size:11.5px;color:var(--brand-navy);cursor:pointer;">
+        ${opts.join('')}
+      </select>
+    `;
   }
 
-  const total = contagem.reduce((s, n) => s + n, 0);
+  // Monta botões de granularidade (discretos, em toggle group)
+  const granBtn = (id, label) => `
+    <button onclick="trocarGranDsdGrafico('${id}')" style="padding:4px 10px;border:0;background:${gran === id ? 'var(--brand-navy)' : 'transparent'};color:${gran === id ? '#fff' : 'var(--neutral-600)'};border-radius:9999px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;transition:all 120ms;">${label}</button>
+  `;
+
+  // Header com toggle de granularidade + dropdown mês (se aplicável)
+  const headerHtml = `
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <div style="display:inline-flex;gap:2px;background:var(--neutral-100);border-radius:9999px;padding:2px;">
+          ${granBtn('dia', 'Dia')}
+          ${granBtn('semana', 'Semana')}
+          ${granBtn('mes', 'Mês')}
+        </div>
+        ${dropdownMesHtml}
+      </div>
+      <div style="font-size:11px;color:var(--neutral-500);">${headerLabel}</div>
+    </div>
+  `;
+
+  // Atualiza subtitle (opcional, complementa header)
+  if (subtitle) subtitle.textContent = headerLabel;
+
+  const total = buckets.reduce((s, b) => s + b.count, 0);
   if (total === 0) {
-    container.innerHTML = '<div style="padding:40px 0;text-align:center;color:var(--neutral-400);font-size:12px;">Sem visitas aprovadas no período.</div>';
+    container.innerHTML = `${headerHtml}<div style="padding:30px 0;text-align:center;color:var(--neutral-400);font-size:12px;">Sem visitas aprovadas no período.</div>`;
     return;
   }
 
-  // SVG: 620×240
-  const W = 620, H = 240, padL = 40, padR = 20, padT = 30, padB = 30;
-  const max = Math.max(...contagem, 1);
+  // === SVG compacto (160px altura) ===
+  const W = 620, H = 160, padL = 40, padR = 20, padT = 20, padB = 24;
+  const max = Math.max(...buckets.map(b => b.count), 1);
   const min = 0;
   const chartW = W - padL - padR, chartH = H - padT - padB;
-  const xs = contagem.map((_, i) => padL + (i * chartW / (contagem.length - 1)));
-  const ys = contagem.map(v => padT + chartH - ((v - min) / (max - min || 1)) * chartH);
-  const lastIdx = contagem.length - 1;
+  const xs = buckets.map((_, i) => padL + (buckets.length === 1 ? chartW / 2 : (i * chartW / (buckets.length - 1))));
+  const ys = buckets.map(b => padT + chartH - ((b.count - min) / (max - min || 1)) * chartH);
+  const lastIdx = buckets.length - 1;
 
-  // Linha da área
   const linePath = xs.map((x, i) => `${i === 0 ? 'M' : 'L'} ${x} ${ys[i]}`).join(' ');
-  // Área preenchida (fecha em baixo)
   const areaPath = `${linePath} L ${xs[lastIdx]} ${H - padB} L ${xs[0]} ${H - padB} Z`;
 
-  // Grid lines (3 horizontais)
   const gridLines = [0, 0.5, 1].map(t => {
     const y = padT + chartH * (1 - t);
     const val = Math.round(min + (max - min) * t);
     return `
       <line x1="${padL}" y1="${y}" x2="${W - padR}" y2="${y}" stroke="var(--neutral-100)" stroke-width="1" stroke-dasharray="${t === 0 ? '0' : '3 3'}" />
-      <text x="${padL - 6}" y="${y + 3}" font-size="10" fill="var(--neutral-400)" text-anchor="end" font-family="JetBrains Mono">${val}</text>
+      <text x="${padL - 6}" y="${y + 3}" font-size="9" fill="var(--neutral-400)" text-anchor="end" font-family="JetBrains Mono">${val}</text>
     `;
   }).join('');
 
-  // Labels X (semanas)
-  const labels = xs.map((x, i) => `
-    <text x="${x}" y="${H - 8}" font-size="9" fill="var(--neutral-400)" text-anchor="middle" font-family="JetBrains Mono">S${i+1}</text>
-  `).join('');
+  const labels = xs.map((x, i) => buckets[i].labelX ? `
+    <text x="${x}" y="${H - 6}" font-size="8" fill="var(--neutral-400)" text-anchor="middle" font-family="JetBrains Mono">${buckets[i].labelX}</text>
+  ` : '').join('');
 
-  // Tooltip do último ponto
-  const ultimo = contagem[lastIdx];
-  const tooltipX = xs[lastIdx], tooltipY = ys[lastIdx];
+  // Pontos interativos
+  const hoverPoints = xs.map((x, i) => `
+    <g class="dsd-semana-point" data-count="${buckets[i].count}" data-label="${buckets[i].label.replace(/"/g,'&quot;')}" style="cursor:pointer;">
+      <circle cx="${x}" cy="${ys[i]}" r="3" fill="#fff" stroke="var(--brand-lime)" stroke-width="2" />
+      <circle cx="${x}" cy="${ys[i]}" r="14" fill="transparent" />
+    </g>
+  `).join('');
 
   container.style.display = 'block';
   container.innerHTML = `
-    <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:260px;display:block;">
-      <defs>
-        <linearGradient id="dsdAreaGrad" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="var(--brand-lime)" stop-opacity="0.3" />
-          <stop offset="100%" stop-color="var(--brand-lime)" stop-opacity="0" />
-        </linearGradient>
-      </defs>
-      ${gridLines}
-      <path d="${areaPath}" fill="url(#dsdAreaGrad)" />
-      <path d="${linePath}" fill="none" stroke="var(--brand-lime)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" />
-      ${xs.map((x, i) => `<circle cx="${x}" cy="${ys[i]}" r="3" fill="#fff" stroke="var(--brand-lime)" stroke-width="2" />`).join('')}
-      <!-- Destaque no último ponto -->
-      <circle cx="${tooltipX}" cy="${tooltipY}" r="8" fill="var(--brand-lime)" fill-opacity="0.18" />
-      <circle cx="${tooltipX}" cy="${tooltipY}" r="4.5" fill="#fff" stroke="var(--brand-lime)" stroke-width="2.5" />
-      <g transform="translate(${Math.max(padL, Math.min(tooltipX - 40, W - padR - 80))} ${Math.max(8, tooltipY - 32)})">
-        <rect width="80" height="22" rx="6" fill="var(--brand-navy)" />
-        <text x="40" y="14" font-size="11" font-weight="700" fill="#fff" text-anchor="middle" font-family="JetBrains Mono">${ultimo} visitas</text>
-      </g>
-      ${labels}
-    </svg>
+    ${headerHtml}
+    <div style="position:relative;">
+      <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="width:100%;height:160px;display:block;">
+        <defs>
+          <linearGradient id="dsdAreaGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="var(--brand-lime)" stop-opacity="0.3" />
+            <stop offset="100%" stop-color="var(--brand-lime)" stop-opacity="0" />
+          </linearGradient>
+        </defs>
+        ${gridLines}
+        <path d="${areaPath}" fill="url(#dsdAreaGrad)" />
+        <path d="${linePath}" fill="none" stroke="var(--brand-lime)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" />
+        ${hoverPoints}
+        ${labels}
+      </svg>
+      <div id="dsdSemanaTooltip" style="position:absolute;display:none;background:var(--brand-navy);color:#fff;padding:6px 10px;border-radius:6px;font-size:11px;font-family:'Inter',sans-serif;pointer-events:none;white-space:nowrap;z-index:10;box-shadow:0 4px 12px rgba(10,31,92,0.3);transform:translate(-50%, -100%);margin-top:-6px;">
+        <div style="font-family:'JetBrains Mono',monospace;font-weight:700;font-size:12px;" id="dsdSemanaTooltipCount">—</div>
+        <div style="font-size:10px;opacity:0.85;margin-top:1px;" id="dsdSemanaTooltipLabel">—</div>
+      </div>
+    </div>
   `;
+
+  // Binding dos tooltips
+  const tooltip = document.getElementById('dsdSemanaTooltip');
+  const tooltipCount = document.getElementById('dsdSemanaTooltipCount');
+  const tooltipLabel = document.getElementById('dsdSemanaTooltipLabel');
+  const wrapper = container.querySelector('div:last-child');
+  container.querySelectorAll('.dsd-semana-point').forEach(g => {
+    g.addEventListener('mouseenter', () => {
+      const count = g.dataset.count;
+      const label = g.dataset.label;
+      tooltipCount.textContent = `${count} ${count === '1' ? 'visita' : 'visitas'}`;
+      tooltipLabel.textContent = label;
+      const circle = g.querySelector('circle');
+      const rectSvg = container.querySelector('svg').getBoundingClientRect();
+      const rectWrap = wrapper.getBoundingClientRect();
+      const cx = parseFloat(circle.getAttribute('cx'));
+      const cy = parseFloat(circle.getAttribute('cy'));
+      const pxX = (cx / W) * rectSvg.width + (rectSvg.left - rectWrap.left);
+      const pxY = (cy / H) * rectSvg.height + (rectSvg.top - rectWrap.top);
+      tooltip.style.left = `${pxX}px`;
+      tooltip.style.top = `${pxY}px`;
+      tooltip.style.display = 'block';
+      circle.setAttribute('r', '5');
+      circle.setAttribute('fill', 'var(--brand-lime)');
+    });
+    g.addEventListener('mouseleave', () => {
+      tooltip.style.display = 'none';
+      const circle = g.querySelector('circle');
+      circle.setAttribute('r', '3');
+      circle.setAttribute('fill', '#fff');
+    });
+  });
 }
+
+// Handlers de granularidade e mês do gráfico temporal
+window.trocarGranDsdGrafico = function(gran) {
+  window._dsdSemanaGranularidade = gran;
+  if (gran === 'mes' && window._dsdSemanaMesOffset === undefined) {
+    window._dsdSemanaMesOffset = 0;
+  }
+  renderGraficoVisitasTemporal();
+};
+
+window.trocarMesDsdGrafico = function(offset) {
+  window._dsdSemanaMesOffset = parseInt(offset, 10);
+  renderGraficoVisitasTemporal();
+};
 
 // Donut chart de distribuição por objetivo
 async function renderDsdDonutObjetivos(dataInicio) {
@@ -9071,6 +9796,229 @@ async function renderDsdHeatmap() {
     `;
   } catch (err) {
     container.innerHTML = `<div style="padding:20px;color:var(--status-danger);font-size:12px;">Erro: ${err.message}</div>`;
+  }
+}
+
+// Sprint 9.20: Ranking de instituições (top 10)
+function renderDsdRankingInst(visitas) {
+  const container = document.getElementById('dsdRankingInst');
+  const subtitle = document.getElementById('dsdRankingInstSubtitle');
+  if (!container) return;
+
+  const porInst = {};
+  visitas.forEach(v => {
+    if (!v.instituicao_id) return;
+    if (!porInst[v.instituicao_id]) {
+      porInst[v.instituicao_id] = {
+        id: v.instituicao_id,
+        nome: v.instituicoes?.nome || 'Sem nome',
+        count: 0,
+      };
+    }
+    porInst[v.instituicao_id].count++;
+  });
+  const ranking = Object.values(porInst).sort((a, b) => b.count - a.count).slice(0, 10);
+  if (subtitle) subtitle.textContent = `Top ${ranking.length} hospitais`;
+
+  if (ranking.length === 0) {
+    container.innerHTML = '<div style="padding:40px 0;text-align:center;color:var(--neutral-400);font-size:12px;">Sem visitas no período.</div>';
+    return;
+  }
+  const max = ranking[0].count || 1;
+
+  // Sprint 9.20.6: top 5 linhas visíveis + padding extra pra scrollbar não colar no número
+  const rowHeight = 46;
+  const maxVisibleHeight = rowHeight * 5 + 8;
+  container.style.maxHeight = `${maxVisibleHeight}px`;
+  container.style.overflowY = ranking.length > 5 ? 'auto' : 'visible';
+  container.style.paddingRight = ranking.length > 5 ? '12px' : '0';
+
+  container.innerHTML = ranking.map((it, idx) => {
+    const pos = idx + 1;
+    return `
+      <div style="display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:${idx < ranking.length - 1 ? '1px solid var(--neutral-100)' : 'none'};">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11.5px;font-weight:600;color:var(--neutral-400);min-width:16px;text-align:right;">${pos}</span>
+        <div style="width:26px;height:26px;border-radius:7px;background:rgba(139,198,63,0.18);color:var(--brand-lime);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <span class="material-symbols-rounded" style="font-size:15px;">local_hospital</span>
+        </div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:12.5px;color:var(--brand-navy);font-weight:600;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${(it.nome || '').replace(/</g,'&lt;')}</div>
+          <div style="height:5px;background:var(--neutral-100);border-radius:3px;overflow:hidden;">
+            <div style="height:100%;width:${(it.count / max * 100).toFixed(1)}%;background:var(--brand-lime);border-radius:3px;transition:width 600ms ease-out;"></div>
+          </div>
+        </div>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:var(--brand-navy);min-width:28px;text-align:right;">${it.count}</span>
+      </div>
+    `;
+  }).join('');
+}
+
+// Sprint 9.20: 3 mini-pizzas (Status, Check-in, Tipo de instituição)
+// Reutiliza o renderDashPie do mobile que já é bem polido
+async function renderDsdPiesStatusCheckinTipo(visitas) {
+  // === Status: BARRAS HORIZONTAIS (Sprint 9.20.8) ===
+  const mapStatus = {
+    'completa':              { label: 'Completa',   color: 'var(--status-success)' },
+    'aprovada_pos_revisao':  { label: 'Aprovada',   color: 'var(--brand-lime)' },
+    'em_revisao':            { label: 'Em revisão', color: 'var(--status-warning)' },
+    'rascunho':              { label: 'Rascunho',   color: 'var(--neutral-400)' },
+  };
+  const countsStatus = {};
+  visitas.forEach(v => {
+    const s = v.status === 'rascunho' && v.revisao_motivo && !v.revisao_resolvida_em ? 'em_revisao' : v.status;
+    if (!mapStatus[s]) return;
+    countsStatus[s] = (countsStatus[s] || 0) + 1;
+  });
+  const dadosStatus = Object.entries(countsStatus).map(([k, v]) => ({
+    label: mapStatus[k].label,
+    count: v,
+    color: mapStatus[k].color,
+  })).sort((a, b) => b.count - a.count);
+
+  const statusEl = document.getElementById('dsdPieStatus');
+  if (statusEl) {
+    const totalStatus = dadosStatus.reduce((s, d) => s + d.count, 0);
+    if (totalStatus === 0) {
+      statusEl.innerHTML = '<div style="padding:30px;text-align:center;color:var(--neutral-400);font-size:12px;">Sem dados no período</div>';
+    } else {
+      const maxStatus = Math.max(...dadosStatus.map(d => d.count));
+      statusEl.innerHTML = `
+        <div style="display:flex;flex-direction:column;gap:14px;padding:4px 0;">
+          ${dadosStatus.map(d => {
+            const pct = Math.round((d.count / totalStatus) * 100);
+            const barPct = (d.count / maxStatus) * 100;
+            return `
+              <div>
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+                  <div style="display:flex;align-items:center;gap:7px;min-width:0;">
+                    <span style="width:10px;height:10px;border-radius:3px;background:${d.color};flex-shrink:0;"></span>
+                    <span style="font-size:12px;color:var(--neutral-700);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${d.label}</span>
+                  </div>
+                  <div style="display:flex;align-items:baseline;gap:6px;flex-shrink:0;">
+                    <span style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:var(--brand-navy);">${d.count}</span>
+                    <span style="font-size:11px;color:var(--neutral-500);font-weight:600;">${pct}%</span>
+                  </div>
+                </div>
+                <div style="height:8px;background:var(--neutral-100);border-radius:4px;overflow:hidden;">
+                  <div style="height:100%;width:${barPct.toFixed(1)}%;background:${d.color};border-radius:4px;transition:width 600ms ease-out;"></div>
+                </div>
+              </div>
+            `;
+          }).join('')}
+          <div style="margin-top:4px;padding-top:10px;border-top:1px solid var(--neutral-100);display:flex;justify-content:space-between;align-items:center;">
+            <span style="font-size:11px;color:var(--neutral-500);font-weight:600;text-transform:uppercase;letter-spacing:0.05em;">Total</span>
+            <span style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:var(--brand-navy);">${totalStatus}</span>
+          </div>
+        </div>
+      `;
+    }
+  }
+
+  // === Pizza Check-in ===
+  const validados = visitas.filter(v => !v.checkin_manual && !v.flag_gps_divergente).length;
+  const divergs   = visitas.filter(v => v.flag_gps_divergente).length;
+  const manuais   = visitas.filter(v => v.checkin_manual).length;
+  const dadosCheckin = [
+    { label: 'GPS validado', count: validados, color: 'var(--status-success)' },
+    { label: 'Divergente',   count: divergs,   color: 'var(--status-danger)' },
+    { label: 'Manual',       count: manuais,   color: 'var(--status-warning)' },
+  ].filter(d => d.count > 0);
+  if (typeof renderDashPie === 'function') {
+    renderDashPie('dsdPieCheckin', dadosCheckin, { large: true });
+  }
+
+  // === Pizza Tipo de Instituição ===
+  try {
+    const instIds = [...new Set(visitas.map(v => v.instituicao_id).filter(Boolean))];
+    let contagemTipo = {};
+    if (instIds.length > 0) {
+      const { data: insts } = await db.from('instituicoes')
+        .select('id, tipo')
+        .in('id', instIds);
+      const mapTipo = Object.fromEntries((insts || []).map(i => [i.id, i.tipo || 'Não informado']));
+      visitas.forEach(v => {
+        const tipo = mapTipo[v.instituicao_id] || 'Não informado';
+        contagemTipo[tipo] = (contagemTipo[tipo] || 0) + 1;
+      });
+    }
+    const coresTipo = [
+      'var(--brand-lime)', 'var(--brand-navy)', 'var(--status-info)',
+      'var(--status-warning)', '#7C3AED', 'var(--neutral-400)',
+    ];
+    const dadosTipo = Object.entries(contagemTipo)
+      .sort(([,a], [,b]) => b - a)
+      .map(([tipo, valor], idx) => ({
+        label: tipo,
+        count: valor,
+        color: coresTipo[idx % coresTipo.length],
+      }));
+    if (typeof renderDashPie === 'function') {
+      renderDashPie('dsdPieTipoInst', dadosTipo, { large: true });
+    }
+  } catch (err) {
+    console.warn('[pie tipo inst]', err);
+    const el = document.getElementById('dsdPieTipoInst');
+    if (el) el.innerHTML = `<div style="padding:30px;text-align:center;color:var(--neutral-400);font-size:12px;">Sem dados disponíveis</div>`;
+  }
+}
+
+// Sprint 9.20: lista de nutris sem visitas no período (insight operacional)
+async function renderDsdNutrisInativos(visitasPeriodo) {
+  const container = document.getElementById('dsdNutrisInativos');
+  const subtitle = document.getElementById('dsdInativosSubtitle');
+  const card = document.getElementById('dsdNutrisInativosCard');
+  if (!container) return;
+
+  try {
+    // Lista todos os nutris ativos
+    const { data: todosNutris } = await db.from('usuarios')
+      .select('id, nome, foto_url, ultimo_login')
+      .eq('perfil', 'nutricionista')
+      .eq('status', 'ativo')
+      .order('nome');
+
+    const ativosComVisita = new Set(visitasPeriodo.map(v => v.nutricionista_id).filter(Boolean));
+    const inativos = (todosNutris || []).filter(u => !ativosComVisita.has(u.id));
+
+    if (subtitle) {
+      subtitle.textContent = inativos.length === 0
+        ? 'Todos os nutricionistas registraram pelo menos 1 visita no período 🎉'
+        : `${inativos.length} de ${(todosNutris || []).length} nutris sem atividade no período`;
+    }
+
+    // Se zero inativos, esconde o card inteiro pra não poluir
+    if (inativos.length === 0) {
+      if (card) card.style.display = 'none';
+      return;
+    }
+    if (card) card.style.display = '';
+
+    container.innerHTML = `
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px;">
+        ${inativos.slice(0, 12).map(u => {
+          const inits = (u.nome || '?').split(' ').filter(Boolean).slice(0, 2).map(s => s[0].toUpperCase()).join('');
+          const avatar = u.foto_url
+            ? `<div style="width:32px;height:32px;border-radius:50%;background-image:url('${u.foto_url}');background-size:cover;background-position:center;flex-shrink:0;"></div>`
+            : `<div style="width:32px;height:32px;border-radius:50%;background:var(--status-warning);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;font-family:'Poppins',sans-serif;flex-shrink:0;">${inits}</div>`;
+          const ultLogin = u.ultimo_login
+            ? `Último login ${formatarTempoRelativo(u.ultimo_login)}`
+            : 'Nunca fez login';
+          return `
+            <div style="display:flex;align-items:center;gap:10px;padding:10px;border:1px solid var(--neutral-100);border-radius:10px;background:var(--status-warning-bg,#FEF4E1)40;">
+              ${avatar}
+              <div style="flex:1;min-width:0;">
+                <div style="font-weight:600;color:var(--brand-navy);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${(u.nome || '').replace(/</g,'&lt;')}</div>
+                <div style="font-size:11px;color:var(--neutral-500);">${ultLogin}</div>
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+      ${inativos.length > 12 ? `<div style="margin-top:10px;text-align:center;font-size:11.5px;color:var(--neutral-500);">+ ${inativos.length - 12} nutris sem atividade</div>` : ''}
+    `;
+  } catch (err) {
+    console.warn('[nutris inativos]', err);
+    container.innerHTML = `<div style="padding:20px;color:var(--neutral-400);font-size:12px;">Erro ao carregar nutris inativos.</div>`;
   }
 }
 
@@ -11876,7 +12824,8 @@ function bottomNav(active) {
     { id: 'visits',  icon: 'list_alt',       label: 'Visitas', href: '#/visitas' },
     { id: 'checkin', icon: 'my_location',    label: 'Check-in', href: '#/checkin', primary: true },
     { id: 'agenda',  icon: 'calendar_month', label: 'Agenda',  href: '#/agenda' },
-    { id: 'billing', icon: 'payments',       label: 'Faturar', href: '#/faturamento' },
+    // Sprint 9.21.3: Faturar desabilitado (em desenvolvimento)
+    { id: 'billing', icon: 'payments',       label: 'Faturar', href: '#/faturamento', disabled: true },
   ];
   return `
     <nav class="bnav">
@@ -11889,6 +12838,17 @@ function bottomNav(active) {
                 <span class="material-symbols-rounded" style="font-size:26px">${it.icon}</span>
               </div>
               <span class="bnav__primary-label">${it.label}</span>
+            </a>
+          `;
+        }
+        if (it.disabled) {
+          return `
+            <a href="javascript:void(0)" onclick="setFlash('info', '🔒 Em breve. Essa funcionalidade está em desenvolvimento.');return false;" class="bnav__item" style="opacity:0.4;cursor:not-allowed;position:relative;" title="Em breve">
+              <span class="material-symbols-rounded" style="font-size:22px;font-variation-settings: 'FILL' 0;">${it.icon}</span>
+              <span class="bnav__item-label">${it.label}</span>
+              <span style="position:absolute;top:4px;right:calc(50% - 22px);width:12px;height:12px;border-radius:50%;background:var(--status-warning);color:#fff;font-size:8px;font-weight:700;display:flex;align-items:center;justify-content:center;">
+                <span class="material-symbols-rounded" style="font-size:9px;">lock</span>
+              </span>
             </a>
           `;
         }
@@ -12612,14 +13572,14 @@ const ConfigMeta = {
     tipo: 'boolean',
   },
   analise_ia_habilitada: {
-    titulo: 'Análise por IA',
-    descricao: 'Quando uma visita entra em revisão com divergências, o sistema gera automaticamente uma análise de possíveis causas usando IA.',
+    titulo: 'Análise por IA <span style="display:inline-flex;align-items:center;padding:2px 8px;margin-left:8px;background:var(--status-warning-bg,#FEF4E1);color:var(--status-warning);border-radius:9999px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;vertical-align:middle;">Em breve</span>',
+    descricao: 'Quando uma visita entra em revisão com divergências, o sistema gera automaticamente uma análise de possíveis causas usando IA. <strong>Essa funcionalidade ainda não está ativa</strong> — o botão fica salvo pra quando a integração for ligada.',
     categoria: 'ia',
     tipo: 'boolean',
   },
   analise_ia_modelo: {
-    titulo: 'Modelo de IA',
-    descricao: 'Qual modelo é usado para gerar análises automáticas. Modelos maiores têm resultados melhores mas custam mais.',
+    titulo: 'Modelo de IA <span style="display:inline-flex;align-items:center;padding:2px 8px;margin-left:8px;background:var(--status-warning-bg,#FEF4E1);color:var(--status-warning);border-radius:9999px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;vertical-align:middle;">Em breve</span>',
+    descricao: 'Qual modelo é usado para gerar análises automáticas. Modelos maiores têm resultados melhores mas custam mais. <strong>Funcionalidade ainda não ativa.</strong>',
     categoria: 'ia',
     tipo: 'select',
     opcoes: [
@@ -12896,8 +13856,24 @@ function sbadgeForStatus(statusOrVisita) {
   return `<span class="sbadge sbadge--${s.cls}"><span class="sbadge__dot"></span>${s.label}</span>`;
 }
 
+// Sprint 9.19: rota raiz redireciona conforme autenticação
+//  - Se logado: vai pro home apropriado (admin → #/admin, nutri → #/nutri)
+//  - Se não logado: vai pro login
+//  - A tela de diagnóstico continua acessível via #/diagnostico pra debug
+function renderRaizRedirect() {
+  setTimeout(() => {
+    const user = getCurrentUserReal();
+    if (user) {
+      window.location.hash = user.perfil === 'admin' ? '#/admin' : '#/inicio';
+    } else {
+      window.location.hash = '#/login';
+    }
+  }, 0);
+  return '<div class="splash"><div class="splash__spinner"></div></div>';
+}
+
 const routes = {
-  '#/':             { title: 'Diagnóstico', icon: 'verified', render: renderDiagnostico },
+  '#/':             { title: '', icon: '', render: renderRaizRedirect },
   '#/diagnostico':  { title: 'Diagnóstico', icon: 'verified', render: renderDiagnostico },
   '#/login':        { title: 'Entrar', icon: 'login', render: renderLogin },
   '#/logout':       { title: 'Sair', icon: 'logout', render: renderLogout },
@@ -12942,7 +13918,8 @@ const DESKTOP_RENDERERS = {
   '#/admin/visitas': renderAdminVisitasDesktop,
   '#/admin/objetivos': renderAdminObjetivosDesktop,
   '#/admin/agenda': renderAdminAgendaDesktop,
-  // Última parte (10): configuracoes
+  '#/admin/configuracoes': renderAdminConfigDesktop,
+  // 🎉 Desktop completo!
 };
 
 function getRendererForRoute(hash, route) {
@@ -13863,6 +14840,120 @@ window.handleNovaSenha = async function(ev) {
     btn.textContent = 'Salvar nova senha';
   }
 };
+// Sprint 9.21: Frases motivacionais
+// Banco fallback caso a tabela no Supabase esteja vazia ou indisponível
+const FRASES_FALLBACK = [
+  { texto: 'Grandes conquistas começam com pequenas atitudes diárias.', autor: null },
+  { texto: 'O sucesso é a soma de pequenos esforços repetidos dia após dia.', autor: 'Robert Collier' },
+  { texto: 'Acredite em você e na sua capacidade de transformar o dia.', autor: null },
+  { texto: 'A jornada de mil milhas começa com um único passo.', autor: 'Lao Tsé' },
+  { texto: 'Foco, disciplina e gratidão constroem dias extraordinários.', autor: null },
+  { texto: 'Cada manhã é uma nova página em branco — escreva algo bom.', autor: null },
+  { texto: 'Você é mais forte do que imagina. Confie no processo.', autor: null },
+  { texto: 'Pequenos progressos ainda são progressos. Continue avançando.', autor: null },
+  { texto: 'A gratidão transforma o que temos em suficiente.', autor: null },
+  { texto: 'Não espere o momento perfeito. Torne o momento perfeito.', autor: null },
+  { texto: 'Acredite no poder de começar de novo, quantas vezes forem necessárias.', autor: null },
+  { texto: 'A diferença entre o possível e o impossível está na sua determinação.', autor: 'Tommy Lasorda' },
+  { texto: 'Persista. A cada dia você fica mais perto do que deseja.', autor: null },
+  { texto: 'A disciplina é a ponte entre os sonhos e a realização.', autor: 'Jim Rohn' },
+  { texto: 'Respire fundo, levante a cabeça e siga em frente. Você consegue.', autor: null },
+  { texto: 'Seja a energia que você quer atrair.', autor: null },
+  { texto: 'Não conte os dias — faça os dias contarem.', autor: 'Muhammad Ali' },
+  { texto: 'Sorria. Isso já é metade do caminho.', autor: null },
+  { texto: 'Seu único limite é você mesmo.', autor: null },
+  { texto: 'Coragem não é ausência de medo — é agir apesar dele.', autor: null },
+  { texto: 'A consistência é mais importante que a perfeição.', autor: null },
+  { texto: 'Cada passo conta. Mesmo os pequenos.', autor: null },
+  { texto: 'Você não precisa ser perfeito. Precisa ser presente.', autor: null },
+  { texto: 'Celebre suas pequenas vitórias. Elas pavimentam o caminho das grandes.', autor: null },
+  { texto: 'Enquanto você respira, há tempo pra recomeçar.', autor: null },
+];
+
+// Hash determinístico simples (djb2) pra escolher frase por usuário+dia
+function hashDeterministico(str) {
+  let hash = 5381;
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) + hash) + str.charCodeAt(i);
+    hash = hash & 0xffffffff; // força 32 bits
+  }
+  return Math.abs(hash);
+}
+
+// Seleciona frase do dia pra um usuário (determinística: mesma frase o dia todo pra essa pessoa)
+function selecionarFraseDoDia(frases, userId) {
+  if (!frases || frases.length === 0) return null;
+  const hoje = new Date();
+  const diaChave = `${hoje.getFullYear()}-${hoje.getMonth()}-${hoje.getDate()}`;
+  const chave = `${userId || 'anon'}:${diaChave}`;
+  const idx = hashDeterministico(chave) % frases.length;
+  return frases[idx];
+}
+
+// Carrega frases ativas do Supabase com cache de 10 minutos (evita refetch a cada abertura)
+let _frasesCache = null;
+let _frasesCacheExpira = 0;
+async function carregarFrasesAtivas() {
+  const agora = Date.now();
+  if (_frasesCache && agora < _frasesCacheExpira) return _frasesCache;
+
+  try {
+    const { data, error } = await db.from('frases_motivacionais')
+      .select('texto, autor')
+      .eq('ativa', true);
+
+    if (error) throw error;
+    if (!data || data.length === 0) {
+      _frasesCache = FRASES_FALLBACK;
+    } else {
+      _frasesCache = data;
+    }
+  } catch (err) {
+    console.warn('[frases] Usando fallback:', err.message);
+    _frasesCache = FRASES_FALLBACK;
+  }
+
+  _frasesCacheExpira = agora + 10 * 60 * 1000; // 10 min
+  return _frasesCache;
+}
+
+// Popula o card de frase do dia na home
+async function carregarFraseDoDia() {
+  const el = document.getElementById('fraseDoDiaCard');
+  if (!el) return;
+
+  const user = getCurrentUserReal();
+  if (!user) return;
+
+  const frases = await carregarFrasesAtivas();
+  const frase = selecionarFraseDoDia(frases, user.id);
+  if (!frase) {
+    el.style.display = 'none';
+    return;
+  }
+
+  const autorHtml = frase.autor
+    ? `<div style="font-size:11.5px;color:rgba(255,255,255,0.65);margin-top:8px;font-style:italic;">— ${frase.autor.replace(/</g,'&lt;')}</div>`
+    : '';
+
+  el.innerHTML = `
+    <!-- Decorativo: aspa grande ao fundo -->
+    <div style="position:absolute;top:-18px;right:-8px;font-family:'Poppins',serif;font-size:120px;line-height:1;color:rgba(139,198,63,0.12);font-weight:800;user-select:none;pointer-events:none;">"</div>
+
+    <div style="position:relative;display:flex;gap:13px;align-items:flex-start;">
+      <div style="width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,var(--brand-lime) 0%,#6FAD28 100%);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 4px 12px rgba(139,198,63,0.4);">
+        <span class="material-symbols-rounded" style="font-size:20px;color:#fff;">format_quote</span>
+      </div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:10px;font-weight:700;color:var(--brand-lime);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">Frase do dia</div>
+        <div style="font-size:14px;color:#fff;font-weight:500;line-height:1.5;font-family:'Poppins',sans-serif;">${frase.texto.replace(/</g,'&lt;')}</div>
+        ${autorHtml}
+      </div>
+    </div>
+  `;
+  el.style.display = 'block';
+}
+
 function renderInicio() {
   const user = requireAuth();
   if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
@@ -13923,6 +15014,9 @@ function renderInicio() {
       console.error('[Home] Erro ao carregar dados:', err);
     }
 
+    // Sprint 9.21: carrega frase motivacional do dia (background, não bloqueia)
+    carregarFraseDoDia().catch(err => console.warn('[frase do dia]', err));
+
     // Carrega banner de reabertura (Sprint 8.12)
     try {
       await carregarBannerReaberturaNutri();
@@ -13941,6 +15035,9 @@ function renderInicio() {
           <div class="home__greeting-title">${getSaudacao()}, ${primeiroNome}</div>
           <div class="home__greeting-date">${formatarDataPtBr(new Date())}</div>
         </div>
+
+        <!-- Sprint 9.21: Frase motivacional do dia -->
+        <div id="fraseDoDiaCard" style="display:none;position:relative;background:linear-gradient(135deg,#0A1F5C 0%,#1E3A8A 100%);border-radius:16px;padding:18px 18px 18px 20px;margin:0 0 14px;box-shadow:0 6px 20px rgba(10,31,92,0.18);overflow:hidden;"></div>
 
         <!-- Banners de reabertura (Sprint 8.12) — preenchidos async -->
         <div id="nutriReaberturaBanner" style="display:none;"></div>
@@ -16414,7 +17511,7 @@ function renderAgenda() {
 
   return `
     <div class="mobile-app">
-      ${mobileTopBar({ title: 'Agenda', showBack: true })}
+      ${mobileTopBar({ title: 'Agenda' })}
       <main class="mcontent">
         <div id="agendaHeader" style="margin-bottom:14px;">
           <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:18px;">Seus próximos compromissos</div>
@@ -16444,6 +17541,7 @@ function renderAgenda() {
           <span class="material-symbols-rounded" style="font-size:28px;">add</span>
         </button>
       </main>
+      ${bottomNav('agenda')}
     </div>
   `;
 }
@@ -22518,6 +23616,7 @@ window.trocarAdminAgendaView = function(view) {
 async function carregarAdminAgenda() {
   const listaEl = document.getElementById('adminAgendaLista');
   if (!listaEl) return;
+  if (!window._adminAgendaFilterProf) window._adminAgendaFilterProf = 'todos';
 
   const ags = await listarTodosAgendamentos();
 
@@ -22533,10 +23632,66 @@ async function carregarAdminAgenda() {
   }
 
   const view = window._adminAgendaView || 'lista';
-  if (view === 'profissional') listaEl.innerHTML = renderAgendaPorProfissional(ags);
-  else if (view === 'calendario') listaEl.innerHTML = renderAgendaCalendario(ags);
-  else listaEl.innerHTML = renderAgendaLista(ags);
+
+  // Sprint 9.18.2: filtro por profissional (também no mobile — igual ao desktop)
+  const profsMap = new Map();
+  ags.forEach(a => {
+    const pid = a.nutricionista_id;
+    if (pid && !profsMap.has(pid)) profsMap.set(pid, a.usuarios?.nome || 'Profissional');
+  });
+  const profsOrdenados = Array.from(profsMap.entries())
+    .sort((a, b) => (a[1] || '').localeCompare(b[1] || ''));
+
+  const filtroProf = window._adminAgendaFilterProf;
+  const agsFiltradas = filtroProf === 'todos' ? ags : ags.filter(a => a.nutricionista_id === filtroProf);
+
+  // Select de filtro — só aparece em Lista e Por profissional (calendário fica confuso)
+  let filtroHtml = '';
+  if (view !== 'calendario' && profsOrdenados.length > 1) {
+    const selOpts = profsOrdenados.map(([pid, nome]) =>
+      `<option value="${pid}"${filtroProf === pid ? ' selected' : ''}>${nome.replace(/</g,'&lt;')}</option>`
+    ).join('');
+    filtroHtml = `
+      <div style="display:flex;align-items:center;gap:8px;margin:0 0 14px;flex-wrap:wrap;">
+        <select onchange="trocarFiltroProfAgenda(this.value)" style="flex:1;min-width:140px;height:38px;padding:0 12px;border:1px solid var(--neutral-200);border-radius:10px;background:#fff;font-family:inherit;font-size:13px;color:var(--brand-navy);cursor:pointer;">
+          <option value="todos"${filtroProf === 'todos' ? ' selected' : ''}>Todos os profissionais (${ags.length})</option>
+          ${selOpts}
+        </select>
+        ${filtroProf !== 'todos' ? `
+          <button onclick="trocarFiltroProfAgenda('todos')" style="height:38px;padding:0 10px;background:transparent;border:1px solid var(--neutral-200);border-radius:10px;color:var(--neutral-500);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:4px;" title="Limpar filtro">
+            <span class="material-symbols-rounded" style="font-size:16px;">close</span>
+          </button>
+        ` : ''}
+      </div>
+    `;
+  }
+
+  // Empty state quando filtro zera
+  if (agsFiltradas.length === 0) {
+    listaEl.innerHTML = `
+      ${filtroHtml}
+      <div class="empty-state" style="margin:20px 0;">
+        <div class="empty-state__icon"><span class="material-symbols-rounded">search_off</span></div>
+        <div class="empty-state__title">Nenhum agendamento desse profissional</div>
+        <div class="empty-state__desc">Troque o filtro ou selecione "Todos".</div>
+      </div>
+    `;
+    return;
+  }
+
+  // Calendário sempre mostra tudo (grade misturada já é informativa)
+  let innerHtml = '';
+  if (view === 'profissional') innerHtml = renderAgendaPorProfissional(agsFiltradas);
+  else if (view === 'calendario') innerHtml = renderAgendaCalendario(ags);
+  else innerHtml = renderAgendaLista(agsFiltradas);
+
+  listaEl.innerHTML = filtroHtml + innerHtml;
 }
+
+window.trocarFiltroProfAgenda = function(pid) {
+  window._adminAgendaFilterProf = pid;
+  carregarAdminAgenda();
+};
 
 // View 1 — Lista global por bucket de data (comportamento original do Mini 2a)
 function renderAgendaLista(ags) {
@@ -25642,6 +26797,119 @@ window.limparVisitasTeste = async function() {
   }
 };
 
+// Sprint 9.19 (Parte 11 — FINAL): Configurações desktop
+// Reutiliza os items e categorias já definidos (ConfigMeta + ConfigCategorias).
+// Layout: 2 colunas quando cabem, cartão por categoria com lista de configs dentro.
+function renderAdminConfigDesktop() {
+  const user = requireAdmin();
+  if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
+
+  setTimeout(() => {
+    atualizarBadgesSidebarDesktop();
+    carregarAdminConfigDesktop();
+  }, 0);
+
+  const content = `
+    <div style="display:flex;flex-direction:column;gap:18px;">
+
+      <!-- Banner de aviso -->
+      <div style="background:var(--status-warning-bg,#FEF4E1);border:1px solid rgba(245,158,11,0.25);border-radius:12px;padding:16px 20px;display:flex;gap:14px;align-items:flex-start;">
+        <span class="material-symbols-rounded" style="font-size:24px;color:var(--status-warning);flex-shrink:0;margin-top:1px;">info</span>
+        <div style="flex:1;">
+          <div style="font-family:'Poppins',sans-serif;font-weight:600;font-size:14px;color:var(--brand-navy);">Alterações afetam todo o sistema</div>
+          <div style="font-size:12.5px;color:var(--neutral-700);margin-top:2px;line-height:1.5;">Mudanças nos limites (raio GPS, margem de horário) passam a valer <strong>imediatamente</strong> para novas visitas. Configurações existentes já registradas não são afetadas retroativamente.</div>
+        </div>
+      </div>
+
+      <!-- Grid de categorias (2 colunas em telas grandes) -->
+      <div id="dsdConfBody" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(420px,1fr));gap:18px;">
+        <div style="grid-column:1/-1;padding:50px;text-align:center;color:var(--neutral-500);font-size:13px;background:#fff;border-radius:12px;border:1px solid var(--neutral-200);">
+          <span class="material-symbols-rounded" style="font-size:28px;color:var(--neutral-400);">hourglass_empty</span>
+          <div style="margin-top:6px;">Carregando configurações...</div>
+        </div>
+      </div>
+
+    </div>
+  `;
+
+  return desktopShell({
+    title: 'Configurações',
+    breadcrumb: ['Admin', 'Configurações'],
+    content,
+    activeId: 'settings',
+  });
+}
+
+async function carregarAdminConfigDesktop() {
+  const bodyEl = document.getElementById('dsdConfBody');
+  if (!bodyEl) return;
+
+  try {
+    const configs = await carregarConfigs(true);
+
+    // Agrupa configs por categoria (mesma lógica do mobile)
+    const grupos = {};
+    Object.keys(ConfigMeta).forEach(chave => {
+      const meta = ConfigMeta[chave];
+      const cat = meta.categoria;
+      if (!grupos[cat]) grupos[cat] = [];
+      grupos[cat].push({ chave, meta, atual: configs[chave] });
+    });
+
+    // Cores pra borda/header de cada categoria
+    const coresCategoria = {
+      'brand-lime': { accent: 'var(--brand-lime)', bg: 'rgba(139,198,63,0.12)' },
+      'navy':       { accent: 'var(--brand-navy)', bg: 'var(--neutral-100)' },
+      'warning':    { accent: 'var(--status-warning)', bg: 'var(--status-warning-bg,#FEF4E1)' },
+      'info':       { accent: 'var(--status-info)', bg: 'var(--status-info-bg,#E4ECFD)' },
+    };
+
+    let html = '';
+    Object.keys(ConfigCategorias).forEach(catKey => {
+      const cat = ConfigCategorias[catKey];
+      const items = grupos[catKey];
+      if (!items || items.length === 0) return;
+
+      const cores = coresCategoria[cat.cor] || coresCategoria.navy;
+
+      html += `
+        <div style="background:#fff;border-radius:12px;border:1px solid var(--neutral-200);box-shadow:0 1px 3px rgba(10,31,92,0.04);overflow:hidden;">
+          <div style="display:flex;align-items:center;gap:12px;padding:18px 22px;border-bottom:1px solid var(--neutral-100);background:linear-gradient(to right, ${cores.bg}, transparent);">
+            <div style="width:40px;height:40px;border-radius:10px;background:${cores.bg};color:${cores.accent};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+              <span class="material-symbols-rounded" style="font-size:22px;">${cat.icone}</span>
+            </div>
+            <div style="flex:1;">
+              <div style="font-family:'Poppins',sans-serif;font-weight:600;font-size:15px;color:var(--brand-navy);">${cat.titulo}</div>
+              <div style="font-size:11.5px;color:var(--neutral-500);margin-top:1px;">${items.length} ${items.length === 1 ? 'configuração' : 'configurações'}</div>
+            </div>
+          </div>
+          <div class="config-group__list" style="padding:8px 22px 18px;">
+            ${items.map(item => renderConfigItem(item)).join('')}
+          </div>
+        </div>
+      `;
+    });
+
+    if (!html) {
+      html = `
+        <div style="grid-column:1/-1;padding:40px;text-align:center;background:#fff;border-radius:12px;border:1px solid var(--neutral-200);">
+          <span class="material-symbols-rounded" style="font-size:32px;color:var(--neutral-400);">settings</span>
+          <div style="margin-top:8px;color:var(--neutral-500);font-size:13px;">Nenhuma configuração disponível.</div>
+        </div>
+      `;
+    }
+
+    bodyEl.innerHTML = html;
+  } catch (err) {
+    console.error('[config desktop]', err);
+    bodyEl.innerHTML = `
+      <div style="grid-column:1/-1;padding:20px;background:var(--status-danger-bg,#FCE8E8);color:var(--status-danger);border-radius:12px;">
+        Erro ao carregar configurações: ${err.message}
+      </div>
+    `;
+  }
+}
+
 function renderAdminConfig() {
   const user = requireAdmin();
   if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
@@ -25764,7 +27032,7 @@ function renderConfigItem({ chave, meta, atual }) {
         class="config-toggle ${isOn ? 'is-on' : ''}"
         id="cfg_${chave}"
         onclick="handleConfigToggle('${chave}', this)"
-        aria-label="${isOn ? 'Desativar' : 'Ativar'} ${meta.titulo}"
+        aria-label="${isOn ? 'Desativar' : 'Ativar'} ${meta.titulo.replace(/<[^>]+>/g, '').trim()}"
       ></button>
     `;
   } else if (meta.tipo === 'select') {
