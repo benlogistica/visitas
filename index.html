@@ -5084,7 +5084,7 @@ a {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.8-aprovar-pendente',
+  APP_VERSION: '1.0.0-alpha.sprint9.11.1-fix-checkout-timestamp',
   APP_NAME: 'Nutricionais Visitas',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -7131,6 +7131,77 @@ async function contarVisitasDoMes() {
   return count || 0;
 }
 
+// Sprint 9.11: KPIs extras pra home (semana / ano / hospitais / diff mês vs anterior)
+async function carregarKpisHomeNutri() {
+  if (!db) return;
+  const user = getCurrentUser();
+  if (!user) return;
+
+  const agora = new Date();
+  // Início da semana (segunda = dia 1)
+  const inicioSemana = new Date(agora);
+  const diaSemana = inicioSemana.getDay();
+  const diff = (diaSemana === 0 ? 6 : diaSemana - 1);
+  inicioSemana.setDate(inicioSemana.getDate() - diff);
+  inicioSemana.setHours(0, 0, 0, 0);
+  const inicioAno = new Date(agora.getFullYear(), 0, 1);
+  // Mês anterior (pra comparação)
+  const inicioMesAnterior = new Date(agora.getFullYear(), agora.getMonth() - 1, 1);
+  const fimMesAnterior = new Date(agora.getFullYear(), agora.getMonth(), 0, 23, 59, 59);
+
+  try {
+    // Queries em paralelo
+    const [semanaRes, anoRes, anteriorRes, hospRes] = await Promise.all([
+      db.from('visitas').select('id', { count: 'exact', head: true })
+        .eq('nutricionista_id', user.id)
+        .gte('checkin_timestamp', inicioSemana.toISOString()),
+      db.from('visitas').select('id', { count: 'exact', head: true })
+        .eq('nutricionista_id', user.id)
+        .gte('checkin_timestamp', inicioAno.toISOString()),
+      db.from('visitas').select('id', { count: 'exact', head: true })
+        .eq('nutricionista_id', user.id)
+        .gte('checkin_timestamp', inicioMesAnterior.toISOString())
+        .lte('checkin_timestamp', fimMesAnterior.toISOString()),
+      // Hospitais únicos no ano: select sem head pra conseguir o Set
+      db.from('visitas').select('instituicao_id')
+        .eq('nutricionista_id', user.id)
+        .gte('checkin_timestamp', inicioAno.toISOString()),
+    ]);
+
+    const kpiSemana    = semanaRes.count || 0;
+    const kpiAno       = anoRes.count || 0;
+    const kpiMesAnt    = anteriorRes.count || 0;
+    const kpiHospitais = new Set((hospRes.data || []).map(v => v.instituicao_id).filter(Boolean)).size;
+
+    // Atualiza DOM
+    const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = String(v); };
+    set('kpiSemana', kpiSemana);
+    set('kpiAno', kpiAno);
+    set('kpiHospitais', kpiHospitais);
+
+    // Diff do mês atual vs anterior (precisa esperar o kpiMes estar populado)
+    const kpiMesEl = document.getElementById('kpiMes');
+    const kpiMesDiffEl = document.getElementById('kpiMesDiff');
+    if (kpiMesEl && kpiMesDiffEl) {
+      const kpiMesAtual = parseInt(kpiMesEl.textContent) || 0;
+      const diffVal = kpiMesAtual - kpiMesAnt;
+      const pctStr = kpiMesAnt === 0
+        ? (kpiMesAtual > 0 ? '+100%' : '')
+        : `${diffVal >= 0 ? '+' : ''}${Math.round((diffVal / kpiMesAnt) * 100)}%`;
+      const pctColor = diffVal > 0 ? 'var(--status-success)'
+                     : diffVal < 0 ? 'var(--status-danger)'
+                     : 'var(--neutral-500)';
+      const pctIcon = diffVal > 0 ? 'trending_up' : diffVal < 0 ? 'trending_down' : 'trending_flat';
+      if (pctStr) {
+        kpiMesDiffEl.innerHTML = `<span class="material-symbols-rounded" style="font-size:13px;">${pctIcon}</span>${pctStr}`;
+        kpiMesDiffEl.style.color = pctColor;
+      }
+    }
+  } catch (err) {
+    console.warn('[kpis home]', err);
+  }
+}
+
 // Objetivos
 async function listarObjetivos() {
   if (!db) return [];
@@ -7443,6 +7514,16 @@ function mobileTopBar(opts = {}) {
     </button>
   ` : '';
 
+  // Sprint 9.10: hambúrguer aparece automaticamente pro nutri (acesso a Institui\u00e7\u00f5es/Profissionais/Indicadores)
+  // Admin continua com showMenu expl\u00edcito (comportamento antigo)
+  const ehNutri = user && user.perfil !== 'admin';
+  const mostrarMenu = showMenu || ehNutri;
+  const botaoMenu = mostrarMenu ? `
+    <button class="mbar__icon-btn" onclick="openAdminDrawer()" title="Menu" style="background:transparent;border:none;color:#fff;padding:6px;cursor:pointer;">
+      <span class="material-symbols-rounded" style="font-size:26px">menu</span>
+    </button>
+  ` : '';
+
   if (liveIndicator) {
     return `
       <header class="mbar">
@@ -7469,6 +7550,7 @@ function mobileTopBar(opts = {}) {
           </button>
           <div class="mbar__title">${title || ''}</div>
           ${botaoBusca}
+          ${botaoMenu}
         </div>
       </header>
     `;
@@ -7478,11 +7560,7 @@ function mobileTopBar(opts = {}) {
   return `
     <header class="mbar">
       <div class="mbar__row">
-        ${showMenu ? `
-          <button class="mbar__icon-btn" onclick="openAdminDrawer()" title="Menu" style="background:transparent;border:none;color:#fff;padding:6px;cursor:pointer;">
-            <span class="material-symbols-rounded" style="font-size:26px">menu</span>
-          </button>
-        ` : ''}
+        ${botaoMenu}
         ${showLogo ? `
           <div style="flex:1;">
             <div style="display:inline-flex;align-items:center;gap:8px;color:#fff;">
@@ -8565,6 +8643,10 @@ const routes = {
   '#/admin/pendentes':{ title: 'Pendências de aprovação', icon: 'hourglass_top', render: renderAdminPendentes },
   '#/admin/objetivos':{ title: 'Objetivos de visita', icon: 'flag', render: renderAdminObjetivos },
   '#/admin/agenda':   { title: 'Agenda da equipe', icon: 'event_note', render: renderAdminAgenda },
+  // Sprint 9.10: rotas nutri (acessadas via hambúrguer no topo)
+  '#/nutri/instituicoes':   { title: 'Instituições',  icon: 'local_hospital', render: renderNutriInstituicoes },
+  '#/nutri/profissionais':  { title: 'Profissionais', icon: 'stethoscope',    render: renderNutriProfissionais },
+  '#/nutri/indicadores':    { title: 'Indicadores',   icon: 'bar_chart',      render: renderNutriIndicadores },
 };
 
 function router() {
@@ -8598,6 +8680,21 @@ function router() {
   } else {
     app.innerHTML = render404(hash);
     document.title = `Não encontrado · ${CONFIG.APP_NAME}`;
+  }
+
+  // Sprint 9.10: drawer persistente no body (não precisa cada tela renderizar)
+  // Injeta/atualiza uma vez por render do router — items dependem do perfil
+  if (getCurrentUser()) {
+    let slot = document.getElementById('drawerSlot');
+    if (!slot) {
+      slot = document.createElement('div');
+      slot.id = 'drawerSlot';
+      document.body.appendChild(slot);
+    }
+    slot.innerHTML = renderAdminDrawer();
+  } else {
+    const slot = document.getElementById('drawerSlot');
+    if (slot) slot.remove();
   }
 
   // Atualiza badge de notificações sempre que mudar de tela
@@ -9482,9 +9579,12 @@ function renderInicio() {
         return;
       }
 
-      // Atualiza KPIs
+      // Atualiza KPI "Mês atual"
       const kpiMes = document.getElementById('kpiMes');
       if (kpiMes) kpiMes.textContent = String(totalMes);
+
+      // Sprint 9.11: carrega KPIs extras (Semana, Ano, Hospitais, comparação mês anterior)
+      carregarKpisHomeNutri().catch(err => console.warn('[Home KPIs]', err));
 
       // Atualiza lista de visitas
       const lista = document.getElementById('recentVisitsList');
@@ -9547,28 +9647,43 @@ function renderInicio() {
           <span class="cta-checkin__label">Fazer check-in</span>
         </a>
 
-        <div class="kpi-grid">
-          <div class="kpi">
-            <div class="kpi__icon">
-              <span class="material-symbols-rounded">check_circle</span>
-            </div>
-            <div>
-              <div class="kpi__value" id="kpiMes">—</div>
-              <div class="kpi__label">Visitas este mês</div>
+        <!-- Sprint 9.11: grid de 4 KPIs compactos (mês / semana / ano / hospitais) -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:0 0 10px;">
+          <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:12px;padding:12px;">
+            <div style="font-size:10.5px;color:var(--neutral-500);text-transform:uppercase;letter-spacing:0.4px;font-weight:600;margin-bottom:4px;">Mês atual</div>
+            <div style="display:flex;align-items:baseline;justify-content:space-between;gap:6px;">
+              <span id="kpiMes" style="font-family:var(--font-display);font-weight:700;font-size:26px;color:var(--brand-navy);line-height:1;">—</span>
+              <span id="kpiMesDiff" style="display:inline-flex;align-items:center;gap:2px;font-size:10.5px;font-weight:700;"></span>
             </div>
           </div>
-          <div class="kpi">
-            <div class="kpi__icon" style="background:var(--brand-navy);">
-              <span class="material-symbols-rounded">business</span>
-            </div>
-            <div>
-              <div class="kpi__value">
-                <a href="#/visitas" style="color:var(--brand-navy);text-decoration:none;font-size:14px;font-weight:600;">Ver todas</a>
-              </div>
-              <div class="kpi__label">Minhas visitas</div>
+          <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:12px;padding:12px;">
+            <div style="font-size:10.5px;color:var(--neutral-500);text-transform:uppercase;letter-spacing:0.4px;font-weight:600;margin-bottom:4px;">Esta semana</div>
+            <span id="kpiSemana" style="font-family:var(--font-display);font-weight:700;font-size:26px;color:var(--brand-navy);line-height:1;">—</span>
+          </div>
+          <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:12px;padding:12px;">
+            <div style="font-size:10.5px;color:var(--neutral-500);text-transform:uppercase;letter-spacing:0.4px;font-weight:600;margin-bottom:4px;">Total ${new Date().getFullYear()}</div>
+            <span id="kpiAno" style="font-family:var(--font-display);font-weight:700;font-size:26px;color:var(--brand-navy);line-height:1;">—</span>
+          </div>
+          <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:12px;padding:12px;">
+            <div style="font-size:10.5px;color:var(--neutral-500);text-transform:uppercase;letter-spacing:0.4px;font-weight:600;margin-bottom:4px;">Hospitais</div>
+            <div style="display:flex;align-items:baseline;gap:4px;">
+              <span id="kpiHospitais" style="font-family:var(--font-display);font-weight:700;font-size:26px;color:var(--brand-navy);line-height:1;">—</span>
+              <span style="font-size:10.5px;color:var(--neutral-500);">únicos</span>
             </div>
           </div>
         </div>
+
+        <!-- Link pros indicadores completos -->
+        <a href="#/nutri/indicadores" style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 14px;margin:0 0 20px;background:linear-gradient(135deg,#F0F5F0 0%,#E8F2E8 100%);border:1px solid rgba(139,198,63,0.25);border-radius:12px;text-decoration:none;transition:transform 140ms;">
+          <span style="display:flex;align-items:center;gap:10px;min-width:0;">
+            <span class="material-symbols-rounded" style="font-size:22px;color:var(--brand-lime);flex-shrink:0;">bar_chart</span>
+            <span style="display:flex;flex-direction:column;min-width:0;">
+              <span style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:13.5px;">Ver indicadores completos</span>
+              <span style="color:var(--neutral-600);font-size:11px;">Gráficos, top hospitais, objetivos</span>
+            </span>
+          </span>
+          <span class="material-symbols-rounded" style="font-size:20px;color:var(--brand-navy);flex-shrink:0;">arrow_forward</span>
+        </a>
 
         <div class="section-head">
           <h2>Visitas recentes</h2>
@@ -12761,6 +12876,658 @@ function renderFaturamento() {
   if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
   return loggedPlaceholderScreen(user, 'payments', 'Faturamento', 'Painéis de faturamento, curva ABC, oportunidades.', '#/faturamento');
 }
+
+// Sprint 9.10 Parte B: tela de instituições do nutri
+// Lista ativas (aprovadas + pendentes), permite sugerir novas (ficam pendentes pra admin)
+function renderNutriInstituicoes() {
+  const user = requireAuth();
+  if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
+
+  setTimeout(async () => {
+    await carregarInstituicoesNutri();
+  }, 0);
+
+  return `
+    <div class="mobile-app">
+      ${mobileTopBar({ title: 'Instituições', showBack: true })}
+      <main class="mcontent">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 10px;flex-wrap:wrap;">
+          <div id="nutriInstContador" style="font-size:13px;color:var(--neutral-600);">—</div>
+          <button onclick="novaInstituicaoNutri()" class="btn-auth btn-auth--primary" style="display:inline-flex;align-items:center;gap:6px;width:auto;padding:8px 14px;min-height:auto;font-size:13px;">
+            <span class="material-symbols-rounded" style="font-size:18px;">add_location_alt</span>
+            Nova instituição
+          </button>
+        </div>
+
+        <div style="position:relative;margin:0 0 12px;">
+          <span class="material-symbols-rounded" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--neutral-500);font-size:18px;pointer-events:none;">search</span>
+          <input type="text"
+                 id="nutriInstBusca"
+                 placeholder="Filtrar por nome, bairro ou cidade..."
+                 oninput="filtrarInstNutriLocal(this.value)"
+                 style="width:100%;padding:10px 14px 10px 38px;border:1px solid var(--neutral-200);border-radius:10px;font-family:inherit;font-size:13px;background:var(--neutral-0);color:var(--brand-navy);" />
+        </div>
+
+        <div style="background:linear-gradient(135deg,#E4ECFD 0%,#EFF3FC 100%);border:1px solid rgba(29,53,122,0.15);border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:12px;color:var(--brand-navy);display:flex;align-items:center;gap:8px;">
+          <span class="material-symbols-rounded" style="font-size:18px;color:var(--status-info);flex-shrink:0;">info</span>
+          <span>Cadastros novos ficam <strong>pendentes</strong> até o admin completar os dados e aprovar.</span>
+        </div>
+
+        <div class="visits-list" id="nutriInstList" style="background:var(--neutral-0);">
+          <div style="padding:20px;text-align:center;color:var(--neutral-500);font-size:13px;">Carregando...</div>
+        </div>
+      </main>
+      ${bottomNav('')}
+    </div>
+  `;
+}
+
+async function carregarInstituicoesNutri() {
+  const listEl = document.getElementById('nutriInstList');
+  if (!listEl) return;
+  const user = getCurrentUser();
+  try {
+    // Nutri vê ativas (aprovadas + pendentes)
+    const insts = await listarInstituicoes({ incluirDesativadas: false });
+
+    if (insts.length === 0) {
+      listEl.innerHTML = `
+        <div class="empty-state" style="margin:0;">
+          <div class="empty-state__icon"><span class="material-symbols-rounded">local_hospital</span></div>
+          <div class="empty-state__title">Nenhuma instituição ainda</div>
+          <div class="empty-state__desc">Cadastre a primeira pelo botão acima. Ela fica pendente até o admin aprovar.</div>
+        </div>
+      `;
+      const cnt = document.getElementById('nutriInstContador');
+      if (cnt) cnt.textContent = '';
+      return;
+    }
+
+    // Contador contextual
+    const aprovadas = insts.filter(i => !i.pendente_aprovacao).length;
+    const pendentesMinhas = insts.filter(i => i.pendente_aprovacao && i.cadastrada_por === user?.id).length;
+    const cnt = document.getElementById('nutriInstContador');
+    if (cnt) {
+      const partes = [`<strong>${aprovadas}</strong> disponível(is)`];
+      if (pendentesMinhas > 0) partes.push(`<strong>${pendentesMinhas}</strong> sugerida(s) por você`);
+      cnt.innerHTML = partes.join(' · ');
+    }
+
+    // Render cards
+    listEl.innerHTML = insts.map(inst => {
+      const local = [inst.bairro, inst.cidade].filter(Boolean).join(' · ');
+      const minhaSugestao = inst.pendente_aprovacao && inst.cadastrada_por === user?.id;
+      const pendenteOutro = inst.pendente_aprovacao && inst.cadastrada_por !== user?.id;
+      let badgeHtml = '';
+      if (minhaSugestao) {
+        badgeHtml = `<span title="Sua sugestão, aguardando aprovação" style="display:inline-flex;align-items:center;gap:3px;font-size:10.5px;color:var(--status-warning);background:var(--status-warning-bg,#FEF4E1);padding:2px 7px;border-radius:9999px;font-weight:600;"><span class="material-symbols-rounded" style="font-size:13px;">hourglass_top</span>Pendente (sua)</span>`;
+      } else if (pendenteOutro) {
+        badgeHtml = `<span title="Sugerida por outro profissional" style="display:inline-flex;align-items:center;gap:3px;font-size:10.5px;color:var(--neutral-600);background:var(--neutral-100);padding:2px 7px;border-radius:9999px;font-weight:600;"><span class="material-symbols-rounded" style="font-size:13px;">hourglass_empty</span>Pendente</span>`;
+      }
+      // Nutri pode clicar em suas pendentes pra editar (enquanto aguarda aprovação)
+      const clicavel = minhaSugestao;
+      return `
+        <div class="visits-list__item" data-id="${inst.id}" ${clicavel ? `onclick="editarSugestaoNutri('${inst.id}')" style="cursor:pointer;"` : ''}>
+          <div class="visits-list__icon">
+            <span class="material-symbols-rounded">local_hospital</span>
+          </div>
+          <div class="visits-list__info" style="min-width:0;">
+            <div class="visits-list__name" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+              <span style="min-width:0;overflow:hidden;text-overflow:ellipsis;">${inst.nome.replace(/"/g,'&quot;')}</span>
+              ${badgeHtml}
+            </div>
+            <div class="visits-list__time" style="font-family:var(--font-body);">
+              ${local || '<span style="color:var(--neutral-400);">Sem endereço</span>'}
+            </div>
+          </div>
+          ${clicavel ? `<span class="material-symbols-rounded" style="color:var(--neutral-300);font-size:18px;margin-left:4px;">chevron_right</span>` : ''}
+        </div>
+      `;
+    }).join('');
+
+    // Reaplica busca
+    const inp = document.getElementById('nutriInstBusca');
+    if (inp && inp.value) filtrarInstNutriLocal(inp.value);
+  } catch (err) {
+    listEl.innerHTML = `<div style="padding:20px;color:var(--status-danger);">Erro: ${err.message}</div>`;
+  }
+}
+
+// Filtro local
+window.filtrarInstNutriLocal = function(termo) {
+  const t = (termo || '').trim().toLowerCase();
+  const cards = document.querySelectorAll('#nutriInstList .visits-list__item');
+  cards.forEach(card => {
+    if (!t) { card.style.display = ''; return; }
+    const texto = card.textContent.toLowerCase();
+    card.style.display = texto.includes(t) ? '' : 'none';
+  });
+};
+
+// Handler: nutri sugere nova instituição (fica pendente)
+window.novaInstituicaoNutri = async function() {
+  if (await bloqueioSimulacao('sugerir instituição')) return;
+  try {
+    // Reusa o modal existente — perfilAdmin=false + permitirCoords=true
+    const dados = await showModalInstituicaoNova({
+      modo: 'cadastro',
+      perfilAdmin: false,
+      permitirCoords: true,
+    });
+    if (!dados) return;
+    const nova = await criarInstituicaoSugerida(dados);
+    setFlash('success', `"${nova.nome}" sugerida! Aguardando aprovação do admin.`);
+    await carregarInstituicoesNutri();
+  } catch (err) {
+    await showModalConfirmacao({
+      icone: 'error', iconeCor: 'danger',
+      titulo: 'Não foi possível cadastrar',
+      subtitulo: err.message || 'Tente novamente em instantes.',
+      btnConfirmar: 'OK', btnCancelar: '',
+    });
+  }
+};
+
+// Handler: nutri edita sua própria sugestão (enquanto pendente)
+window.editarSugestaoNutri = async function(id) {
+  if (await bloqueioSimulacao('editar sugestão de instituição')) return;
+  try {
+    const { data: inst, error } = await db.from('instituicoes').select('*').eq('id', id).maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!inst) throw new Error('Instituição não encontrada.');
+    const novosDados = await showModalInstituicaoNova({
+      modo: 'edicao',
+      instExistente: inst,
+      perfilAdmin: false,
+      permitirCoords: true,
+    });
+    if (!novosDados) return;
+    // Mantém pendente_aprovacao=true (admin aprova depois)
+    const { error: upErr } = await db.from('instituicoes').update(novosDados).eq('id', id);
+    if (upErr) throw new Error(upErr.message);
+    setFlash('success', `"${novosDados.nome}" atualizada.`);
+    await carregarInstituicoesNutri();
+  } catch (err) {
+    await showModalConfirmacao({
+      icone: 'error', iconeCor: 'danger',
+      titulo: 'Não foi possível salvar',
+      subtitulo: err.message || 'Tente novamente em instantes.',
+      btnConfirmar: 'OK', btnCancelar: '',
+    });
+  }
+};
+
+// Sprint 9.10 Parte C: tela de profissionais do nutri
+// Lista todos ativos; nutri edita só os que ele mesmo cadastrou
+function renderNutriProfissionais() {
+  const user = requireAuth();
+  if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
+
+  setTimeout(async () => {
+    await carregarProfissionaisNutri();
+  }, 0);
+
+  return `
+    <div class="mobile-app">
+      ${mobileTopBar({ title: 'Profissionais', showBack: true })}
+      <main class="mcontent">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 10px;flex-wrap:wrap;">
+          <div id="nutriProfContador" style="font-size:13px;color:var(--neutral-600);">—</div>
+          <button onclick="novoProfissionalNutri()" class="btn-auth btn-auth--primary" style="display:inline-flex;align-items:center;gap:6px;width:auto;padding:8px 14px;min-height:auto;font-size:13px;">
+            <span class="material-symbols-rounded" style="font-size:18px;">person_add</span>
+            Novo profissional
+          </button>
+        </div>
+
+        <div style="position:relative;margin:0 0 12px;">
+          <span class="material-symbols-rounded" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--neutral-500);font-size:18px;pointer-events:none;">search</span>
+          <input type="text"
+                 id="nutriProfBusca"
+                 placeholder="Filtrar por nome, profissão ou hospital..."
+                 oninput="filtrarProfNutriLocal(this.value)"
+                 style="width:100%;padding:10px 14px 10px 38px;border:1px solid var(--neutral-200);border-radius:10px;font-family:inherit;font-size:13px;background:var(--neutral-0);color:var(--brand-navy);" />
+        </div>
+
+        <div style="background:linear-gradient(135deg,#E6F6EF 0%,#EFF7EE 100%);border:1px solid rgba(34,160,107,0.2);border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:12px;color:var(--brand-navy);display:flex;align-items:center;gap:8px;">
+          <span class="material-symbols-rounded" style="font-size:18px;color:var(--status-success);flex-shrink:0;">check_circle</span>
+          <span>Você pode editar apenas os profissionais que <strong>você cadastrou</strong>. Os outros ficam só pra visualizar.</span>
+        </div>
+
+        <div class="visits-list" id="nutriProfList" style="background:var(--neutral-0);">
+          <div style="padding:20px;text-align:center;color:var(--neutral-500);font-size:13px;">Carregando...</div>
+        </div>
+      </main>
+      ${bottomNav('')}
+    </div>
+  `;
+}
+
+async function carregarProfissionaisNutri() {
+  const listEl = document.getElementById('nutriProfList');
+  if (!listEl) return;
+  const user = getCurrentUser();
+  try {
+    const { data: todos, error } = await db
+      .from('profissionais')
+      .select('*, instituicoes(nome)')
+      .eq('ativo', true)
+      .order('nome');
+    if (error) throw new Error(error.message);
+
+    const profs = todos || [];
+    if (profs.length === 0) {
+      listEl.innerHTML = `
+        <div class="empty-state" style="margin:0;">
+          <div class="empty-state__icon"><span class="material-symbols-rounded">stethoscope</span></div>
+          <div class="empty-state__title">Nenhum profissional ainda</div>
+          <div class="empty-state__desc">Cadastre o primeiro pelo botão acima.</div>
+        </div>
+      `;
+      const cnt = document.getElementById('nutriProfContador');
+      if (cnt) cnt.textContent = '';
+      return;
+    }
+
+    // Contador: total + quantos são meus
+    const meus = profs.filter(p => p.criado_por === user?.id).length;
+    const cnt = document.getElementById('nutriProfContador');
+    if (cnt) {
+      const partes = [`<strong>${profs.length}</strong> disponível(is)`];
+      if (meus > 0) partes.push(`<strong>${meus}</strong> cadastrado(s) por você`);
+      cnt.innerHTML = partes.join(' · ');
+    }
+
+    // Renderiza cards
+    listEl.innerHTML = profs.map(p => {
+      const instName = p.instituicoes?.nome || 'Sem instituição';
+      const ehMeu = p.criado_por === user?.id;
+      return `
+        <div class="visits-list__item" data-id="${p.id}" ${ehMeu ? `onclick="editarProfissionalNutri('${p.id}')" style="cursor:pointer;"` : ''}>
+          <div class="prof-dropdown-item__avatar" style="flex-shrink:0;">${iniciais(p.nome)}</div>
+          <div class="visits-list__info" style="min-width:0;">
+            <div class="visits-list__name" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+              <span style="min-width:0;overflow:hidden;text-overflow:ellipsis;">${p.nome.replace(/"/g,'&quot;')}</span>
+              <span style="font-size:10.5px;color:var(--brand-navy);background:var(--neutral-100);padding:2px 7px;border-radius:9999px;font-weight:600;">${labelProfissao(p)}</span>
+              ${ehMeu ? `<span title="Você cadastrou" style="display:inline-flex;align-items:center;gap:3px;font-size:10.5px;color:var(--status-success);background:var(--status-success-bg,#E6F6EF);padding:2px 7px;border-radius:9999px;font-weight:600;"><span class="material-symbols-rounded" style="font-size:13px;">person_pin</span>Sua</span>` : ''}
+            </div>
+            <div class="visits-list__time" style="font-family:var(--font-body);">
+              <span class="material-symbols-rounded" style="font-size:13px;vertical-align:-2px;color:var(--neutral-400);">local_hospital</span>
+              ${instName.replace(/"/g,'&quot;')}
+            </div>
+          </div>
+          ${ehMeu ? `<span class="material-symbols-rounded" style="color:var(--neutral-300);font-size:18px;margin-left:4px;">chevron_right</span>` : ''}
+        </div>
+      `;
+    }).join('');
+
+    // Reaplica busca
+    const inp = document.getElementById('nutriProfBusca');
+    if (inp && inp.value) filtrarProfNutriLocal(inp.value);
+  } catch (err) {
+    listEl.innerHTML = `<div style="padding:20px;color:var(--status-danger);">Erro: ${err.message}</div>`;
+  }
+}
+
+window.filtrarProfNutriLocal = function(termo) {
+  const t = (termo || '').trim().toLowerCase();
+  const cards = document.querySelectorAll('#nutriProfList .visits-list__item');
+  cards.forEach(card => {
+    if (!t) { card.style.display = ''; return; }
+    const texto = card.textContent.toLowerCase();
+    card.style.display = texto.includes(t) ? '' : 'none';
+  });
+};
+
+// Handler: nutri cadastra novo profissional (fica ativo direto, não precisa aprovação)
+window.novoProfissionalNutri = async function() {
+  if (await bloqueioSimulacao('cadastrar profissional')) return;
+  try {
+    // Verifica se existe instituição antes de abrir o modal
+    const insts = await listarInstituicoes({ incluirDesativadas: false });
+    if (insts.length === 0) {
+      await showModalConfirmacao({
+        icone: 'local_hospital', iconeCor: 'warning',
+        titulo: 'Cadastre uma instituição antes',
+        subtitulo: 'Profissionais precisam estar vinculados a um hospital. Cadastre uma instituição primeiro.',
+        btnConfirmar: 'Ir pra Instituições',
+        btnCancelar: 'Depois',
+      }) && (window.location.hash = '#/nutri/instituicoes');
+      return;
+    }
+    // Reusa o modal admin, mas oculta ações destrutivas (permitirAcoesAdmin=false)
+    const dados = await showModalProfissionalAdmin({
+      modo: 'cadastro',
+      permitirAcoesAdmin: false,
+    });
+    if (!dados) return;
+    const { error } = await db.from('profissionais').insert({
+      ...dados,
+      ativo: true,
+      criado_por: getCurrentUser()?.id || null,
+    });
+    if (error) throw new Error(error.message);
+    setFlash('success', `"${dados.nome}" cadastrado.`);
+    await carregarProfissionaisNutri();
+  } catch (err) {
+    await showModalConfirmacao({
+      icone: 'error', iconeCor: 'danger',
+      titulo: 'Não foi possível cadastrar',
+      subtitulo: err.message || 'Tente novamente em instantes.',
+      btnConfirmar: 'OK', btnCancelar: '',
+    });
+  }
+};
+
+// Handler: nutri edita profissional que ele próprio cadastrou
+window.editarProfissionalNutri = async function(id) {
+  if (await bloqueioSimulacao('editar profissional')) return;
+  const user = getCurrentUser();
+  try {
+    const { data: prof, error } = await db.from('profissionais').select('*, instituicoes(nome)').eq('id', id).maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!prof) throw new Error('Profissional não encontrado.');
+    // Guarda dupla: só deixa editar se foi o nutri que criou
+    if (prof.criado_por !== user?.id) {
+      setFlash('warning', 'Você só pode editar profissionais que cadastrou.');
+      return;
+    }
+    const novosDados = await showModalProfissionalAdmin({
+      modo: 'edicao',
+      profExistente: prof,
+      permitirAcoesAdmin: false, // nutri não desativa/exclui
+    });
+    if (!novosDados) return;
+    const { error: upErr } = await db.from('profissionais').update(novosDados).eq('id', id);
+    if (upErr) throw new Error(upErr.message);
+    setFlash('success', `"${novosDados.nome}" atualizado.`);
+    await carregarProfissionaisNutri();
+  } catch (err) {
+    await showModalConfirmacao({
+      icone: 'error', iconeCor: 'danger',
+      titulo: 'Não foi possível salvar',
+      subtitulo: err.message || 'Tente novamente em instantes.',
+      btnConfirmar: 'OK', btnCancelar: '',
+    });
+  }
+};
+
+// Sprint 9.10 Parte D: tela de Indicadores do nutri
+// KPIs + gráficos simples (barras CSS, sem libs)
+function renderNutriIndicadores() {
+  const user = requireAuth();
+  if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
+
+  setTimeout(async () => {
+    await carregarIndicadoresNutri();
+  }, 0);
+
+  return `
+    <div class="mobile-app">
+      ${mobileTopBar({ title: 'Indicadores', showBack: true })}
+      <main class="mcontent">
+        <div id="indicNutriContent">
+          <div style="padding:40px;text-align:center;color:var(--neutral-500);font-size:13px;">
+            <div class="splash__spinner" style="margin:0 auto 12px;"></div>
+            Calculando sua produção...
+          </div>
+        </div>
+      </main>
+      ${bottomNav('')}
+    </div>
+  `;
+}
+
+async function carregarIndicadoresNutri() {
+  const container = document.getElementById('indicNutriContent');
+  if (!container) return;
+  const user = getCurrentUser();
+  if (!user) return;
+
+  try {
+    // Marcos temporais
+    const agora = new Date();
+    const inicioMes = new Date(agora.getFullYear(), agora.getMonth(), 1);
+    const inicioMesAnterior = new Date(agora.getFullYear(), agora.getMonth() - 1, 1);
+    const fimMesAnterior = new Date(agora.getFullYear(), agora.getMonth(), 0, 23, 59, 59);
+    const inicioAno = new Date(agora.getFullYear(), 0, 1);
+    // Início da semana (segunda como dia 1)
+    const inicioSemana = new Date(agora);
+    const diaSemana = inicioSemana.getDay(); // 0=domingo
+    const diff = (diaSemana === 0 ? 6 : diaSemana - 1);
+    inicioSemana.setDate(inicioSemana.getDate() - diff);
+    inicioSemana.setHours(0, 0, 0, 0);
+    // 6 meses atrás (pra gráfico mensal)
+    const inicio6Meses = new Date(agora.getFullYear(), agora.getMonth() - 5, 1);
+
+    // Busca TODAS as visitas do user no ano (uma query só)
+    const { data: visitasAno, error: errAno } = await db
+      .from('visitas')
+      .select('id, checkin_timestamp, checkout_timestamp, data_visita, horario_inicio, status, revisao_motivo, revisao_solicitada_em, revisao_resolvida_em, reabertura_expira_em, instituicao_id, instituicoes(nome)')
+      .eq('nutricionista_id', user.id)
+      .gte('checkin_timestamp', inicio6Meses.toISOString())
+      .order('checkin_timestamp', { ascending: false });
+    if (errAno) throw new Error(errAno.message);
+
+    const visitas = visitasAno || [];
+
+    // Conta por janelas
+    const inMesAtual = v => v.checkin_timestamp && new Date(v.checkin_timestamp) >= inicioMes;
+    const inMesAnterior = v => v.checkin_timestamp && new Date(v.checkin_timestamp) >= inicioMesAnterior && new Date(v.checkin_timestamp) <= fimMesAnterior;
+    const inSemana = v => v.checkin_timestamp && new Date(v.checkin_timestamp) >= inicioSemana;
+
+    const kpiMes = visitas.filter(inMesAtual).length;
+    const kpiMesAnterior = visitas.filter(inMesAnterior).length;
+    const kpiSemana = visitas.filter(inSemana).length;
+
+    // Pro total ano preciso de count separado (visitas pode estar limitada aos últimos 6 meses)
+    const { count: kpiAno } = await db
+      .from('visitas')
+      .select('id', { count: 'exact', head: true })
+      .eq('nutricionista_id', user.id)
+      .gte('checkin_timestamp', inicioAno.toISOString());
+
+    // Hospitais distintos no ano
+    const hospitaisDistinct = new Set(visitas.filter(v => v.instituicao_id).map(v => v.instituicao_id)).size;
+
+    // Variação vs mês anterior
+    const diff_ = kpiMes - kpiMesAnterior;
+    const pctStr = kpiMesAnterior === 0
+      ? (kpiMes > 0 ? '+100%' : '—')
+      : `${diff_ >= 0 ? '+' : ''}${Math.round((diff_ / kpiMesAnterior) * 100)}%`;
+    const pctColor = diff_ > 0 ? 'var(--status-success)'
+                   : diff_ < 0 ? 'var(--status-danger)'
+                   : 'var(--neutral-500)';
+    const pctIcon = diff_ > 0 ? 'trending_up' : diff_ < 0 ? 'trending_down' : 'trending_flat';
+
+    // Visitas por mês (últimos 6 meses) — pra gráfico de barras
+    const mesesMap = {}; // { 'YYYY-MM': count }
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(agora.getFullYear(), agora.getMonth() - i, 1);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      mesesMap[key] = 0;
+    }
+    visitas.forEach(v => {
+      if (!v.checkin_timestamp) return;
+      const d = new Date(v.checkin_timestamp);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      if (key in mesesMap) mesesMap[key]++;
+    });
+    const mesesArr = Object.entries(mesesMap);
+    const maxMes = Math.max(...mesesArr.map(([, c]) => c), 1);
+
+    // Top hospitais (baseado nos últimos 6 meses)
+    const hospCount = {};
+    visitas.forEach(v => {
+      const nome = v.instituicoes?.nome || '(sem nome)';
+      hospCount[nome] = (hospCount[nome] || 0) + 1;
+    });
+    const topHosp = Object.entries(hospCount).sort((a, b) => b[1] - a[1]).slice(0, 5);
+    const maxHosp = topHosp[0]?.[1] || 1;
+
+    // Top objetivos — precisa query separada (junction table)
+    let topObj = [];
+    try {
+      const { data: objData } = await db
+        .from('visitas_objetivos')
+        .select('objetivo_id, objetivos_visita(nome), visitas!inner(nutricionista_id, checkin_timestamp)')
+        .eq('visitas.nutricionista_id', user.id)
+        .gte('visitas.checkin_timestamp', inicio6Meses.toISOString());
+      const objCount = {};
+      (objData || []).forEach(r => {
+        const nome = r.objetivos_visita?.nome || '(sem nome)';
+        objCount[nome] = (objCount[nome] || 0) + 1;
+      });
+      topObj = Object.entries(objCount).sort((a, b) => b[1] - a[1]).slice(0, 5);
+    } catch (err) {
+      console.warn('[indicadores] objetivos:', err);
+    }
+    const maxObj = topObj[0]?.[1] || 1;
+
+    // Tempo médio (só visitas com checkin + checkout preenchidos)
+    const duracoes = visitas
+      .map(v => calcularDuracaoMin(v.checkin_timestamp, v.checkout_timestamp))
+      .filter(m => m !== null && m > 0);
+    const tempoMedio = duracoes.length > 0
+      ? Math.round(duracoes.reduce((s, n) => s + n, 0) / duracoes.length)
+      : null;
+
+    // Pendentes de ação (reusa helpers da Sprint 9.6)
+    const pendentesAcao = visitas.filter(v => visitaPendenteDeAcaoNutri(v)).length;
+
+    // Nomes dos meses em PT-BR pro gráfico
+    const mesLabel = (key) => {
+      const [y, m] = key.split('-');
+      const nomes = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+      return `${nomes[parseInt(m, 10) - 1]}/${y.slice(-2)}`;
+    };
+
+    // Monta HTML
+    container.innerHTML = `
+      <!-- Saudação/contexto -->
+      <div style="margin-bottom:16px;font-size:13px;color:var(--neutral-600);">
+        Sua produção dos últimos <strong>6 meses</strong> e do ano.
+      </div>
+
+      <!-- KPIs grid 2x2 -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">
+        <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:12px;padding:14px;">
+          <div style="font-size:11px;color:var(--neutral-500);text-transform:uppercase;letter-spacing:0.4px;font-weight:600;margin-bottom:6px;">Mês atual</div>
+          <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;">
+            <span style="font-family:var(--font-display);font-weight:700;font-size:32px;color:var(--brand-navy);line-height:1;">${kpiMes}</span>
+            <span style="display:inline-flex;align-items:center;gap:2px;font-size:11px;font-weight:700;color:${pctColor};">
+              <span class="material-symbols-rounded" style="font-size:14px;">${pctIcon}</span>
+              ${pctStr}
+            </span>
+          </div>
+          <div style="font-size:11px;color:var(--neutral-500);margin-top:4px;">vs ${kpiMesAnterior} no anterior</div>
+        </div>
+
+        <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:12px;padding:14px;">
+          <div style="font-size:11px;color:var(--neutral-500);text-transform:uppercase;letter-spacing:0.4px;font-weight:600;margin-bottom:6px;">Esta semana</div>
+          <div style="font-family:var(--font-display);font-weight:700;font-size:32px;color:var(--brand-navy);line-height:1;">${kpiSemana}</div>
+          <div style="font-size:11px;color:var(--neutral-500);margin-top:4px;">desde segunda-feira</div>
+        </div>
+
+        <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:12px;padding:14px;">
+          <div style="font-size:11px;color:var(--neutral-500);text-transform:uppercase;letter-spacing:0.4px;font-weight:600;margin-bottom:6px;">Total no ano</div>
+          <div style="font-family:var(--font-display);font-weight:700;font-size:32px;color:var(--brand-navy);line-height:1;">${kpiAno || 0}</div>
+          <div style="font-size:11px;color:var(--neutral-500);margin-top:4px;">${agora.getFullYear()}</div>
+        </div>
+
+        <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:12px;padding:14px;">
+          <div style="font-size:11px;color:var(--neutral-500);text-transform:uppercase;letter-spacing:0.4px;font-weight:600;margin-bottom:6px;">Hospitais</div>
+          <div style="font-family:var(--font-display);font-weight:700;font-size:32px;color:var(--brand-navy);line-height:1;">${hospitaisDistinct}</div>
+          <div style="font-size:11px;color:var(--neutral-500);margin-top:4px;">distintos visitados</div>
+        </div>
+      </div>
+
+      <!-- Detalhes operacionais (2 chips) -->
+      <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:140px;background:linear-gradient(135deg,#E4ECFD 0%,#EFF3FC 100%);border-radius:10px;padding:10px 12px;display:flex;align-items:center;gap:10px;">
+          <span class="material-symbols-rounded" style="font-size:22px;color:var(--status-info);flex-shrink:0;">schedule</span>
+          <div style="min-width:0;">
+            <div style="font-size:10px;color:var(--neutral-500);text-transform:uppercase;letter-spacing:0.4px;font-weight:600;">Tempo médio</div>
+            <div style="font-family:var(--font-display);font-weight:700;font-size:15px;color:var(--brand-navy);">${tempoMedio !== null ? formatarDuracao(tempoMedio) : '—'}</div>
+          </div>
+        </div>
+        <div style="flex:1;min-width:140px;background:${pendentesAcao > 0 ? 'linear-gradient(135deg,#FEF4E1 0%,#FEF8E9 100%)' : 'linear-gradient(135deg,#E6F6EF 0%,#EFF7EE 100%)'};border-radius:10px;padding:10px 12px;display:flex;align-items:center;gap:10px;cursor:pointer;" onclick="window.location.hash='#/visitas'">
+          <span class="material-symbols-rounded" style="font-size:22px;color:${pendentesAcao > 0 ? 'var(--status-warning)' : 'var(--status-success)'};flex-shrink:0;">${pendentesAcao > 0 ? 'pending_actions' : 'task_alt'}</span>
+          <div style="min-width:0;">
+            <div style="font-size:10px;color:var(--neutral-500);text-transform:uppercase;letter-spacing:0.4px;font-weight:600;">Pendências</div>
+            <div style="font-family:var(--font-display);font-weight:700;font-size:15px;color:var(--brand-navy);">${pendentesAcao > 0 ? `${pendentesAcao} aguardando você` : 'Tudo em dia'}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Gráfico: visitas por mês -->
+      <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:12px;padding:14px;margin-bottom:16px;">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:12px;">
+          <span class="material-symbols-rounded" style="font-size:18px;color:var(--brand-lime);">stacked_bar_chart</span>
+          <span style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:13.5px;">Visitas por mês</span>
+        </div>
+        ${mesesArr.every(([, c]) => c === 0) ? `
+          <div style="padding:20px;text-align:center;color:var(--neutral-400);font-size:12px;">Sem visitas nos últimos 6 meses.</div>
+        ` : mesesArr.map(([key, count]) => `
+          <div style="padding:6px 0;">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px;">
+              <span style="color:var(--brand-navy);font-weight:600;font-size:12px;font-family:var(--font-mono);">${mesLabel(key)}</span>
+              <span style="color:var(--brand-navy);font-family:var(--font-mono);font-size:12px;font-weight:700;">${count}</span>
+            </div>
+            <div style="height:6px;background:var(--neutral-100);border-radius:3px;overflow:hidden;">
+              <div style="height:100%;width:${(count / maxMes * 100).toFixed(1)}%;background:linear-gradient(90deg,var(--brand-lime),#A8D154);border-radius:3px;transition:width 600ms ease-out;"></div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+
+      <!-- Top hospitais -->
+      <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:12px;padding:14px;margin-bottom:16px;">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:12px;">
+          <span class="material-symbols-rounded" style="font-size:18px;color:var(--brand-lime);">local_hospital</span>
+          <span style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:13.5px;">Top 5 hospitais</span>
+        </div>
+        ${topHosp.length === 0 ? `
+          <div style="padding:20px;text-align:center;color:var(--neutral-400);font-size:12px;">Sem dados.</div>
+        ` : topHosp.map(([nome, count]) => `
+          <div style="padding:8px 0;border-bottom:1px solid var(--neutral-100);">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:5px;">
+              <span style="color:var(--brand-navy);font-weight:600;font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;" title="${nome.replace(/"/g,'&quot;')}">${nome}</span>
+              <span style="color:var(--brand-navy);font-family:var(--font-mono);font-size:12px;font-weight:700;">${count}</span>
+            </div>
+            <div style="height:6px;background:var(--neutral-100);border-radius:3px;overflow:hidden;">
+              <div style="height:100%;width:${(count / maxHosp * 100).toFixed(1)}%;background:linear-gradient(90deg,var(--brand-navy),#3A5AAD);border-radius:3px;"></div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+
+      <!-- Top objetivos -->
+      <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:12px;padding:14px;margin-bottom:20px;">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:12px;">
+          <span class="material-symbols-rounded" style="font-size:18px;color:var(--brand-lime);">flag</span>
+          <span style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:13.5px;">Top 5 objetivos</span>
+        </div>
+        ${topObj.length === 0 ? `
+          <div style="padding:20px;text-align:center;color:var(--neutral-400);font-size:12px;">Sem dados.</div>
+        ` : topObj.map(([nome, count]) => `
+          <div style="padding:8px 0;border-bottom:1px solid var(--neutral-100);">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:5px;">
+              <span style="color:var(--brand-navy);font-weight:600;font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;" title="${nome.replace(/"/g,'&quot;')}">${nome}</span>
+              <span style="color:var(--brand-navy);font-family:var(--font-mono);font-size:12px;font-weight:700;">${count}</span>
+            </div>
+            <div style="height:6px;background:var(--neutral-100);border-radius:3px;overflow:hidden;">
+              <div style="height:100%;width:${(count / maxObj * 100).toFixed(1)}%;background:linear-gradient(90deg,var(--brand-lime),#A8D154);border-radius:3px;"></div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  } catch (err) {
+    container.innerHTML = `<div style="padding:20px;color:var(--status-danger);">Erro ao carregar indicadores: ${err.message}</div>`;
+    console.error('[indicadores nutri]', err);
+  }
+}
+
 function renderAdminDashboard() {
   const user = requireAdmin();
   if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
@@ -13006,7 +13773,6 @@ function renderAdminDashboard() {
         </div>
 
       </main>
-      ${renderAdminDrawer()}
     </div>
   `;
 }
@@ -13402,7 +14168,12 @@ function renderListaVisitasRelatorio(visitas) {
 
 // Drawer lateral com atalhos de admin
 function renderAdminDrawer() {
-  const items = [
+  const user = getCurrentUser();
+  const perfil = user?.perfil || 'profissional';
+
+  // Sprint 9.10: items por perfil
+  // Admin vê as telas admin; nutri vê suas telas pessoais
+  const itemsAdmin = [
     { href: '#/admin/instituicoes',   icon: 'local_hospital',          titulo: 'Instituições',    desc: 'Hospitais e clínicas cadastrados' },
     { href: '#/admin/profissionais',  icon: 'stethoscope',             titulo: 'Profissionais',   desc: 'Contatos nas instituições' },
     { href: '#/admin/equipe',         icon: 'groups',                  titulo: 'Equipe',          desc: 'Aprovar cadastros e gerenciar acesso' },
@@ -13413,6 +14184,15 @@ function renderAdminDrawer() {
     { href: '#/admin/configuracoes',  icon: 'settings',                titulo: 'Configurações',   desc: 'Parâmetros globais do sistema' },
     { href: '#/logout',               icon: 'logout',                  titulo: 'Sair',            desc: 'Encerrar sessão' },
   ];
+  const itemsNutri = [
+    { href: '#/nutri/instituicoes',   icon: 'local_hospital', titulo: 'Instituições',  desc: 'Hospitais que você visita' },
+    { href: '#/nutri/profissionais',  icon: 'stethoscope',    titulo: 'Profissionais', desc: 'Contatos nos hospitais' },
+    { href: '#/nutri/indicadores',    icon: 'bar_chart',      titulo: 'Indicadores',   desc: 'Sua produção em números' },
+    { href: '#/faturamento',          icon: 'payments',       titulo: 'Faturamento',   desc: 'Faturar visitas concluídas' },
+    { href: '#/logout',               icon: 'logout',         titulo: 'Sair',          desc: 'Encerrar sessão' },
+  ];
+  const items = perfil === 'admin' ? itemsAdmin : itemsNutri;
+
   return `
     <div class="admin-drawer" id="adminDrawer">
       <div class="admin-drawer__backdrop" onclick="closeAdminDrawer()"></div>
@@ -16245,6 +17025,204 @@ function showModalInstituicaoNova({ valorInicialNome = '', modo = 'cadastro', in
         });
       });
     }
+  });
+}
+
+// Sprint 9.9: modal admin pra cadastrar/editar profissional de saúde externo
+// Sprint 9.10: flag permitirAcoesAdmin controla se mostra desativar/reativar/excluir
+//              (nutri editando sua sugestão não deve ter acesso a essas ações)
+function showModalProfissionalAdmin({ modo = 'cadastro', profExistente = null, permitirAcoesAdmin = true } = {}) {
+  return new Promise(async (resolve) => {
+    const ehEdicao = modo === 'edicao' && profExistente;
+
+    // Carrega as instituições ativas (não-desativadas) pro dropdown
+    let insts = [];
+    try {
+      insts = await listarInstituicoes({ incluirDesativadas: false });
+    } catch (err) {
+      console.warn('[modal prof] erro ao listar inst:', err);
+    }
+
+    const valNome       = ehEdicao ? (profExistente.nome || '') : '';
+    const valProfissao  = ehEdicao ? (profExistente.profissao || 'Nutricionista') : 'Nutricionista';
+    const valProfOutro  = ehEdicao ? (profExistente.profissao_outro || '') : '';
+    const valInstId     = ehEdicao ? (profExistente.instituicao_id || '') : '';
+    const valTelefone   = ehEdicao ? (profExistente.telefone || '') : '';
+    const valEmail      = ehEdicao ? (profExistente.email || '') : '';
+
+    const titulo = ehEdicao ? 'Editar profissional' : 'Novo profissional';
+    const subtitulo = ehEdicao
+      ? 'Ajuste os dados. As mudanças são aplicadas imediatamente.'
+      : 'Cadastre um profissional de saúde (médico, enfermeiro, etc.) vinculado a uma instituição.';
+    const btnOkLabel = ehEdicao ? 'Salvar alterações' : 'Cadastrar profissional';
+
+    // Se profissao for "Outro", já mostra o campo complementar
+    const mostrarProfOutro = valProfissao === 'Outro';
+
+    const backdrop = document.createElement('div');
+    backdrop.className = 'modal-backdrop';
+    backdrop.innerHTML = `
+      <div class="modal-card" style="max-width:480px;">
+        <div class="modal-card__header">
+          <div class="modal-card__icon">
+            <span class="material-symbols-rounded">${ehEdicao ? 'edit' : 'person_add'}</span>
+          </div>
+          <div class="modal-card__title">${titulo}</div>
+          <div class="modal-card__subtitle">${subtitulo}</div>
+        </div>
+        <div class="modal-card__body" style="display:flex;flex-direction:column;gap:12px;">
+          <div class="report-field">
+            <label for="mpaNome">Nome completo <span style="color:var(--status-danger)">*</span></label>
+            <input type="text" id="mpaNome" placeholder="Ex: Dra. Ana Silva" value="${valNome.replace(/"/g,'&quot;')}" autocomplete="off" style="width:100%;padding:10px 12px;border:1.5px solid var(--neutral-200);border-radius:10px;font-size:14px;font-family:inherit;" />
+          </div>
+
+          <div class="report-field">
+            <label for="mpaInst">Instituição <span style="color:var(--status-danger)">*</span></label>
+            <select id="mpaInst" style="width:100%;padding:10px 12px;border:1.5px solid var(--neutral-200);border-radius:10px;font-size:14px;font-family:inherit;background:var(--neutral-0);">
+              ${insts.length === 0 ? `<option value="">Nenhuma instituição disponível</option>` : `
+                <option value="">Selecione...</option>
+                ${insts.map(i => `<option value="${i.id}"${i.id === valInstId ? ' selected' : ''}>${i.nome.replace(/"/g,'&quot;')}</option>`).join('')}
+              `}
+            </select>
+            ${insts.length === 0 ? `<div style="font-size:11px;color:var(--status-warning);margin-top:4px;">Cadastre uma instituição antes.</div>` : ''}
+          </div>
+
+          <div class="report-field">
+            <label for="mpaProfissao">Profissão <span style="color:var(--status-danger)">*</span></label>
+            <select id="mpaProfissao" style="width:100%;padding:10px 12px;border:1.5px solid var(--neutral-200);border-radius:10px;font-size:14px;font-family:inherit;background:var(--neutral-0);">
+              <option value="Nutricionista"${valProfissao === 'Nutricionista' ? ' selected' : ''}>Nutricionista</option>
+              <option value="Medico"${valProfissao === 'Medico' ? ' selected' : ''}>Médico(a)</option>
+              <option value="Farmaceutico"${valProfissao === 'Farmaceutico' ? ' selected' : ''}>Farmacêutico(a)</option>
+              <option value="Enfermeiro"${valProfissao === 'Enfermeiro' ? ' selected' : ''}>Enfermeiro(a)</option>
+              <option value="Comprador"${valProfissao === 'Comprador' ? ' selected' : ''}>Comprador(a)</option>
+              <option value="Outro"${valProfissao === 'Outro' ? ' selected' : ''}>Outro</option>
+            </select>
+          </div>
+
+          <div class="report-field" id="mpaProfOutroWrap" style="display:${mostrarProfOutro ? 'block' : 'none'};">
+            <label for="mpaProfOutro">Especifique a profissão <span style="color:var(--status-danger)">*</span></label>
+            <input type="text" id="mpaProfOutro" placeholder="Ex: Fisioterapeuta" value="${valProfOutro.replace(/"/g,'&quot;')}" style="width:100%;padding:10px 12px;border:1.5px solid var(--neutral-200);border-radius:10px;font-size:14px;font-family:inherit;" />
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <div class="report-field">
+              <label for="mpaTel">Telefone <span style="color:var(--neutral-400);font-weight:normal;">(opcional)</span></label>
+              <input type="text" id="mpaTel" placeholder="(11) 99999-9999" value="${valTelefone.replace(/"/g,'&quot;')}" style="width:100%;padding:10px 12px;border:1.5px solid var(--neutral-200);border-radius:10px;font-size:14px;font-family:inherit;" />
+            </div>
+            <div class="report-field">
+              <label for="mpaEmail">E-mail <span style="color:var(--neutral-400);font-weight:normal;">(opcional)</span></label>
+              <input type="text" id="mpaEmail" placeholder="nome@email.com" value="${valEmail.replace(/"/g,'&quot;')}" style="width:100%;padding:10px 12px;border:1.5px solid var(--neutral-200);border-radius:10px;font-size:14px;font-family:inherit;" />
+            </div>
+          </div>
+        </div>
+        <div class="modal-card__footer">
+          <button class="modal-btn modal-btn--primary" id="mpaOk">${btnOkLabel}</button>
+          <button class="modal-btn modal-btn--secondary" id="mpaCancel">Cancelar</button>
+          ${ehEdicao && permitirAcoesAdmin ? `
+            <div style="padding-top:12px;margin-top:4px;border-top:1px dashed var(--neutral-200);">
+              ${profExistente.ativo !== false ? `
+                <button type="button" id="mpaDesativar" style="width:100%;padding:10px;background:transparent;border:0;color:var(--status-warning);font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;border-radius:10px;transition:background 140ms;font-family:inherit;" onmouseover="this.style.background='var(--status-warning-bg,#FEF4E1)'" onmouseout="this.style.background='transparent'">
+                  <span class="material-symbols-rounded" style="font-size:18px;">person_off</span>
+                  Desativar profissional
+                </button>
+              ` : `
+                <button type="button" id="mpaReativar" style="width:100%;padding:10px;background:transparent;border:0;color:var(--status-success);font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;border-radius:10px;transition:background 140ms;font-family:inherit;" onmouseover="this.style.background='var(--status-success-bg,#E6F6EF)'" onmouseout="this.style.background='transparent'">
+                  <span class="material-symbols-rounded" style="font-size:18px;">check_circle</span>
+                  Reativar profissional
+                </button>
+                <!-- Sprint 9.9.1: excluir em definitivo (só desativados, só se não tiver visitas) -->
+                <button type="button" id="mpaExcluir" style="width:100%;padding:10px;background:transparent;border:0;color:var(--status-danger);font-size:12.5px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;border-radius:10px;transition:background 140ms;font-family:inherit;margin-top:4px;" onmouseover="this.style.background='var(--status-danger-bg,#FCE8E8)'" onmouseout="this.style.background='transparent'">
+                  <span class="material-symbols-rounded" style="font-size:18px;">delete_forever</span>
+                  Excluir em definitivo
+                </button>
+              `}
+            </div>
+          ` : ''}
+        </div>
+      </div>
+    `;
+    document.body.appendChild(backdrop);
+
+    const nomeEl    = backdrop.querySelector('#mpaNome');
+    const instEl    = backdrop.querySelector('#mpaInst');
+    const profEl    = backdrop.querySelector('#mpaProfissao');
+    const profOutroWrap = backdrop.querySelector('#mpaProfOutroWrap');
+    const profOutroEl   = backdrop.querySelector('#mpaProfOutro');
+    const telEl     = backdrop.querySelector('#mpaTel');
+    const emailEl   = backdrop.querySelector('#mpaEmail');
+
+    // Foca no nome (cadastro) ou profissão (edição)
+    setTimeout(() => { (ehEdicao ? profEl : nomeEl).focus(); }, 150);
+
+    // Toggle do campo "Profissão (outro)" conforme seleção
+    profEl.addEventListener('change', () => {
+      const mostrar = profEl.value === 'Outro';
+      profOutroWrap.style.display = mostrar ? 'block' : 'none';
+      if (mostrar) setTimeout(() => profOutroEl.focus(), 50);
+    });
+
+    // Máscara simples de telefone (mesma do nutri)
+    telEl.addEventListener('input', (e) => {
+      let v = e.target.value.replace(/\D/g, '');
+      if (v.length > 11) v = v.slice(0, 11);
+      if (v.length > 10) {
+        v = v.replace(/^(\d{2})(\d{5})(\d{0,4}).*/, '($1) $2-$3');
+      } else if (v.length > 6) {
+        v = v.replace(/^(\d{2})(\d{4})(\d{0,4}).*/, '($1) $2-$3');
+      } else if (v.length > 2) {
+        v = v.replace(/^(\d{2})(\d{0,5}).*/, '($1) $2');
+      } else if (v.length > 0) {
+        v = v.replace(/^(\d{0,2}).*/, '($1');
+      }
+      e.target.value = v;
+    });
+
+    const cleanup = () => backdrop.remove();
+
+    const submit = () => {
+      const nome = nomeEl.value.trim();
+      const profissao = profEl.value;
+      const profissaoOutro = profOutroEl.value.trim();
+      const instituicaoId = instEl.value;
+      const telefone = telEl.value.trim();
+      const email = emailEl.value.trim();
+
+      if (!nome) { nomeEl.focus(); setFlash('info', 'Nome é obrigatório.'); return; }
+      if (!instituicaoId) { instEl.focus(); setFlash('info', 'Selecione uma instituição.'); return; }
+      if (!profissao) { profEl.focus(); return; }
+      if (profissao === 'Outro' && !profissaoOutro) {
+        profOutroEl.focus();
+        setFlash('info', 'Especifique a profissão.');
+        return;
+      }
+      // Validação leve do e-mail
+      if (email && !/^\S+@\S+\.\S+$/.test(email)) {
+        emailEl.focus();
+        setFlash('warning', 'E-mail parece inválido. Corrija ou deixe em branco.');
+        return;
+      }
+      cleanup();
+      resolve({
+        nome,
+        profissao,
+        profissao_outro: profissao === 'Outro' ? profissaoOutro : null,
+        instituicao_id: instituicaoId,
+        telefone: telefone || null,
+        email: email || null,
+      });
+    };
+
+    backdrop.querySelector('#mpaOk').onclick = submit;
+    backdrop.querySelector('#mpaCancel').onclick = () => { cleanup(); resolve(null); };
+    backdrop.onclick = (e) => { if (e.target === backdrop) { cleanup(); resolve(null); } };
+
+    // Botões de desativar/reativar (só em edição)
+    const btnDesativar = backdrop.querySelector('#mpaDesativar');
+    const btnReativar  = backdrop.querySelector('#mpaReativar');
+    const btnExcluir   = backdrop.querySelector('#mpaExcluir');
+    if (btnDesativar) btnDesativar.onclick = () => { cleanup(); resolve({ __acao: 'desativar' }); };
+    if (btnReativar)  btnReativar.onclick  = () => { cleanup(); resolve({ __acao: 'reativar'  }); };
+    if (btnExcluir)   btnExcluir.onclick   = () => { cleanup(); resolve({ __acao: 'excluir'   }); };
   });
 }
 
@@ -19203,106 +20181,462 @@ function renderAdminProfissionais() {
   const user = requireAdmin();
   if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
 
+  // Sprint 9.9: estado do filtro (aba ativa) — default 'ativos'
+  const filtroPorRota = window._routeParams?.filtro || null;
+  window._profFilter = filtroPorRota || window._profFilter || 'ativos';
+
   setTimeout(async () => {
-    const listEl = document.getElementById('admProfList');
-    if (!listEl) return;
-    try {
-      // Busca todas as instituições e depois profissionais
-      const insts = await listarInstituicoes();
-      if (insts.length === 0) {
-        listEl.innerHTML = `
-          <div class="empty-state" style="margin:0;">
-            <div class="empty-state__icon">
-              <span class="material-symbols-rounded">local_hospital</span>
-            </div>
-            <div class="empty-state__title">Cadastre instituições primeiro</div>
-            <div class="empty-state__desc">Profissionais precisam estar vinculados a uma instituição.</div>
-            <a href="#/admin/instituicoes" class="btn-auth btn-auth--primary" style="display:inline-flex;text-decoration:none;width:auto;padding:10px 20px;min-height:auto;">
-              Ir para instituições
-            </a>
-          </div>
-        `;
-        return;
-      }
-
-      // Conta total de profissionais
-      const { count, error: countErr } = await db
-        .from('profissionais')
-        .select('*', { count: 'exact', head: true })
-        .eq('ativo', true);
-
-      if (countErr) throw new Error(countErr.message);
-
-      if (count === 0) {
-        listEl.innerHTML = `
-          <div class="empty-state" style="margin:0;">
-            <div class="empty-state__icon">
-              <span class="material-symbols-rounded">stethoscope</span>
-            </div>
-            <div class="empty-state__title">Nenhum profissional cadastrado</div>
-            <div class="empty-state__desc">Use o botão abaixo pra popular rapidamente com ~15 profissionais distribuídos entre os ${insts.length} hospitais. Ótimo pra testar o relatório de visita.</div>
-            <button class="btn-auth btn-auth--primary" onclick="seedProfissionaisTeste()" style="display:inline-flex;text-decoration:none;width:auto;padding:12px 24px;min-height:auto;margin-top:8px;">
-              <span class="material-symbols-rounded" style="font-size:20px">auto_awesome</span>
-              Popular profissionais de teste
-            </button>
-          </div>
-        `;
-        return;
-      }
-
-      // Lista por instituição
-      const { data: profs } = await db
-        .from('profissionais')
-        .select('*, instituicoes(nome)')
-        .eq('ativo', true)
-        .order('nome');
-
-      const profsPorInst = {};
-      (profs || []).forEach(p => {
-        const instName = p.instituicoes?.nome || 'Sem instituição';
-        if (!profsPorInst[instName]) profsPorInst[instName] = [];
-        profsPorInst[instName].push(p);
-      });
-
-      listEl.innerHTML = `
-        <div style="margin-bottom:16px;font-size:13px;color:var(--neutral-600);">
-          <strong>${count}</strong> profissional(is) em <strong>${Object.keys(profsPorInst).length}</strong> instituição(ões)
-        </div>
-        ${Object.keys(profsPorInst).sort().map(instName => `
-          <div style="margin-bottom:16px;">
-            <div style="font-family:var(--font-display);font-weight:700;font-size:13px;color:var(--brand-navy);padding:8px 12px;background:var(--neutral-100);border-radius:8px;margin-bottom:6px;">
-              ${instName.replace(/"/g,'&quot;')} · ${profsPorInst[instName].length}
-            </div>
-            ${profsPorInst[instName].map(p => `
-              <div class="visits-list__item" style="padding:10px 12px;">
-                <div class="prof-dropdown-item__avatar">${iniciais(p.nome)}</div>
-                <div class="visits-list__info">
-                  <div class="visits-list__name">${p.nome.replace(/"/g,'&quot;')}</div>
-                  <div class="visits-list__time" style="font-family:var(--font-body);">
-                    ${p.profissao === 'Outro' ? (p.profissao_outro || 'Outro') : p.profissao}
-                  </div>
-                </div>
-              </div>
-            `).join('')}
-          </div>
-        `).join('')}
-      `;
-    } catch (err) {
-      listEl.innerHTML = `<div style="padding:20px;color:var(--status-danger);">Erro: ${err.message}</div>`;
-    }
+    await carregarProfissionaisAdmin();
   }, 0);
 
   return `
     <div class="mobile-app">
       ${mobileTopBar({ title: 'Profissionais', showBack: true })}
       <main class="mcontent">
-        <div id="admProfList">
+        <div class="review-tabs" id="profTabs" style="overflow-x:auto;scrollbar-width:none;">
+          <button class="review-tab ${window._profFilter === 'ativos' ? 'is-active' : ''}" onclick="trocarProfFiltro('ativos')">
+            Ativos <span class="review-tab__count" id="cntProfAtivos">—</span>
+          </button>
+          <button class="review-tab ${window._profFilter === 'desativados' ? 'is-active' : ''}" onclick="trocarProfFiltro('desativados')">
+            Desativados <span class="review-tab__count" id="cntProfDesativados">—</span>
+          </button>
+        </div>
+
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin:12px 0 10px;flex-wrap:wrap;">
+          <div id="profContadorAba" style="font-size:12.5px;color:var(--neutral-500);">—</div>
+          <button onclick="novoProfissionalAdmin()" class="btn-auth btn-auth--primary" style="display:inline-flex;align-items:center;gap:6px;width:auto;padding:8px 14px;min-height:auto;font-size:13px;">
+            <span class="material-symbols-rounded" style="font-size:18px;">person_add</span>
+            Novo profissional
+          </button>
+        </div>
+
+        <div style="display:flex;gap:8px;align-items:center;margin:0 0 12px;">
+          <div style="position:relative;flex:1;">
+            <span class="material-symbols-rounded" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--neutral-500);font-size:18px;pointer-events:none;">search</span>
+            <input type="text"
+                   id="profBusca"
+                   placeholder="Filtrar por nome, profissão ou hospital..."
+                   oninput="filtrarProfLocal(this.value)"
+                   style="width:100%;padding:10px 14px 10px 38px;border:1px solid var(--neutral-200);border-radius:10px;font-family:inherit;font-size:13px;background:var(--neutral-0);color:var(--brand-navy);" />
+          </div>
+          <button id="profBtnExport" class="av-btn-export" onclick="exportarProfCSV()" title="Exportar lista atual pra CSV" style="flex-shrink:0;">
+            <span class="material-symbols-rounded" style="font-size:18px;">download</span>
+            CSV
+          </button>
+        </div>
+
+        <div class="visits-list" id="admProfList" style="background:var(--neutral-0);">
           <div style="padding:20px;text-align:center;color:var(--neutral-500);font-size:13px;">Carregando...</div>
         </div>
       </main>
     </div>
   `;
 }
+
+// Sprint 9.9: helpers de abas (mesmo padrão de instituicoes/equipe)
+function atualizarAbaAtivaProf(filtro) {
+  const tabs = document.querySelectorAll('#profTabs .review-tab');
+  const ordem = ['ativos', 'desativados'];
+  tabs.forEach((t, i) => t.classList.toggle('is-active', ordem[i] === filtro));
+}
+
+window.trocarProfFiltro = function(filtro) {
+  window._profFilter = filtro;
+  atualizarAbaAtivaProf(filtro);
+  const inp = document.getElementById('profBusca');
+  if (inp) inp.value = '';
+  carregarProfissionaisAdmin();
+};
+
+// Formata label da profissão (trata "Outro")
+function labelProfissao(p) {
+  if (!p || !p.profissao) return '—';
+  if (p.profissao === 'Outro') return p.profissao_outro || 'Outro';
+  // Mapeia enums internos pra labels bonitos
+  const map = {
+    Nutricionista: 'Nutricionista',
+    Medico: 'Médico(a)',
+    Farmaceutico: 'Farmacêutico(a)',
+    Enfermeiro: 'Enfermeiro(a)',
+    Comprador: 'Comprador(a)',
+  };
+  return map[p.profissao] || p.profissao;
+}
+
+async function carregarProfissionaisAdmin() {
+  const listEl = document.getElementById('admProfList');
+  if (!listEl) return;
+  try {
+    // Carrega TODOS os profissionais (inclusive desativados), com nome da instituição
+    const { data: todos, error } = await db
+      .from('profissionais')
+      .select('*, instituicoes(nome)')
+      .order('nome');
+    if (error) throw new Error(error.message);
+
+    const ativos      = (todos || []).filter(p => p.ativo !== false);
+    const desativados = (todos || []).filter(p => p.ativo === false);
+
+    // Atualiza contadores das abas
+    const cnt = (id, n) => { const el = document.getElementById(id); if (el) el.textContent = n; };
+    cnt('cntProfAtivos',      ativos.length);
+    cnt('cntProfDesativados', desativados.length);
+
+    // Se não há NENHUM profissional, mostra onboarding + seed
+    if ((todos || []).length === 0) {
+      listEl.innerHTML = `
+        <div class="empty-state" style="margin:0;">
+          <div class="empty-state__icon">
+            <span class="material-symbols-rounded">stethoscope</span>
+          </div>
+          <div class="empty-state__title">Nenhum profissional cadastrado</div>
+          <div class="empty-state__desc">Cadastre um profissional de saúde (médico, enfermeiro, nutricionista) agora, ou popule com ~15 pra testar rápido.</div>
+          <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:8px;">
+            <button class="btn-auth btn-auth--primary" onclick="novoProfissionalAdmin()" style="display:inline-flex;text-decoration:none;width:auto;padding:12px 22px;min-height:auto;">
+              <span class="material-symbols-rounded" style="font-size:20px">person_add</span>
+              Cadastrar agora
+            </button>
+            <button class="btn-auth btn-auth--secondary" onclick="seedProfissionaisTeste()" style="display:inline-flex;text-decoration:none;width:auto;padding:12px 22px;min-height:auto;">
+              <span class="material-symbols-rounded" style="font-size:20px">auto_awesome</span>
+              Popular de teste
+            </button>
+          </div>
+        </div>
+      `;
+      const cntAba = document.getElementById('profContadorAba');
+      if (cntAba) cntAba.textContent = '';
+      return;
+    }
+
+    // Aplica filtro de aba
+    const filtro = window._profFilter || 'ativos';
+    const profs = filtro === 'desativados' ? desativados : ativos;
+
+    // Contador contextual da aba
+    const cntAba = document.getElementById('profContadorAba');
+    if (cntAba) {
+      const label = filtro === 'desativados' ? 'desativado(s)' : 'ativo(s)';
+      cntAba.innerHTML = profs.length > 0
+        ? `<strong>${profs.length}</strong> ${label}`
+        : '';
+    }
+
+    // Empty state contextual por aba
+    if (profs.length === 0) {
+      const empties = {
+        ativos: {
+          icon: 'stethoscope',
+          titulo: 'Nenhum profissional ativo',
+          desc: 'Cadastre um novo pelo botão acima.',
+        },
+        desativados: {
+          icon: 'person_off',
+          titulo: 'Nenhum desativado',
+          desc: 'Profissionais que você desativar aparecem aqui pra poder reativar.',
+        },
+      };
+      const e = empties[filtro];
+      listEl.innerHTML = `
+        <div class="empty-state" style="margin:0;">
+          <div class="empty-state__icon"><span class="material-symbols-rounded">${e.icon}</span></div>
+          <div class="empty-state__title">${e.titulo}</div>
+          <div class="empty-state__desc">${e.desc}</div>
+        </div>
+      `;
+      return;
+    }
+
+    // Renderiza cards (lista flat, hospital no subtítulo)
+    listEl.innerHTML = profs.map(p => {
+      const cardOpacity = p.ativo === false ? 'opacity:0.6;' : '';
+      const instName = p.instituicoes?.nome || 'Sem instituição';
+      return `
+        <div class="visits-list__item" data-id="${p.id}" onclick="editarProfissionalAdmin('${p.id}')" style="cursor:pointer;${cardOpacity}">
+          <div class="prof-dropdown-item__avatar" style="flex-shrink:0;">${iniciais(p.nome)}</div>
+          <div class="visits-list__info" style="min-width:0;">
+            <div class="visits-list__name" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+              <span style="min-width:0;overflow:hidden;text-overflow:ellipsis;">${p.nome.replace(/"/g,'&quot;')}</span>
+              <span style="font-size:10.5px;color:var(--brand-navy);background:var(--neutral-100);padding:2px 7px;border-radius:9999px;font-weight:600;">${labelProfissao(p)}</span>
+            </div>
+            <div class="visits-list__time" style="font-family:var(--font-body);">
+              <span class="material-symbols-rounded" style="font-size:13px;vertical-align:-2px;color:var(--neutral-400);">local_hospital</span>
+              ${instName.replace(/"/g,'&quot;')}
+            </div>
+          </div>
+          <span class="material-symbols-rounded" style="color:var(--neutral-300);font-size:18px;margin-left:4px;">chevron_right</span>
+        </div>
+      `;
+    }).join('');
+
+    // Destaca item vindo de busca global (?id=X)
+    destacarItemDaURL('#admProfList .visits-list__item[data-id="%ID%"]');
+
+    // Reaplica busca se houver texto digitado
+    const inp = document.getElementById('profBusca');
+    if (inp && inp.value) filtrarProfLocal(inp.value);
+  } catch (err) {
+    listEl.innerHTML = `<div style="padding:20px;color:var(--status-danger);">Erro: ${err.message}</div>`;
+  }
+}
+
+// Filtro local nos cards já renderizados
+window.filtrarProfLocal = function(termo) {
+  const t = (termo || '').trim().toLowerCase();
+  const cards = document.querySelectorAll('#admProfList .visits-list__item');
+  cards.forEach(card => {
+    if (!t) { card.style.display = ''; return; }
+    const texto = card.textContent.toLowerCase();
+    card.style.display = texto.includes(t) ? '' : 'none';
+  });
+};
+
+// Export CSV da aba atual
+window.exportarProfCSV = async function() {
+  try {
+    const { data: todos, error } = await db
+      .from('profissionais')
+      .select('*, instituicoes(nome)')
+      .order('nome');
+    if (error) throw new Error(error.message);
+
+    const filtro = window._profFilter || 'ativos';
+    const profs = (todos || []).filter(p => filtro === 'desativados' ? p.ativo === false : p.ativo !== false);
+
+    if (profs.length === 0) {
+      setFlash('info', 'Nenhum profissional pra exportar.');
+      return;
+    }
+
+    // Monta CSV com escape de aspas
+    const esc = (v) => {
+      if (v === null || v === undefined) return '';
+      const s = String(v);
+      return /[",;\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const linhas = ['Nome;Profissão;Hospital;Telefone;E-mail;Status'];
+    profs.forEach(p => {
+      linhas.push([
+        esc(p.nome),
+        esc(labelProfissao(p)),
+        esc(p.instituicoes?.nome || ''),
+        esc(p.telefone || ''),
+        esc(p.email || ''),
+        esc(p.ativo === false ? 'Desativado' : 'Ativo'),
+      ].join(';'));
+    });
+    const csv = '\uFEFF' + linhas.join('\n'); // BOM pra Excel abrir em UTF-8
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `profissionais-${filtro}-${new Date().toISOString().slice(0,10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    setFlash('success', `${profs.length} profissional(is) exportado(s).`);
+  } catch (err) {
+    setFlash('error', 'Erro ao exportar: ' + err.message);
+  }
+};
+
+// Handler: admin cria novo profissional
+window.novoProfissionalAdmin = async function() {
+  if (await bloqueioSimulacao('cadastrar profissional')) return;
+  try {
+    // Verifica se existe alguma instituição ativa antes de abrir o modal
+    const insts = await listarInstituicoes({ incluirDesativadas: false });
+    if (insts.length === 0) {
+      await showModalConfirmacao({
+        icone: 'local_hospital', iconeCor: 'warning',
+        titulo: 'Cadastre uma instituição antes',
+        subtitulo: 'Profissionais precisam estar vinculados a um hospital. Cadastre uma instituição primeiro.',
+        btnConfirmar: 'Ir pra Instituições',
+        btnCancelar: 'Depois',
+      }) && (window.location.hash = '#/admin/instituicoes');
+      return;
+    }
+
+    const dados = await showModalProfissionalAdmin({ modo: 'cadastro' });
+    if (!dados) return;
+
+    const { error } = await db.from('profissionais').insert({
+      ...dados,
+      ativo: true,
+      criado_por: getCurrentUser()?.id || null,
+    });
+    if (error) throw new Error(error.message);
+
+    setFlash('success', `"${dados.nome}" cadastrado.`);
+    // Vai pra aba Ativos pra ver o recém-cadastrado
+    window._profFilter = 'ativos';
+    atualizarAbaAtivaProf('ativos');
+    await carregarProfissionaisAdmin();
+  } catch (err) {
+    await showModalConfirmacao({
+      icone: 'error', iconeCor: 'danger',
+      titulo: 'Não foi possível cadastrar',
+      subtitulo: err.message || 'Tente novamente em instantes.',
+      btnConfirmar: 'OK', btnCancelar: '',
+    });
+  }
+};
+
+// Handler: admin edita profissional existente
+window.editarProfissionalAdmin = async function(id) {
+  if (await bloqueioSimulacao('editar profissional')) return;
+  try {
+    const { data: prof, error } = await db.from('profissionais').select('*, instituicoes(nome)').eq('id', id).maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!prof) throw new Error('Profissional não encontrado.');
+
+    const resultado = await showModalProfissionalAdmin({ modo: 'edicao', profExistente: prof });
+    if (!resultado) return;
+
+    // Ação extra (desativar/reativar/excluir) vinda do rodapé
+    if (resultado.__acao === 'desativar') {
+      await window.desativarProfissionalExterno(id, prof.nome);
+      return;
+    }
+    if (resultado.__acao === 'reativar') {
+      await window.reativarProfissionalExterno(id, prof.nome);
+      return;
+    }
+    if (resultado.__acao === 'excluir') {
+      await window.excluirProfissionalExterno(id, prof.nome);
+      return;
+    }
+
+    // Salva alterações normais
+    const { error: upErr } = await db.from('profissionais').update(resultado).eq('id', id);
+    if (upErr) throw new Error(upErr.message);
+    setFlash('success', `"${resultado.nome}" atualizado.`);
+    await carregarProfissionaisAdmin();
+  } catch (err) {
+    await showModalConfirmacao({
+      icone: 'error', iconeCor: 'danger',
+      titulo: 'Não foi possível salvar',
+      subtitulo: err.message || 'Tente novamente em instantes.',
+      btnConfirmar: 'OK', btnCancelar: '',
+    });
+  }
+};
+
+// Handler: desativar profissional externo (soft-delete, preserva histórico de visitas)
+// NOME DIFERENTE de desativarProfissional (que é pra tabela usuarios/equipe)
+window.desativarProfissionalExterno = async function(id, nome) {
+  if (await bloqueioSimulacao('desativar profissional')) return;
+  try {
+    // Conta quantas visitas usaram esse profissional (pra alertar sobre impacto)
+    const { count: qtdVisitas } = await db
+      .from('visitas_profissionais')
+      .select('visita_id', { count: 'exact', head: true })
+      .eq('profissional_id', id);
+    const aviso = qtdVisitas > 0
+      ? `<strong>${qtdVisitas}</strong> visita(s) ficarão preservadas no histórico, mas o profissional não aparecerá mais para novos relatórios. Você pode reativar depois.`
+      : 'O profissional não aparecerá mais para novos relatórios. Você pode reativar depois.';
+    const ok = await showModalConfirmacao({
+      icone: 'person_off', iconeCor: 'warning',
+      titulo: `Desativar "${nome || 'profissional'}"?`,
+      subtitulo: aviso,
+      btnConfirmar: 'Desativar',
+      btnCancelar: 'Cancelar',
+    });
+    if (!ok) return;
+    const { error } = await db.from('profissionais').update({ ativo: false }).eq('id', id);
+    if (error) throw new Error(error.message);
+    setFlash('success', `"${nome || 'Profissional'}" desativado.`);
+    await carregarProfissionaisAdmin();
+  } catch (err) {
+    await showModalConfirmacao({
+      icone: 'error', iconeCor: 'danger',
+      titulo: 'Não foi possível desativar',
+      subtitulo: err.message || 'Tente novamente em instantes.',
+      btnConfirmar: 'OK', btnCancelar: '',
+    });
+  }
+};
+
+window.reativarProfissionalExterno = async function(id, nome) {
+  if (await bloqueioSimulacao('reativar profissional')) return;
+  try {
+    const ok = await showModalConfirmacao({
+      icone: 'check_circle', iconeCor: 'success',
+      titulo: `Reativar "${nome || 'profissional'}"?`,
+      subtitulo: 'O profissional voltará a aparecer nos relatórios de visita.',
+      btnConfirmar: 'Reativar',
+      btnCancelar: 'Cancelar',
+    });
+    if (!ok) return;
+    const { error } = await db.from('profissionais').update({ ativo: true }).eq('id', id);
+    if (error) throw new Error(error.message);
+    setFlash('success', `"${nome || 'Profissional'}" reativado.`);
+    await carregarProfissionaisAdmin();
+  } catch (err) {
+    await showModalConfirmacao({
+      icone: 'error', iconeCor: 'danger',
+      titulo: 'Não foi possível reativar',
+      subtitulo: err.message || 'Tente novamente em instantes.',
+      btnConfirmar: 'OK', btnCancelar: '',
+    });
+  }
+};
+
+// Sprint 9.9.1: excluir em definitivo (hard-delete)
+// Bloqueia se tiver QUALQUER visita vinculada pra preservar integridade do histórico
+window.excluirProfissionalExterno = async function(id, nome) {
+  if (await bloqueioSimulacao('excluir profissional')) return;
+  try {
+    // Conta visitas vinculadas — se > 0, não pode excluir
+    const { count: qtdVisitas } = await db
+      .from('visitas_profissionais')
+      .select('visita_id', { count: 'exact', head: true })
+      .eq('profissional_id', id);
+
+    if (qtdVisitas > 0) {
+      await showModalConfirmacao({
+        icone: 'block', iconeCor: 'warning',
+        titulo: 'Não é possível excluir',
+        subtitulo: `"${nome || 'Este profissional'}" está vinculado a <strong>${qtdVisitas}</strong> visita(s) do histórico. Pra preservar a integridade dos relatórios, ele só pode ficar desativado (nunca some).`,
+        btnConfirmar: 'Entendi',
+        btnCancelar: '',
+      });
+      return;
+    }
+
+    // Primeira confirmação — exclusão permanente
+    const ok1 = await showModalConfirmacao({
+      icone: 'warning', iconeCor: 'danger',
+      titulo: 'Excluir em definitivo?',
+      subtitulo: `"${nome || 'Este profissional'}" será apagado permanentemente do banco. Essa ação <strong>não pode ser desfeita</strong>.`,
+      btnConfirmar: 'Continuar',
+      btnCancelar: 'Cancelar',
+    });
+    if (!ok1) return;
+
+    // Segunda confirmação — tem certeza absoluta?
+    const ok2 = await showModalConfirmacao({
+      icone: 'delete_forever', iconeCor: 'danger',
+      titulo: `Confirmar exclusão de "${nome}"?`,
+      subtitulo: 'Última chance de cancelar. Depois disso, o registro some pra sempre.',
+      btnConfirmar: 'Sim, excluir definitivamente',
+      btnCancelar: 'Cancelar',
+    });
+    if (!ok2) return;
+
+    const { error } = await db.from('profissionais').delete().eq('id', id);
+    if (error) throw new Error(error.message);
+    setFlash('success', `"${nome || 'Profissional'}" excluído em definitivo.`);
+    await carregarProfissionaisAdmin();
+  } catch (err) {
+    await showModalConfirmacao({
+      icone: 'error', iconeCor: 'danger',
+      titulo: 'Não foi possível excluir',
+      subtitulo: err.message || 'Tente novamente em instantes.',
+      btnConfirmar: 'OK', btnCancelar: '',
+    });
+  }
+};
 
 // Seed de profissionais de teste — distribui ~15 profissionais pelos 5 hospitais
 window.seedProfissionaisTeste = async function() {
@@ -19366,7 +20700,14 @@ window.seedProfissionaisTeste = async function() {
     if (error) throw new Error(error.message);
 
     setFlash('success', `${toInsert.length} profissionais cadastrados!`);
-    router();
+    // Sprint 9.9: recarrega mantendo a aba (seed cria direto ativos)
+    if (typeof carregarProfissionaisAdmin === 'function') {
+      window._profFilter = 'ativos';
+      if (typeof atualizarAbaAtivaProf === 'function') atualizarAbaAtivaProf('ativos');
+      await carregarProfissionaisAdmin();
+    } else {
+      router();
+    }
   } catch (err) {
     alert('Erro ao cadastrar profissionais: ' + err.message);
   }
