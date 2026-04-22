@@ -4688,6 +4688,118 @@ a {
 }
 
 /* ==========================================================================
+   Reabertura de visita (Sprint 8.11)
+   Banner exibido na tela de relatório quando a visita está travada,
+   tem pedido pendente, ou foi reaberta pelo admin.
+   ========================================================================== */
+.reabert-banner {
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  border: 1px solid;
+}
+.reabert-banner--locked {
+  background: linear-gradient(135deg, #FEE2E2 0%, #FFEBEE 100%);
+  border-color: rgba(220,38,38,0.25);
+}
+.reabert-banner--pending {
+  background: linear-gradient(135deg, #FEF4E1 0%, #FFF8E5 100%);
+  border-color: rgba(245,158,11,0.3);
+}
+.reabert-banner--active {
+  background: linear-gradient(135deg, #DCFCE7 0%, #F0FDF4 100%);
+  border-color: rgba(34,197,94,0.3);
+}
+.reabert-banner--admin-action {
+  background: linear-gradient(135deg, #E4ECFD 0%, #F3F5FA 100%);
+  border-color: rgba(37,99,235,0.3);
+}
+.reabert-banner__icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: #fff;
+}
+.reabert-banner--locked .reabert-banner__icon { background: var(--status-danger); }
+.reabert-banner--pending .reabert-banner__icon { background: var(--status-warning); }
+.reabert-banner--active .reabert-banner__icon { background: var(--status-success); }
+.reabert-banner--admin-action .reabert-banner__icon { background: var(--status-info); }
+.reabert-banner__icon .material-symbols-rounded { font-size: 20px; }
+.reabert-banner__body { flex: 1; min-width: 0; }
+.reabert-banner__title {
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+.reabert-banner--locked .reabert-banner__title { color: #991B1B; }
+.reabert-banner--pending .reabert-banner__title { color: #92400E; }
+.reabert-banner--active .reabert-banner__title { color: #14532D; }
+.reabert-banner--admin-action .reabert-banner__title { color: #1E3A8A; }
+.reabert-banner__text {
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+.reabert-banner--locked .reabert-banner__text { color: #7F1D1D; }
+.reabert-banner--pending .reabert-banner__text { color: #92400E; }
+.reabert-banner--active .reabert-banner__text { color: #14532D; }
+.reabert-banner--admin-action .reabert-banner__text { color: #1E3A8A; }
+.reabert-banner__motivo {
+  background: var(--neutral-0);
+  border: 1px solid rgba(0,0,0,0.08);
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin-top: 8px;
+  font-size: 12.5px;
+  color: var(--brand-navy);
+  font-style: italic;
+  line-height: 1.45;
+}
+.reabert-banner__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: none;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  background: var(--brand-navy);
+  color: #fff;
+}
+.reabert-banner__btn .material-symbols-rounded { font-size: 16px; }
+.reabert-banner__btn--approve { background: var(--status-success); flex: 1; justify-content: center; }
+.reabert-banner__btn--reject  { background: var(--status-danger);  flex: 1; justify-content: center; }
+
+.reabert-hora-btn {
+  padding: 14px 8px;
+  border: 1.5px solid var(--neutral-300);
+  border-radius: 10px;
+  background: var(--neutral-0);
+  color: var(--brand-navy);
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all .15s;
+}
+.reabert-hora-btn:hover {
+  border-color: var(--brand-navy);
+  background: var(--neutral-50);
+  transform: translateY(-1px);
+}
+
+/* ==========================================================================
    CONFIGURAÇÕES (Admin — Sprint 2.3+)
    ========================================================================== */
 
@@ -4972,7 +5084,7 @@ a {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint8-refinamentos',
+  APP_VERSION: '1.0.0-alpha.sprint9.4-coords-pro-nutri',
   APP_NAME: 'Nutricionais Visitas',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -5078,6 +5190,20 @@ function maskPhone(v) {
   if (v.length > 6) return `(${v.slice(0,2)}) ${v.slice(2,6)}-${v.slice(6)}`;
   if (v.length > 2) return `(${v.slice(0,2)}) ${v.slice(2)}`;
   if (v.length > 0) return `(${v}`;
+  return v;
+}
+// Sprint 9.1: máscaras pra CRUD de instituições (admin)
+function maskCNPJ(v) {
+  v = (v || '').replace(/\D/g, '').slice(0, 14);
+  if (v.length > 12) return `${v.slice(0,2)}.${v.slice(2,5)}.${v.slice(5,8)}/${v.slice(8,12)}-${v.slice(12)}`;
+  if (v.length > 8)  return `${v.slice(0,2)}.${v.slice(2,5)}.${v.slice(5,8)}/${v.slice(8)}`;
+  if (v.length > 5)  return `${v.slice(0,2)}.${v.slice(2,5)}.${v.slice(5)}`;
+  if (v.length > 2)  return `${v.slice(0,2)}.${v.slice(2)}`;
+  return v;
+}
+function maskCEP(v) {
+  v = (v || '').replace(/\D/g, '').slice(0, 8);
+  if (v.length > 5) return `${v.slice(0,5)}-${v.slice(5)}`;
   return v;
 }
 
@@ -6190,6 +6316,8 @@ function applyMasks(root) {
       const old = e.target.selectionStart;
       if (mask === 'cpf') e.target.value = maskCPF(e.target.value);
       else if (mask === 'phone') e.target.value = maskPhone(e.target.value);
+      else if (mask === 'cnpj') e.target.value = maskCNPJ(e.target.value);
+      else if (mask === 'cep') e.target.value = maskCEP(e.target.value);
     });
   });
 }
@@ -6307,13 +6435,12 @@ function formatarDistancia(metros) {
 }
 
 // Listar instituições ativas
-async function listarInstituicoes() {
+async function listarInstituicoes({ incluirDesativadas = false } = {}) {
   if (!db) throw new Error('Banco não conectado');
-  const { data, error } = await db
-    .from('instituicoes')
-    .select('*')
-    .eq('ativo', true)
-    .order('nome');
+  let q = db.from('instituicoes').select('*');
+  if (!incluirDesativadas) q = q.eq('ativo', true);
+  q = q.order('nome');
+  const { data, error } = await q;
   if (error) throw new Error(error.message);
   return data || [];
 }
@@ -6328,6 +6455,21 @@ async function listarInstituicoesPendentes() {
     .eq('ativo', true)
     .order('criado_em', { ascending: false });
   if (error) return [];
+  return data || [];
+}
+
+// Lista solicitações de reabertura pendentes (Sprint 8.11)
+async function listarSolicitacoesReaberturaPendentes() {
+  if (!db) return [];
+  const { data, error } = await db
+    .from('solicitacoes_reabertura')
+    .select('id, visita_id, solicitante_id, solicitado_em, justificativa, solicitante:solicitante_id(id, nome, foto_url)')
+    .eq('status', 'pendente')
+    .order('solicitado_em', { ascending: false });
+  if (error) {
+    console.warn('[listarSolicitacoesReaberturaPendentes]', error);
+    return [];
+  }
   return data || [];
 }
 
@@ -6593,7 +6735,7 @@ function renderDashPieStatus(visitas) {
   visitas.forEach(v => {
     if (v.status === 'completa') contagem.completa++;
     else if (v.status === 'aprovada_pos_revisao') contagem.aprovada++;
-    else if (v.status === 'em_revisao') contagem.emRev++;
+    else if (estaEmRevisao(v)) contagem.emRev++;
     else contagem.rascunho++;
   });
   const dados = [
@@ -6691,6 +6833,68 @@ async function criarInstituicaoSugerida(dados) {
       ativo: true,
       pendente_aprovacao: true,
       cadastrada_por: user.id,
+    })
+    .select()
+    .single();
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+// Wrapper mais genérico: aceita opção `ativaDireto` pra admin cadastrar sem passar
+// pela fila de aprovação. Usado na agenda (Sprint 8.8).
+async function criarInstituicao(dados, { ativaDireto = false } = {}) {
+  if (!db) throw new Error('Banco não conectado');
+  const user = getCurrentUser();
+  if (!user) throw new Error('Usuário não logado');
+  const payload = (typeof dados === 'string') ? { nome: dados } : dados;
+  const {
+    nome,
+    cnpj = null, logradouro = null, bairro = null, cidade = null, estado = null, cep = null,
+    latitude = null, longitude = null,
+    // Sprint 9.3: perfil enriquecido
+    tipo = null,
+    leitos_total = null, leitos_uti_adulto = null, leitos_uti_pediatrica = null,
+    hospital_cirurgico = false, salas_cirurgicas = null,
+    nutri_total = null, nutri_clinicos = null, nutri_emtn = null,
+    supervisor_nome = null, supervisor_telefone = null, supervisor_email = null,
+  } = payload || {};
+  if (!nome || !nome.trim()) throw new Error('Nome da instituição é obrigatório');
+  const nomeClean = nome.trim();
+  // Verifica duplicidade case-insensitive
+  const { data: existente } = await db
+    .from('instituicoes')
+    .select('id, nome, pendente_aprovacao')
+    .ilike('nome', nomeClean)
+    .maybeSingle();
+  if (existente) return existente;
+  const { data, error } = await db
+    .from('instituicoes')
+    .insert({
+      nome: nomeClean,
+      cnpj: cnpj || null,
+      logradouro: logradouro ? logradouro.trim() : null,
+      bairro: bairro ? bairro.trim() : null,
+      cidade: cidade ? cidade.trim() : null,
+      estado: estado ? estado.trim() : null,
+      cep: cep || null,
+      latitude: latitude,
+      longitude: longitude,
+      ativo: true,
+      pendente_aprovacao: !ativaDireto, // admin cria direto ativa; profissional fica pendente
+      cadastrada_por: user.id,
+      // Sprint 9.3: perfil enriquecido
+      tipo: tipo || null,
+      leitos_total,
+      leitos_uti_adulto,
+      leitos_uti_pediatrica,
+      hospital_cirurgico: !!hospital_cirurgico,
+      salas_cirurgicas,
+      nutri_total,
+      nutri_clinicos,
+      nutri_emtn,
+      supervisor_nome: supervisor_nome || null,
+      supervisor_telefone: supervisor_telefone || null,
+      supervisor_email: supervisor_email || null,
     })
     .select()
     .single();
@@ -7900,6 +8104,23 @@ async function iniciarVisitaAgendada(id, userPos /* { lat, lng, accuracy } | nul
 // Verifica se visita pode ser editada
 // Regras:
 // - aprovada_pos_revisao: sempre travada (histórico imutável)
+// === Helper de revisão (Sprint 8.9 — limpeza da dívida técnica) ===
+// Centraliza a lógica de "essa visita está em revisão?".
+// Aceita as DUAS formas históricas pra evitar regressão em qualquer dado legado
+// que tenha escapado da migration 29.
+//
+// Forma legada (não deveria mais existir após migration 29):
+//   status='em_revisao'
+// Forma atual:
+//   status='rascunho' AND revisao_motivo preenchido AND revisao_resolvida_em IS NULL
+function estaEmRevisao(v) {
+  if (!v) return false;
+  if (v.status === 'em_revisao') return true; // proteção legada
+  return v.status === 'rascunho'
+      && !!v.revisao_motivo
+      && !v.revisao_resolvida_em;
+}
+
 // - em_revisao: travada (admin decide)
 // - rascunho devolvido pelo admin (tem revisao_solicitada_em): 24h a partir da devolução
 // - rascunho / completa normal: 24h a partir do check-in
@@ -7907,9 +8128,20 @@ function visitaPodeSerEditada(visita) {
   if (visita.status === 'aprovada_pos_revisao') {
     return { pode: false, motivo: 'Visita aprovada pelo administrador. Histórico imutável.' };
   }
-  if (visita.status === 'em_revisao') {
+  if (estaEmRevisao(visita)) {
     return { pode: false, motivo: 'Visita em revisão pelo administrador.' };
   }
+
+  // (Sprint 8.11) Janela de reabertura aprovada pelo admin sobrescreve regra de 24h
+  if (visita.reabertura_expira_em) {
+    const expira = new Date(visita.reabertura_expira_em);
+    const agora = new Date();
+    if (expira > agora) {
+      const horasRestantes = (expira - agora) / (1000 * 60 * 60);
+      return { pode: true, horasRestantes, reaberta: true };
+    }
+  }
+
   // Detecta devolução: rascunho com revisao_solicitada_em preenchido
   const foiDevolvida = visita.status === 'rascunho' && !!visita.revisao_solicitada_em;
   // Marco temporal: devolução (se foi devolvida) ou check-in original
@@ -7920,9 +8152,9 @@ function visitaPodeSerEditada(visita) {
     const horasPassadas = (agora - marco) / (1000 * 60 * 60);
     if (horasPassadas > 24) {
       const motivo = foiDevolvida
-        ? 'A janela de 24h para corrigir esta visita expirou. Solicite nova revisão ao administrador.'
-        : 'Janela de edição de 24h expirada. Solicite revisão ao administrador.';
-      return { pode: false, motivo };
+        ? 'A janela de 24h para corrigir esta visita expirou. Solicite reabertura ao administrador.'
+        : 'Janela de edição de 24h expirada. Solicite reabertura ao administrador.';
+      return { pode: false, motivo, podeSolicitar: true };
     }
     return { pode: true, horasRestantes: 24 - horasPassadas, devolvida: foiDevolvida };
   }
@@ -9248,6 +9480,13 @@ function renderInicio() {
     } catch (err) {
       console.error('[Home] Erro ao carregar dados:', err);
     }
+
+    // Carrega banner de reabertura (Sprint 8.12)
+    try {
+      await carregarBannerReaberturaNutri();
+    } catch (err) {
+      console.warn('[Home] Erro banner reabertura:', err);
+    }
   }, 0);
 
   const primeiroNome = user.nome.split(' ')[0];
@@ -9260,6 +9499,9 @@ function renderInicio() {
           <div class="home__greeting-title">${getSaudacao()}, ${primeiroNome}</div>
           <div class="home__greeting-date">${formatarDataPtBr(new Date())}</div>
         </div>
+
+        <!-- Banners de reabertura (Sprint 8.12) — preenchidos async -->
+        <div id="nutriReaberturaBanner" style="display:none;"></div>
 
         <a href="#/checkin" class="cta-checkin">
           <span class="cta-checkin__icon">
@@ -9532,11 +9774,11 @@ window.atualizarGPSManual = async function() {
 // Cadastra nova instituição direto da tela de check-in (antes mesmo de entrar no modal manual)
 window.cadastrarInstituicaoECheckin = async function() {
   if (await bloqueioSimulacao('cadastrar instituição')) return;
-  const dados = await showModalInstituicaoNova();
+  // Sprint 9.4: nutri pode colar URL do Maps/buscar no cadastro
+  const dados = await showModalInstituicaoNova({ permitirCoords: true });
   if (!dados) return;
-  // Se o profissional tem GPS ativo agora, usa essa posição como coords iniciais da instituição.
-  // Admin ajusta depois se necessário (geocoding + revisão manual).
-  if (CheckinFlow.userPos) {
+  // Sprint 9.4: GPS é fallback — só usa se nutri NÃO preencheu coords no modal
+  if ((dados.latitude == null || dados.longitude == null) && CheckinFlow.userPos) {
     dados.latitude = CheckinFlow.userPos.lat;
     dados.longitude = CheckinFlow.userPos.lng;
   }
@@ -9594,11 +9836,11 @@ window.editarMinhaInstituicaoPendente = async function(id) {
     });
     return;
   }
-  const novosDados = await showModalInstituicaoNova({ modo: 'edicao', instExistente: inst });
+  const novosDados = await showModalInstituicaoNova({ modo: 'edicao', instExistente: inst, permitirCoords: true });
   if (!novosDados) return;
-  // Se o profissional tem GPS ativo agora, atualiza as coords também (caso queira refinar)
+  // Sprint 9.4: GPS vira fallback — só usa se o nutri NÃO preencheu coords no modal
   const payload = { ...novosDados };
-  if (CheckinFlow.userPos) {
+  if (CheckinFlow.userPos && (payload.latitude == null || payload.longitude == null)) {
     payload.latitude = CheckinFlow.userPos.lat;
     payload.longitude = CheckinFlow.userPos.lng;
   }
@@ -9839,9 +10081,15 @@ function showModalSelectInstituicao(instituicoes) {
       if (addBtn) {
         addBtn.onclick = async () => {
           const nomeSugerido = searchEl.value.trim();
-          const dados = await showModalInstituicaoNova({ valorInicialNome: nomeSugerido });
+          // Sprint 9.4: nutri pode colar URL do Maps/buscar endereço já no cadastro
+          const dados = await showModalInstituicaoNova({ valorInicialNome: nomeSugerido, permitirCoords: true });
           if (!dados) return;
           try {
+            // Se o nutri NÃO preencheu coords mas GPS tá ativo, usa GPS como fallback
+            if ((dados.latitude == null || dados.longitude == null) && window.CheckinFlow && CheckinFlow.userPos) {
+              dados.latitude = CheckinFlow.userPos.lat;
+              dados.longitude = CheckinFlow.userPos.lng;
+            }
             const nova = await criarInstituicaoSugerida(dados);
             cleanup();
             resolve(nova);
@@ -10290,50 +10538,41 @@ function renderVisitas() {
   const user = requireAuth();
   if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
 
+  // Inicializa filtro padrão (Sprint 8.10)
+  if (!window._visitasNutriFiltro) window._visitasNutriFiltro = 'todas';
+
   setTimeout(async () => {
-    const listEl = document.getElementById('visitasList');
-    if (!listEl) return;
-    try {
-      const visitas = await listarMinhasVisitas(50);
-      if (visitas.length === 0) {
-        listEl.innerHTML = `
-          <div class="empty-state" style="margin:0;">
-            <div class="empty-state__icon">
-              <span class="material-symbols-rounded">assignment</span>
-            </div>
-            <div class="empty-state__title">Nenhuma visita ainda</div>
-            <div class="empty-state__desc">Faça seu primeiro check-in pra começar.</div>
-            <a href="#/checkin" class="btn-auth btn-auth--primary" style="display:inline-flex;text-decoration:none;width:auto;padding:12px 24px;min-height:auto;">
-              <span class="material-symbols-rounded" style="font-size:20px">my_location</span>
-              Fazer check-in
-            </a>
-          </div>
-        `;
-      } else {
-        listEl.innerHTML = visitas.map(v => `
-          <a href="#/visitas/relatorio?id=${v.id}" data-id="${v.id}" class="visits-list__item">
-            <div class="visits-list__icon">
-              <span class="material-symbols-rounded">local_hospital</span>
-            </div>
-            <div class="visits-list__info">
-              <div class="visits-list__name">${(v.instituicoes?.nome || 'Instituição').replace(/"/g,'&quot;')}</div>
-              <div class="visits-list__time">${formatarTempoRelativo(v.data_visita + 'T' + (v.horario_inicio || '00:00:00'))}</div>
-            </div>
-            ${sbadgeForStatus(v)}
-          </a>
-        `).join('');
-        // Destaca a visita se veio da busca global (?id=X)
-        destacarItemDaURL('.visits-list__item[data-id="%ID%"]');
-      }
-    } catch (err) {
-      listEl.innerHTML = `<div style="padding:20px;text-align:center;color:var(--status-danger);">Erro: ${err.message}</div>`;
-    }
+    await carregarMinhasVisitas();
   }, 0);
 
   return `
     <div class="mobile-app">
       ${mobileTopBar({ title: 'Minhas visitas', showBack: true })}
       <main class="mcontent">
+        <div class="review-tabs" style="margin-bottom:10px;">
+          <button class="review-tab ${window._visitasNutriFiltro === 'todas' ? 'is-active' : ''}" onclick="trocarFiltroMinhasVisitas('todas')">
+            Todas <span class="review-tab__count" id="cntMvTodas">—</span>
+          </button>
+          <button class="review-tab ${window._visitasNutriFiltro === 'concluidas' ? 'is-active' : ''}" onclick="trocarFiltroMinhasVisitas('concluidas')">
+            Concluídas <span class="review-tab__count" id="cntMvConcluidas">—</span>
+          </button>
+          <button class="review-tab ${window._visitasNutriFiltro === 'em_revisao' ? 'is-active' : ''}" onclick="trocarFiltroMinhasVisitas('em_revisao')">
+            Em revisão <span class="review-tab__count" id="cntMvRevisao">—</span>
+          </button>
+          <button class="review-tab ${window._visitasNutriFiltro === 'rascunhos' ? 'is-active' : ''}" onclick="trocarFiltroMinhasVisitas('rascunhos')">
+            Rascunhos <span class="review-tab__count" id="cntMvRascunhos">—</span>
+          </button>
+        </div>
+
+        <div style="position:relative;margin:0 0 12px;">
+          <span class="material-symbols-rounded" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--neutral-500);font-size:18px;pointer-events:none;">search</span>
+          <input type="text"
+                 id="mvBusca"
+                 placeholder="Filtrar por instituição..."
+                 oninput="filtrarMinhasVisitasLocal(this.value)"
+                 style="width:100%;padding:10px 14px 10px 38px;border:1px solid var(--neutral-200);border-radius:10px;font-family:inherit;font-size:13px;background:var(--neutral-0);color:var(--brand-navy);" />
+        </div>
+
         <div class="visits-list" id="visitasList" style="background:var(--neutral-0);">
           <div style="padding:20px;text-align:center;color:var(--neutral-500);font-size:13px;">Carregando...</div>
         </div>
@@ -10342,6 +10581,130 @@ function renderVisitas() {
     </div>
   `;
 }
+
+// Carrega e renderiza visitas aplicando o filtro atual (Sprint 8.10)
+async function carregarMinhasVisitas() {
+  const listEl = document.getElementById('visitasList');
+  if (!listEl) return;
+
+  try {
+    const todas = await listarMinhasVisitas(200);
+
+    // Calcula contagens por bucket pras abas
+    let cConcluidas = 0, cRevisao = 0, cRascunhos = 0;
+    todas.forEach(v => {
+      if (v.status === 'completa' || v.status === 'aprovada_pos_revisao') cConcluidas++;
+      else if (estaEmRevisao(v)) cRevisao++;
+      else if (v.status === 'rascunho') cRascunhos++;
+    });
+    const cnt = (id, n) => { const el = document.getElementById(id); if (el) el.textContent = n; };
+    cnt('cntMvTodas', todas.length);
+    cnt('cntMvConcluidas', cConcluidas);
+    cnt('cntMvRevisao', cRevisao);
+    cnt('cntMvRascunhos', cRascunhos);
+
+    // Aplica filtro de aba
+    const filtro = window._visitasNutriFiltro || 'todas';
+    let visitas = todas;
+    if (filtro === 'concluidas') {
+      visitas = todas.filter(v => v.status === 'completa' || v.status === 'aprovada_pos_revisao');
+    } else if (filtro === 'em_revisao') {
+      visitas = todas.filter(v => estaEmRevisao(v));
+    } else if (filtro === 'rascunhos') {
+      // Rascunhos PUROS — não inclui os que estão em revisão (esses têm aba própria)
+      visitas = todas.filter(v => v.status === 'rascunho' && !estaEmRevisao(v));
+    }
+
+    if (visitas.length === 0) {
+      // Empty state contextual por filtro
+      const empties = {
+        todas: { icon: 'assignment', titulo: 'Nenhuma visita ainda', desc: 'Faça seu primeiro check-in pra começar.' },
+        concluidas: { icon: 'task_alt', titulo: 'Nenhuma visita concluída', desc: 'Suas visitas finalizadas aparecem aqui.' },
+        em_revisao: { icon: 'inbox', titulo: 'Nada em revisão', desc: 'Quando o admin pedir correções, aparecem aqui.' },
+        rascunhos: { icon: 'edit_note', titulo: 'Nenhum rascunho', desc: 'Visitas em andamento ficam aqui até serem finalizadas.' },
+      };
+      const e = empties[filtro] || empties.todas;
+      listEl.innerHTML = `
+        <div class="empty-state" style="margin:0;">
+          <div class="empty-state__icon">
+            <span class="material-symbols-rounded">${e.icon}</span>
+          </div>
+          <div class="empty-state__title">${e.titulo}</div>
+          <div class="empty-state__desc">${e.desc}</div>
+          ${filtro === 'todas' ? `
+            <a href="#/checkin" class="btn-auth btn-auth--primary" style="display:inline-flex;text-decoration:none;width:auto;padding:12px 24px;min-height:auto;">
+              <span class="material-symbols-rounded" style="font-size:20px">my_location</span>
+              Fazer check-in
+            </a>
+          ` : ''}
+        </div>
+      `;
+      return;
+    }
+
+    listEl.innerHTML = visitas.map(v => `
+      <a href="#/visitas/relatorio?id=${v.id}" data-id="${v.id}" class="visits-list__item">
+        <div class="visits-list__icon">
+          <span class="material-symbols-rounded">local_hospital</span>
+        </div>
+        <div class="visits-list__info">
+          <div class="visits-list__name">${(v.instituicoes?.nome || 'Instituição').replace(/"/g,'&quot;')}</div>
+          <div class="visits-list__time">${formatarTempoRelativo(v.data_visita + 'T' + (v.horario_inicio || '00:00:00'))}</div>
+        </div>
+        ${sbadgeForStatus(v)}
+      </a>
+    `).join('');
+    // Destaca a visita se veio da busca global (?id=X)
+    destacarItemDaURL('.visits-list__item[data-id="%ID%"]');
+
+    // Reaplica busca se houver texto digitado (preserva durante a troca de aba não, mas aqui aplica se sobreviveu)
+    const inp = document.getElementById('mvBusca');
+    if (inp && inp.value) filtrarMinhasVisitasLocal(inp.value);
+  } catch (err) {
+    listEl.innerHTML = `<div style="padding:20px;text-align:center;color:var(--status-danger);">Erro: ${err.message}</div>`;
+  }
+}
+
+// Troca o filtro ativo da tela "Minhas visitas"
+window.trocarFiltroMinhasVisitas = function(filtro) {
+  window._visitasNutriFiltro = filtro;
+  // Atualiza estado visual das abas
+  const tabs = document.querySelectorAll('.review-tabs .review-tab');
+  const ordem = ['todas','concluidas','em_revisao','rascunhos'];
+  tabs.forEach((t, i) => t.classList.toggle('is-active', ordem[i] === filtro));
+  // Limpa busca ao trocar de aba
+  const inp = document.getElementById('mvBusca');
+  if (inp) inp.value = '';
+  carregarMinhasVisitas();
+};
+
+// Filtro local nos cards já renderizados (Sprint 8.10)
+window.filtrarMinhasVisitasLocal = function(termo) {
+  const t = (termo || '').trim().toLowerCase();
+  const cards = document.querySelectorAll('#visitasList .visits-list__item');
+  let matches = 0;
+  cards.forEach(card => {
+    if (!t) { card.style.display = ''; matches++; return; }
+    const texto = card.textContent.toLowerCase();
+    const visivel = texto.includes(t);
+    card.style.display = visivel ? '' : 'none';
+    if (visivel) matches++;
+  });
+  let msgEl = document.getElementById('mvBuscaSemResultado');
+  if (t && matches === 0) {
+    if (!msgEl) {
+      msgEl = document.createElement('div');
+      msgEl.id = 'mvBuscaSemResultado';
+      msgEl.style.cssText = 'padding:30px;text-align:center;color:var(--neutral-500);font-size:13px;';
+      msgEl.innerHTML = `<span class="material-symbols-rounded" style="font-size:32px;display:block;margin-bottom:6px;color:var(--neutral-300);">search_off</span>Nenhum resultado pra "${t.replace(/</g,'&lt;')}"`;
+      document.getElementById('visitasList').appendChild(msgEl);
+    } else {
+      msgEl.innerHTML = `<span class="material-symbols-rounded" style="font-size:32px;display:block;margin-bottom:6px;color:var(--neutral-300);">search_off</span>Nenhum resultado pra "${t.replace(/</g,'&lt;')}"`;
+    }
+  } else if (msgEl) {
+    msgEl.remove();
+  }
+};
 
 /* ==========================================================================
    Sprint 2.3 — RELATÓRIO DA VISITA
@@ -10498,20 +10861,7 @@ function hydrateReportForm() {
       </div>
     ` : ''}
 
-    ${v.status === 'em_revisao' ? `
-      <div class="review-notice-nutri">
-        <div class="review-notice-nutri__icon">
-          <span class="material-symbols-rounded">rate_review</span>
-        </div>
-        <div class="review-notice-nutri__body">
-          <div class="review-notice-nutri__title">Visita em revisão pelo administrador</div>
-          <div class="review-notice-nutri__text">Você não pode editar agora. Aguarde o admin aprovar ou devolver.</div>
-          ${v.revisao_motivo ? `
-            <div class="review-notice-nutri__motivo">"${v.revisao_motivo.replace(/"/g,'&quot;')}"</div>
-          ` : ''}
-        </div>
-      </div>
-    ` : v.status === 'rascunho' && v.revisao_motivo ? `
+    ${estaEmRevisao(v) ? `
       <div class="review-notice-nutri" style="background:linear-gradient(135deg,#FEF4E1 0%,#FFF8E5 100%);border-color:rgba(245,158,11,0.3);">
         <div class="review-notice-nutri__icon" style="background:var(--status-warning);">
           <span class="material-symbols-rounded">undo</span>
@@ -10520,11 +10870,14 @@ function hydrateReportForm() {
           <div class="review-notice-nutri__title" style="color:#B45309;">Admin pediu correção nesta visita</div>
           <div class="review-notice-nutri__text" style="color:#92400E;">Revise os campos sinalizados, corrija e finalize novamente.</div>
           <div class="review-notice-nutri__motivo" style="border-color:rgba(245,158,11,0.25);">
-            "${v.revisao_motivo.replace(/"/g,'&quot;')}"
+            "${(v.revisao_motivo || '').replace(/"/g,'&quot;')}"
           </div>
         </div>
       </div>
     ` : ''}
+
+    <!-- Banner de reabertura (Sprint 8.11) — preenchido async pelo carregarReaberturaBanner -->
+    <div id="reaberturaBannerSlot" data-visita-id="${v.id}"></div>
 
     ${readonly ? `
       <div class="report-lock-warning">
@@ -10685,6 +11038,18 @@ function hydrateReportForm() {
   renderObjetivos();
   renderProfSelected();
   updateTimeWarning();
+
+  // Banner de reabertura (Sprint 8.11) — async
+  (async () => {
+    const slot = document.getElementById('reaberturaBannerSlot');
+    if (!slot) return;
+    try {
+      const html = await renderReaberturaBanner(v, editabilidade);
+      slot.innerHTML = html;
+    } catch (err) {
+      console.warn('[renderReaberturaBanner] erro:', err);
+    }
+  })();
 }
 
 function renderObjetivos() {
@@ -11586,6 +11951,18 @@ function renderAgenda() {
           <div style="font-size:12.5px;color:var(--neutral-600);margin-top:2px;">Planeje suas visitas e inicie o check-in com um toque.</div>
         </div>
 
+        <div class="review-tabs" style="margin-bottom:14px;">
+          <button class="review-tab ${(window._nutriAgendaView || 'lista') === 'lista' ? 'is-active' : ''}" onclick="trocarNutriAgendaView('lista')">
+            <span class="material-symbols-rounded" style="font-size:16px;vertical-align:-3px;margin-right:4px;">view_list</span>Lista
+          </button>
+          <button class="review-tab ${(window._nutriAgendaView || 'lista') === 'semana' ? 'is-active' : ''}" onclick="trocarNutriAgendaView('semana')">
+            <span class="material-symbols-rounded" style="font-size:16px;vertical-align:-3px;margin-right:4px;">date_range</span>Semana
+          </button>
+          <button class="review-tab ${(window._nutriAgendaView || 'lista') === 'calendario' ? 'is-active' : ''}" onclick="trocarNutriAgendaView('calendario')">
+            <span class="material-symbols-rounded" style="font-size:16px;vertical-align:-3px;margin-right:4px;">calendar_month</span>Calendário
+          </button>
+        </div>
+
         <div id="agendaLista">
           <div style="padding:30px;text-align:center;color:var(--neutral-500);font-size:13px;">Carregando...</div>
         </div>
@@ -11634,6 +12011,25 @@ async function carregarAgenda() {
     return;
   }
 
+  const view = window._nutriAgendaView || 'lista';
+  if (view === 'semana')          listaEl.innerHTML = renderNutriAgendaSemana(ags);
+  else if (view === 'calendario') listaEl.innerHTML = renderNutriAgendaCalendario(ags);
+  else                            listaEl.innerHTML = renderNutriAgendaLista(ags);
+}
+
+// Troca a view ativa da agenda do nutri
+window.trocarNutriAgendaView = function(view) {
+  window._nutriAgendaView = view;
+  // Atualiza tabs
+  document.querySelectorAll('.review-tabs .review-tab').forEach((t, i) => {
+    const views = ['lista', 'semana', 'calendario'];
+    t.classList.toggle('is-active', views[i] === view);
+  });
+  carregarAgenda();
+};
+
+// Vista 1 — Lista agrupada por bucket (comportamento original)
+function renderNutriAgendaLista(ags) {
   // Separa sugestões pendentes (top priority) das agendadas normais
   const sugeridas = ags.filter(a => a.status === 'sugerida');
   const agendadas = ags.filter(a => a.status === 'agendada');
@@ -11696,7 +12092,234 @@ async function carregarAgenda() {
       </div>
     `;
   });
-  listaEl.innerHTML = html;
+  return html;
+}
+
+// Vista 2 — Semana: 7 dias da semana atual, agrupados por dia
+function renderNutriAgendaSemana(ags) {
+  const offset = window._nutriAgendaSemanaOffset || 0;
+
+  // Calcula início da semana (segunda) com offset
+  const hoje = new Date();
+  hoje.setHours(0, 0, 0, 0);
+  const diaSemana = hoje.getDay();
+  const diffParaSegunda = diaSemana === 0 ? -6 : (1 - diaSemana);
+  const segundaAtual = new Date(hoje);
+  segundaAtual.setDate(segundaAtual.getDate() + diffParaSegunda);
+  const inicioSemana = new Date(segundaAtual);
+  inicioSemana.setDate(inicioSemana.getDate() + offset * 7);
+  const fimSemana = new Date(inicioSemana);
+  fimSemana.setDate(fimSemana.getDate() + 6);
+
+  const inicioStr = ymd(inicioSemana);
+  const fimStr = ymd(fimSemana);
+
+  // Filtra só agendamentos da semana
+  const agsDaSemana = ags.filter(a => {
+    const d = a.data_visita;
+    return d >= inicioStr && d <= fimStr;
+  });
+
+  // Agrupa por data
+  const porData = {};
+  agsDaSemana.forEach(a => {
+    if (!porData[a.data_visita]) porData[a.data_visita] = [];
+    porData[a.data_visita].push(a);
+  });
+
+  const diasLabels = ['SEGUNDA','TERÇA','QUARTA','QUINTA','SEXTA','SÁBADO','DOMINGO'];
+  const meses = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+  const hojeStr = ymd(hoje);
+
+  let diasHtml = '';
+  for (let i = 0; i < 7; i++) {
+    const dt = new Date(inicioSemana);
+    dt.setDate(dt.getDate() + i);
+    const dtStr = ymd(dt);
+    const isHoje = dtStr === hojeStr;
+    const isPassado = dtStr < hojeStr;
+    const dia = dt.getDate();
+    const mes = meses[dt.getMonth()];
+    const agsDoDia = (porData[dtStr] || []).sort((a, b) =>
+      (a.horario_inicio || '99:99') < (b.horario_inicio || '99:99') ? -1 : 1
+    );
+
+    const corBolinha = isHoje ? 'var(--brand-lime)' : (isPassado ? 'var(--neutral-300)' : 'var(--brand-navy)');
+    const corTitulo = isPassado && !isHoje ? 'var(--neutral-500)' : 'var(--brand-navy)';
+
+    diasHtml += `
+      <div style="margin-bottom:18px;${isPassado && !isHoje ? 'opacity:.55;' : ''}">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+          <div style="width:8px;height:8px;border-radius:50%;background:${corBolinha};"></div>
+          <div style="font-family:var(--font-display);font-weight:700;color:${corTitulo};font-size:13px;text-transform:uppercase;letter-spacing:.5px;">
+            ${diasLabels[i]} ${String(dia).padStart(2,'0')}/${mes}
+          </div>
+          ${isHoje ? '<span style="background:var(--brand-lime);color:#fff;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;">HOJE</span>' : ''}
+          ${agsDoDia.length > 0 ? `<div style="background:var(--neutral-100);color:var(--neutral-600);padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;">${agsDoDia.length}</div>` : ''}
+        </div>
+        ${agsDoDia.length === 0
+          ? `<div style="padding:10px 14px;background:var(--neutral-50);border-radius:8px;color:var(--neutral-400);font-size:12px;font-style:italic;">— nada agendado —</div>`
+          : `<div style="display:flex;flex-direction:column;gap:8px;">
+              ${agsDoDia.map(a => cardAgendamento(a, bucketDoAgendamento(a.data_visita))).join('')}
+            </div>`
+        }
+      </div>
+    `;
+  }
+
+  // Label da navegação
+  const labelInicio = `${String(inicioSemana.getDate()).padStart(2,'0')} ${meses[inicioSemana.getMonth()]}`;
+  const labelFim = `${String(fimSemana.getDate()).padStart(2,'0')} ${meses[fimSemana.getMonth()]} ${fimSemana.getFullYear()}`;
+
+  return `
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;padding:8px;background:var(--neutral-0);border-radius:10px;border:1px solid var(--neutral-200);">
+      <button onclick="nutriAgendaMoverSemana(-1)" title="Semana anterior" style="background:transparent;border:none;cursor:pointer;padding:6px;border-radius:6px;color:var(--brand-navy);">
+        <span class="material-symbols-rounded" style="font-size:20px;">chevron_left</span>
+      </button>
+      <div style="flex:1;text-align:center;font-family:var(--font-display);font-weight:600;color:var(--brand-navy);font-size:13px;">${labelInicio} – ${labelFim}</div>
+      ${offset !== 0 ? `<button onclick="nutriAgendaMoverSemana(0)" style="background:var(--brand-navy);color:#fff;border:none;cursor:pointer;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:600;">Hoje</button>` : ''}
+      <button onclick="nutriAgendaMoverSemana(1)" title="Próxima semana" style="background:transparent;border:none;cursor:pointer;padding:6px;border-radius:6px;color:var(--brand-navy);">
+        <span class="material-symbols-rounded" style="font-size:20px;">chevron_right</span>
+      </button>
+    </div>
+    ${diasHtml}
+  `;
+}
+
+// Navega entre semanas na vista Semana
+window.nutriAgendaMoverSemana = function(delta) {
+  if (delta === 0) window._nutriAgendaSemanaOffset = 0;
+  else window._nutriAgendaSemanaOffset = (window._nutriAgendaSemanaOffset || 0) + delta;
+  carregarAgenda();
+};
+
+// Vista 3 — Calendário (mês com bolinhas indicando agendamentos)
+function renderNutriAgendaCalendario(ags) {
+  const offset = window._nutriAgendaMesOffset || 0;
+  const hoje = new Date();
+  hoje.setHours(0, 0, 0, 0);
+  const mesAtual = new Date(hoje.getFullYear(), hoje.getMonth() + offset, 1);
+  const ano = mesAtual.getFullYear();
+  const mes = mesAtual.getMonth();
+
+  // Quantos dias tem o mês
+  const ultimoDiaDoMes = new Date(ano, mes + 1, 0).getDate();
+
+  // Dia da semana do dia 1 (0=dom, 1=seg, ..., 6=sab)
+  const primeiroDow = new Date(ano, mes, 1).getDay();
+  // Ajusta pra começar segunda (0=seg, ..., 6=dom)
+  const primeiroOffset = primeiroDow === 0 ? 6 : primeiroDow - 1;
+
+  // Mapeia datas -> agendamentos
+  const porData = {};
+  ags.forEach(a => {
+    if (!porData[a.data_visita]) porData[a.data_visita] = [];
+    porData[a.data_visita].push(a);
+  });
+
+  const meses = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  const diasSemana = ['SEG','TER','QUA','QUI','SEX','SÁB','DOM'];
+  const hojeStr = ymd(hoje);
+
+  // Cabeçalho dos dias
+  let cabHtml = diasSemana.map(d =>
+    `<div style="text-align:center;font-family:var(--font-display);font-weight:700;font-size:10px;color:var(--neutral-500);padding:6px 0;text-transform:uppercase;letter-spacing:.5px;">${d}</div>`
+  ).join('');
+
+  // Células vazias antes do dia 1
+  let cellsHtml = '';
+  for (let i = 0; i < primeiroOffset; i++) {
+    cellsHtml += `<div></div>`;
+  }
+
+  // Dias do mês
+  for (let dia = 1; dia <= ultimoDiaDoMes; dia++) {
+    const dtStr = `${ano}-${String(mes+1).padStart(2,'0')}-${String(dia).padStart(2,'0')}`;
+    const isHoje = dtStr === hojeStr;
+    const isPassado = dtStr < hojeStr;
+    const agsDoDia = porData[dtStr] || [];
+    const temAgs = agsDoDia.length > 0;
+
+    let bg = 'transparent';
+    let cor = 'var(--brand-navy)';
+    let borda = '1px solid transparent';
+    if (isHoje) { bg = 'var(--brand-lime)'; cor = '#fff'; }
+    else if (temAgs) { bg = 'var(--status-info-bg, #E4ECFD)'; borda = '1px solid var(--status-info)'; }
+    if (isPassado && !isHoje && !temAgs) cor = 'var(--neutral-400)';
+
+    cellsHtml += `
+      <button onclick="nutriAbrirDiaCalendario('${dtStr}')"
+              style="aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;border:${borda};background:${bg};color:${cor};border-radius:8px;cursor:pointer;font-family:var(--font-display);font-weight:600;font-size:13px;padding:0;position:relative;">
+        ${dia}
+        ${temAgs && !isHoje ? `<div style="position:absolute;bottom:4px;width:4px;height:4px;border-radius:50%;background:var(--status-info);"></div>` : ''}
+        ${temAgs && isHoje ? `<div style="position:absolute;bottom:4px;font-size:9px;font-weight:700;">${agsDoDia.length}</div>` : ''}
+      </button>
+    `;
+  }
+
+  return `
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;padding:8px;background:var(--neutral-0);border-radius:10px;border:1px solid var(--neutral-200);">
+      <button onclick="nutriAgendaMoverMes(-1)" title="Mês anterior" style="background:transparent;border:none;cursor:pointer;padding:6px;border-radius:6px;color:var(--brand-navy);">
+        <span class="material-symbols-rounded" style="font-size:20px;">chevron_left</span>
+      </button>
+      <div style="flex:1;text-align:center;font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:14px;">${meses[mes]} ${ano}</div>
+      ${offset !== 0 ? `<button onclick="nutriAgendaMoverMes(0)" style="background:var(--brand-navy);color:#fff;border:none;cursor:pointer;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:600;">Hoje</button>` : ''}
+      <button onclick="nutriAgendaMoverMes(1)" title="Próximo mês" style="background:transparent;border:none;cursor:pointer;padding:6px;border-radius:6px;color:var(--brand-navy);">
+        <span class="material-symbols-rounded" style="font-size:20px;">chevron_right</span>
+      </button>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;background:var(--neutral-0);padding:8px;border-radius:10px;border:1px solid var(--neutral-200);">
+      ${cabHtml}
+      ${cellsHtml}
+    </div>
+
+    <div id="nutriCalendarioDia" style="margin-top:14px;"></div>
+  `;
+}
+
+// Navega entre meses na vista Calendário
+window.nutriAgendaMoverMes = function(delta) {
+  if (delta === 0) window._nutriAgendaMesOffset = 0;
+  else window._nutriAgendaMesOffset = (window._nutriAgendaMesOffset || 0) + delta;
+  carregarAgenda();
+};
+
+// Mostra detalhes de um dia clicado no calendário
+window.nutriAbrirDiaCalendario = async function(dtStr) {
+  const ags = await listarAgendamentosDoUser();
+  const agsDoDia = ags.filter(a => a.data_visita === dtStr).sort((a, b) =>
+    (a.horario_inicio || '99:99') < (b.horario_inicio || '99:99') ? -1 : 1
+  );
+  const detalheEl = document.getElementById('nutriCalendarioDia');
+  if (!detalheEl) return;
+
+  const [y, m, d] = dtStr.split('-').map(Number);
+  const dt = new Date(y, m - 1, d);
+  const diasSemana = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
+  const labelData = `${diasSemana[dt.getDay()]}, ${String(d).padStart(2,'0')}/${String(m).padStart(2,'0')}/${y}`;
+
+  if (agsDoDia.length === 0) {
+    detalheEl.innerHTML = `
+      <div style="padding:14px;background:var(--neutral-50);border-radius:10px;text-align:center;color:var(--neutral-500);font-size:13px;">
+        <strong>${labelData}</strong><br>
+        <span style="font-style:italic;">Nada agendado nesse dia.</span>
+      </div>
+    `;
+    return;
+  }
+
+  detalheEl.innerHTML = `
+    <div style="margin-bottom:8px;font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:13px;">${labelData} <span style="color:var(--neutral-500);font-weight:400;">(${agsDoDia.length})</span></div>
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      ${agsDoDia.map(a => cardAgendamento(a, bucketDoAgendamento(a.data_visita))).join('')}
+    </div>
+  `;
+}
+
+// Helper: formata Date como YYYY-MM-DD local
+function ymd(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 
 // Card compacto pra sugestões pendentes — foco nos botões Aceitar/Recusar
@@ -11908,6 +12531,10 @@ function showModalAgendamento({ instituicoes, objetivos, hojeStr, agendamento = 
               <option value="">Selecione...</option>
               ${instOpts}
             </select>
+            <button type="button" id="agNovaInst" style="margin-top:6px;background:transparent;border:none;color:var(--status-info);font-size:12.5px;font-weight:600;cursor:pointer;padding:4px 0;display:inline-flex;align-items:center;gap:4px;font-family:inherit;">
+              <span class="material-symbols-rounded" style="font-size:16px;">add_circle</span>
+              Nova instituição
+            </button>
           </div>
           <div class="report-field" style="margin-bottom:12px;">
             <label for="agData">Data <span style="color:var(--status-danger);">*</span></label>
@@ -11938,6 +12565,36 @@ function showModalAgendamento({ instituicoes, objetivos, hojeStr, agendamento = 
     document.body.appendChild(backdrop);
     const cleanup = () => backdrop.remove();
     document.getElementById('agCancel').onclick = () => { cleanup(); resolve(null); };
+
+    // Botão "+ Nova instituição" — abre sub-modal de cadastro rápido
+    document.getElementById('agNovaInst').onclick = async () => {
+      const user = getCurrentUser();
+      const isAdmin = user?.perfil === 'admin' && !user?._simulando;
+      // Sprint 9.4: admin usa modal completo, nutri usa modal básico + coords
+      const dados = await showModalInstituicaoNova(
+        isAdmin ? { perfilAdmin: true } : { permitirCoords: true }
+      );
+      if (!dados) return; // cancelou
+      try {
+        const nova = await criarInstituicao(dados, { ativaDireto: isAdmin });
+        // Adiciona a nova opção no select e seleciona automaticamente
+        const select = document.getElementById('agInst');
+        if (select) {
+          const opt = document.createElement('option');
+          opt.value = nova.id;
+          opt.textContent = (nova.nome || '') + (nova.pendente_aprovacao ? ' (pendente)' : '');
+          opt.selected = true;
+          select.appendChild(opt);
+        }
+        setFlash(isAdmin ? 'success' : 'info',
+          isAdmin
+            ? `Instituição "${nova.nome}" cadastrada.`
+            : `Instituição "${nova.nome}" cadastrada como pendente. Admin vai aprovar.`);
+      } catch (err) {
+        alert('Erro ao cadastrar: ' + err.message);
+      }
+    };
+
     document.getElementById('agOk').onclick = () => {
       const instituicao_id = document.getElementById('agInst').value;
       const data = document.getElementById('agData').value;
@@ -12061,16 +12718,18 @@ function renderAdminDashboard() {
   // Carrega contagens de pendências async
   setTimeout(async () => {
     try {
-      const [instPend, objPend, eqCnts] = await Promise.all([
+      const [instPend, objPend, eqCnts, reabPend] = await Promise.all([
         listarInstituicoesPendentes(),
         listarObjetivosPendentes(),
         contarUsuariosPorStatus(),
+        listarSolicitacoesReaberturaPendentes(),
       ]);
       const banner = document.getElementById('pendingAprovacoesBanner');
       if (!banner) return;
       const totalDados = instPend.length + objPend.length;
       const totalEquipe = eqCnts.pendentes;
-      const total = totalDados + totalEquipe;
+      const totalReab = reabPend.length;
+      const total = totalDados + totalEquipe + totalReab;
       if (total === 0) {
         banner.style.display = 'none';
         return;
@@ -12120,6 +12779,30 @@ function renderAdminDashboard() {
               <div style="font-size:11.5px;color:#92400E;margin-top:2px;">${partes.join(' · ')} ${totalDados === 1 ? 'aguarda' : 'aguardam'} sua revisão.</div>
             </div>
             <span class="material-symbols-rounded" style="font-size:18px;color:var(--status-warning);">arrow_forward</span>
+          </a>
+        `);
+      }
+
+      // Banner 3: Solicitações de reabertura de visita (Sprint 8.11)
+      if (totalReab > 0) {
+        // Leva pra visita da solicitação mais recente (admin vai ver o banner + botões lá)
+        const primeiraVisitaId = reabPend[0].visita_id;
+        bannersHtml.push(`
+          <a href="#/visitas/relatorio?id=${primeiraVisitaId}" style="
+            display:flex;align-items:center;gap:12px;padding:14px 16px;margin-bottom:10px;
+            background:linear-gradient(135deg,#E4ECFD 0%,#EFF3FC 100%);
+            border:1.5px solid rgba(37,99,235,0.35);border-radius:12px;
+            text-decoration:none;color:inherit;transition:all 140ms;position:relative;
+          " onmouseover="this.style.transform='translateY(-1px)';this.style.boxShadow='0 4px 12px rgba(37,99,235,0.15)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
+            <div style="position:relative;width:40px;height:40px;border-radius:10px;background:var(--status-info);color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+              <span class="material-symbols-rounded" style="font-size:22px;">lock_open</span>
+              <span style="position:absolute;top:-4px;right:-4px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--status-danger);color:#fff;font-size:10.5px;font-weight:800;display:flex;align-items:center;justify-content:center;border:2px solid #fff;">${totalReab}</span>
+            </div>
+            <div style="flex:1;">
+              <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:14px;line-height:1.3;">Solicitações de reabertura</div>
+              <div style="font-size:11.5px;color:#1E40AF;margin-top:2px;"><strong>${totalReab}</strong> ${totalReab === 1 ? 'profissional quer reabrir uma visita' : 'profissionais querem reabrir visitas'}.</div>
+            </div>
+            <span class="material-symbols-rounded" style="font-size:18px;color:var(--status-info);">arrow_forward</span>
           </a>
         `);
       }
@@ -13057,6 +13740,15 @@ function renderAdminRevisao() {
           </button>
         </div>
 
+        <div style="position:relative;margin:12px 0 8px;">
+          <span class="material-symbols-rounded" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--neutral-500);font-size:18px;pointer-events:none;">search</span>
+          <input type="text"
+                 id="revisaoBusca"
+                 placeholder="Filtrar por instituição, profissional..."
+                 oninput="filtrarRevisaoLocal(this.value)"
+                 style="width:100%;padding:10px 14px 10px 38px;border:1px solid var(--neutral-200);border-radius:10px;font-family:inherit;font-size:13px;background:var(--neutral-0);color:var(--brand-navy);" />
+        </div>
+
         <div id="reviewList">
           <div style="padding:30px 20px;text-align:center;color:var(--neutral-500);font-size:13px;">
             <span class="material-symbols-rounded" style="font-size:28px;color:var(--neutral-400);">hourglass_empty</span>
@@ -13117,10 +13809,8 @@ async function carregarFilaRevisao() {
 
     listEl.innerHTML = visitas.map(v => {
       const nivel = v._nivel || 'info';
-      // Classe especial pra visitas com revisão solicitada (devolvidas pro profissional),
-      // independente do status (rascunho novo padrão ou em_revisao legado)
-      const emRevisao = v.status === 'em_revisao' || (v.status === 'rascunho' && v.revisao_motivo && !v.revisao_resolvida_em);
-      const cardClass = emRevisao ? 'review-card--in-review' : `review-card--${nivel}`;
+      // Classe especial pra visitas em revisão (devolvidas pro profissional)
+      const cardClass = estaEmRevisao(v) ? 'review-card--in-review' : `review-card--${nivel}`;
       const dataFmt = v.checkin_timestamp ? formatarTempoRelativo(v.checkin_timestamp) : (v.data_visita || '—');
       const nutriNome = v.usuarios?.nome || v.nutricionista?.nome || '—';
       const flagsHtml = v._flags.slice(0, 3).map(f => `
@@ -13179,7 +13869,38 @@ window.trocarFiltroRevisao = function(filtro) {
   document.querySelectorAll('.review-tab').forEach(t => {
     t.classList.toggle('is-active', t.dataset.filtro === filtro);
   });
+  // Limpa busca ao trocar de aba
+  const buscaInput = document.getElementById('revisaoBusca');
+  if (buscaInput) buscaInput.value = '';
   carregarFilaRevisao();
+};
+
+// Filtro local nos cards da fila de revisão (Sprint 8.6)
+window.filtrarRevisaoLocal = function(termo) {
+  const t = (termo || '').trim().toLowerCase();
+  const cards = document.querySelectorAll('#reviewList .review-card');
+  let matches = 0;
+  cards.forEach(card => {
+    if (!t) { card.style.display = ''; matches++; return; }
+    const texto = card.textContent.toLowerCase();
+    const visivel = texto.includes(t);
+    card.style.display = visivel ? '' : 'none';
+    if (visivel) matches++;
+  });
+  let msgEl = document.getElementById('revisaoBuscaSemResultado');
+  if (t && matches === 0) {
+    if (!msgEl) {
+      msgEl = document.createElement('div');
+      msgEl.id = 'revisaoBuscaSemResultado';
+      msgEl.style.cssText = 'padding:30px;text-align:center;color:var(--neutral-500);font-size:13px;';
+      msgEl.innerHTML = `<span class="material-symbols-rounded" style="font-size:32px;display:block;margin-bottom:6px;color:var(--neutral-300);">search_off</span>Nenhum resultado pra "${t.replace(/</g,'&lt;')}"`;
+      document.getElementById('reviewList').appendChild(msgEl);
+    } else {
+      msgEl.innerHTML = `<span class="material-symbols-rounded" style="font-size:32px;display:block;margin-bottom:6px;color:var(--neutral-300);">search_off</span>Nenhum resultado pra "${t.replace(/</g,'&lt;')}"`;
+    }
+  } else if (msgEl) {
+    msgEl.remove();
+  }
 };
 
 /* ==========================================================================
@@ -13235,7 +13956,7 @@ function renderAdminVisitas() {
                 <option value="completa"${f.status === 'completa' ? ' selected' : ''}>Completa</option>
                 <option value="aprovada_pos_revisao"${f.status === 'aprovada_pos_revisao' ? ' selected' : ''}>Aprovada pós-revisão</option>
                 <option value="em_revisao"${f.status === 'em_revisao' ? ' selected' : ''}>Devolvida p/ revisão</option>
-                <option value="rascunho"${f.status === 'rascunho' ? ' selected' : ''}>Rascunho</option>
+                <option value="rascunho"${f.status === 'rascunho' ? ' selected' : ''}>Rascunho (profissional não finalizou)</option>
                 <option value="realizada"${f.status === 'realizada' ? ' selected' : ''}>Realizadas</option>
                 <option value="cancelada"${f.status === 'cancelada' ? ' selected' : ''}>Canceladas</option>
               </select>
@@ -13589,8 +14310,7 @@ function _aplicarFiltrosVisitas(query, f) {
   return query;
 }
 
-window.exportarVisitasCSV = async function() {
-  const btn = document.getElementById('avBtnExport');
+window.exportarVisitasCSV = async function() {  const btn = document.getElementById('avBtnExport');
   if (!btn) return;
   if (!db) { alert('Banco não conectado.'); return; }
 
@@ -13712,6 +14432,144 @@ window.exportarVisitasCSV = async function() {
     console.log(`[export CSV] ${todas.length} visitas exportadas -> ${nomeArquivo}`);
   } catch (err) {
     console.error('[exportarVisitasCSV] erro:', err);
+    alert('Erro ao exportar CSV: ' + (err.message || err));
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = textoOriginal;
+  }
+};
+
+/* ==========================================================================
+   Export CSV em outras telas (Sprint 8.7): Equipe e Instituições
+   ========================================================================== */
+
+// Exporta lista da Equipe (aba atual) em CSV
+window.exportarEquipeCSV = async function() {
+  const btn = document.getElementById('equipeBtnExport');
+  if (!btn) return;
+  if (!db) { alert('Banco não conectado.'); return; }
+
+  const textoOriginal = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="material-symbols-rounded" style="font-size:18px;">hourglass_top</span>';
+
+  try {
+    const filtro = window._equipeFilter || 'ativos';
+    if (filtro === 'categorias') {
+      alert('Exportação CSV disponível só nas abas de profissionais.');
+      return;
+    }
+
+    const statuses = filtro === 'pendentes' ? ['pendente']
+      : filtro === 'ativos' ? ['ativo']
+      : ['inativo', 'bloqueado'];
+    const users = await listarUsuariosPorStatus(statuses);
+
+    if (users.length === 0) {
+      alert('Nenhum usuário pra exportar nessa aba.');
+      return;
+    }
+
+    const cabecalho = ['Nome', 'CPF', 'Email', 'Telefone', 'Perfil', 'Status', 'Categoria', 'Cadastrado em', 'Último login'];
+    const linhas = users.map(u => [
+      u.nome || '',
+      u.cpf || '',
+      u.email || '',
+      u.telefone || '',
+      u.perfil || '',
+      u.status || '',
+      u.categorias_profissionais?.nome || '',
+      _fmtDateTimeBR(u.criado_em),
+      _fmtDateTimeBR(u.ultimo_login),
+    ].map(_csvField).join(';'));
+
+    const conteudoCsv = cabecalho.map(_csvField).join(';') + '\r\n' + linhas.join('\r\n') + '\r\n';
+    const BOM = '\uFEFF';
+    const blob = new Blob([BOM + conteudoCsv], { type: 'text/csv;charset=utf-8;' });
+
+    const hoje = new Date();
+    const dataStr = `${hoje.getFullYear()}-${String(hoje.getMonth()+1).padStart(2,'0')}-${String(hoje.getDate()).padStart(2,'0')}`;
+    const nomeArquivo = `equipe_${filtro}_${dataStr}.csv`;
+
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = nomeArquivo;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1500);
+
+    console.log(`[export equipe CSV] ${users.length} usuários exportados -> ${nomeArquivo}`);
+  } catch (err) {
+    console.error('[exportarEquipeCSV] erro:', err);
+    alert('Erro ao exportar CSV: ' + (err.message || err));
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = textoOriginal;
+  }
+};
+
+// Exporta lista de Instituições em CSV
+window.exportarInstCSV = async function() {
+  const btn = document.getElementById('instBtnExport');
+  if (!btn) return;
+  if (!db) { alert('Banco não conectado.'); return; }
+
+  const textoOriginal = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="material-symbols-rounded" style="font-size:18px;">hourglass_top</span>';
+
+  try {
+    const { data, error } = await db
+      .from('instituicoes')
+      .select('nome, cnpj, logradouro, bairro, cidade, estado, cep, latitude, longitude, ativo, pendente_aprovacao, criado_em')
+      .order('nome');
+    if (error) throw new Error(error.message);
+    const insts = data || [];
+
+    if (insts.length === 0) {
+      alert('Nenhuma instituição pra exportar.');
+      return;
+    }
+
+    const cabecalho = ['Nome', 'CNPJ', 'Logradouro', 'Bairro', 'Cidade', 'Estado', 'CEP', 'Latitude', 'Longitude', 'Ativo', 'Pendente de aprovação', 'Cadastrada em'];
+    const sim = (v) => v ? 'Sim' : 'Não';
+    const linhas = insts.map(i => [
+      i.nome || '',
+      i.cnpj || '',
+      i.logradouro || '',
+      i.bairro || '',
+      i.cidade || '',
+      i.estado || '',
+      i.cep || '',
+      i.latitude || '',
+      i.longitude || '',
+      sim(i.ativo),
+      sim(i.pendente_aprovacao),
+      _fmtDateTimeBR(i.criado_em),
+    ].map(_csvField).join(';'));
+
+    const conteudoCsv = cabecalho.map(_csvField).join(';') + '\r\n' + linhas.join('\r\n') + '\r\n';
+    const BOM = '\uFEFF';
+    const blob = new Blob([BOM + conteudoCsv], { type: 'text/csv;charset=utf-8;' });
+
+    const hoje = new Date();
+    const dataStr = `${hoje.getFullYear()}-${String(hoje.getMonth()+1).padStart(2,'0')}-${String(hoje.getDate()).padStart(2,'0')}`;
+    const nomeArquivo = `instituicoes_${dataStr}.csv`;
+
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = nomeArquivo;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1500);
+
+    console.log(`[export inst CSV] ${insts.length} instituições exportadas -> ${nomeArquivo}`);
+  } catch (err) {
+    console.error('[exportarInstCSV] erro:', err);
     alert('Erro ao exportar CSV: ' + (err.message || err));
   } finally {
     btn.disabled = false;
@@ -13960,7 +14818,7 @@ function renderReviewDetailContent(v) {
       <div class="review-actions">
         <button class="review-action-btn review-action-btn--approve" onclick="handleAprovarVisita()">
           <span class="material-symbols-rounded">verified</span>
-          ${v.status === 'em_revisao' ? 'Aprovar esta visita' : 'Aprovar'}
+          ${estaEmRevisao(v) ? 'Aprovar esta visita' : 'Aprovar'}
         </button>
         <button class="review-action-btn review-action-btn--return" onclick="handleDevolverAoNutri()">
           <span class="material-symbols-rounded">undo</span>
@@ -14125,10 +14983,12 @@ window.handleEnviarParaRevisao = async function() {
 
   const user = getCurrentUser();
   try {
+    // Pós-Sprint 8.9: salvar como 'rascunho' + revisao_motivo (forma unificada)
     const { data, error } = await db.from('visitas').update({
-      status: 'em_revisao',
+      status: 'rascunho',
       revisao_solicitada_por: user.id,
       revisao_solicitada_em: new Date().toISOString(),
+      revisao_resolvida_em: null, // limpa qualquer resolução anterior
       revisao_motivo: motivo,
       atualizado_em: new Date().toISOString(),
     }).eq('id', v.id).select();
@@ -14220,18 +15080,466 @@ function showModalConfirmacao({ icone = 'info', iconeCor = 'info', titulo, subti
   });
 }
 
+/* ==========================================================================
+   Sprint 8.11 — Sistema de Solicitação de Reabertura de Visita
+
+   Quando uma visita está travada (>24h sem poder editar), o profissional
+   pode solicitar reabertura. Admin recebe notificação, decide aprovar
+   (escolhendo 12/24/36/48h) ou recusar (com motivo opcional).
+   ========================================================================== */
+
+// Busca solicitação ATIVA (pendente OU aprovada não expirada) de uma visita
+async function buscarSolicitacaoAtiva(visitaId) {
+  if (!db) return null;
+  const { data } = await db
+    .from('solicitacoes_reabertura')
+    .select('*, solicitante:solicitante_id(id, nome, foto_url), decisor:decidido_por(id, nome, foto_url)')
+    .eq('visita_id', visitaId)
+    .order('solicitado_em', { ascending: false })
+    .limit(5);
+  if (!data || data.length === 0) return null;
+  // Retorna a primeira pendente, ou a mais recente
+  const pendente = data.find(s => s.status === 'pendente');
+  return pendente || data[0];
+}
+
+// Profissional cria solicitação de reabertura
+window.handleSolicitarReabertura = async function(visitaId) {
+  if (await bloqueioSimulacao('solicitar reabertura')) return;
+  if (!visitaId) return;
+
+  // Verifica se já tem pendente
+  const ativa = await buscarSolicitacaoAtiva(visitaId);
+  if (ativa && ativa.status === 'pendente') {
+    alert('Já existe uma solicitação pendente pra essa visita. Aguarde a resposta do admin.');
+    return;
+  }
+
+  const justificativa = await showModalInput({
+    icone: 'lock_open',
+    iconeCor: 'info',
+    titulo: 'Solicitar reabertura',
+    subtitulo: 'Sua janela de edição expirou. Justifique pro admin por que precisa reabrir essa visita.',
+    label: 'Justificativa',
+    placeholder: 'Ex: Esqueci de finalizar e tenho info importante pra adicionar...',
+    required: true,
+    btnConfirmar: 'Enviar pedido',
+  });
+  if (!justificativa) return;
+
+  const user = getCurrentUser();
+  try {
+    const { error } = await db.from('solicitacoes_reabertura').insert({
+      visita_id: visitaId,
+      solicitante_id: user.id,
+      justificativa: justificativa.trim(),
+      status: 'pendente',
+    });
+    if (error) throw new Error(error.message);
+    setFlash('success', 'Pedido enviado! Admin será notificado.');
+    // Reload pra mostrar o novo estado
+    if (typeof router === 'function') router();
+    else window.location.reload();
+  } catch (err) {
+    alert('Erro ao solicitar: ' + (err.message || err));
+  }
+};
+
+// Admin aprova solicitação — modal com escolha de horas
+window.handleAprovarReabertura = async function(solicitacaoId, visitaId) {
+  if (await bloqueioSimulacao('aprovar reabertura')) return;
+
+  const horas = await showModalEscolherHoras();
+  if (!horas) return; // cancelou
+
+  const user = getCurrentUser();
+  const expira = new Date(Date.now() + horas * 60 * 60 * 1000);
+
+  try {
+    const { error } = await db.from('solicitacoes_reabertura')
+      .update({
+        status: 'aprovado',
+        decidido_por: user.id,
+        decidido_em: new Date().toISOString(),
+        horas_concedidas: horas,
+        expira_em: expira.toISOString(),
+      })
+      .eq('id', solicitacaoId);
+    if (error) throw new Error(error.message);
+    // O trigger SQL já atualiza a coluna reabertura_expira_em na visita e dispara notif
+    setFlash('success', `Reabertura aprovada por ${horas}h.`);
+    if (typeof router === 'function') router();
+    else window.location.reload();
+  } catch (err) {
+    alert('Erro ao aprovar: ' + (err.message || err));
+  }
+};
+
+// Admin recusa solicitação — modal com motivo opcional
+window.handleRecusarReabertura = async function(solicitacaoId) {
+  if (await bloqueioSimulacao('recusar reabertura')) return;
+
+  const motivo = await showModalInput({
+    icone: 'block',
+    iconeCor: 'warning',
+    titulo: 'Recusar reabertura',
+    subtitulo: 'Você pode adicionar um motivo opcional. O profissional será notificado.',
+    label: 'Motivo (opcional)',
+    placeholder: 'Ex: Janela já passou tempo demais. Considere refazer a visita.',
+    required: false,
+    btnConfirmar: 'Recusar',
+  });
+  if (motivo === null) return; // cancelou (string vazia "" é válida — quer dizer "sem motivo")
+
+  const user = getCurrentUser();
+  try {
+    const { error } = await db.from('solicitacoes_reabertura')
+      .update({
+        status: 'recusado',
+        decidido_por: user.id,
+        decidido_em: new Date().toISOString(),
+        motivo_recusa: motivo.trim() || null,
+      })
+      .eq('id', solicitacaoId);
+    if (error) throw new Error(error.message);
+    setFlash('info', 'Pedido recusado. Profissional foi notificado.');
+    if (typeof router === 'function') router();
+    else window.location.reload();
+  } catch (err) {
+    alert('Erro ao recusar: ' + (err.message || err));
+  }
+};
+
+// Modal pra admin escolher quantas horas conceder na aprovação
+function showModalEscolherHoras() {
+  return new Promise((resolve) => {
+    const backdrop = document.createElement('div');
+    backdrop.className = 'modal-backdrop';
+    backdrop.innerHTML = `
+      <div class="modal-card" style="max-width:400px;">
+        <div class="modal-card__header">
+          <div class="modal-card__icon" style="background:var(--status-success-bg);color:var(--status-success);">
+            <span class="material-symbols-rounded">schedule</span>
+          </div>
+          <div class="modal-card__title">Aprovar reabertura</div>
+          <div class="modal-card__subtitle">Por quanto tempo o profissional poderá editar essa visita?</div>
+        </div>
+        <div class="modal-card__body" style="padding:16px;">
+          <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;">
+            <button class="reabert-hora-btn" data-h="12">12 horas</button>
+            <button class="reabert-hora-btn" data-h="24">24 horas</button>
+            <button class="reabert-hora-btn" data-h="36">36 horas</button>
+            <button class="reabert-hora-btn" data-h="48">48 horas</button>
+          </div>
+        </div>
+        <div class="modal-card__footer">
+          <button class="modal-btn modal-btn--secondary" id="reabertCancel">Cancelar</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(backdrop);
+    const cleanup = () => backdrop.remove();
+    backdrop.querySelectorAll('.reabert-hora-btn').forEach(btn => {
+      btn.onclick = () => { cleanup(); resolve(parseInt(btn.dataset.h, 10)); };
+    });
+    backdrop.querySelector('#reabertCancel').onclick = () => { cleanup(); resolve(null); };
+    backdrop.onclick = (e) => { if (e.target === backdrop) { cleanup(); resolve(null); } };
+  });
+}
+
+// Helper: formata data como "DD/MM/AAAA HH:MM"
+function _fmtBRDateTime(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+
+// Renderiza o BANNER de reabertura na tela de relatório (3 estados pro nutri + 1 pro admin)
+async function renderReaberturaBanner(visita, edicao) {
+  const user = getCurrentUser();
+  if (!user) return '';
+
+  const sol = await buscarSolicitacaoAtiva(visita.id);
+
+  // Caso 1: profissional, janela travada, SEM pedido → mostra botão "Solicitar"
+  if (user.perfil !== 'admin' && !edicao.pode && edicao.podeSolicitar && (!sol || sol.status === 'recusado')) {
+    return `
+      <div class="reabert-banner reabert-banner--locked">
+        <div class="reabert-banner__icon"><span class="material-symbols-rounded">lock</span></div>
+        <div class="reabert-banner__body">
+          <div class="reabert-banner__title">Visita travada</div>
+          <div class="reabert-banner__text">${edicao.motivo}</div>
+          ${sol && sol.status === 'recusado' ? `
+            <div class="reabert-banner__motivo">Pedido anterior recusado${sol.motivo_recusa ? ': "' + sol.motivo_recusa.replace(/"/g,'&quot;') + '"' : ''}</div>
+          ` : ''}
+          <button class="reabert-banner__btn" onclick="handleSolicitarReabertura('${visita.id}')">
+            <span class="material-symbols-rounded">lock_open</span>
+            Solicitar reabertura ao admin
+          </button>
+        </div>
+      </div>
+    `;
+  }
+
+  // Caso 2: profissional, pedido PENDENTE → "Aguardando admin"
+  if (user.perfil !== 'admin' && sol && sol.status === 'pendente') {
+    return `
+      <div class="reabert-banner reabert-banner--pending">
+        <div class="reabert-banner__icon"><span class="material-symbols-rounded">hourglass_top</span></div>
+        <div class="reabert-banner__body">
+          <div class="reabert-banner__title">Reabertura solicitada — aguardando resposta</div>
+          <div class="reabert-banner__text">Solicitada em ${_fmtBRDateTime(sol.solicitado_em)}.</div>
+          <div class="reabert-banner__motivo">"${(sol.justificativa || '').replace(/"/g,'&quot;')}"</div>
+        </div>
+      </div>
+    `;
+  }
+
+  // Caso 3: profissional ou admin, reabertura ATIVA → "Liberada até X"
+  if (visita.reabertura_expira_em && new Date(visita.reabertura_expira_em) > new Date()) {
+    return `
+      <div class="reabert-banner reabert-banner--active">
+        <div class="reabert-banner__icon"><span class="material-symbols-rounded">lock_open</span></div>
+        <div class="reabert-banner__body">
+          <div class="reabert-banner__title">Janela reaberta pelo admin</div>
+          <div class="reabert-banner__text">Edição permitida até ${_fmtBRDateTime(visita.reabertura_expira_em)}.</div>
+        </div>
+      </div>
+    `;
+  }
+
+  // Caso 4: ADMIN com pedido PENDENTE → mostra Aprovar/Recusar
+  if (user.perfil === 'admin' && !user._simulando && sol && sol.status === 'pendente') {
+    const nome = sol.solicitante?.nome || 'Profissional';
+    return `
+      <div class="reabert-banner reabert-banner--admin-action">
+        <div class="reabert-banner__icon"><span class="material-symbols-rounded">notifications_active</span></div>
+        <div class="reabert-banner__body">
+          <div class="reabert-banner__title">${nome.replace(/"/g,'&quot;')} pediu reabertura</div>
+          <div class="reabert-banner__text">Solicitado em ${_fmtBRDateTime(sol.solicitado_em)}</div>
+          <div class="reabert-banner__motivo">"${(sol.justificativa || '').replace(/"/g,'&quot;')}"</div>
+          <div style="display:flex;gap:8px;margin-top:10px;">
+            <button class="reabert-banner__btn reabert-banner__btn--approve" onclick="handleAprovarReabertura('${sol.id}','${visita.id}')">
+              <span class="material-symbols-rounded">check</span>Aprovar
+            </button>
+            <button class="reabert-banner__btn reabert-banner__btn--reject" onclick="handleRecusarReabertura('${sol.id}')">
+              <span class="material-symbols-rounded">close</span>Recusar
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  return '';
+}
+
+// Carrega banner de reabertura na home do nutri (Sprint 8.12)
+// Mostra 3 estados: pendente | aprovada ativa | recusada recente
+async function carregarBannerReaberturaNutri() {
+  const banner = document.getElementById('nutriReaberturaBanner');
+  if (!banner || !db) return;
+  const user = getCurrentUser();
+  if (!user) return;
+
+  // Busca solicitações do user recentes (últimas 10)
+  const { data, error } = await db
+    .from('solicitacoes_reabertura')
+    .select('id, visita_id, status, justificativa, solicitado_em, decidido_em, horas_concedidas, expira_em, motivo_recusa, visita:visita_id(id, instituicoes(nome))')
+    .eq('solicitante_id', user.id)
+    .order('solicitado_em', { ascending: false })
+    .limit(10);
+  if (error || !data) {
+    banner.style.display = 'none';
+    return;
+  }
+
+  const agora = new Date();
+  const pendentes = data.filter(s => s.status === 'pendente');
+  const aprovadasAtivas = data.filter(s =>
+    s.status === 'aprovado' && s.expira_em && new Date(s.expira_em) > agora
+  );
+  // Recusadas nas últimas 48h (pra não ficar eternamente)
+  const recusadasRecentes = data.filter(s =>
+    s.status === 'recusado' && s.decidido_em &&
+    (agora - new Date(s.decidido_em)) < 48 * 60 * 60 * 1000
+  );
+
+  const cards = [];
+
+  // Banner 1: Aprovadas ativas (prioridade máxima — user precisa agir)
+  aprovadasAtivas.forEach(s => {
+    const instNome = s.visita?.instituicoes?.nome || 'Instituição';
+    const expira = new Date(s.expira_em);
+    const horasRestantes = Math.max(0, Math.floor((expira - agora) / (1000 * 60 * 60)));
+    cards.push(`
+      <a href="#/visitas/relatorio?id=${s.visita_id}" style="
+        display:flex;align-items:center;gap:12px;padding:14px 16px;margin-bottom:10px;
+        background:linear-gradient(135deg,#DCFCE7 0%,#F0FDF4 100%);
+        border:1.5px solid rgba(34,197,94,0.35);border-radius:12px;
+        text-decoration:none;color:inherit;transition:all 140ms;position:relative;
+      " onmouseover="this.style.transform='translateY(-1px)';this.style.boxShadow='0 4px 12px rgba(34,197,94,0.15)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
+        <div style="width:40px;height:40px;border-radius:10px;background:var(--status-success);color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <span class="material-symbols-rounded" style="font-size:22px;">lock_open</span>
+        </div>
+        <div style="flex:1;">
+          <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:14px;line-height:1.3;">Visita liberada pra edição</div>
+          <div style="font-size:11.5px;color:#14532D;margin-top:2px;"><strong>${instNome.replace(/</g,'&lt;')}</strong> · expira em ${horasRestantes}h</div>
+        </div>
+        <span class="material-symbols-rounded" style="font-size:18px;color:var(--status-success);">arrow_forward</span>
+      </a>
+    `);
+  });
+
+  // Banner 2: Pendentes (aguardando admin)
+  pendentes.forEach(s => {
+    const instNome = s.visita?.instituicoes?.nome || 'Instituição';
+    cards.push(`
+      <a href="#/visitas/relatorio?id=${s.visita_id}" style="
+        display:flex;align-items:center;gap:12px;padding:14px 16px;margin-bottom:10px;
+        background:linear-gradient(135deg,#FEF4E1 0%,#FFF9EB 100%);
+        border:1.5px solid rgba(245,158,11,0.35);border-radius:12px;
+        text-decoration:none;color:inherit;transition:all 140ms;position:relative;
+      " onmouseover="this.style.transform='translateY(-1px)';this.style.boxShadow='0 4px 12px rgba(245,158,11,0.15)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
+        <div style="width:40px;height:40px;border-radius:10px;background:var(--status-warning);color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <span class="material-symbols-rounded" style="font-size:22px;">hourglass_top</span>
+        </div>
+        <div style="flex:1;">
+          <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:14px;line-height:1.3;">Reabertura aguardando admin</div>
+          <div style="font-size:11.5px;color:#92400E;margin-top:2px;"><strong>${instNome.replace(/</g,'&lt;')}</strong> · pedido enviado</div>
+        </div>
+        <span class="material-symbols-rounded" style="font-size:18px;color:var(--status-warning);">arrow_forward</span>
+      </a>
+    `);
+  });
+
+  // Banner 3: Recusadas recentes
+  recusadasRecentes.forEach(s => {
+    const instNome = s.visita?.instituicoes?.nome || 'Instituição';
+    cards.push(`
+      <a href="#/visitas/relatorio?id=${s.visita_id}" style="
+        display:flex;align-items:center;gap:12px;padding:14px 16px;margin-bottom:10px;
+        background:linear-gradient(135deg,#FEE2E2 0%,#FFEBEE 100%);
+        border:1.5px solid rgba(220,38,38,0.35);border-radius:12px;
+        text-decoration:none;color:inherit;transition:all 140ms;position:relative;
+      " onmouseover="this.style.transform='translateY(-1px)';this.style.boxShadow='0 4px 12px rgba(220,38,38,0.15)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
+        <div style="width:40px;height:40px;border-radius:10px;background:var(--status-danger);color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <span class="material-symbols-rounded" style="font-size:22px;">block</span>
+        </div>
+        <div style="flex:1;">
+          <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:14px;line-height:1.3;">Reabertura recusada</div>
+          <div style="font-size:11.5px;color:#7F1D1D;margin-top:2px;"><strong>${instNome.replace(/</g,'&lt;')}</strong>${s.motivo_recusa ? ' · ' + s.motivo_recusa.substring(0, 40).replace(/</g,'&lt;') + (s.motivo_recusa.length > 40 ? '...' : '') : ''}</div>
+        </div>
+        <span class="material-symbols-rounded" style="font-size:18px;color:var(--status-danger);">arrow_forward</span>
+      </a>
+    `);
+  });
+
+  if (cards.length === 0) {
+    banner.style.display = 'none';
+    return;
+  }
+  banner.style.display = 'block';
+  banner.innerHTML = cards.join('');
+}
+
 // Modal genérico de input (com textarea)
 // Modal dedicado pra cadastro rápido de instituição no check-in.
 // Pede nome + endereço (obrigatórios) + cidade (obrigatória) + bairro (opcional).
 // Resolve({ nome, logradouro, bairro, cidade }) ou null se cancelou.
-function showModalInstituicaoNova({ valorInicialNome = '', modo = 'cadastro', instExistente = null } = {}) {
+
+/* ==========================================================================
+   Sprint 9.1 — Helpers pra captura de coordenadas (admin)
+   ========================================================================== */
+
+// Extrai lat/lng de um link/texto do Google Maps ou texto solto.
+// Retorna objeto com status:
+//   { status: 'ok', lat, lng }            — coords extraídas com sucesso
+//   { status: 'shortlink' }               — URL encurtada detectada (precisa expandir)
+//   { status: 'no_match' }                — texto não reconhecido
+//
+// IMPORTANTE: URLs do Google Maps podem ter 2 coords:
+//   - "@lat,lng,zoom" → centro da câmera (onde o usuário estava olhando)
+//   - "!3d...!4d..."  → coords exatas do PIN/place (mais preciso)
+// Priorizamos o segundo porque é o que queremos pro check-in (local real do hospital).
+function extrairLatLngDeTexto(texto) {
+  if (!texto || typeof texto !== 'string') return { status: 'no_match' };
+  const t = texto.trim();
+  // Padrão 1 (PRIORITÁRIO): "!3d-23.5505!4d-46.6333" — coords EXATAS do pin/place
+  let m = t.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/);
+  if (m) return { status: 'ok', lat: parseFloat(m[1]), lng: parseFloat(m[2]) };
+  // Padrão 2: "@-23.5505,-46.6333" — centro da câmera (fallback — menos preciso)
+  m = t.match(/@(-?\d+\.\d+),\s*(-?\d+\.\d+)/);
+  if (m) return { status: 'ok', lat: parseFloat(m[1]), lng: parseFloat(m[2]) };
+  // Padrão 3: "q=-23.5505,-46.6333" (URL de busca/pin)
+  m = t.match(/[?&]q=(-?\d+\.\d+),\s*(-?\d+\.\d+)/);
+  if (m) return { status: 'ok', lat: parseFloat(m[1]), lng: parseFloat(m[2]) };
+  // Padrão 4: "ll=-23.5505,-46.6333" (URLs antigas)
+  m = t.match(/[?&]ll=(-?\d+\.\d+),\s*(-?\d+\.\d+)/);
+  if (m) return { status: 'ok', lat: parseFloat(m[1]), lng: parseFloat(m[2]) };
+  // Padrão 5: "center=-23.5505,-46.6333" (embeds)
+  m = t.match(/[?&]center=(-?\d+\.\d+),\s*(-?\d+\.\d+)/);
+  if (m) return { status: 'ok', lat: parseFloat(m[1]), lng: parseFloat(m[2]) };
+  // Padrão 6: coords puras "-23.5505, -46.6333" (com ou sem espaço)
+  m = t.match(/^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/);
+  if (m) {
+    const lat = parseFloat(m[1]), lng = parseFloat(m[2]);
+    // Sanidade: Brasil fica aprox entre -34 e 5 de lat, -75 e -34 de lng
+    if (Math.abs(lat) <= 90 && Math.abs(lng) <= 180) {
+      return { status: 'ok', lat, lng };
+    }
+  }
+  // Detecta shortlinks conhecidos do Google — precisam ser expandidos antes
+  const tl = t.toLowerCase();
+  if (tl.includes('maps.app.goo.gl') || tl.includes('goo.gl/maps') || /(^|\W)g\.co\/(maps|kgs)/.test(tl)) {
+    return { status: 'shortlink' };
+  }
+  return { status: 'no_match' };
+}
+
+// Busca coords via OpenStreetMap Nominatim (gratuito, sem chave).
+// Rate limit deles é 1 req/seg — aceitável pra uso sob demanda.
+// Retorna { lat, lng, display_name } ou null se não encontrou.
+async function geocodificarEndereco(endereco) {
+  if (!endereco || !endereco.trim()) return null;
+  const q = encodeURIComponent(endereco.trim());
+  const url = `https://nominatim.openstreetmap.org/search?q=${q}&format=json&limit=1&countrycodes=br&addressdetails=0`;
+  try {
+    const r = await fetch(url, {
+      headers: { 'Accept-Language': 'pt-BR' }
+    });
+    if (!r.ok) return null;
+    const data = await r.json();
+    if (!Array.isArray(data) || !data.length) return null;
+    return {
+      lat: parseFloat(data[0].lat),
+      lng: parseFloat(data[0].lon),
+      display_name: data[0].display_name || null,
+    };
+  } catch (err) {
+    console.warn('[geocodificarEndereco] falhou:', err);
+    return null;
+  }
+}
+
+// Validação simples de lat/lng (números válidos dentro dos limites globais)
+function coordsValidas(lat, lng) {
+  if (typeof lat !== 'number' || typeof lng !== 'number') return false;
+  if (isNaN(lat) || isNaN(lng)) return false;
+  if (lat < -90 || lat > 90) return false;
+  if (lng < -180 || lng > 180) return false;
+  return true;
+}
+
+function showModalInstituicaoNova({ valorInicialNome = '', modo = 'cadastro', instExistente = null, perfilAdmin = false, permitirCoords = false } = {}) {
   return new Promise((resolve) => {
     const backdrop = document.createElement('div');
     backdrop.className = 'modal-backdrop';
     const ehEdicao = modo === 'edicao';
     const temGPS = !!(window.CheckinFlow && CheckinFlow.userPos);
-    // Em modo edição, se já tem coords, não sobrescreve com GPS; só mostra aviso se NÃO tem coords ainda
-    const mostrarAvisoGPS = temGPS && (!ehEdicao || !instExistente?.latitude);
+    // Sprint 9.4: se permitirCoords está ligado, coords já são pré-populadas no painel
+    // Então o banner "GPS ativo" fica redundante. Só mostra no fluxo legacy (sem permitirCoords).
+    const mostrarAvisoGPS = !perfilAdmin && !permitirCoords && temGPS && (!ehEdicao || !instExistente?.latitude);
     const gpsInfoHtml = mostrarAvisoGPS ? `
       <div style="background:#E6F6EF;border:1px solid rgba(34,160,107,0.3);border-radius:8px;padding:10px;font-size:11.5px;color:#166534;display:flex;gap:8px;align-items:flex-start;">
         <span class="material-symbols-rounded" style="font-size:16px;color:var(--status-success);flex-shrink:0;margin-top:1px;">gps_fixed</span>
@@ -14240,20 +15548,247 @@ function showModalInstituicaoNova({ valorInicialNome = '', modo = 'cadastro', in
         </div>
       </div>
     ` : '';
+    // Banner explicativo pro admin (cadastro direto ativo)
+    const adminBannerHtml = (perfilAdmin && !ehEdicao) ? `
+      <div style="background:var(--brand-lime-50, #F4F9EA);border:1px solid rgba(139,198,63,0.4);border-radius:8px;padding:10px;font-size:11.5px;color:#4D7A1A;display:flex;gap:8px;align-items:flex-start;">
+        <span class="material-symbols-rounded" style="font-size:16px;color:var(--brand-lime-dark, #6FA62E);flex-shrink:0;margin-top:1px;">verified</span>
+        <div>
+          <strong>Criação direta pelo admin</strong> — a instituição será salva como <strong>ativa</strong> e já ficará disponível para check-in.
+        </div>
+      </div>
+    ` : '';
     // Valores iniciais (em modo edição, vem do instExistente)
-    const valNome = ehEdicao && instExistente?.nome ? instExistente.nome : valorInicialNome;
-    const valEnd = ehEdicao && instExistente?.logradouro ? instExistente.logradouro : '';
-    const valBairro = ehEdicao && instExistente?.bairro ? instExistente.bairro : '';
-    const valCidade = ehEdicao && instExistente?.cidade ? instExistente.cidade : '';
-    const titulo = ehEdicao ? 'Editar dados da instituição' : 'Cadastrar nova instituição';
+    const valNome    = ehEdicao && instExistente?.nome       ? instExistente.nome      : valorInicialNome;
+    const valEnd     = ehEdicao && instExistente?.logradouro ? instExistente.logradouro : '';
+    const valBairro  = ehEdicao && instExistente?.bairro     ? instExistente.bairro    : '';
+    const valCidade  = ehEdicao && instExistente?.cidade     ? instExistente.cidade    : '';
+    // Sprint 9.1: campos extras só pro admin
+    const valCnpj    = ehEdicao && instExistente?.cnpj       ? instExistente.cnpj      : '';
+    const valCep     = ehEdicao && instExistente?.cep        ? instExistente.cep       : '';
+    const valEstado  = ehEdicao && instExistente?.estado     ? instExistente.estado    : '';
+    const valLat     = ehEdicao && instExistente?.latitude != null  ? String(instExistente.latitude)  : '';
+    const valLng     = ehEdicao && instExistente?.longitude != null ? String(instExistente.longitude) : '';
+    // Sprint 9.3: campos de perfil enriquecido (todos opcionais)
+    const valTipo                  = ehEdicao && instExistente?.tipo                  ? instExistente.tipo                  : '';
+    const valLeitosTotal           = ehEdicao && instExistente?.leitos_total != null          ? String(instExistente.leitos_total)          : '';
+    const valLeitosUtiAdulto       = ehEdicao && instExistente?.leitos_uti_adulto != null     ? String(instExistente.leitos_uti_adulto)     : '';
+    const valLeitosUtiPediatrica   = ehEdicao && instExistente?.leitos_uti_pediatrica != null ? String(instExistente.leitos_uti_pediatrica) : '';
+    const valHospCirurgico         = ehEdicao ? !!instExistente?.hospital_cirurgico : false;
+    const valSalasCirurgicas       = ehEdicao && instExistente?.salas_cirurgicas != null      ? String(instExistente.salas_cirurgicas)      : '';
+    const valNutriTotal            = ehEdicao && instExistente?.nutri_total != null           ? String(instExistente.nutri_total)           : '';
+    const valNutriClinicos         = ehEdicao && instExistente?.nutri_clinicos != null        ? String(instExistente.nutri_clinicos)        : '';
+    const valNutriEmtn             = ehEdicao && instExistente?.nutri_emtn != null            ? String(instExistente.nutri_emtn)            : '';
+    const valSupNome               = ehEdicao && instExistente?.supervisor_nome     ? instExistente.supervisor_nome     : '';
+    const valSupTel                = ehEdicao && instExistente?.supervisor_telefone ? instExistente.supervisor_telefone : '';
+    const valSupEmail              = ehEdicao && instExistente?.supervisor_email    ? instExistente.supervisor_email    : '';
+
+    // Auto-expande cada seção se já tiver algum dado (ergonomia: admin vê o que já foi preenchido)
+    const temPerfil     = !!(valTipo || valLeitosTotal || valLeitosUtiAdulto || valLeitosUtiPediatrica || valHospCirurgico || valSalasCirurgicas);
+    const temEquipe     = !!(valNutriTotal || valNutriClinicos || valNutriEmtn);
+    const temSupervisor = !!(valSupNome || valSupTel || valSupEmail);
+
+    const titulo = ehEdicao
+      ? (perfilAdmin ? 'Editar instituição' : 'Editar dados da instituição')
+      : 'Cadastrar nova instituição';
     const subtitulo = ehEdicao
-      ? 'Ajuste os dados que cadastrou. Enquanto aguarda aprovação do admin, você pode corrigir.'
-      : 'Preencha nome e endereço. O admin completará os demais dados (CNPJ, coordenadas, etc.) ao aprovar.';
-    const btnOkLabel = ehEdicao ? 'Salvar alterações' : 'Cadastrar e usar';
+      ? (perfilAdmin
+          ? 'Ajuste qualquer campo. As mudanças são aplicadas imediatamente.'
+          : 'Ajuste os dados que cadastrou. Enquanto aguarda aprovação do admin, você pode corrigir.')
+      : (perfilAdmin
+          ? 'Apenas nome e endereço são obrigatórios. Os demais campos podem ser preenchidos depois, por você ou pelo profissional.'
+          : 'Preencha nome e endereço. O admin completará os demais dados (CNPJ, coordenadas, etc.) ao aprovar.');
+    const btnOkLabel = ehEdicao ? 'Salvar alterações' : (perfilAdmin ? 'Criar instituição' : 'Cadastrar e usar');
+
+    // Sprint 9.4: pré-popula GPS pro nutri no fluxo check-in (se não tem coords ainda)
+    // O nutri pode sobrescrever depois colando URL/buscando/digitando manualmente
+    const gpsDoNutri = (permitirCoords && !perfilAdmin && !ehEdicao && window.CheckinFlow && CheckinFlow.userPos)
+      ? CheckinFlow.userPos
+      : null;
+    const valLatInicial = valLat || (gpsDoNutri ? String(gpsDoNutri.lat) : '');
+    const valLngInicial = valLng || (gpsDoNutri ? String(gpsDoNutri.lng) : '');
+
+    // Decide se a seção de coords aparece, e se começa oculta (progressive pro nutri)
+    const mostrarCoords           = perfilAdmin || permitirCoords;
+    // Pro nutri em cadastro novo: esconde até endereço ter conteúdo
+    const coordsInicialmenteOculta = !perfilAdmin && permitirCoords && !ehEdicao && !(valEnd || '').trim();
+
+    // Seção de campos admin (CNPJ, CEP, UF) — sem as coords
+    const camposExtrasAdminHtml = perfilAdmin ? `
+      <div class="report-field">
+        <label>CNPJ <span style="color:var(--neutral-400);font-weight:normal;">(opcional)</span></label>
+        <input type="text" id="mniCnpj" data-mask="cnpj" placeholder="00.000.000/0000-00" value="${(valCnpj || '').replace(/"/g,'&quot;')}" style="width:100%;padding:10px 12px;border:1.5px solid var(--neutral-200);border-radius:10px;font-size:14px;font-family:inherit;" />
+      </div>
+      <div style="display:grid;grid-template-columns:2fr 1fr;gap:12px;">
+        <div class="report-field">
+          <label>CEP <span style="color:var(--neutral-400);font-weight:normal;">(opcional)</span></label>
+          <input type="text" id="mniCep" data-mask="cep" placeholder="00000-000" value="${(valCep || '').replace(/"/g,'&quot;')}" style="width:100%;padding:10px 12px;border:1.5px solid var(--neutral-200);border-radius:10px;font-size:14px;font-family:inherit;" />
+        </div>
+        <div class="report-field">
+          <label>UF <span style="color:var(--neutral-400);font-weight:normal;">(opcional)</span></label>
+          <input type="text" id="mniEstado" maxlength="2" placeholder="SP" value="${(valEstado || '').replace(/"/g,'&quot;')}" style="width:100%;padding:10px 12px;border:1.5px solid var(--neutral-200);border-radius:10px;font-size:14px;font-family:inherit;text-transform:uppercase;" />
+        </div>
+      </div>
+    ` : '';
+
+    // Sprint 9.4: Seção de Coordenadas GPS (admin OU nutri com permitirCoords)
+    // Pro nutri: pode começar oculta e revelar quando endereço for preenchido
+    const coordsHtml = mostrarCoords ? `
+      <div id="mniCoordsWrap" style="${coordsInicialmenteOculta ? 'display:none;' : ''}${perfilAdmin ? 'margin-top:4px;padding-top:12px;border-top:1px dashed var(--neutral-200);' : ''}">
+        <div style="font-family:var(--font-display);font-size:13px;font-weight:700;color:var(--brand-navy);margin-bottom:3px;display:flex;align-items:center;gap:6px;">
+          <span class="material-symbols-rounded" style="font-size:16px;color:var(--brand-lime-dark,#6FA62E);">my_location</span>
+          Coordenadas GPS
+          ${!perfilAdmin ? '<span style="margin-left:auto;font-size:11px;color:var(--neutral-400);font-weight:normal;font-family:var(--font-body);">opcional</span>' : ''}
+        </div>
+        <div style="font-size:11.5px;color:var(--neutral-500);line-height:1.4;margin-bottom:10px;">
+          ${perfilAdmin
+            ? `Usadas para validar o check-in (raio de ${CONFIG.GPS_RADIUS_METERS}m). Cole um link do Google Maps, busque pelo endereço, ou digite manualmente.`
+            : (gpsDoNutri
+                ? 'Já capturamos sua localização atual. Se quiser usar outras coords, cole um link do Maps, busque pelo endereço, ou digite manualmente.'
+                : 'Cole um link do Google Maps, busque pelo endereço, ou digite manualmente. Se não preencher, o admin completa depois.'
+              )}
+        </div>
+
+        <div id="mniCoordsStatus" style="margin-bottom:10px;padding:8px 12px;border-radius:8px;background:var(--neutral-100);font-size:12px;color:var(--neutral-600);display:flex;align-items:center;gap:8px;">
+          <span class="material-symbols-rounded" style="font-size:16px;">location_off</span>
+          <span id="mniCoordsStatusText">Nenhuma coordenada definida</span>
+          <button type="button" id="mniCoordsLimpar" style="margin-left:auto;background:transparent;border:0;color:var(--neutral-500);font-size:11px;cursor:pointer;text-decoration:underline;display:none;">Limpar</button>
+        </div>
+
+        <div style="display:flex;gap:6px;margin-bottom:6px;">
+          <input type="text" id="mniColarUrl" placeholder="Cole URL longa (com @-lat,-lng) ou coords puras" style="flex:1;min-width:0;padding:9px 12px;border:1.5px solid var(--neutral-200);border-radius:10px;font-size:12.5px;font-family:inherit;" />
+          <button type="button" id="mniBtnExtrair" style="flex-shrink:0;padding:0 14px;height:38px;border-radius:10px;border:1.5px solid var(--brand-navy);background:var(--neutral-0);color:var(--brand-navy);font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;">Extrair</button>
+        </div>
+        <div style="font-size:10.5px;color:var(--neutral-500);line-height:1.4;margin-bottom:10px;display:flex;gap:5px;align-items:flex-start;">
+          <span class="material-symbols-rounded" style="font-size:13px;margin-top:1px;flex-shrink:0;">tips_and_updates</span>
+          <span><strong>Dica:</strong> Se usar "Compartilhar → Copiar link" do app (gera <em>maps.app.goo.gl</em>), não dá — é só redirecionador. Use a URL longa da barra do navegador, ou o botão "Buscar" abaixo.</span>
+        </div>
+
+        <button type="button" id="mniBtnGeocode" style="width:100%;padding:9px 12px;margin-bottom:10px;border-radius:10px;border:1.5px solid var(--status-info);background:var(--status-info-bg, #E4ECFD);color:var(--status-info);font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px;">
+          <span class="material-symbols-rounded" style="font-size:16px;">search</span>
+          <span id="mniBtnGeocodeText">Buscar coordenadas pelo endereço</span>
+        </button>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <div class="report-field">
+            <label style="font-size:11px;">Latitude</label>
+            <input type="text" id="mniLat" placeholder="-23.5505" value="${(valLatInicial || '').replace(/"/g,'&quot;')}" style="width:100%;padding:9px 12px;border:1.5px solid var(--neutral-200);border-radius:10px;font-size:12.5px;font-family:var(--font-mono);" />
+          </div>
+          <div class="report-field">
+            <label style="font-size:11px;">Longitude</label>
+            <input type="text" id="mniLng" placeholder="-46.6333" value="${(valLngInicial || '').replace(/"/g,'&quot;')}" style="width:100%;padding:9px 12px;border:1.5px solid var(--neutral-200);border-radius:10px;font-size:12.5px;font-family:var(--font-mono);" />
+          </div>
+        </div>
+      </div>
+    ` : '';
+
+    // Manter camposAdminHtml como "não-coords admin" por retrocompat
+    const camposAdminHtml = camposExtrasAdminHtml;
+
+    // Sprint 9.3: 3 seções colapsáveis (Perfil, Equipe de nutrição, Supervisor)
+    // Cada uma usa <details> nativo — abre automático se já tiver valor
+    const perfilEquipeSupervisorHtml = perfilAdmin ? `
+      <details ${temPerfil ? 'open' : ''} style="border:1px solid var(--neutral-200);border-radius:10px;padding:0;overflow:hidden;">
+        <summary style="cursor:pointer;padding:12px 14px;font-family:var(--font-display);font-size:13px;font-weight:700;color:var(--brand-navy);display:flex;align-items:center;gap:8px;user-select:none;list-style:none;">
+          <span class="material-symbols-rounded" style="font-size:18px;color:var(--brand-lime-dark,#6FA62E);">hotel_class</span>
+          Perfil e capacidade
+          <span style="margin-left:auto;font-size:11px;color:var(--neutral-400);font-weight:normal;font-family:var(--font-body);">opcional</span>
+        </summary>
+        <div style="padding:4px 14px 14px;display:flex;flex-direction:column;gap:12px;border-top:1px dashed var(--neutral-200);">
+          <div class="report-field">
+            <label style="font-size:11px;">Tipo administrativo</label>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+              <label style="display:inline-flex;align-items:center;gap:5px;padding:7px 12px;border:1.5px solid var(--neutral-200);border-radius:8px;cursor:pointer;font-size:13px;${valTipo === 'publica' ? 'background:var(--brand-lime-50,#F4F9EA);border-color:var(--brand-lime-dark,#6FA62E);color:var(--brand-lime-dark,#6FA62E);font-weight:600;' : ''}">
+                <input type="radio" name="mniTipo" value="publica" ${valTipo === 'publica' ? 'checked' : ''} style="accent-color:var(--brand-lime-dark,#6FA62E);" /> Pública
+              </label>
+              <label style="display:inline-flex;align-items:center;gap:5px;padding:7px 12px;border:1.5px solid var(--neutral-200);border-radius:8px;cursor:pointer;font-size:13px;${valTipo === 'privada' ? 'background:var(--brand-lime-50,#F4F9EA);border-color:var(--brand-lime-dark,#6FA62E);color:var(--brand-lime-dark,#6FA62E);font-weight:600;' : ''}">
+                <input type="radio" name="mniTipo" value="privada" ${valTipo === 'privada' ? 'checked' : ''} style="accent-color:var(--brand-lime-dark,#6FA62E);" /> Privada
+              </label>
+              <button type="button" id="mniTipoLimpar" style="background:transparent;border:0;color:var(--neutral-500);font-size:11.5px;cursor:pointer;text-decoration:underline;padding:0 6px;${valTipo ? '' : 'display:none;'}">Limpar</button>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">
+            <div class="report-field">
+              <label style="font-size:11px;">Leitos total</label>
+              <input type="number" id="mniLeitosTotal" min="0" placeholder="0" value="${valLeitosTotal}" style="width:100%;padding:9px 12px;border:1.5px solid var(--neutral-200);border-radius:10px;font-size:13px;font-family:var(--font-mono);" />
+            </div>
+            <div class="report-field">
+              <label style="font-size:11px;">UTI adulto</label>
+              <input type="number" id="mniLeitosUtiAdulto" min="0" placeholder="0" value="${valLeitosUtiAdulto}" style="width:100%;padding:9px 12px;border:1.5px solid var(--neutral-200);border-radius:10px;font-size:13px;font-family:var(--font-mono);" />
+            </div>
+            <div class="report-field">
+              <label style="font-size:11px;">UTI pediatr.</label>
+              <input type="number" id="mniLeitosUtiPed" min="0" placeholder="0" value="${valLeitosUtiPediatrica}" style="width:100%;padding:9px 12px;border:1.5px solid var(--neutral-200);border-radius:10px;font-size:13px;font-family:var(--font-mono);" />
+            </div>
+          </div>
+          <div>
+            <label style="display:inline-flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--brand-navy);padding:6px 0;">
+              <input type="checkbox" id="mniHospCirurgico" ${valHospCirurgico ? 'checked' : ''} style="width:16px;height:16px;accent-color:var(--brand-lime-dark,#6FA62E);" />
+              Hospital cirúrgico
+            </label>
+            <div id="mniSalasCirurgicasWrap" style="${valHospCirurgico ? '' : 'display:none;'}margin-top:6px;">
+              <label style="font-size:11px;display:block;color:var(--neutral-600);font-weight:600;margin-bottom:4px;">Número de salas cirúrgicas</label>
+              <input type="number" id="mniSalasCirurgicas" min="0" placeholder="0" value="${valSalasCirurgicas}" style="width:100%;padding:9px 12px;border:1.5px solid var(--neutral-200);border-radius:10px;font-size:13px;font-family:var(--font-mono);" />
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <details ${temEquipe ? 'open' : ''} style="border:1px solid var(--neutral-200);border-radius:10px;padding:0;overflow:hidden;">
+        <summary style="cursor:pointer;padding:12px 14px;font-family:var(--font-display);font-size:13px;font-weight:700;color:var(--brand-navy);display:flex;align-items:center;gap:8px;user-select:none;list-style:none;">
+          <span class="material-symbols-rounded" style="font-size:18px;color:var(--brand-lime-dark,#6FA62E);">restaurant</span>
+          Equipe de nutrição
+          <span style="margin-left:auto;font-size:11px;color:var(--neutral-400);font-weight:normal;font-family:var(--font-body);">opcional</span>
+        </summary>
+        <div style="padding:4px 14px 14px;display:flex;flex-direction:column;gap:10px;border-top:1px dashed var(--neutral-200);">
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">
+            <div class="report-field">
+              <label style="font-size:11px;">Total</label>
+              <input type="number" id="mniNutriTotal" min="0" placeholder="0" value="${valNutriTotal}" style="width:100%;padding:9px 12px;border:1.5px solid var(--neutral-200);border-radius:10px;font-size:13px;font-family:var(--font-mono);" />
+            </div>
+            <div class="report-field">
+              <label style="font-size:11px;">Clínicos</label>
+              <input type="number" id="mniNutriClinicos" min="0" placeholder="0" value="${valNutriClinicos}" style="width:100%;padding:9px 12px;border:1.5px solid var(--neutral-200);border-radius:10px;font-size:13px;font-family:var(--font-mono);" />
+            </div>
+            <div class="report-field">
+              <label style="font-size:11px;" title="Equipe Multiprofissional de Terapia Nutricional">EMTN</label>
+              <input type="number" id="mniNutriEmtn" min="0" placeholder="0" value="${valNutriEmtn}" style="width:100%;padding:9px 12px;border:1.5px solid var(--neutral-200);border-radius:10px;font-size:13px;font-family:var(--font-mono);" />
+            </div>
+          </div>
+          <div style="font-size:10.5px;color:var(--neutral-500);line-height:1.4;">
+            <strong>EMTN</strong> = Equipe Multiprofissional de Terapia Nutricional.
+          </div>
+        </div>
+      </details>
+
+      <details ${temSupervisor ? 'open' : ''} style="border:1px solid var(--neutral-200);border-radius:10px;padding:0;overflow:hidden;">
+        <summary style="cursor:pointer;padding:12px 14px;font-family:var(--font-display);font-size:13px;font-weight:700;color:var(--brand-navy);display:flex;align-items:center;gap:8px;user-select:none;list-style:none;">
+          <span class="material-symbols-rounded" style="font-size:18px;color:var(--brand-lime-dark,#6FA62E);">manage_accounts</span>
+          Nutricionista supervisor
+          <span style="margin-left:auto;font-size:11px;color:var(--neutral-400);font-weight:normal;font-family:var(--font-body);">opcional</span>
+        </summary>
+        <div style="padding:4px 14px 14px;display:flex;flex-direction:column;gap:10px;border-top:1px dashed var(--neutral-200);">
+          <div class="report-field">
+            <label style="font-size:11px;">Nome do supervisor</label>
+            <input type="text" id="mniSupNome" placeholder="Ex: Dra. Maria Silva" value="${(valSupNome || '').replace(/"/g,'&quot;')}" style="width:100%;padding:9px 12px;border:1.5px solid var(--neutral-200);border-radius:10px;font-size:13px;font-family:inherit;" />
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+            <div class="report-field">
+              <label style="font-size:11px;">Telefone</label>
+              <input type="text" id="mniSupTel" data-mask="phone" placeholder="(11) 99999-9999" value="${(valSupTel || '').replace(/"/g,'&quot;')}" style="width:100%;padding:9px 12px;border:1.5px solid var(--neutral-200);border-radius:10px;font-size:13px;font-family:var(--font-mono);" />
+            </div>
+            <div class="report-field">
+              <label style="font-size:11px;">E-mail</label>
+              <input type="email" id="mniSupEmail" placeholder="nome@hospital.com.br" value="${(valSupEmail || '').replace(/"/g,'&quot;')}" style="width:100%;padding:9px 12px;border:1.5px solid var(--neutral-200);border-radius:10px;font-size:13px;font-family:inherit;" />
+            </div>
+          </div>
+        </div>
+      </details>
+    ` : '';
+
     backdrop.innerHTML = `
-      <div class="modal-card" style="max-width:440px;">
+      <div class="modal-card" style="max-width:480px;max-height:92vh;overflow-y:auto;">
         <div class="modal-card__header">
-          <div class="modal-card__icon" style="background:#E4ECFD;color:var(--status-info);">
+          <div class="modal-card__icon" style="background:${perfilAdmin ? 'var(--brand-lime-50,#F4F9EA);color:var(--brand-lime-dark,#6FA62E)' : '#E4ECFD;color:var(--status-info)'};">
             <span class="material-symbols-rounded">${ehEdicao ? 'edit_location_alt' : 'add_location_alt'}</span>
           </div>
           <div class="modal-card__title">${titulo}</div>
@@ -14261,6 +15796,7 @@ function showModalInstituicaoNova({ valorInicialNome = '', modo = 'cadastro', in
         </div>
         <div class="modal-card__body" style="display:flex;flex-direction:column;gap:12px;">
           ${gpsInfoHtml}
+          ${adminBannerHtml}
           <div class="report-field">
             <label>Nome da instituição <span style="color:var(--status-danger)">*</span></label>
             <input type="text" id="mniNome" placeholder="Ex: Hospital São Camilo Pompeia" value="${(valNome || '').replace(/"/g,'&quot;')}" style="width:100%;padding:10px 12px;border:1.5px solid var(--neutral-200);border-radius:10px;font-size:14px;font-family:inherit;" />
@@ -14275,14 +15811,32 @@ function showModalInstituicaoNova({ valorInicialNome = '', modo = 'cadastro', in
               <input type="text" id="mniBairro" placeholder="Ex: Pompeia" value="${(valBairro || '').replace(/"/g,'&quot;')}" style="width:100%;padding:10px 12px;border:1.5px solid var(--neutral-200);border-radius:10px;font-size:14px;font-family:inherit;" />
             </div>
             <div class="report-field">
-              <label>Cidade <span style="color:var(--status-danger)">*</span></label>
+              <label>Cidade ${perfilAdmin ? '<span style="color:var(--neutral-400);font-weight:normal;">(opcional)</span>' : '<span style="color:var(--status-danger)">*</span>'}</label>
               <input type="text" id="mniCidade" placeholder="Ex: São Paulo" value="${(valCidade || '').replace(/"/g,'&quot;')}" style="width:100%;padding:10px 12px;border:1.5px solid var(--neutral-200);border-radius:10px;font-size:14px;font-family:inherit;" />
             </div>
           </div>
+          ${camposAdminHtml}
+          ${coordsHtml}
+          ${perfilEquipeSupervisorHtml}
         </div>
         <div class="modal-card__footer">
           <button class="modal-btn modal-btn--primary" id="mniOk">${btnOkLabel}</button>
           <button class="modal-btn modal-btn--secondary" id="mniCancel">Cancelar</button>
+          ${(perfilAdmin && ehEdicao && instExistente) ? `
+            <div style="padding-top:12px;margin-top:4px;border-top:1px dashed var(--neutral-200);">
+              ${instExistente.ativo !== false ? `
+                <button type="button" id="mniDesativar" style="width:100%;padding:10px;background:transparent;border:0;color:var(--status-warning);font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;border-radius:10px;transition:background 140ms;font-family:inherit;" onmouseover="this.style.background='var(--status-warning-bg,#FEF4E1)'" onmouseout="this.style.background='transparent'">
+                  <span class="material-symbols-rounded" style="font-size:18px;">block</span>
+                  Desativar instituição
+                </button>
+              ` : `
+                <button type="button" id="mniReativar" style="width:100%;padding:10px;background:transparent;border:0;color:var(--status-success);font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;border-radius:10px;transition:background 140ms;font-family:inherit;" onmouseover="this.style.background='var(--status-success-bg,#E6F6EF)'" onmouseout="this.style.background='transparent'">
+                  <span class="material-symbols-rounded" style="font-size:18px;">check_circle</span>
+                  Reativar instituição
+                </button>
+              `}
+            </div>
+          ` : ''}
         </div>
       </div>
     `;
@@ -14291,6 +15845,193 @@ function showModalInstituicaoNova({ valorInicialNome = '', modo = 'cadastro', in
     const endEl = backdrop.querySelector('#mniEndereco');
     const bairroEl = backdrop.querySelector('#mniBairro');
     const cidadeEl = backdrop.querySelector('#mniCidade');
+    // Campos admin (null se não for admin)
+    const cnpjEl   = backdrop.querySelector('#mniCnpj');
+    const cepEl    = backdrop.querySelector('#mniCep');
+    const estadoEl = backdrop.querySelector('#mniEstado');
+    const latEl    = backdrop.querySelector('#mniLat');
+    const lngEl    = backdrop.querySelector('#mniLng');
+
+    // Aplica máscaras nos novos campos
+    if (perfilAdmin) applyMasks(backdrop);
+
+    // Função que atualiza o banner de status das coords
+    const atualizarStatusCoords = () => {
+      const statusEl = backdrop.querySelector('#mniCoordsStatus');
+      const textEl = backdrop.querySelector('#mniCoordsStatusText');
+      const limparEl = backdrop.querySelector('#mniCoordsLimpar');
+      if (!statusEl || !textEl || !limparEl) return;
+      const lat = parseFloat(latEl?.value);
+      const lng = parseFloat(lngEl?.value);
+      if (coordsValidas(lat, lng)) {
+        statusEl.style.background = 'var(--status-success-bg, #E6F6EF)';
+        statusEl.style.color = 'var(--status-success, #22A06B)';
+        statusEl.querySelector('.material-symbols-rounded').textContent = 'gps_fixed';
+        textEl.innerHTML = `<strong style="font-family:var(--font-mono);">${lat.toFixed(5)}, ${lng.toFixed(5)}</strong> <span style="color:var(--neutral-500);font-family:var(--font-body);font-weight:normal;">· coordenadas válidas</span>`;
+        limparEl.style.display = 'inline';
+      } else {
+        statusEl.style.background = 'var(--neutral-100)';
+        statusEl.style.color = 'var(--neutral-600)';
+        statusEl.querySelector('.material-symbols-rounded').textContent = 'location_off';
+        textEl.textContent = 'Nenhuma coordenada definida';
+        limparEl.style.display = 'none';
+      }
+    };
+
+    // Sprint 9.4: handlers rodam tanto pra admin quanto pra nutri com permitirCoords
+    // (handlers admin-only já se protegem com `if (estadoEl)`, `if (chkHospCir)` etc)
+    if (mostrarCoords) {
+      // Inicializa status
+      atualizarStatusCoords();
+      // Listeners nos campos lat/lng pra atualizar status ao vivo
+      [latEl, lngEl].forEach(el => el && el.addEventListener('input', atualizarStatusCoords));
+      // Força uppercase no estado
+      if (estadoEl) {
+        estadoEl.addEventListener('input', (e) => {
+          e.target.value = e.target.value.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 2);
+        });
+      }
+      // Botão limpar coords
+      const limparEl = backdrop.querySelector('#mniCoordsLimpar');
+      if (limparEl) limparEl.onclick = () => {
+        latEl.value = '';
+        lngEl.value = '';
+        atualizarStatusCoords();
+      };
+
+      // Sprint 9.3: handlers dos novos campos (Perfil, Equipe, Supervisor)
+
+      // Toggle "Hospital cirúrgico" → mostra/esconde campo de salas
+      const chkHospCir = backdrop.querySelector('#mniHospCirurgico');
+      const wrapSalas  = backdrop.querySelector('#mniSalasCirurgicasWrap');
+      const inpSalas   = backdrop.querySelector('#mniSalasCirurgicas');
+      if (chkHospCir && wrapSalas) {
+        chkHospCir.addEventListener('change', () => {
+          if (chkHospCir.checked) {
+            wrapSalas.style.display = '';
+            setTimeout(() => inpSalas && inpSalas.focus(), 50);
+          } else {
+            wrapSalas.style.display = 'none';
+            if (inpSalas) inpSalas.value = ''; // zera se desmarcou
+          }
+        });
+      }
+
+      // Visual reativo dos radios de tipo administrativo (pill ativa quando selecionado)
+      const radiosTipo = backdrop.querySelectorAll('input[name="mniTipo"]');
+      const btnTipoLimpar = backdrop.querySelector('#mniTipoLimpar');
+      const atualizarVisualRadiosTipo = () => {
+        let algumMarcado = false;
+        radiosTipo.forEach(r => {
+          const label = r.closest('label');
+          if (!label) return;
+          if (r.checked) {
+            algumMarcado = true;
+            label.style.background = 'var(--brand-lime-50,#F4F9EA)';
+            label.style.borderColor = 'var(--brand-lime-dark,#6FA62E)';
+            label.style.color = 'var(--brand-lime-dark,#6FA62E)';
+            label.style.fontWeight = '600';
+          } else {
+            label.style.background = '';
+            label.style.borderColor = 'var(--neutral-200)';
+            label.style.color = '';
+            label.style.fontWeight = '';
+          }
+        });
+        if (btnTipoLimpar) btnTipoLimpar.style.display = algumMarcado ? '' : 'none';
+      };
+      radiosTipo.forEach(r => r.addEventListener('change', atualizarVisualRadiosTipo));
+
+      // Botão "Limpar" do tipo
+      if (btnTipoLimpar) btnTipoLimpar.onclick = () => {
+        radiosTipo.forEach(r => { r.checked = false; });
+        atualizarVisualRadiosTipo();
+      };
+      // Botão extrair URL
+      const colarUrlEl = backdrop.querySelector('#mniColarUrl');
+      const btnExtrair = backdrop.querySelector('#mniBtnExtrair');
+      if (btnExtrair) btnExtrair.onclick = async () => {
+        const txt = colarUrlEl.value.trim();
+        if (!txt) {
+          colarUrlEl.focus();
+          setFlash('info', 'Cole primeiro o link do Google Maps.');
+          return;
+        }
+        const resultado = extrairLatLngDeTexto(txt);
+        if (resultado.status === 'ok') {
+          latEl.value = resultado.lat.toFixed(6);
+          lngEl.value = resultado.lng.toFixed(6);
+          colarUrlEl.value = '';
+          atualizarStatusCoords();
+          setFlash('success', `Coordenadas extraídas: ${resultado.lat.toFixed(5)}, ${resultado.lng.toFixed(5)}`);
+          return;
+        }
+        if (resultado.status === 'shortlink') {
+          // Detectou URL encurtada (maps.app.goo.gl, etc.) — abre modal explicativo
+          await showModalConfirmacao({
+            icone: 'link_off', iconeCor: 'warning',
+            titulo: 'URL encurtada do Google Maps',
+            subtitulo: 'Esse tipo de link (maps.app.goo.gl, goo.gl/maps) não tem as coordenadas dentro — é só um redirecionador. Você tem 2 opções:<br><br><strong>Opção 1:</strong> Cole esse link no navegador (Chrome/Safari), espere abrir o Maps, e copie a URL longa que aparecer na barra de endereço.<br><br><strong>Opção 2:</strong> Use o botão <strong>"Buscar coordenadas pelo endereço"</strong> logo abaixo — é mais rápido.',
+            btnConfirmar: 'Entendi',
+            btnCancelar: '',
+          });
+          return;
+        }
+        // no_match
+        setFlash('warning', 'Não consegui extrair coords desse texto. Tenta outro link ou usa o botão "Buscar pelo endereço".');
+      };
+      // Botão buscar pelo endereço (geocoding)
+      const btnGeo = backdrop.querySelector('#mniBtnGeocode');
+      const btnGeoText = backdrop.querySelector('#mniBtnGeocodeText');
+      if (btnGeo) btnGeo.onclick = async () => {
+        const partes = [
+          endEl.value.trim(),
+          bairroEl.value.trim(),
+          cidadeEl.value.trim(),
+          estadoEl.value.trim(),
+          'Brasil',
+        ].filter(Boolean);
+        if (partes.length < 2) {
+          setFlash('info', 'Preenche pelo menos o endereço e a cidade pra eu poder buscar.');
+          endEl.focus();
+          return;
+        }
+        const consulta = partes.join(', ');
+        btnGeo.disabled = true;
+        btnGeoText.textContent = 'Buscando...';
+        btnGeo.style.opacity = '0.7';
+        try {
+          const r = await geocodificarEndereco(consulta);
+          if (!r) {
+            setFlash('warning', 'Endereço não encontrado. Tenta refinar ou use o link do Google Maps.');
+          } else {
+            latEl.value = r.lat.toFixed(6);
+            lngEl.value = r.lng.toFixed(6);
+            atualizarStatusCoords();
+            setFlash('success', `Encontrei: ${r.display_name ? r.display_name.slice(0, 60) + '…' : 'coords OK'}`);
+          }
+        } catch (err) {
+          setFlash('danger', 'Falha na busca. Verifique sua conexão e tente novamente.');
+        } finally {
+          btnGeo.disabled = false;
+          btnGeoText.textContent = 'Buscar coordenadas pelo endereço';
+          btnGeo.style.opacity = '';
+        }
+      };
+
+      // Sprint 9.4: progressive disclosure pro nutri — painel de coords
+      // aparece quando o endereço tem conteúdo suficiente (≥3 chars)
+      if (coordsInicialmenteOculta) {
+        const coordsWrap = backdrop.querySelector('#mniCoordsWrap');
+        const avaliarVisibilidade = () => {
+          const temEnd = (endEl.value || '').trim().length >= 3;
+          if (coordsWrap) coordsWrap.style.display = temEnd ? '' : 'none';
+        };
+        endEl.addEventListener('input', avaliarVisibilidade);
+        avaliarVisibilidade();
+      }
+    }
+
     setTimeout(() => { (valorInicialNome ? endEl : nomeEl).focus(); }, 150);
     const cleanup = () => backdrop.remove();
     const submit = () => {
@@ -14298,20 +16039,135 @@ function showModalInstituicaoNova({ valorInicialNome = '', modo = 'cadastro', in
       const logradouro = endEl.value.trim();
       const bairro = bairroEl.value.trim();
       const cidade = cidadeEl.value.trim();
-      if (!nome) { nomeEl.focus(); return; }
-      if (!logradouro) { endEl.focus(); return; }
-      if (!cidade) { cidadeEl.focus(); return; }
+      if (!nome) { nomeEl.focus(); setFlash('info', 'Nome é obrigatório.'); return; }
+      if (!perfilAdmin) {
+        // Nutri: continua com regras antigas (endereço e cidade obrigatórios)
+        if (!logradouro) { endEl.focus(); return; }
+        if (!cidade) { cidadeEl.focus(); return; }
+        // Sprint 9.4: se permitirCoords, coleta lat/lng (opcionais) do nutri
+        let latitude = null, longitude = null;
+        if (permitirCoords && latEl && lngEl) {
+          const latRaw = latEl.value.trim();
+          const lngRaw = lngEl.value.trim();
+          if (latRaw || lngRaw) {
+            const lat = parseFloat(latRaw.replace(',', '.'));
+            const lng = parseFloat(lngRaw.replace(',', '.'));
+            if (!coordsValidas(lat, lng)) {
+              setFlash('warning', 'Coordenadas inválidas. Deixe em branco ou corrija.');
+              latEl.focus();
+              return;
+            }
+            latitude = lat;
+            longitude = lng;
+          }
+        }
+        cleanup();
+        resolve({ nome, logradouro, bairro: bairro || null, cidade, latitude, longitude });
+        return;
+      }
+      // Perfil admin: regra Eduardo — obrigatórios só nome e endereço
+      if (!logradouro) { endEl.focus(); setFlash('info', 'Endereço é obrigatório.'); return; }
+      // Monta payload completo
+      const cnpj = cnpjEl ? cnpjEl.value.trim() : '';
+      const cep = cepEl ? cepEl.value.trim() : '';
+      const estado = estadoEl ? estadoEl.value.trim().toUpperCase() : '';
+      const latRaw = latEl ? latEl.value.trim() : '';
+      const lngRaw = lngEl ? lngEl.value.trim() : '';
+      let latitude = null, longitude = null;
+      if (latRaw || lngRaw) {
+        const lat = parseFloat(latRaw.replace(',', '.'));
+        const lng = parseFloat(lngRaw.replace(',', '.'));
+        if (!coordsValidas(lat, lng)) {
+          setFlash('warning', 'Coordenadas inválidas. Deixe em branco ou corrija.');
+          (latEl || endEl).focus();
+          return;
+        }
+        latitude = lat;
+        longitude = lng;
+      }
+
+      // Sprint 9.3: coleta dos campos de perfil enriquecido
+      // Helper pra converter valor de input numérico em int ou null
+      const intOuNull = (valorRaw) => {
+        const v = (valorRaw || '').trim();
+        if (!v) return null;
+        const n = parseInt(v, 10);
+        return (Number.isFinite(n) && n >= 0) ? n : null;
+      };
+      // Tipo: radio (publica|privada|null se desmarcado)
+      const radioTipoMarcado = backdrop.querySelector('input[name="mniTipo"]:checked');
+      const tipo = radioTipoMarcado ? radioTipoMarcado.value : null;
+      // Capacidade / leitos / cirúrgico
+      const leitosTotal         = intOuNull(backdrop.querySelector('#mniLeitosTotal')?.value);
+      const leitosUtiAdulto     = intOuNull(backdrop.querySelector('#mniLeitosUtiAdulto')?.value);
+      const leitosUtiPediatrica = intOuNull(backdrop.querySelector('#mniLeitosUtiPed')?.value);
+      const hospCirurgico       = !!backdrop.querySelector('#mniHospCirurgico')?.checked;
+      // Se desmarcou cirúrgico, salas_cirurgicas = null (não faz sentido ter)
+      const salasCirurgicas     = hospCirurgico ? intOuNull(backdrop.querySelector('#mniSalasCirurgicas')?.value) : null;
+      // Equipe de nutrição
+      const nutriTotal    = intOuNull(backdrop.querySelector('#mniNutriTotal')?.value);
+      const nutriClinicos = intOuNull(backdrop.querySelector('#mniNutriClinicos')?.value);
+      const nutriEmtn     = intOuNull(backdrop.querySelector('#mniNutriEmtn')?.value);
+      // Validação leve: se somou clínicos+EMTN > total, avisa mas não bloqueia
+      if (nutriTotal !== null && nutriClinicos !== null && nutriEmtn !== null) {
+        if (nutriClinicos + nutriEmtn > nutriTotal) {
+          setFlash('warning', `Atenção: clínicos (${nutriClinicos}) + EMTN (${nutriEmtn}) > total (${nutriTotal}). Salvando assim mesmo.`);
+        }
+      }
+      // Supervisor
+      const supNome  = backdrop.querySelector('#mniSupNome')?.value.trim()  || '';
+      const supTel   = backdrop.querySelector('#mniSupTel')?.value.trim()   || '';
+      const supEmail = backdrop.querySelector('#mniSupEmail')?.value.trim() || '';
+      // Validação leve de email (se preenchido)
+      if (supEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(supEmail)) {
+        setFlash('warning', 'E-mail do supervisor parece inválido. Confira antes de salvar.');
+        backdrop.querySelector('#mniSupEmail')?.focus();
+        return;
+      }
+
       cleanup();
-      resolve({ nome, logradouro, bairro: bairro || null, cidade });
+      resolve({
+        nome,
+        logradouro,
+        bairro: bairro || null,
+        cidade: cidade || null,
+        cnpj: cnpj || null,
+        cep: cep || null,
+        estado: estado || null,
+        latitude,
+        longitude,
+        // Sprint 9.3 — perfil enriquecido
+        tipo,
+        leitos_total: leitosTotal,
+        leitos_uti_adulto: leitosUtiAdulto,
+        leitos_uti_pediatrica: leitosUtiPediatrica,
+        hospital_cirurgico: hospCirurgico,
+        salas_cirurgicas: salasCirurgicas,
+        nutri_total: nutriTotal,
+        nutri_clinicos: nutriClinicos,
+        nutri_emtn: nutriEmtn,
+        supervisor_nome: supNome || null,
+        supervisor_telefone: supTel || null,
+        supervisor_email: supEmail || null,
+      });
     };
     backdrop.querySelector('#mniOk').onclick = submit;
     backdrop.querySelector('#mniCancel').onclick = () => { cleanup(); resolve(null); };
     backdrop.onclick = (e) => { if (e.target === backdrop) { cleanup(); resolve(null); } };
-    [nomeEl, endEl, bairroEl, cidadeEl].forEach(el => {
-      el.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' && el === cidadeEl) { e.preventDefault(); submit(); }
+    // Sprint 9.2: botões de Desativar/Reativar (só admin + edição)
+    // Resolve({ __acao: 'desativar' }) ou Resolve({ __acao: 'reativar' }) pra quem chamou decidir
+    const btnDesativar = backdrop.querySelector('#mniDesativar');
+    const btnReativar  = backdrop.querySelector('#mniReativar');
+    if (btnDesativar) btnDesativar.onclick = () => { cleanup(); resolve({ __acao: 'desativar' }); };
+    if (btnReativar)  btnReativar.onclick  = () => { cleanup(); resolve({ __acao: 'reativar'  }); };
+    // Enter no último campo simples submete (só modo nutri; admin tem vários campos)
+    if (!perfilAdmin) {
+      [nomeEl, endEl, bairroEl, cidadeEl].forEach(el => {
+        el.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' && el === cidadeEl) { e.preventDefault(); submit(); }
+        });
       });
-    });
+    }
   });
 }
 
@@ -15861,6 +17717,10 @@ function showModalAgendamentoAdmin({ profissionais, instituicoes, objetivos, hoj
               <option value="">Selecione...</option>
               ${instOpts}
             </select>
+            <button type="button" id="agAdmNovaInst" style="margin-top:6px;background:transparent;border:none;color:var(--status-info);font-size:12.5px;font-weight:600;cursor:pointer;padding:4px 0;display:inline-flex;align-items:center;gap:4px;font-family:inherit;">
+              <span class="material-symbols-rounded" style="font-size:16px;">add_circle</span>
+              Nova instituição
+            </button>
           </div>
           <div class="report-field" style="margin-bottom:12px;">
             <label for="agAdmData">Data <span style="color:var(--status-danger);">*</span></label>
@@ -15891,6 +17751,29 @@ function showModalAgendamentoAdmin({ profissionais, instituicoes, objetivos, hoj
     document.body.appendChild(backdrop);
     const cleanup = () => backdrop.remove();
     document.getElementById('agAdmCancel').onclick = () => { cleanup(); resolve(null); };
+
+    // Botão "+ Nova instituição" — admin cria direto ATIVA (sem passar pela fila)
+    document.getElementById('agAdmNovaInst').onclick = async () => {
+      // Sprint 9.4: modal admin completo (CNPJ, coords, perfil, equipe, supervisor)
+      const dados = await showModalInstituicaoNova({ perfilAdmin: true });
+      if (!dados) return; // cancelou
+      try {
+        const nova = await criarInstituicao(dados, { ativaDireto: true });
+        // Adiciona a nova opção no select e seleciona automaticamente
+        const select = document.getElementById('agAdmInst');
+        if (select) {
+          const opt = document.createElement('option');
+          opt.value = nova.id;
+          opt.textContent = (nova.nome || '');
+          opt.selected = true;
+          select.appendChild(opt);
+        }
+        setFlash('success', `Instituição "${nova.nome}" cadastrada.`);
+      } catch (err) {
+        alert('Erro ao cadastrar: ' + err.message);
+      }
+    };
+
     document.getElementById('agAdmOk').onclick = () => {
       const nutricionista_id = document.getElementById('agAdmProf').value;
       const instituicao_id = document.getElementById('agAdmInst').value;
@@ -15977,13 +17860,19 @@ function renderAdminEquipe() {
           </button>
         </div>
 
-        <div id="equipeBuscaWrap" style="position:relative;margin:12px 0 8px;">
-          <span class="material-symbols-rounded" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--neutral-500);font-size:18px;pointer-events:none;">search</span>
-          <input type="text"
-                 id="equipeBusca"
-                 placeholder="Filtrar por nome, CPF ou email..."
-                 oninput="filtrarEquipeLocal(this.value)"
-                 style="width:100%;padding:10px 14px 10px 38px;border:1px solid var(--neutral-200);border-radius:10px;font-family:inherit;font-size:13px;background:var(--neutral-0);color:var(--brand-navy);" />
+        <div id="equipeBuscaWrap" style="display:flex;gap:8px;align-items:center;margin:12px 0 8px;">
+          <div style="position:relative;flex:1;">
+            <span class="material-symbols-rounded" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--neutral-500);font-size:18px;pointer-events:none;">search</span>
+            <input type="text"
+                   id="equipeBusca"
+                   placeholder="Filtrar por nome, CPF ou email..."
+                   oninput="filtrarEquipeLocal(this.value)"
+                   style="width:100%;padding:10px 14px 10px 38px;border:1px solid var(--neutral-200);border-radius:10px;font-family:inherit;font-size:13px;background:var(--neutral-0);color:var(--brand-navy);" />
+          </div>
+          <button id="equipeBtnExport" class="av-btn-export" onclick="exportarEquipeCSV()" title="Exportar lista atual pra CSV" style="flex-shrink:0;">
+            <span class="material-symbols-rounded" style="font-size:18px;">download</span>
+            CSV
+          </button>
         </div>
 
         <div id="equipeList" style="display:flex;flex-direction:column;gap:10px;">
@@ -16665,41 +18554,80 @@ function renderAdminInstituicoes() {
     const listEl = document.getElementById('admInstList');
     if (!listEl) return;
     try {
-      const insts = await listarInstituicoes();
+      // Sprint 9.2: admin vê também desativadas (pra poder reativar)
+      const insts = await listarInstituicoes({ incluirDesativadas: true });
       if (insts.length === 0) {
+        // Sprint 9.1: empty state agora oferece tanto cadastro manual quanto seed de teste
         listEl.innerHTML = `
           <div class="empty-state" style="margin:0;">
             <div class="empty-state__icon">
               <span class="material-symbols-rounded">local_hospital</span>
             </div>
             <div class="empty-state__title">Nenhuma instituição cadastrada</div>
-            <div class="empty-state__desc">Use o botão abaixo pra popular rapidamente com 5 hospitais de SP usando sua localização atual como referência. Ótimo pra testar o fluxo de check-in.</div>
-            <button class="btn-auth btn-auth--primary" onclick="seedInstituicoesTeste()" style="display:inline-flex;text-decoration:none;width:auto;padding:12px 24px;min-height:auto;margin-top:8px;">
-              <span class="material-symbols-rounded" style="font-size:20px">auto_awesome</span>
-              Popular instituições de teste
-            </button>
+            <div class="empty-state__desc">Cadastre a primeira instituição agora ou popule com 5 hospitais de SP pra testar o fluxo de check-in.</div>
+            <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:8px;">
+              <button class="btn-auth btn-auth--primary" onclick="novaInstituicaoAdmin()" style="display:inline-flex;text-decoration:none;width:auto;padding:12px 22px;min-height:auto;">
+                <span class="material-symbols-rounded" style="font-size:20px">add_location_alt</span>
+                Cadastrar agora
+              </button>
+              <button class="btn-auth btn-auth--secondary" onclick="seedInstituicoesTeste()" style="display:inline-flex;text-decoration:none;width:auto;padding:12px 22px;min-height:auto;">
+                <span class="material-symbols-rounded" style="font-size:20px">auto_awesome</span>
+                Popular de teste
+              </button>
+            </div>
           </div>
         `;
       } else {
+        // Sprint 9.1: cards clicáveis + ícone visual de coords (admin sabe onde falta GPS)
+        // Sprint 9.2: cards mostram status (Ativa / Desativada / Pendente) com estilo visual
         listEl.innerHTML = `
-          <div style="margin-bottom:16px;font-size:13px;color:var(--neutral-600);">
-            <strong>${insts.length}</strong> instituição(ões) cadastrada(s)
-          </div>
-          ${insts.map(inst => `
-            <div class="visits-list__item" data-id="${inst.id}">
-              <div class="visits-list__icon">
-                <span class="material-symbols-rounded">local_hospital</span>
-              </div>
-              <div class="visits-list__info">
-                <div class="visits-list__name">${inst.nome.replace(/"/g,'&quot;')}</div>
-                <div class="visits-list__time" style="font-family:var(--font-body);">
-                  ${(inst.bairro || '').replace(/"/g,'&quot;')}${inst.bairro && inst.cidade ? ' · ' : ''}${(inst.cidade || '').replace(/"/g,'&quot;')}
+          ${insts.map(inst => {
+            const temCoords = inst.latitude != null && inst.longitude != null && !(inst.latitude === 0 && inst.longitude === 0);
+            const gpsHtml = temCoords
+              ? `<span title="Coordenadas OK" style="display:inline-flex;align-items:center;gap:3px;font-size:10.5px;color:var(--status-success);background:var(--status-success-bg,#E6F6EF);padding:2px 7px;border-radius:9999px;font-weight:600;"><span class="material-symbols-rounded" style="font-size:13px;">gps_fixed</span>GPS</span>`
+              : `<span title="Faltam coordenadas" style="display:inline-flex;align-items:center;gap:3px;font-size:10.5px;color:var(--status-warning);background:var(--status-warning-bg,#FEF4E1);padding:2px 7px;border-radius:9999px;font-weight:600;"><span class="material-symbols-rounded" style="font-size:13px;">gps_off</span>Sem GPS</span>`;
+            const local = [inst.bairro, inst.cidade].filter(Boolean).join(' · ');
+            // Badges de status contextuais (Sprint 9.2)
+            let statusBadgeHtml = '';
+            let cardOpacity = '';
+            if (!inst.ativo) {
+              statusBadgeHtml = `<span title="Desativada" style="display:inline-flex;align-items:center;gap:3px;font-size:10.5px;color:var(--neutral-600);background:var(--neutral-200);padding:2px 7px;border-radius:9999px;font-weight:600;"><span class="material-symbols-rounded" style="font-size:13px;">block</span>Desativada</span>`;
+              cardOpacity = 'opacity:0.6;';
+            } else if (inst.pendente_aprovacao) {
+              statusBadgeHtml = `<span title="Aguardando aprovação do admin" style="display:inline-flex;align-items:center;gap:3px;font-size:10.5px;color:var(--status-warning);background:var(--status-warning-bg,#FEF4E1);padding:2px 7px;border-radius:9999px;font-weight:600;"><span class="material-symbols-rounded" style="font-size:13px;">hourglass_top</span>Pendente</span>`;
+            }
+            return `
+              <div class="visits-list__item" data-id="${inst.id}" onclick="editarInstituicaoAdmin('${inst.id}')" style="cursor:pointer;${cardOpacity}">
+                <div class="visits-list__icon">
+                  <span class="material-symbols-rounded">local_hospital</span>
                 </div>
+                <div class="visits-list__info" style="min-width:0;">
+                  <div class="visits-list__name" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                    <span style="min-width:0;overflow:hidden;text-overflow:ellipsis;">${inst.nome.replace(/"/g,'&quot;')}</span>
+                    ${gpsHtml}
+                    ${statusBadgeHtml}
+                  </div>
+                  <div class="visits-list__time" style="font-family:var(--font-body);">
+                    ${local || '<span style="color:var(--neutral-400);">Sem endereço</span>'}
+                  </div>
+                </div>
+                <span style="font-family:var(--font-mono);font-size:11px;color:var(--neutral-500);white-space:nowrap;">${inst.cnpj || '—'}</span>
+                <span class="material-symbols-rounded" style="color:var(--neutral-300);font-size:18px;margin-left:4px;">chevron_right</span>
               </div>
-              <span style="font-family:var(--font-mono);font-size:11px;color:var(--neutral-500);">${inst.cnpj || '—'}</span>
-            </div>
-          `).join('')}
+            `;
+          }).join('')}
         `;
+        // Atualiza contador com breakdown (Sprint 9.2)
+        const cntEl = document.getElementById('instContador');
+        if (cntEl) {
+          const ativas = insts.filter(i => i.ativo && !i.pendente_aprovacao).length;
+          const pend = insts.filter(i => i.pendente_aprovacao).length;
+          const desativadas = insts.filter(i => !i.ativo).length;
+          const partes = [`<strong>${ativas}</strong> ativa(s)`];
+          if (pend > 0) partes.push(`<strong>${pend}</strong> pendente(s)`);
+          if (desativadas > 0) partes.push(`<strong>${desativadas}</strong> desativada(s)`);
+          cntEl.innerHTML = partes.join(' · ');
+        }
         // Destaca item vindo de busca global (?id=X)
         destacarItemDaURL('#admInstList .visits-list__item[data-id="%ID%"]');
       }
@@ -16712,21 +18640,187 @@ function renderAdminInstituicoes() {
     <div class="mobile-app">
       ${mobileTopBar({ title: 'Instituições', showBack: true })}
       <main class="mcontent">
-        <div class="visits-list" id="admInstList" style="background:var(--neutral-0);">
-          <div style="padding:20px;text-align:center;color:var(--neutral-500);font-size:13px;">Carregando...</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 10px;flex-wrap:wrap;">
+          <div id="instContador" style="font-size:13px;color:var(--neutral-600);">—</div>
+          <button onclick="novaInstituicaoAdmin()" class="btn-auth btn-auth--primary" style="display:inline-flex;align-items:center;gap:6px;width:auto;padding:8px 14px;min-height:auto;font-size:13px;">
+            <span class="material-symbols-rounded" style="font-size:18px;">add_location_alt</span>
+            Nova instituição
+          </button>
         </div>
 
-        <div style="margin-top:20px;padding:14px;background:var(--status-info-bg);border-radius:12px;font-size:13px;color:var(--status-info);line-height:1.5;">
-          <strong>📝 Sprint 2.2 em andamento</strong><br>
-          CRUD completo de instituições vem no Sprint 3 (admin). Por enquanto use o seed pra testar.
+        <div style="display:flex;gap:8px;align-items:center;margin:0 0 12px;">
+          <div style="position:relative;flex:1;">
+            <span class="material-symbols-rounded" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--neutral-500);font-size:18px;pointer-events:none;">search</span>
+            <input type="text"
+                   id="instBusca"
+                   placeholder="Filtrar por nome, bairro, cidade ou CNPJ..."
+                   oninput="filtrarInstLocal(this.value)"
+                   style="width:100%;padding:10px 14px 10px 38px;border:1px solid var(--neutral-200);border-radius:10px;font-family:inherit;font-size:13px;background:var(--neutral-0);color:var(--brand-navy);" />
+          </div>
+          <button id="instBtnExport" class="av-btn-export" onclick="exportarInstCSV()" title="Exportar lista atual pra CSV" style="flex-shrink:0;">
+            <span class="material-symbols-rounded" style="font-size:18px;">download</span>
+            CSV
+          </button>
+        </div>
+
+        <div class="visits-list" id="admInstList" style="background:var(--neutral-0);">
+          <div style="padding:20px;text-align:center;color:var(--neutral-500);font-size:13px;">Carregando...</div>
         </div>
       </main>
     </div>
   `;
 }
 
+// Sprint 9.1: CRUD admin de instituições
+// Parte 1 — criar e editar (a desativar/reativar vem na Parte 2)
+
+window.novaInstituicaoAdmin = async function() {
+  const bloqueado = await bloqueioSimulacao('cadastrar instituição');
+  if (bloqueado) return;
+  const dados = await showModalInstituicaoNova({ perfilAdmin: true });
+  if (!dados) return;
+  try {
+    const nova = await criarInstituicao(dados, { ativaDireto: true });
+    setFlash('success', `"${nova.nome}" cadastrada com sucesso.`);
+    // Recarrega a tela inteira pra atualizar contador e lista
+    router();
+  } catch (err) {
+    await showModalConfirmacao({
+      icone: 'error', iconeCor: 'danger',
+      titulo: 'Não foi possível cadastrar',
+      subtitulo: err.message || 'Tente novamente em instantes.',
+      btnConfirmar: 'OK', btnCancelar: '',
+    });
+  }
+};
+
+window.editarInstituicaoAdmin = async function(id) {
+  const bloqueado = await bloqueioSimulacao('editar instituição');
+  if (bloqueado) return;
+  try {
+    const { data: inst, error } = await db.from('instituicoes').select('*').eq('id', id).maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!inst) throw new Error('Instituição não encontrada.');
+    const novosDados = await showModalInstituicaoNova({
+      modo: 'edicao',
+      instExistente: inst,
+      perfilAdmin: true,
+    });
+    if (!novosDados) return;
+    // Sprint 9.2: modal pode retornar uma ação especial de desativar/reativar
+    if (novosDados.__acao === 'desativar') {
+      await window.desativarInstituicaoAdmin(id, inst.nome);
+      return;
+    }
+    if (novosDados.__acao === 'reativar') {
+      await window.reativarInstituicaoAdmin(id, inst.nome);
+      return;
+    }
+    const { error: upErr } = await db.from('instituicoes').update(novosDados).eq('id', id);
+    if (upErr) throw new Error(upErr.message);
+    setFlash('success', `"${novosDados.nome}" atualizada.`);
+    router();
+  } catch (err) {
+    await showModalConfirmacao({
+      icone: 'error', iconeCor: 'danger',
+      titulo: 'Não foi possível salvar',
+      subtitulo: err.message || 'Tente novamente em instantes.',
+      btnConfirmar: 'OK', btnCancelar: '',
+    });
+  }
+};
+
+// Sprint 9.2: desativar (soft-delete) — preserva histórico de visitas
+window.desativarInstituicaoAdmin = async function(id, nome) {
+  const bloqueado = await bloqueioSimulacao('desativar instituição');
+  if (bloqueado) return;
+  try {
+    // Conta visitas vinculadas pra alertar sobre impacto
+    const { count: qtdVisitas } = await db
+      .from('visitas')
+      .select('id', { count: 'exact', head: true })
+      .eq('instituicao_id', id);
+    const aviso = qtdVisitas > 0
+      ? `<strong>${qtdVisitas}</strong> visita(s) ficarão preservadas no histórico, mas a instituição não aparecerá mais para novos check-ins. Você pode reativar depois.`
+      : 'A instituição não aparecerá mais para novos check-ins. Você pode reativar depois.';
+    const ok = await showModalConfirmacao({
+      icone: 'block', iconeCor: 'warning',
+      titulo: `Desativar "${nome || 'instituição'}"?`,
+      subtitulo: aviso,
+      btnConfirmar: 'Desativar',
+      btnCancelar: 'Cancelar',
+    });
+    if (!ok) return;
+    const { error } = await db.from('instituicoes').update({ ativo: false }).eq('id', id);
+    if (error) throw new Error(error.message);
+    setFlash('success', `"${nome || 'Instituição'}" desativada.`);
+    router();
+  } catch (err) {
+    await showModalConfirmacao({
+      icone: 'error', iconeCor: 'danger',
+      titulo: 'Não foi possível desativar',
+      subtitulo: err.message || 'Tente novamente em instantes.',
+      btnConfirmar: 'OK', btnCancelar: '',
+    });
+  }
+};
+
+window.reativarInstituicaoAdmin = async function(id, nome) {
+  const bloqueado = await bloqueioSimulacao('reativar instituição');
+  if (bloqueado) return;
+  try {
+    const ok = await showModalConfirmacao({
+      icone: 'check_circle', iconeCor: 'success',
+      titulo: `Reativar "${nome || 'instituição'}"?`,
+      subtitulo: 'A instituição voltará a aparecer para check-ins. Se ela estava pendente de aprovação, continuará pendente após reativação.',
+      btnConfirmar: 'Reativar',
+      btnCancelar: 'Cancelar',
+    });
+    if (!ok) return;
+    const { error } = await db.from('instituicoes').update({ ativo: true }).eq('id', id);
+    if (error) throw new Error(error.message);
+    setFlash('success', `"${nome || 'Instituição'}" reativada.`);
+    router();
+  } catch (err) {
+    await showModalConfirmacao({
+      icone: 'error', iconeCor: 'danger',
+      titulo: 'Não foi possível reativar',
+      subtitulo: err.message || 'Tente novamente em instantes.',
+      btnConfirmar: 'OK', btnCancelar: '',
+    });
+  }
+};
+
 // Seed de instituições de teste — cria 5 hospitais reais de São Paulo
 // Coordenadas reais obtidas de fontes públicas
+// Filtra os cards de instituições já renderizados (Sprint 8.6)
+window.filtrarInstLocal = function(termo) {
+  const t = (termo || '').trim().toLowerCase();
+  const cards = document.querySelectorAll('#admInstList .visits-list__item');
+  let matches = 0;
+  cards.forEach(card => {
+    if (!t) { card.style.display = ''; matches++; return; }
+    const texto = card.textContent.toLowerCase();
+    const visivel = texto.includes(t);
+    card.style.display = visivel ? '' : 'none';
+    if (visivel) matches++;
+  });
+  let msgEl = document.getElementById('instBuscaSemResultado');
+  if (t && matches === 0) {
+    if (!msgEl) {
+      msgEl = document.createElement('div');
+      msgEl.id = 'instBuscaSemResultado';
+      msgEl.style.cssText = 'padding:30px;text-align:center;color:var(--neutral-500);font-size:13px;';
+      msgEl.innerHTML = `<span class="material-symbols-rounded" style="font-size:32px;display:block;margin-bottom:6px;color:var(--neutral-300);">search_off</span>Nenhum resultado pra "${t.replace(/</g,'&lt;')}"`;
+      document.getElementById('admInstList').appendChild(msgEl);
+    } else {
+      msgEl.innerHTML = `<span class="material-symbols-rounded" style="font-size:32px;display:block;margin-bottom:6px;color:var(--neutral-300);">search_off</span>Nenhum resultado pra "${t.replace(/</g,'&lt;')}"`;
+    }
+  } else if (msgEl) {
+    msgEl.remove();
+  }
+};
+
 window.seedInstituicoesTeste = async function() {
   if (!confirm('Cadastrar 5 hospitais de teste em São Paulo?')) return;
 
@@ -17182,6 +19276,7 @@ window.seedVisitasTeste = async function() {
         proximos: 'Confirmar agenda com antecedência próxima vez.',
       },
       // 9. Em revisão (admin pediu correção) — Samaritano (1 dia atrás)
+      // Forma nova (pós-Sprint 8.9): status='rascunho' + revisao_motivo
       {
         inst: samaritano,
         dia: diasAtras(1),
@@ -17191,7 +19286,7 @@ window.seedVisitasTeste = async function() {
         coordDelta: 0.008, // ~900m fora
         forceGpsDivergente: true,
         checkinManual: false,
-        status: 'em_revisao',
+        status: 'rascunho',
         revisaoMotivo: 'GPS mostra que você estava longe do hospital. Pode confirmar o endereço?',
         realizada: true,
         resumo: 'Apresentação do kit para Dra. Beatriz. Feedback positivo.',
@@ -17245,8 +19340,8 @@ window.seedVisitasTeste = async function() {
         atualizado_em: new Date().toISOString(),
       };
 
-      // Se está em revisão, preenche campos de revisão
-      if (c.status === 'em_revisao') {
+      // Se está em revisão (pós-Sprint 8.9: detecta pelo motivo, não pelo status)
+      if (c.revisaoMotivo) {
         payload.revisao_solicitada_por = user.id;
         payload.revisao_solicitada_em = new Date().toISOString();
         payload.revisao_motivo = c.revisaoMotivo;
