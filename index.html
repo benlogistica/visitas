@@ -5084,7 +5084,7 @@ a {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.4-coords-pro-nutri',
+  APP_VERSION: '1.0.0-alpha.sprint9.8-aprovar-pendente',
   APP_NAME: 'Nutricionais Visitas',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -7103,7 +7103,7 @@ async function listarMinhasVisitas(limit = 5) {
 
   const { data, error } = await db
     .from('visitas')
-    .select('id, data_visita, horario_inicio, status, revisao_motivo, revisao_solicitada_em, revisao_resolvida_em, instituicoes(nome)')
+    .select('id, data_visita, horario_inicio, status, revisao_motivo, revisao_solicitada_em, revisao_resolvida_em, reabertura_expira_em, instituicoes(nome)')
     .eq('nutricionista_id', user.id)
     .order('checkin_timestamp', { ascending: false, nullsFirst: false })
     .limit(limit);
@@ -8121,6 +8121,23 @@ function estaEmRevisao(v) {
       && !v.revisao_resolvida_em;
 }
 
+// Sprint 9.6: helper pra checar se a visita tem reabertura ATIVA (janela aberta)
+// Retorna { ativa: bool, horasRestantes: number|null }
+function temReaberturaAtiva(v) {
+  if (!v || !v.reabertura_expira_em) return { ativa: false, horasRestantes: null };
+  const expira = new Date(v.reabertura_expira_em);
+  const agora = new Date();
+  if (expira <= agora) return { ativa: false, horasRestantes: 0 };
+  const horasRestantes = (expira - agora) / (1000 * 60 * 60);
+  return { ativa: true, horasRestantes };
+}
+
+// Sprint 9.6: "pendente de ação do profissional" = em revisão OU reaberta
+// Usado pra unificar aba "Pendências" no nutri
+function visitaPendenteDeAcaoNutri(v) {
+  return estaEmRevisao(v) || temReaberturaAtiva(v).ativa;
+}
+
 // - em_revisao: travada (admin decide)
 // - rascunho devolvido pelo admin (tem revisao_solicitada_em): 24h a partir da devolução
 // - rascunho / completa normal: 24h a partir do check-in
@@ -8499,6 +8516,17 @@ function sbadgeForStatus(statusOrVisita) {
     return `<span class="sbadge sbadge--review-req"><span class="sbadge__dot"></span>Revisão solicitada</span>`;
   }
 
+  // Sprint 9.6: caso especial — visita concluída com janela de reabertura ATIVA
+  // Nutri precisa ver isso destacado pra não esquecer de editar dentro do prazo
+  if (visita) {
+    const reab = temReaberturaAtiva(visita);
+    if (reab.ativa) {
+      const h = Math.floor(reab.horasRestantes);
+      const tempoFmt = h > 0 ? `${h}h` : `${Math.round(reab.horasRestantes * 60)}min`;
+      return `<span class="sbadge sbadge--reaberta" style="background:var(--status-success-bg,#E6F6EF);color:var(--status-success,#22A06B);border:1px solid rgba(34,160,107,0.3);"><span class="sbadge__dot" style="background:var(--status-success,#22A06B);"></span>Reaberta · ${tempoFmt}</span>`;
+    }
+  }
+
   const map = {
     'rascunho':            { cls: 'draft',      label: 'Rascunho' },
     'completa':            { cls: 'approved',   label: 'Concluída' },
@@ -8551,6 +8579,15 @@ function router() {
     });
   }
   window._routeParams = params; // disponível nas telas
+
+  // Sprint 9.5: proteção de navegação em modo simulação
+  // Admin simulando nutri NUNCA deve acessar telas admin — redireciona pra #/inicio
+  const simulando = sessionStorage.getItem('SIMULAR_NUTRI') === '1';
+  if (simulando && (hash === '#/admin' || hash.startsWith('#/admin/'))) {
+    setFlash('info', 'Sai do modo simulação pra acessar telas administrativas.');
+    window.location.hash = '#/inicio';
+    return;
+  }
 
   const route = routes[hash];
   const app = document.getElementById('app');
@@ -10557,7 +10594,7 @@ function renderVisitas() {
             Concluídas <span class="review-tab__count" id="cntMvConcluidas">—</span>
           </button>
           <button class="review-tab ${window._visitasNutriFiltro === 'em_revisao' ? 'is-active' : ''}" onclick="trocarFiltroMinhasVisitas('em_revisao')">
-            Em revisão <span class="review-tab__count" id="cntMvRevisao">—</span>
+            Pendências <span class="review-tab__count" id="cntMvRevisao">—</span>
           </button>
           <button class="review-tab ${window._visitasNutriFiltro === 'rascunhos' ? 'is-active' : ''}" onclick="trocarFiltroMinhasVisitas('rascunhos')">
             Rascunhos <span class="review-tab__count" id="cntMvRascunhos">—</span>
@@ -10591,25 +10628,38 @@ async function carregarMinhasVisitas() {
     const todas = await listarMinhasVisitas(200);
 
     // Calcula contagens por bucket pras abas
-    let cConcluidas = 0, cRevisao = 0, cRascunhos = 0;
+    // Sprint 9.6: "Pendências" = em revisão + reabertas (ambas exigem ação do nutri)
+    //            "Concluídas" EXCLUI reabertas (pra não aparecer em 2 lugares)
+    let cConcluidas = 0, cPendencias = 0, cRascunhos = 0;
     todas.forEach(v => {
-      if (v.status === 'completa' || v.status === 'aprovada_pos_revisao') cConcluidas++;
-      else if (estaEmRevisao(v)) cRevisao++;
-      else if (v.status === 'rascunho') cRascunhos++;
+      const reab = temReaberturaAtiva(v);
+      if (estaEmRevisao(v) || reab.ativa) {
+        cPendencias++;
+      } else if (v.status === 'completa' || v.status === 'aprovada_pos_revisao') {
+        cConcluidas++;
+      } else if (v.status === 'rascunho') {
+        cRascunhos++;
+      }
     });
     const cnt = (id, n) => { const el = document.getElementById(id); if (el) el.textContent = n; };
     cnt('cntMvTodas', todas.length);
     cnt('cntMvConcluidas', cConcluidas);
-    cnt('cntMvRevisao', cRevisao);
+    cnt('cntMvRevisao', cPendencias);
     cnt('cntMvRascunhos', cRascunhos);
 
     // Aplica filtro de aba
     const filtro = window._visitasNutriFiltro || 'todas';
     let visitas = todas;
     if (filtro === 'concluidas') {
-      visitas = todas.filter(v => v.status === 'completa' || v.status === 'aprovada_pos_revisao');
+      // Sprint 9.6: concluídas "limpas" (sem reabertura ativa, sem revisão)
+      visitas = todas.filter(v => {
+        if (estaEmRevisao(v)) return false;
+        if (temReaberturaAtiva(v).ativa) return false;
+        return v.status === 'completa' || v.status === 'aprovada_pos_revisao';
+      });
     } else if (filtro === 'em_revisao') {
-      visitas = todas.filter(v => estaEmRevisao(v));
+      // Sprint 9.6: aba "Pendências" — em revisão + reabertas
+      visitas = todas.filter(v => estaEmRevisao(v) || temReaberturaAtiva(v).ativa);
     } else if (filtro === 'rascunhos') {
       // Rascunhos PUROS — não inclui os que estão em revisão (esses têm aba própria)
       visitas = todas.filter(v => v.status === 'rascunho' && !estaEmRevisao(v));
@@ -10620,7 +10670,7 @@ async function carregarMinhasVisitas() {
       const empties = {
         todas: { icon: 'assignment', titulo: 'Nenhuma visita ainda', desc: 'Faça seu primeiro check-in pra começar.' },
         concluidas: { icon: 'task_alt', titulo: 'Nenhuma visita concluída', desc: 'Suas visitas finalizadas aparecem aqui.' },
-        em_revisao: { icon: 'inbox', titulo: 'Nada em revisão', desc: 'Quando o admin pedir correções, aparecem aqui.' },
+        em_revisao: { icon: 'inbox', titulo: 'Sem pendências', desc: 'Visitas que precisam de ação sua (correções do admin ou reaberturas) aparecem aqui.' },
         rascunhos: { icon: 'edit_note', titulo: 'Nenhum rascunho', desc: 'Visitas em andamento ficam aqui até serem finalizadas.' },
       };
       const e = empties[filtro] || empties.todas;
@@ -15588,16 +15638,22 @@ function showModalInstituicaoNova({ valorInicialNome = '', modo = 'cadastro', in
     const temSupervisor = !!(valSupNome || valSupTel || valSupEmail);
 
     const titulo = ehEdicao
-      ? (perfilAdmin ? 'Editar instituição' : 'Editar dados da instituição')
+      ? (perfilAdmin
+          ? (instExistente?.pendente_aprovacao ? 'Revisar e aprovar instituição' : 'Editar instituição')
+          : 'Editar dados da instituição')
       : 'Cadastrar nova instituição';
     const subtitulo = ehEdicao
       ? (perfilAdmin
-          ? 'Ajuste qualquer campo. As mudanças são aplicadas imediatamente.'
+          ? (instExistente?.pendente_aprovacao
+              ? 'Complete os dados que faltam e aprove. Ou rejeite se não for pra cadastrar.'
+              : 'Ajuste qualquer campo. As mudanças são aplicadas imediatamente.')
           : 'Ajuste os dados que cadastrou. Enquanto aguarda aprovação do admin, você pode corrigir.')
       : (perfilAdmin
           ? 'Apenas nome e endereço são obrigatórios. Os demais campos podem ser preenchidos depois, por você ou pelo profissional.'
           : 'Preencha nome e endereço. O admin completará os demais dados (CNPJ, coordenadas, etc.) ao aprovar.');
-    const btnOkLabel = ehEdicao ? 'Salvar alterações' : (perfilAdmin ? 'Criar instituição' : 'Cadastrar e usar');
+    const btnOkLabel = ehEdicao
+      ? (perfilAdmin && instExistente?.pendente_aprovacao ? 'Salvar (manter pendente)' : 'Salvar alterações')
+      : (perfilAdmin ? 'Criar instituição' : 'Cadastrar e usar');
 
     // Sprint 9.4: pré-popula GPS pro nutri no fluxo check-in (se não tem coords ainda)
     // O nutri pode sobrescrever depois colando URL/buscando/digitando manualmente
@@ -15823,8 +15879,18 @@ function showModalInstituicaoNova({ valorInicialNome = '', modo = 'cadastro', in
           <button class="modal-btn modal-btn--primary" id="mniOk">${btnOkLabel}</button>
           <button class="modal-btn modal-btn--secondary" id="mniCancel">Cancelar</button>
           ${(perfilAdmin && ehEdicao && instExistente) ? `
-            <div style="padding-top:12px;margin-top:4px;border-top:1px dashed var(--neutral-200);">
-              ${instExistente.ativo !== false ? `
+            <div style="padding-top:12px;margin-top:4px;border-top:1px dashed var(--neutral-200);display:flex;flex-direction:column;gap:4px;">
+              ${instExistente.pendente_aprovacao && instExistente.ativo !== false ? `
+                <!-- Sprint 9.8: pendente de aprovação — botões Aprovar + Rejeitar -->
+                <button type="button" id="mniAprovar" style="width:100%;padding:10px;background:transparent;border:0;color:var(--status-success);font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;border-radius:10px;transition:background 140ms;font-family:inherit;" onmouseover="this.style.background='var(--status-success-bg,#E6F6EF)'" onmouseout="this.style.background='transparent'">
+                  <span class="material-symbols-rounded" style="font-size:18px;">verified</span>
+                  Completar e aprovar
+                </button>
+                <button type="button" id="mniRejeitar" style="width:100%;padding:10px;background:transparent;border:0;color:var(--status-danger);font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;border-radius:10px;transition:background 140ms;font-family:inherit;" onmouseover="this.style.background='var(--status-danger-bg,#FCE8E8)'" onmouseout="this.style.background='transparent'">
+                  <span class="material-symbols-rounded" style="font-size:18px;">cancel</span>
+                  Rejeitar cadastro
+                </button>
+              ` : instExistente.ativo !== false ? `
                 <button type="button" id="mniDesativar" style="width:100%;padding:10px;background:transparent;border:0;color:var(--status-warning);font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;border-radius:10px;transition:background 140ms;font-family:inherit;" onmouseover="this.style.background='var(--status-warning-bg,#FEF4E1)'" onmouseout="this.style.background='transparent'">
                   <span class="material-symbols-rounded" style="font-size:18px;">block</span>
                   Desativar instituição
@@ -16034,7 +16100,9 @@ function showModalInstituicaoNova({ valorInicialNome = '', modo = 'cadastro', in
 
     setTimeout(() => { (valorInicialNome ? endEl : nomeEl).focus(); }, 150);
     const cleanup = () => backdrop.remove();
-    const submit = () => {
+    // Sprint 9.8: submit aceita ação extra pra "Completar e aprovar"
+    // Quando acaoExtra='aprovar', o payload ganha __acao pra o caller tratar
+    const submit = (acaoExtra = null) => {
       const nome = nomeEl.value.trim();
       const logradouro = endEl.value.trim();
       const bairro = bairroEl.value.trim();
@@ -16126,7 +16194,7 @@ function showModalInstituicaoNova({ valorInicialNome = '', modo = 'cadastro', in
       }
 
       cleanup();
-      resolve({
+      const payload = {
         nome,
         logradouro,
         bairro: bairro || null,
@@ -16149,9 +16217,11 @@ function showModalInstituicaoNova({ valorInicialNome = '', modo = 'cadastro', in
         supervisor_nome: supNome || null,
         supervisor_telefone: supTel || null,
         supervisor_email: supEmail || null,
-      });
+      };
+      if (acaoExtra) payload.__acao = acaoExtra;
+      resolve(payload);
     };
-    backdrop.querySelector('#mniOk').onclick = submit;
+    backdrop.querySelector('#mniOk').onclick = () => submit();
     backdrop.querySelector('#mniCancel').onclick = () => { cleanup(); resolve(null); };
     backdrop.onclick = (e) => { if (e.target === backdrop) { cleanup(); resolve(null); } };
     // Sprint 9.2: botões de Desativar/Reativar (só admin + edição)
@@ -16160,6 +16230,13 @@ function showModalInstituicaoNova({ valorInicialNome = '', modo = 'cadastro', in
     const btnReativar  = backdrop.querySelector('#mniReativar');
     if (btnDesativar) btnDesativar.onclick = () => { cleanup(); resolve({ __acao: 'desativar' }); };
     if (btnReativar)  btnReativar.onclick  = () => { cleanup(); resolve({ __acao: 'reativar'  }); };
+    // Sprint 9.8: botões de Aprovar/Rejeitar (só admin + edição + pendente)
+    // Aprovar usa submit('aprovar') pra coletar TODOS os dados e enviar junto
+    // Rejeitar só retorna ação (sem coletar, porque vai soft-deletar)
+    const btnAprovar  = backdrop.querySelector('#mniAprovar');
+    const btnRejeitar = backdrop.querySelector('#mniRejeitar');
+    if (btnAprovar)  btnAprovar.onclick  = () => submit('aprovar');
+    if (btnRejeitar) btnRejeitar.onclick = () => { cleanup(); resolve({ __acao: 'rejeitar' }); };
     // Enter no último campo simples submete (só modo nutri; admin tem vários campos)
     if (!perfilAdmin) {
       [nomeEl, endEl, bairroEl, cidadeEl].forEach(el => {
@@ -16383,6 +16460,7 @@ async function updateOrThrow(tabela, patch, id) {
 }
 
 window.aprovarInstituicaoPendente = async function(id) {
+  if (await bloqueioSimulacao('aprovar instituição')) return;
   const ok = await showModalConfirmacao({
     icone: 'check_circle',
     iconeCor: 'success',
@@ -16402,6 +16480,7 @@ window.aprovarInstituicaoPendente = async function(id) {
 // Edição completa da instituição pendente: abre modal grande com todos os campos.
 // Admin pode preencher tudo e aprovar de uma vez só.
 window.abrirEdicaoInstituicaoPendente = async function(id) {
+  if (await bloqueioSimulacao('completar e aprovar instituição')) return;
   // Carrega dados atuais
   const { data: inst, error } = await db.from('instituicoes').select('*').eq('id', id).single();
   if (error) { alert('Erro ao carregar: ' + error.message); return; }
@@ -16586,6 +16665,7 @@ window.editarInstituicaoPendente = async function(id) {
 };
 
 window.rejeitarInstituicaoPendente = async function(id) {
+  if (await bloqueioSimulacao('rejeitar instituição')) return;
   const ok = await showModalConfirmacao({
     icone: 'cancel',
     iconeCor: 'danger',
@@ -16617,6 +16697,7 @@ async function recarregarListaObjetivos() {
 }
 
 window.aprovarObjetivoPendente = async function(id) {
+  if (await bloqueioSimulacao('aprovar objetivo')) return;
   const ok = await showModalConfirmacao({
     icone: 'check_circle',
     iconeCor: 'success',
@@ -16634,6 +16715,7 @@ window.aprovarObjetivoPendente = async function(id) {
 };
 
 window.editarObjetivoPendente = async function(id, nomeAtual) {
+  if (await bloqueioSimulacao('editar e aprovar objetivo')) return;
   const novoNome = await showModalInput({
     icone: 'edit',
     iconeCor: 'info',
@@ -16654,6 +16736,7 @@ window.editarObjetivoPendente = async function(id, nomeAtual) {
 };
 
 window.rejeitarObjetivoPendente = async function(id) {
+  if (await bloqueioSimulacao('rejeitar objetivo')) return;
   const ok = await showModalConfirmacao({
     icone: 'cancel',
     iconeCor: 'danger',
@@ -18550,98 +18633,44 @@ function renderAdminInstituicoes() {
   const user = requireAdmin();
   if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
 
+  // Sprint 9.7: estado de filtro (aba ativa)
+  // Prioridade: URL > smart default (abre em Pendentes se tiver alguma)
+  const filtroPorRota = window._routeParams?.filtro || null;
+  window._instFilter = filtroPorRota || window._instFilter || 'ativas';
+
   setTimeout(async () => {
-    const listEl = document.getElementById('admInstList');
-    if (!listEl) return;
-    try {
-      // Sprint 9.2: admin vê também desativadas (pra poder reativar)
-      const insts = await listarInstituicoes({ incluirDesativadas: true });
-      if (insts.length === 0) {
-        // Sprint 9.1: empty state agora oferece tanto cadastro manual quanto seed de teste
-        listEl.innerHTML = `
-          <div class="empty-state" style="margin:0;">
-            <div class="empty-state__icon">
-              <span class="material-symbols-rounded">local_hospital</span>
-            </div>
-            <div class="empty-state__title">Nenhuma instituição cadastrada</div>
-            <div class="empty-state__desc">Cadastre a primeira instituição agora ou popule com 5 hospitais de SP pra testar o fluxo de check-in.</div>
-            <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:8px;">
-              <button class="btn-auth btn-auth--primary" onclick="novaInstituicaoAdmin()" style="display:inline-flex;text-decoration:none;width:auto;padding:12px 22px;min-height:auto;">
-                <span class="material-symbols-rounded" style="font-size:20px">add_location_alt</span>
-                Cadastrar agora
-              </button>
-              <button class="btn-auth btn-auth--secondary" onclick="seedInstituicoesTeste()" style="display:inline-flex;text-decoration:none;width:auto;padding:12px 22px;min-height:auto;">
-                <span class="material-symbols-rounded" style="font-size:20px">auto_awesome</span>
-                Popular de teste
-              </button>
-            </div>
-          </div>
-        `;
-      } else {
-        // Sprint 9.1: cards clicáveis + ícone visual de coords (admin sabe onde falta GPS)
-        // Sprint 9.2: cards mostram status (Ativa / Desativada / Pendente) com estilo visual
-        listEl.innerHTML = `
-          ${insts.map(inst => {
-            const temCoords = inst.latitude != null && inst.longitude != null && !(inst.latitude === 0 && inst.longitude === 0);
-            const gpsHtml = temCoords
-              ? `<span title="Coordenadas OK" style="display:inline-flex;align-items:center;gap:3px;font-size:10.5px;color:var(--status-success);background:var(--status-success-bg,#E6F6EF);padding:2px 7px;border-radius:9999px;font-weight:600;"><span class="material-symbols-rounded" style="font-size:13px;">gps_fixed</span>GPS</span>`
-              : `<span title="Faltam coordenadas" style="display:inline-flex;align-items:center;gap:3px;font-size:10.5px;color:var(--status-warning);background:var(--status-warning-bg,#FEF4E1);padding:2px 7px;border-radius:9999px;font-weight:600;"><span class="material-symbols-rounded" style="font-size:13px;">gps_off</span>Sem GPS</span>`;
-            const local = [inst.bairro, inst.cidade].filter(Boolean).join(' · ');
-            // Badges de status contextuais (Sprint 9.2)
-            let statusBadgeHtml = '';
-            let cardOpacity = '';
-            if (!inst.ativo) {
-              statusBadgeHtml = `<span title="Desativada" style="display:inline-flex;align-items:center;gap:3px;font-size:10.5px;color:var(--neutral-600);background:var(--neutral-200);padding:2px 7px;border-radius:9999px;font-weight:600;"><span class="material-symbols-rounded" style="font-size:13px;">block</span>Desativada</span>`;
-              cardOpacity = 'opacity:0.6;';
-            } else if (inst.pendente_aprovacao) {
-              statusBadgeHtml = `<span title="Aguardando aprovação do admin" style="display:inline-flex;align-items:center;gap:3px;font-size:10.5px;color:var(--status-warning);background:var(--status-warning-bg,#FEF4E1);padding:2px 7px;border-radius:9999px;font-weight:600;"><span class="material-symbols-rounded" style="font-size:13px;">hourglass_top</span>Pendente</span>`;
-            }
-            return `
-              <div class="visits-list__item" data-id="${inst.id}" onclick="editarInstituicaoAdmin('${inst.id}')" style="cursor:pointer;${cardOpacity}">
-                <div class="visits-list__icon">
-                  <span class="material-symbols-rounded">local_hospital</span>
-                </div>
-                <div class="visits-list__info" style="min-width:0;">
-                  <div class="visits-list__name" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-                    <span style="min-width:0;overflow:hidden;text-overflow:ellipsis;">${inst.nome.replace(/"/g,'&quot;')}</span>
-                    ${gpsHtml}
-                    ${statusBadgeHtml}
-                  </div>
-                  <div class="visits-list__time" style="font-family:var(--font-body);">
-                    ${local || '<span style="color:var(--neutral-400);">Sem endereço</span>'}
-                  </div>
-                </div>
-                <span style="font-family:var(--font-mono);font-size:11px;color:var(--neutral-500);white-space:nowrap;">${inst.cnpj || '—'}</span>
-                <span class="material-symbols-rounded" style="color:var(--neutral-300);font-size:18px;margin-left:4px;">chevron_right</span>
-              </div>
-            `;
-          }).join('')}
-        `;
-        // Atualiza contador com breakdown (Sprint 9.2)
-        const cntEl = document.getElementById('instContador');
-        if (cntEl) {
-          const ativas = insts.filter(i => i.ativo && !i.pendente_aprovacao).length;
-          const pend = insts.filter(i => i.pendente_aprovacao).length;
-          const desativadas = insts.filter(i => !i.ativo).length;
-          const partes = [`<strong>${ativas}</strong> ativa(s)`];
-          if (pend > 0) partes.push(`<strong>${pend}</strong> pendente(s)`);
-          if (desativadas > 0) partes.push(`<strong>${desativadas}</strong> desativada(s)`);
-          cntEl.innerHTML = partes.join(' · ');
+    // Smart default: se não veio filtro na URL e tem pendentes, abre em "Pendentes"
+    if (!filtroPorRota) {
+      try {
+        const insts = await listarInstituicoes({ incluirDesativadas: true });
+        const qtdPend = insts.filter(i => i.ativo && i.pendente_aprovacao).length;
+        if (qtdPend > 0 && window._instFilter === 'ativas') {
+          window._instFilter = 'pendentes';
+          atualizarAbaAtivaInst('pendentes');
         }
-        // Destaca item vindo de busca global (?id=X)
-        destacarItemDaURL('#admInstList .visits-list__item[data-id="%ID%"]');
-      }
-    } catch (err) {
-      listEl.innerHTML = `<div style="padding:20px;color:var(--status-danger);">Erro: ${err.message}</div>`;
+      } catch {}
     }
+    await carregarInstituicoesAdmin();
   }, 0);
 
   return `
     <div class="mobile-app">
       ${mobileTopBar({ title: 'Instituições', showBack: true })}
       <main class="mcontent">
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 10px;flex-wrap:wrap;">
-          <div id="instContador" style="font-size:13px;color:var(--neutral-600);">—</div>
+        <div class="review-tabs" id="instTabs" style="overflow-x:auto;scrollbar-width:none;">
+          <button class="review-tab ${window._instFilter === 'ativas' ? 'is-active' : ''}" onclick="trocarInstFiltro('ativas')">
+            Ativas <span class="review-tab__count" id="cntInstAtivas">—</span>
+          </button>
+          <button class="review-tab ${window._instFilter === 'pendentes' ? 'is-active' : ''}" onclick="trocarInstFiltro('pendentes')">
+            Pendentes <span class="review-tab__count" id="cntInstPendentes">—</span>
+          </button>
+          <button class="review-tab ${window._instFilter === 'desativadas' ? 'is-active' : ''}" onclick="trocarInstFiltro('desativadas')">
+            Desativadas <span class="review-tab__count" id="cntInstDesativadas">—</span>
+          </button>
+        </div>
+
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin:12px 0 10px;flex-wrap:wrap;">
+          <div id="instContadorAba" style="font-size:12.5px;color:var(--neutral-500);">—</div>
           <button onclick="novaInstituicaoAdmin()" class="btn-auth btn-auth--primary" style="display:inline-flex;align-items:center;gap:6px;width:auto;padding:8px 14px;min-height:auto;font-size:13px;">
             <span class="material-symbols-rounded" style="font-size:18px;">add_location_alt</span>
             Nova instituição
@@ -18671,6 +18700,156 @@ function renderAdminInstituicoes() {
   `;
 }
 
+// Sprint 9.7: atualiza classe is-active das abas sem re-renderizar a tela
+function atualizarAbaAtivaInst(filtro) {
+  const tabs = document.querySelectorAll('#instTabs .review-tab');
+  const ordem = ['ativas', 'pendentes', 'desativadas'];
+  tabs.forEach((t, i) => t.classList.toggle('is-active', ordem[i] === filtro));
+}
+
+// Sprint 9.7: troca filtro ativo e recarrega (similar ao padrão de Equipe/Minhas visitas)
+window.trocarInstFiltro = function(filtro) {
+  window._instFilter = filtro;
+  atualizarAbaAtivaInst(filtro);
+  // Limpa busca ao trocar de aba
+  const inp = document.getElementById('instBusca');
+  if (inp) inp.value = '';
+  carregarInstituicoesAdmin();
+};
+
+// Sprint 9.7: carrega todas as instituições, filtra pela aba e renderiza
+async function carregarInstituicoesAdmin() {
+  const listEl = document.getElementById('admInstList');
+  if (!listEl) return;
+  try {
+    const todas = await listarInstituicoes({ incluirDesativadas: true });
+
+    // Calcula contadores pras 3 abas
+    const ativas      = todas.filter(i => i.ativo && !i.pendente_aprovacao);
+    const pendentes   = todas.filter(i => i.ativo && i.pendente_aprovacao);
+    const desativadas = todas.filter(i => !i.ativo);
+
+    // Atualiza contadores nas abas
+    const cnt = (id, n) => { const el = document.getElementById(id); if (el) el.textContent = n; };
+    cnt('cntInstAtivas',      ativas.length);
+    cnt('cntInstPendentes',   pendentes.length);
+    cnt('cntInstDesativadas', desativadas.length);
+
+    // Se a tela inteira está vazia (nenhuma instituição cadastrada), mostra o onboarding
+    if (todas.length === 0) {
+      listEl.innerHTML = `
+        <div class="empty-state" style="margin:0;">
+          <div class="empty-state__icon">
+            <span class="material-symbols-rounded">local_hospital</span>
+          </div>
+          <div class="empty-state__title">Nenhuma instituição cadastrada</div>
+          <div class="empty-state__desc">Cadastre a primeira instituição agora ou popule com 5 hospitais de SP pra testar o fluxo de check-in.</div>
+          <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:8px;">
+            <button class="btn-auth btn-auth--primary" onclick="novaInstituicaoAdmin()" style="display:inline-flex;text-decoration:none;width:auto;padding:12px 22px;min-height:auto;">
+              <span class="material-symbols-rounded" style="font-size:20px">add_location_alt</span>
+              Cadastrar agora
+            </button>
+            <button class="btn-auth btn-auth--secondary" onclick="seedInstituicoesTeste()" style="display:inline-flex;text-decoration:none;width:auto;padding:12px 22px;min-height:auto;">
+              <span class="material-symbols-rounded" style="font-size:20px">auto_awesome</span>
+              Popular de teste
+            </button>
+          </div>
+        </div>
+      `;
+      const cntAba = document.getElementById('instContadorAba');
+      if (cntAba) cntAba.textContent = '';
+      return;
+    }
+
+    // Filtra conforme aba ativa
+    const filtro = window._instFilter || 'ativas';
+    const insts = filtro === 'pendentes'   ? pendentes
+                : filtro === 'desativadas' ? desativadas
+                : ativas;
+
+    // Atualiza contador contextual da aba
+    const cntAba = document.getElementById('instContadorAba');
+    if (cntAba) {
+      const labels = {
+        ativas: 'ativa(s)',
+        pendentes: 'pendente(s)',
+        desativadas: 'desativada(s)',
+      };
+      cntAba.innerHTML = insts.length > 0
+        ? `<strong>${insts.length}</strong> ${labels[filtro]}`
+        : '';
+    }
+
+    // Empty state contextual por aba
+    if (insts.length === 0) {
+      const empties = {
+        ativas: {
+          icon: 'local_hospital',
+          titulo: 'Nenhuma instituição ativa',
+          desc: 'Cadastre uma nova pelo botão acima.',
+        },
+        pendentes: {
+          icon: 'hourglass_empty',
+          titulo: 'Sem pendências',
+          desc: 'Todas as instituições sugeridas por profissionais foram aprovadas ou rejeitadas.',
+        },
+        desativadas: {
+          icon: 'block',
+          titulo: 'Nenhuma desativada',
+          desc: 'Instituições que você desativar aparecem aqui pra poder reativar depois.',
+        },
+      };
+      const e = empties[filtro];
+      listEl.innerHTML = `
+        <div class="empty-state" style="margin:0;">
+          <div class="empty-state__icon"><span class="material-symbols-rounded">${e.icon}</span></div>
+          <div class="empty-state__title">${e.titulo}</div>
+          <div class="empty-state__desc">${e.desc}</div>
+        </div>
+      `;
+      return;
+    }
+
+    // Renderiza cards
+    listEl.innerHTML = insts.map(inst => {
+      const temCoords = inst.latitude != null && inst.longitude != null && !(inst.latitude === 0 && inst.longitude === 0);
+      const gpsHtml = temCoords
+        ? `<span title="Coordenadas OK" style="display:inline-flex;align-items:center;gap:3px;font-size:10.5px;color:var(--status-success);background:var(--status-success-bg,#E6F6EF);padding:2px 7px;border-radius:9999px;font-weight:600;"><span class="material-symbols-rounded" style="font-size:13px;">gps_fixed</span>GPS</span>`
+        : `<span title="Faltam coordenadas" style="display:inline-flex;align-items:center;gap:3px;font-size:10.5px;color:var(--status-warning);background:var(--status-warning-bg,#FEF4E1);padding:2px 7px;border-radius:9999px;font-weight:600;"><span class="material-symbols-rounded" style="font-size:13px;">gps_off</span>Sem GPS</span>`;
+      const local = [inst.bairro, inst.cidade].filter(Boolean).join(' · ');
+      // Opacity pra desativadas (claro visual)
+      const cardOpacity = !inst.ativo ? 'opacity:0.6;' : '';
+      return `
+        <div class="visits-list__item" data-id="${inst.id}" onclick="editarInstituicaoAdmin('${inst.id}')" style="cursor:pointer;${cardOpacity}">
+          <div class="visits-list__icon">
+            <span class="material-symbols-rounded">local_hospital</span>
+          </div>
+          <div class="visits-list__info" style="min-width:0;">
+            <div class="visits-list__name" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+              <span style="min-width:0;overflow:hidden;text-overflow:ellipsis;">${inst.nome.replace(/"/g,'&quot;')}</span>
+              ${gpsHtml}
+            </div>
+            <div class="visits-list__time" style="font-family:var(--font-body);">
+              ${local || '<span style="color:var(--neutral-400);">Sem endereço</span>'}
+            </div>
+          </div>
+          <span style="font-family:var(--font-mono);font-size:11px;color:var(--neutral-500);white-space:nowrap;">${inst.cnpj || '—'}</span>
+          <span class="material-symbols-rounded" style="color:var(--neutral-300);font-size:18px;margin-left:4px;">chevron_right</span>
+        </div>
+      `;
+    }).join('');
+
+    // Destaca item vindo de busca global (?id=X)
+    destacarItemDaURL('#admInstList .visits-list__item[data-id="%ID%"]');
+
+    // Reaplica busca se houver texto digitado
+    const inp = document.getElementById('instBusca');
+    if (inp && inp.value) filtrarInstLocal(inp.value);
+  } catch (err) {
+    listEl.innerHTML = `<div style="padding:20px;color:var(--status-danger);">Erro: ${err.message}</div>`;
+  }
+}
+
 // Sprint 9.1: CRUD admin de instituições
 // Parte 1 — criar e editar (a desativar/reativar vem na Parte 2)
 
@@ -18682,8 +18861,10 @@ window.novaInstituicaoAdmin = async function() {
   try {
     const nova = await criarInstituicao(dados, { ativaDireto: true });
     setFlash('success', `"${nova.nome}" cadastrada com sucesso.`);
-    // Recarrega a tela inteira pra atualizar contador e lista
-    router();
+    // Sprint 9.7: admin acabou de criar — vai pra aba Ativas pra ver a nova
+    window._instFilter = 'ativas';
+    atualizarAbaAtivaInst('ativas');
+    await carregarInstituicoesAdmin();
   } catch (err) {
     await showModalConfirmacao({
       icone: 'error', iconeCor: 'danger',
@@ -18716,10 +18897,20 @@ window.editarInstituicaoAdmin = async function(id) {
       await window.reativarInstituicaoAdmin(id, inst.nome);
       return;
     }
+    // Sprint 9.8: aprovar (salva dados + pendente_aprovacao = false) e rejeitar
+    if (novosDados.__acao === 'aprovar') {
+      await window.aprovarInstituicaoAdmin(id, inst.nome, novosDados);
+      return;
+    }
+    if (novosDados.__acao === 'rejeitar') {
+      await window.rejeitarInstituicaoAdmin(id, inst.nome);
+      return;
+    }
     const { error: upErr } = await db.from('instituicoes').update(novosDados).eq('id', id);
     if (upErr) throw new Error(upErr.message);
     setFlash('success', `"${novosDados.nome}" atualizada.`);
-    router();
+    // Sprint 9.7: preserva aba atual — só recarrega a lista
+    await carregarInstituicoesAdmin();
   } catch (err) {
     await showModalConfirmacao({
       icone: 'error', iconeCor: 'danger',
@@ -18754,7 +18945,8 @@ window.desativarInstituicaoAdmin = async function(id, nome) {
     const { error } = await db.from('instituicoes').update({ ativo: false }).eq('id', id);
     if (error) throw new Error(error.message);
     setFlash('success', `"${nome || 'Instituição'}" desativada.`);
-    router();
+    // Sprint 9.7: preserva aba atual — só recarrega a lista
+    await carregarInstituicoesAdmin();
   } catch (err) {
     await showModalConfirmacao({
       icone: 'error', iconeCor: 'danger',
@@ -18780,11 +18972,79 @@ window.reativarInstituicaoAdmin = async function(id, nome) {
     const { error } = await db.from('instituicoes').update({ ativo: true }).eq('id', id);
     if (error) throw new Error(error.message);
     setFlash('success', `"${nome || 'Instituição'}" reativada.`);
-    router();
+    // Sprint 9.7: preserva aba atual — só recarrega a lista
+    await carregarInstituicoesAdmin();
   } catch (err) {
     await showModalConfirmacao({
       icone: 'error', iconeCor: 'danger',
       titulo: 'Não foi possível reativar',
+      subtitulo: err.message || 'Tente novamente em instantes.',
+      btnConfirmar: 'OK', btnCancelar: '',
+    });
+  }
+};
+
+// Sprint 9.8: aprovar instituição pendente — salva os dados atualizados + marca como aprovada
+// Difere do aprovarInstituicaoPendente antigo (na tela #/admin/pendentes) porque esse
+// também atualiza os dados que admin preencheu no modal antes de aprovar.
+window.aprovarInstituicaoAdmin = async function(id, nomeOriginal, novosDados) {
+  const bloqueado = await bloqueioSimulacao('aprovar instituição');
+  if (bloqueado) return;
+  try {
+    // Remove a flag de ação do payload antes de enviar ao banco
+    const payload = { ...novosDados, pendente_aprovacao: false };
+    delete payload.__acao;
+    // Aviso suave se faltar coords (não bloqueia — admin pode aprovar sem coords ainda)
+    const semCoords = payload.latitude == null || payload.longitude == null;
+    if (semCoords) {
+      const ok = await showModalConfirmacao({
+        icone: 'gps_off', iconeCor: 'warning',
+        titulo: 'Aprovar sem coordenadas?',
+        subtitulo: 'A instituição será aprovada mas sem GPS, o que impede validar check-in pelo raio. Você pode adicionar as coordenadas depois.',
+        btnConfirmar: 'Aprovar mesmo assim',
+        btnCancelar: 'Voltar e preencher',
+      });
+      if (!ok) return;
+    }
+    const { error } = await db.from('instituicoes').update(payload).eq('id', id);
+    if (error) throw new Error(error.message);
+    setFlash('success', `"${payload.nome || nomeOriginal}" aprovada e disponível para check-in.`);
+    // Vai pra aba Ativas pra admin ver a inst recém-aprovada
+    window._instFilter = 'ativas';
+    atualizarAbaAtivaInst('ativas');
+    await carregarInstituicoesAdmin();
+  } catch (err) {
+    await showModalConfirmacao({
+      icone: 'error', iconeCor: 'danger',
+      titulo: 'Não foi possível aprovar',
+      subtitulo: err.message || 'Tente novamente em instantes.',
+      btnConfirmar: 'OK', btnCancelar: '',
+    });
+  }
+};
+
+// Sprint 9.8: rejeitar pendente — marca ativo=false (soft-delete)
+// Mais forte que "desativar" semanticamente: admin não reconhece essa instituição
+window.rejeitarInstituicaoAdmin = async function(id, nome) {
+  const bloqueado = await bloqueioSimulacao('rejeitar instituição');
+  if (bloqueado) return;
+  try {
+    const ok = await showModalConfirmacao({
+      icone: 'cancel', iconeCor: 'danger',
+      titulo: `Rejeitar "${nome || 'instituição'}"?`,
+      subtitulo: 'A instituição sugerida pelo profissional será descartada (desativada). Você pode reativar depois, na aba Desativadas, se mudar de ideia.',
+      btnConfirmar: 'Sim, rejeitar',
+      btnCancelar: 'Cancelar',
+    });
+    if (!ok) return;
+    const { error } = await db.from('instituicoes').update({ ativo: false }).eq('id', id);
+    if (error) throw new Error(error.message);
+    setFlash('info', `"${nome || 'Instituição'}" rejeitada.`);
+    await carregarInstituicoesAdmin();
+  } catch (err) {
+    await showModalConfirmacao({
+      icone: 'error', iconeCor: 'danger',
+      titulo: 'Não foi possível rejeitar',
       subtitulo: err.message || 'Tente novamente em instantes.',
       btnConfirmar: 'OK', btnCancelar: '',
     });
@@ -18927,7 +19187,14 @@ window.seedInstituicoesTeste = async function() {
     const { error } = await db.from('instituicoes').insert(hospitaisSP);
     if (error) throw new Error(error.message);
     setFlash('success', `${hospitaisSP.length} instituições cadastradas!`);
-    router(); // re-renderiza a página
+    // Sprint 9.7: recarrega mantendo a aba (seed cria direto ativas)
+    if (typeof carregarInstituicoesAdmin === 'function') {
+      window._instFilter = 'ativas';
+      if (typeof atualizarAbaAtivaInst === 'function') atualizarAbaAtivaInst('ativas');
+      await carregarInstituicoesAdmin();
+    } else {
+      router();
+    }
   } catch (err) {
     alert('Erro ao cadastrar: ' + err.message);
   }
