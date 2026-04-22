@@ -5445,7 +5445,7 @@ a {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.16.2-logo-color-desktop',
+  APP_VERSION: '1.0.0-alpha.sprint9.18.1-agenda-filtro-prof',
   APP_NAME: 'Nutricionais Visitas',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -9955,17 +9955,15 @@ async function carregarAdminInstituicoesDesktop() {
     cnt('dsdInstCntPend',        pendentes.length);
     cnt('dsdInstCntDesat',       desativadas.length);
 
-    // Smart default: comportamento inteligente de qual aba mostrar
-    //  1. Se veio filtro explícito da URL → respeita
-    //  2. Se é primeira carga e há pendentes → abre em Pendentes (prioriza ação)
-    //  3. Se a aba atual é Pendentes mas não há mais pendentes → volta pra Ativas
-    //     (caso clássico: admin aprovou a última pendência — evita tela vazia)
-    if (!window._routeParams?.filtro) {
-      if (!window._instDesktopInitialized && pendentes.length > 0 && s.filtro === 'ativas') {
+    // Smart default: comportamento inteligente só na PRIMEIRA carga.
+    // Depois disso, respeita qualquer escolha manual do admin (mesmo que aba fique vazia).
+    if (!window._instDesktopInitialized && !window._routeParams?.filtro) {
+      if (pendentes.length > 0 && s.filtro === 'ativas') {
+        // Primeira carga + tem pendentes → prioriza ação, abre em Pendentes
         s.filtro = 'pendentes';
         trocarAbaInstDesktop('pendentes', true);
       } else if (s.filtro === 'pendentes' && pendentes.length === 0) {
-        // Aba Pendentes esvaziou — volta automaticamente pra Ativas
+        // Primeira carga + aba default "pendentes" mas não há nada → cai pra Ativas
         s.filtro = 'ativas';
         trocarAbaInstDesktop('ativas', true);
       }
@@ -10286,11 +10284,10 @@ async function carregarAdminEquipeDesktop() {
     cnt('dsdEqCntAtiv', counts.ativos);
     cnt('dsdEqCntDesat', counts.desativados);
 
-    // Smart default (mesma regra da tela de Instituições):
-    //  - Primeira carga + há pendentes → abre em Pendentes
-    //  - Aba Pendentes ficou vazia → volta automaticamente pra Ativos
-    if (!window._routeParams?.filtro) {
-      if (!window._equipeDesktopInitialized && counts.pendentes > 0 && s.filtro === 'ativos') {
+    // Smart default: mesma regra das telas de Instituições e Objetivos.
+    // Só age na PRIMEIRA carga — depois respeita a escolha manual do admin.
+    if (!window._equipeDesktopInitialized && !window._routeParams?.filtro) {
+      if (counts.pendentes > 0 && s.filtro === 'ativos') {
         s.filtro = 'pendentes';
         trocarAbaEqDesktop('pendentes', true);
       } else if (s.filtro === 'pendentes' && counts.pendentes === 0) {
@@ -10410,9 +10407,13 @@ async function carregarAdminEquipeDesktop() {
           ${btnDesativar}
         `;
       } else {
+        // Aba Desativados: reativar + excluir em definitivo
         acoes = `
           <button onclick="event.stopPropagation();reativarProfissional('${u.id}');" title="Reativar" style="height:30px;padding:0 12px;border:0;background:var(--status-success-bg,#E6F6EF);color:var(--status-success);border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:700;font-family:inherit;" class="ds-table__btn">
             <span class="material-symbols-rounded" style="font-size:16px;">restart_alt</span>Reativar
+          </button>
+          <button onclick="event.stopPropagation();excluirProfissional('${u.id}');" title="Excluir em definitivo" style="height:30px;width:30px;border:0;background:var(--status-danger-bg,#FCE8E8);color:var(--status-danger);border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;" class="ds-table__btn">
+            <span class="material-symbols-rounded" style="font-size:17px;">delete_forever</span>
           </button>
         `;
       }
@@ -11346,6 +11347,438 @@ window.exportarVisitasCsvDesktop = function() {
   ]);
   baixarCsv(`visitas-${new Date().toISOString().substring(0, 10)}.csv`, header, rows);
   setFlash('success', 'CSV baixado.');
+};
+
+// Sprint 9.17 (Parte 9): Objetivos desktop
+// Layout: abas Ativos/Pendentes/Arquivados + tabela com ações por aba
+function renderAdminObjetivosDesktop() {
+  const user = requireAdmin();
+  if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
+
+  const filtroPorRota = window._routeParams?.filtro || null;
+  if (!window._objDesktopState) window._objDesktopState = { filtro: 'ativos', busca: '' };
+  if (filtroPorRota && ['ativos','pendentes','arquivados'].includes(filtroPorRota)) {
+    window._objDesktopState.filtro = filtroPorRota;
+  }
+
+  setTimeout(() => {
+    atualizarBadgesSidebarDesktop();
+    carregarAdminObjetivosDesktop();
+  }, 0);
+
+  const s = window._objDesktopState;
+  const tabs = [
+    { id: 'ativos',     label: 'Ativos',     badgeId: 'dsdObjCntAtiv' },
+    { id: 'pendentes',  label: 'Pendentes',  badgeId: 'dsdObjCntPend' },
+    { id: 'arquivados', label: 'Arquivados', badgeId: 'dsdObjCntArq' },
+  ];
+  const titleExtra = `
+    <div style="display:inline-flex;gap:4px;background:var(--neutral-100);border-radius:9999px;padding:3px;">
+      ${tabs.map(t => `
+        <button onclick="trocarAbaObjDesktop('${t.id}')" id="dsdObjTab_${t.id}" style="padding:5px 14px;border:0;background:${s.filtro === t.id ? 'var(--brand-navy)' : 'transparent'};color:${s.filtro === t.id ? '#fff' : 'var(--neutral-600)'};border-radius:9999px;font-size:11.5px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px;">
+          ${t.label}
+          <span id="${t.badgeId}" style="font-family:'JetBrains Mono',monospace;font-size:10px;background:${s.filtro === t.id ? 'rgba(255,255,255,0.18)' : 'var(--neutral-200)'};padding:1px 6px;border-radius:9999px;min-width:18px;text-align:center;">—</span>
+        </button>
+      `).join('')}
+    </div>
+  `;
+
+  const content = `
+    <div style="display:flex;flex-direction:column;gap:18px;">
+      <!-- Info banner -->
+      <div style="background:#fff;border:1px solid var(--neutral-200);border-radius:10px;padding:14px 16px;display:flex;gap:12px;align-items:center;">
+        <span class="material-symbols-rounded" style="font-size:22px;color:var(--status-info);flex-shrink:0;">info</span>
+        <div style="flex:1;font-size:12.5px;color:var(--neutral-600);line-height:1.5;">
+          <strong>Objetivos de visita</strong> são as opções que aparecem pros profissionais marcarem no check-in (ex: "Discussão clínica", "Avaliação nutricional"). A ordem aqui define a ordem que eles veem no app. Profissionais podem sugerir novos — eles aparecem em <strong>Pendentes</strong> até você aprovar.
+        </div>
+      </div>
+
+      <!-- Barra de ações -->
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:260px;position:relative;">
+          <span class="material-symbols-rounded" style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--neutral-500);font-size:18px;pointer-events:none;">search</span>
+          <input type="text" id="dsdObjBusca" placeholder="Buscar por nome..." value="${(s.busca || '').replace(/"/g,'&quot;')}" oninput="buscarObjDesktop(this.value)" style="width:100%;height:42px;padding:0 14px 0 42px;border:1px solid var(--neutral-200);border-radius:10px;background:#fff;font-family:inherit;font-size:13.5px;color:var(--brand-navy);" />
+        </div>
+        <button id="dsdObjBtnNovo" onclick="handleCriarObjetivoAdmin()" style="height:42px;padding:0 18px;background:var(--brand-lime);color:#fff;border:0;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px;box-shadow:0 2px 6px rgba(139,198,63,0.25);${s.filtro === 'ativos' ? '' : 'display:none;'}">
+          <span class="material-symbols-rounded" style="font-size:18px;">add</span>
+          Novo objetivo
+        </button>
+      </div>
+
+      <!-- Tabela -->
+      <div style="background:#fff;border-radius:12px;border:1px solid var(--neutral-200);box-shadow:0 1px 3px rgba(10,31,92,0.04);overflow:hidden;">
+        <div id="dsdObjTable" style="min-height:260px;">
+          <div style="padding:50px;text-align:center;color:var(--neutral-500);font-size:13px;">
+            <span class="material-symbols-rounded" style="font-size:28px;color:var(--neutral-400);">hourglass_empty</span>
+            <div style="margin-top:6px;">Carregando...</div>
+          </div>
+        </div>
+      </div>
+
+      <div id="dsdObjFooter" style="font-size:12px;color:var(--neutral-500);text-align:right;padding:0 4px;">—</div>
+    </div>
+  `;
+
+  return desktopShell({
+    title: 'Objetivos de visita',
+    breadcrumb: ['Admin', 'Configurações', 'Objetivos'],
+    titleExtra,
+    content,
+    activeId: 'goals',
+  });
+}
+
+async function carregarAdminObjetivosDesktop() {
+  const tableEl = document.getElementById('dsdObjTable');
+  const footerEl = document.getElementById('dsdObjFooter');
+  if (!tableEl) return;
+  const s = window._objDesktopState;
+
+  try {
+    // Atualiza contadores das abas
+    const cnts = await contarObjetivosPorStatus();
+    const setCnt = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+    setCnt('dsdObjCntAtiv', cnts.ativos);
+    setCnt('dsdObjCntPend', cnts.pendentes);
+    setCnt('dsdObjCntArq',  cnts.arquivados);
+
+    // Smart default: só na primeira carga — respeita escolha manual do admin depois.
+    if (!window._objDesktopInitialized && !window._routeParams?.filtro) {
+      if (cnts.pendentes > 0 && s.filtro === 'ativos') {
+        s.filtro = 'pendentes';
+        trocarAbaObjDesktop('pendentes', true);
+      } else if (s.filtro === 'pendentes' && cnts.pendentes === 0) {
+        s.filtro = 'ativos';
+        trocarAbaObjDesktop('ativos', true);
+      }
+    }
+    window._objDesktopInitialized = true;
+
+    // Mostra/esconde botão "Novo objetivo" (só na aba Ativos faz sentido)
+    const btnNovo = document.getElementById('dsdObjBtnNovo');
+    if (btnNovo) btnNovo.style.display = s.filtro === 'ativos' ? 'inline-flex' : 'none';
+
+    // Lista
+    let lista = await listarObjetivosPorFiltro(s.filtro);
+
+    // Busca local
+    const busca = (s.busca || '').trim().toLowerCase();
+    if (busca) {
+      lista = lista.filter(o => (o.nome || '').toLowerCase().includes(busca));
+    }
+
+    window._objDesktopCurrent = lista;
+
+    if (lista.length === 0) {
+      const empties = {
+        ativos:     { icon: 'flag',           t: busca ? 'Nenhum resultado' : 'Nenhum objetivo ativo',     d: busca ? 'Tente outros termos.' : 'Clique em "Novo objetivo" pra começar.' },
+        pendentes:  { icon: 'hourglass_top',  t: busca ? 'Nenhum resultado' : 'Nenhum objetivo pendente',  d: busca ? 'Tente outros termos.' : 'Quando um profissional sugerir um objetivo, ele aparece aqui pra revisão.' },
+        arquivados: { icon: 'archive',        t: busca ? 'Nenhum resultado' : 'Nenhum objetivo arquivado', d: busca ? 'Tente outros termos.' : 'Objetivos arquivados ou rejeitados aparecem aqui.' },
+      };
+      const e = empties[s.filtro];
+      tableEl.innerHTML = `
+        <div style="padding:60px 20px;text-align:center;">
+          <span class="material-symbols-rounded" style="font-size:40px;color:var(--neutral-400);">${e.icon}</span>
+          <div style="margin-top:10px;font-family:'Poppins',sans-serif;font-weight:600;font-size:16px;color:var(--brand-navy);">${e.t}</div>
+          <div style="font-size:13px;color:var(--neutral-500);margin-top:4px;max-width:480px;margin-left:auto;margin-right:auto;line-height:1.5;">${e.d}</div>
+        </div>
+      `;
+      if (footerEl) footerEl.textContent = '';
+      return;
+    }
+
+    // Cabeçalho (muda conforme aba)
+    const colOrdemHead = s.filtro === 'ativos' ? '<div class="ds-table__cell" style="width:60px;">#</div>' : '';
+    const header = `
+      <div class="ds-table__row ds-table__row--head">
+        ${colOrdemHead}
+        <div class="ds-table__cell ds-table__cell--name">Objetivo</div>
+        <div class="ds-table__cell" style="width:180px;">Sugerido por</div>
+        <div class="ds-table__cell" style="width:130px;">Criado</div>
+        <div class="ds-table__cell" style="width:200px;text-align:right;">Ações</div>
+      </div>
+    `;
+
+    const rows = lista.map((o, idx) => {
+      const nomeSafe = (o.nome || '').replace(/</g,'&lt;');
+      const nomeEscaped = (o.nome || '').replace(/'/g,'&#39;').replace(/"/g,'&quot;');
+      const autor = o.sugerido_por_user?.nome
+        ? `<span style="font-size:12.5px;color:var(--neutral-700);">${o.sugerido_por_user.nome.replace(/</g,'&lt;')}</span>`
+        : '<span style="color:var(--neutral-400);font-size:12px;">—</span>';
+      const dataCriacao = o.criado_em
+        ? new Date(o.criado_em).toLocaleDateString('pt-BR')
+        : '<span style="color:var(--neutral-400);">—</span>';
+
+      // Coluna de ordem (só na aba ativos)
+      const colOrdem = s.filtro === 'ativos'
+        ? `<div class="ds-table__cell" style="width:60px;"><span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--neutral-500);font-weight:600;">#${o.ordem != null ? o.ordem : '?'}</span></div>`
+        : '';
+
+      // Ações
+      let acoes = '';
+      if (s.filtro === 'ativos') {
+        const podeSubir = idx > 0;
+        const podeDescer = idx < lista.length - 1;
+        acoes = `
+          <button onclick="event.stopPropagation();reordenarObjetivoUI('${o.id}','cima');" ${!podeSubir ? 'disabled' : ''} title="Mover pra cima" style="height:30px;width:30px;border:1px solid var(--neutral-200);background:#fff;color:var(--brand-navy);border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;${!podeSubir ? 'opacity:.3;cursor:not-allowed;' : ''}" class="ds-table__btn">
+            <span class="material-symbols-rounded" style="font-size:17px;">arrow_upward</span>
+          </button>
+          <button onclick="event.stopPropagation();reordenarObjetivoUI('${o.id}','baixo');" ${!podeDescer ? 'disabled' : ''} title="Mover pra baixo" style="height:30px;width:30px;border:1px solid var(--neutral-200);background:#fff;color:var(--brand-navy);border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;${!podeDescer ? 'opacity:.3;cursor:not-allowed;' : ''}" class="ds-table__btn">
+            <span class="material-symbols-rounded" style="font-size:17px;">arrow_downward</span>
+          </button>
+          <button onclick="event.stopPropagation();editarObjetivoUI('${o.id}','${nomeEscaped}');" title="Editar" style="height:30px;width:30px;border:0;background:var(--neutral-100);color:var(--brand-navy);border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;" class="ds-table__btn">
+            <span class="material-symbols-rounded" style="font-size:17px;">edit</span>
+          </button>
+          <button onclick="event.stopPropagation();arquivarObjetivoUI('${o.id}','${nomeEscaped}');" title="Arquivar" style="height:30px;width:30px;border:0;background:var(--status-warning-bg,#FEF4E1);color:var(--status-warning);border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;" class="ds-table__btn">
+            <span class="material-symbols-rounded" style="font-size:17px;">archive</span>
+          </button>
+        `;
+      } else if (s.filtro === 'pendentes') {
+        acoes = `
+          <button onclick="event.stopPropagation();aprovarObjetivoPendente('${o.id}');" title="Aprovar" style="height:30px;padding:0 12px;border:0;background:var(--status-success);color:#fff;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:700;font-family:inherit;" class="ds-table__btn">
+            <span class="material-symbols-rounded" style="font-size:16px;">check</span>Aprovar
+          </button>
+          <button onclick="event.stopPropagation();editarObjetivoPendente('${o.id}','${nomeEscaped}');" title="Editar e aprovar" style="height:30px;width:30px;border:0;background:var(--neutral-100);color:var(--brand-navy);border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;" class="ds-table__btn">
+            <span class="material-symbols-rounded" style="font-size:17px;">edit</span>
+          </button>
+          <button onclick="event.stopPropagation();rejeitarObjetivoPendente('${o.id}');" title="Rejeitar" style="height:30px;width:30px;border:0;background:var(--status-danger-bg,#FCE8E8);color:var(--status-danger);border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;" class="ds-table__btn">
+            <span class="material-symbols-rounded" style="font-size:17px;">close</span>
+          </button>
+        `;
+      } else { // arquivados
+        acoes = `
+          <button onclick="event.stopPropagation();desarquivarObjetivoUI('${o.id}','${nomeEscaped}');" title="Restaurar" style="height:30px;padding:0 12px;border:0;background:var(--status-success-bg,#E6F6EF);color:var(--status-success);border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:700;font-family:inherit;" class="ds-table__btn">
+            <span class="material-symbols-rounded" style="font-size:16px;">unarchive</span>Restaurar
+          </button>
+          <button onclick="event.stopPropagation();excluirObjetivoUI('${o.id}','${nomeEscaped}');" title="Excluir definitivamente" style="height:30px;width:30px;border:0;background:var(--status-danger-bg,#FCE8E8);color:var(--status-danger);border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;" class="ds-table__btn">
+            <span class="material-symbols-rounded" style="font-size:17px;">delete_forever</span>
+          </button>
+        `;
+      }
+
+      const rowOpacity = s.filtro === 'arquivados' ? 'opacity:0.7;' : '';
+      return `
+        <div class="ds-table__row" data-id="${o.id}" style="${rowOpacity}">
+          ${colOrdem}
+          <div class="ds-table__cell ds-table__cell--name">
+            <div style="display:flex;align-items:center;gap:10px;min-width:0;">
+              <div style="width:36px;height:36px;border-radius:9px;background:rgba(139,198,63,0.15);color:var(--brand-lime);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <span class="material-symbols-rounded" style="font-size:18px;">flag</span>
+              </div>
+              <div style="min-width:0;flex:1;">
+                <div style="font-weight:600;color:var(--brand-navy);font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${nomeSafe || '—'}</div>
+              </div>
+            </div>
+          </div>
+          <div class="ds-table__cell" style="width:180px;">${autor}</div>
+          <div class="ds-table__cell" style="width:130px;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--neutral-600);">${dataCriacao}</div>
+          <div class="ds-table__cell" style="width:200px;text-align:right;">
+            <div style="display:inline-flex;gap:4px;justify-content:flex-end;align-items:center;">${acoes}</div>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    tableEl.innerHTML = header + rows;
+    if (footerEl) footerEl.textContent = `${lista.length} ${lista.length === 1 ? 'objetivo' : 'objetivos'} exibido${lista.length === 1 ? '' : 's'}${busca ? ` (busca: "${busca}")` : ''}`;
+  } catch (err) {
+    tableEl.innerHTML = `<div style="padding:20px;background:var(--status-danger-bg,#FCE8E8);color:var(--status-danger);">Erro: ${err.message}</div>`;
+    console.error('[objetivos desktop]', err);
+  }
+}
+
+window.trocarAbaObjDesktop = function(filtro, silent = false) {
+  window._objDesktopState.filtro = filtro;
+  ['ativos','pendentes','arquivados'].forEach(id => {
+    const btn = document.getElementById(`dsdObjTab_${id}`);
+    if (!btn) return;
+    if (id === filtro) {
+      btn.style.background = 'var(--brand-navy)';
+      btn.style.color = '#fff';
+      const badge = btn.querySelector('span');
+      if (badge) badge.style.background = 'rgba(255,255,255,0.18)';
+    } else {
+      btn.style.background = 'transparent';
+      btn.style.color = 'var(--neutral-600)';
+      const badge = btn.querySelector('span');
+      if (badge) badge.style.background = 'var(--neutral-200)';
+    }
+  });
+  if (!silent) carregarAdminObjetivosDesktop();
+};
+
+let _objBuscaTimer = null;
+window.buscarObjDesktop = function(termo) {
+  clearTimeout(_objBuscaTimer);
+  _objBuscaTimer = setTimeout(() => {
+    window._objDesktopState.busca = termo || '';
+    carregarAdminObjetivosDesktop();
+  }, 220);
+};
+
+// Sprint 9.18 (Parte 10): Agenda global desktop
+// Reutiliza as 3 views já existentes do mobile (Lista/Por profissional/Calendário).
+// Só troca o shell: topbar + botão "Atribuir visita" sólido no topo (sem FAB).
+function renderAdminAgendaDesktop() {
+  const user = requireAdmin();
+  if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
+
+  if (!window._adminAgendaView) window._adminAgendaView = 'lista';
+  if (typeof window._adminAgendaWeekOffset !== 'number') window._adminAgendaWeekOffset = 0;
+
+  setTimeout(() => {
+    atualizarBadgesSidebarDesktop();
+    carregarAdminAgendaDesktop();
+  }, 0);
+
+  const view = window._adminAgendaView;
+  const viewOptions = [
+    { id: 'lista',       label: 'Lista',           icon: 'list' },
+    { id: 'profissional',label: 'Por profissional',icon: 'groups' },
+    { id: 'calendario',  label: 'Calendário',      icon: 'calendar_view_week' },
+  ];
+  const titleExtra = `
+    <div style="display:inline-flex;gap:4px;background:var(--neutral-100);border-radius:9999px;padding:3px;">
+      ${viewOptions.map(v => `
+        <button onclick="trocarAdminAgendaView('${v.id}')" id="dsdAgView_${v.id}" style="padding:5px 12px;border:0;background:${view === v.id ? 'var(--brand-navy)' : 'transparent'};color:${view === v.id ? '#fff' : 'var(--neutral-600)'};border-radius:9999px;font-size:11.5px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:5px;">
+          <span class="material-symbols-rounded" style="font-size:15px;">${v.icon}</span>
+          ${v.label}
+        </button>
+      `).join('')}
+    </div>
+  `;
+
+  const content = `
+    <div style="display:flex;flex-direction:column;gap:18px;">
+
+      <!-- Banner + CTA novo agendamento -->
+      <div style="background:#fff;border:1px solid var(--neutral-200);border-radius:12px;padding:18px 22px;display:flex;align-items:center;gap:16px;">
+        <div style="width:48px;height:48px;border-radius:12px;background:rgba(139,198,63,0.18);color:var(--brand-lime);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <span class="material-symbols-rounded" style="font-size:26px;">calendar_month</span>
+        </div>
+        <div style="flex:1;">
+          <div style="font-family:'Poppins',sans-serif;font-weight:600;font-size:15px;color:var(--brand-navy);">Agenda da equipe</div>
+          <div style="font-size:12.5px;color:var(--neutral-600);margin-top:2px;line-height:1.5;">Veja todas as visitas agendadas, organize por profissional ou use o calendário semanal. Atribua novas visitas a qualquer membro com o botão ao lado.</div>
+        </div>
+        <button onclick="handleNovoAgendamentoAdmin()" style="height:42px;padding:0 18px;background:var(--brand-lime);color:#fff;border:0;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px;box-shadow:0 2px 6px rgba(139,198,63,0.3);flex-shrink:0;">
+          <span class="material-symbols-rounded" style="font-size:18px;">add</span>
+          Atribuir visita
+        </button>
+      </div>
+
+      <!-- Conteúdo da view ativa -->
+      <div id="dsdAgContent" style="min-height:260px;">
+        <div style="padding:50px;text-align:center;color:var(--neutral-500);font-size:13px;background:#fff;border-radius:12px;border:1px solid var(--neutral-200);">
+          <span class="material-symbols-rounded" style="font-size:28px;color:var(--neutral-400);">hourglass_empty</span>
+          <div style="margin-top:6px;">Carregando agenda...</div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  return desktopShell({
+    title: 'Agenda global',
+    breadcrumb: ['Admin', 'Operação', 'Agenda'],
+    titleExtra,
+    content,
+    activeId: 'agenda',
+  });
+}
+
+async function carregarAdminAgendaDesktop() {
+  const contentEl = document.getElementById('dsdAgContent');
+  if (!contentEl) return;
+  if (!window._adminAgendaFilterProf) window._adminAgendaFilterProf = 'todos';
+
+  try {
+    const ags = await listarTodosAgendamentos();
+
+    if (ags.length === 0) {
+      contentEl.innerHTML = `
+        <div style="padding:60px 20px;text-align:center;background:#fff;border-radius:12px;border:1px solid var(--neutral-200);">
+          <span class="material-symbols-rounded" style="font-size:40px;color:var(--neutral-400);">calendar_add_on</span>
+          <div style="margin-top:10px;font-family:'Poppins',sans-serif;font-weight:600;font-size:16px;color:var(--brand-navy);">Nenhuma visita agendada ainda</div>
+          <div style="font-size:13px;color:var(--neutral-500);margin-top:4px;">Clique em <strong>Atribuir visita</strong> pra marcar a primeira.</div>
+        </div>
+      `;
+      return;
+    }
+
+    const view = window._adminAgendaView || 'lista';
+
+    // Sprint 9.18.1: filtro por profissional (usado em Lista e Por profissional)
+    const profsMap = new Map();
+    ags.forEach(a => {
+      const pid = a.nutricionista_id;
+      if (pid && !profsMap.has(pid)) profsMap.set(pid, a.usuarios?.nome || 'Profissional');
+    });
+    const profsOrdenados = Array.from(profsMap.entries())
+      .sort((a, b) => (a[1] || '').localeCompare(b[1] || ''));
+
+    const filtroProf = window._adminAgendaFilterProf;
+    const agsFiltradas = filtroProf === 'todos' ? ags : ags.filter(a => a.nutricionista_id === filtroProf);
+
+    // Select de filtro (só aparece em Lista e Por profissional — no Calendário fica confuso)
+    let filtroHtml = '';
+    if (view !== 'calendario' && profsOrdenados.length > 1) {
+      const selOpts = profsOrdenados.map(([pid, nome]) =>
+        `<option value="${pid}"${filtroProf === pid ? ' selected' : ''}>${nome.replace(/</g,'&lt;')}</option>`
+      ).join('');
+      const totalVisivel = agsFiltradas.length;
+      filtroHtml = `
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap;">
+          <label style="font-size:11px;font-weight:600;color:var(--neutral-500);text-transform:uppercase;letter-spacing:0.05em;">Filtrar por profissional</label>
+          <select onchange="trocarFiltroProfAgendaDesktop(this.value)" style="height:38px;padding:0 12px;border:1px solid var(--neutral-200);border-radius:10px;background:#fff;font-family:inherit;font-size:13px;color:var(--brand-navy);cursor:pointer;min-width:200px;">
+            <option value="todos"${filtroProf === 'todos' ? ' selected' : ''}>Todos (${ags.length})</option>
+            ${selOpts}
+          </select>
+          ${filtroProf !== 'todos' ? `
+            <button onclick="trocarFiltroProfAgendaDesktop('todos')" style="height:38px;padding:0 12px;background:transparent;border:0;color:var(--neutral-500);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:4px;text-decoration:underline;text-underline-offset:3px;">
+              <span class="material-symbols-rounded" style="font-size:14px;">close</span>Limpar
+            </button>
+          ` : ''}
+          <div style="flex:1;"></div>
+          <div style="font-size:12px;color:var(--neutral-600);">${totalVisivel} ${totalVisivel === 1 ? 'agendamento' : 'agendamentos'}${filtroProf !== 'todos' ? ' (filtrado)' : ''}</div>
+        </div>
+      `;
+    }
+
+    // Empty state quando filtro zera resultado
+    if (agsFiltradas.length === 0) {
+      contentEl.innerHTML = `
+        <div style="background:#fff;border-radius:12px;border:1px solid var(--neutral-200);padding:20px 24px;box-shadow:0 1px 3px rgba(10,31,92,0.04);">
+          ${filtroHtml}
+          <div style="padding:40px 20px;text-align:center;color:var(--neutral-500);font-size:13px;">
+            <span class="material-symbols-rounded" style="font-size:32px;color:var(--neutral-400);">search_off</span>
+            <div style="margin-top:8px;">Nenhum agendamento desse profissional.</div>
+          </div>
+        </div>
+      `;
+      return;
+    }
+
+    // Reutiliza as 3 views do mobile envolvendo num card branco
+    // Calendário sempre mostra tudo (filtro por pessoa não faz sentido numa grade semanal com cores misturadas)
+    let innerHtml = '';
+    if (view === 'profissional') innerHtml = renderAgendaPorProfissional(agsFiltradas);
+    else if (view === 'calendario') innerHtml = renderAgendaCalendario(ags);
+    else innerHtml = renderAgendaLista(agsFiltradas);
+
+    contentEl.innerHTML = `
+      <div style="background:#fff;border-radius:12px;border:1px solid var(--neutral-200);padding:20px 24px;box-shadow:0 1px 3px rgba(10,31,92,0.04);">
+        ${filtroHtml}
+        ${innerHtml}
+      </div>
+    `;
+  } catch (err) {
+    console.error('[agenda desktop]', err);
+    contentEl.innerHTML = `<div style="padding:20px;background:var(--status-danger-bg,#FCE8E8);color:var(--status-danger);border-radius:12px;">Erro: ${err.message}</div>`;
+  }
+}
+
+window.trocarFiltroProfAgendaDesktop = function(pid) {
+  window._adminAgendaFilterProf = pid;
+  carregarAdminAgendaDesktop();
 };
 
 /* ==========================================================================
@@ -12507,7 +12940,9 @@ const DESKTOP_RENDERERS = {
   '#/admin/pendentes': renderAdminPendentesDesktop,
   '#/admin/profissionais': renderAdminProfissionaisDesktop,
   '#/admin/visitas': renderAdminVisitasDesktop,
-  // Partes 8+ vão adicionar: agenda, objetivos, configuracoes
+  '#/admin/objetivos': renderAdminObjetivosDesktop,
+  '#/admin/agenda': renderAdminAgendaDesktop,
+  // Última parte (10): configuracoes
 };
 
 function getRendererForRoute(hash, route) {
@@ -21598,10 +22033,14 @@ window.rejeitarInstituicaoPendente = async function(id) {
 // em telas diferentes (/admin/pendentes vs /admin/objetivos).
 async function recarregarListaObjetivos() {
   const hash = window.location.hash || '';
-  if (hash.startsWith('#/admin/objetivos') && typeof carregarAdminObjetivos === 'function') {
-    await carregarAdminObjetivos();
-  } else if (typeof carregarAdminPendentes === 'function') {
-    await carregarAdminPendentes();
+  if (hash.startsWith('#/admin/objetivos')) {
+    // Recarrega ambos (mobile + desktop) — só o que estiver no DOM responde
+    if (typeof carregarAdminObjetivos === 'function') await carregarAdminObjetivos();
+    if (typeof carregarAdminObjetivosDesktop === 'function') await carregarAdminObjetivosDesktop();
+  } else {
+    // Não tá na tela de objetivos — provavelmente tá em /admin/pendentes
+    if (typeof carregarAdminPendentes === 'function') await carregarAdminPendentes();
+    if (typeof carregarAdminPendentesDesktop === 'function') await carregarAdminPendentesDesktop();
   }
 }
 
@@ -21863,6 +22302,13 @@ function cardObjetivoAdmin(obj, filtro, idx, total) {
 
 // === Handlers da tela ===
 
+// Sprint 9.17.3: helper único pra recarregar lista de objetivos (mobile OU desktop).
+// Evita que cada handler precise chamar as duas funções manualmente.
+async function recarregarObjetivosUI() {
+  if (typeof carregarAdminObjetivos === 'function') await carregarAdminObjetivos();
+  if (typeof carregarAdminObjetivosDesktop === 'function') await carregarAdminObjetivosDesktop();
+}
+
 window.handleCriarObjetivoAdmin = async function() {
   const nome = await showModalInput({
     icone: 'flag',
@@ -21881,7 +22327,7 @@ window.handleCriarObjetivoAdmin = async function() {
     setFlash('success', res.reativado
       ? `Objetivo "${res.nome}" reativado.`
       : `Objetivo "${res.nome}" criado.`);
-    await carregarAdminObjetivos();
+    await recarregarObjetivosUI();
   } catch (err) {
     alert('Erro: ' + err.message);
   }
@@ -21903,7 +22349,7 @@ window.editarObjetivoUI = async function(id, nomeAtual) {
   try {
     await updateOrThrow('objetivos_visita', { nome: novoNome.trim() }, id);
     setFlash('success', 'Objetivo atualizado.');
-    await carregarAdminObjetivos();
+    await recarregarObjetivosUI();
   } catch (err) {
     alert('Erro: ' + err.message);
   }
@@ -21922,7 +22368,7 @@ window.arquivarObjetivoUI = async function(id, nome) {
   try {
     await updateOrThrow('objetivos_visita', { ativo: false, pendente_aprovacao: false }, id);
     setFlash('info', 'Objetivo arquivado.');
-    await carregarAdminObjetivos();
+    await recarregarObjetivosUI();
   } catch (err) { alert('Erro: ' + err.message); }
 };
 
@@ -21930,7 +22376,7 @@ window.desarquivarObjetivoUI = async function(id, nome) {
   try {
     await updateOrThrow('objetivos_visita', { ativo: true, pendente_aprovacao: false }, id);
     setFlash('success', `"${nome}" restaurado.`);
-    await carregarAdminObjetivos();
+    await recarregarObjetivosUI();
   } catch (err) { alert('Erro: ' + err.message); }
 };
 
@@ -21961,7 +22407,7 @@ window.excluirObjetivoUI = async function(id, nome) {
   try {
     await excluirObjetivoDefinitivo(id);
     setFlash('info', `"${nome}" excluído.`);
-    await carregarAdminObjetivos();
+    await recarregarObjetivosUI();
   } catch (err) {
     alert('Erro: ' + err.message);
   }
@@ -21970,7 +22416,7 @@ window.excluirObjetivoUI = async function(id, nome) {
 window.reordenarObjetivoUI = async function(id, direcao) {
   try {
     const ok = await reordenarObjetivo(id, direcao);
-    if (ok) await carregarAdminObjetivos();
+    if (ok) await recarregarObjetivosUI();
   } catch (err) { alert('Erro ao reordenar: ' + err.message); }
 };
 
@@ -21991,7 +22437,7 @@ function renderAdminAgenda() {
   const view = window._adminAgendaView;
 
   setTimeout(async () => {
-    await carregarAdminAgenda();
+    await recarregarAgendaUI();
   }, 0);
 
   return `
@@ -22033,12 +22479,39 @@ function renderAdminAgenda() {
   `;
 }
 
+// Sprint 9.18: helper pra recarregar agenda em mobile + desktop
+async function recarregarAgendaUI() {
+  if (typeof carregarAdminAgenda === 'function' && document.querySelector('#adminAgendaLista')) {
+    await carregarAdminAgenda();
+  }
+  if (typeof carregarAdminAgendaDesktop === 'function' && document.getElementById('dsdAgContent')) {
+    await carregarAdminAgendaDesktop();
+  }
+}
+
 window.trocarAdminAgendaView = function(view) {
   window._adminAgendaView = view;
   if (view === 'calendario' && typeof window._adminAgendaWeekOffset !== 'number') {
     window._adminAgendaWeekOffset = 0;
   }
-  // Dispara o router pra re-renderizar (mais leve que recarregar)
+  // Atualiza visual dos botões do seletor de view desktop (se estiverem no DOM)
+  ['lista','profissional','calendario'].forEach(id => {
+    const btn = document.getElementById(`dsdAgView_${id}`);
+    if (!btn) return;
+    if (id === view) {
+      btn.style.background = 'var(--brand-navy)';
+      btn.style.color = '#fff';
+    } else {
+      btn.style.background = 'transparent';
+      btn.style.color = 'var(--neutral-600)';
+    }
+  });
+  // Desktop: re-renderiza só o conteúdo (mais leve que dispatch de hashchange)
+  if (typeof carregarAdminAgendaDesktop === 'function' && document.getElementById('dsdAgContent')) {
+    carregarAdminAgendaDesktop();
+    return;
+  }
+  // Mobile: mantém comportamento antigo (re-render completo via hashchange)
   window.dispatchEvent(new HashChangeEvent('hashchange'));
 };
 
@@ -22252,7 +22725,12 @@ function renderAgendaCalendario(ags) {
 window.adminAgendaMoverSemana = function(delta) {
   if (delta === 0) window._adminAgendaWeekOffset = 0;
   else window._adminAgendaWeekOffset = (window._adminAgendaWeekOffset || 0) + delta;
-  carregarAdminAgenda();
+  // Recarrega no DOM que estiver ativo
+  if (typeof carregarAdminAgendaDesktop === 'function' && document.getElementById('dsdAgContent')) {
+    carregarAdminAgendaDesktop();
+  } else {
+    recarregarAgendaUI();
+  }
 };
 
 // Card parecido com o do profissional, mas com badge do nome do profissional e origem
@@ -22353,7 +22831,7 @@ window.handleNovoAgendamentoAdmin = async function(dataPreSelecionada = null) {
   try {
     await criarAgendamento(dados);
     setFlash('success', 'Visita atribuída! Profissional foi notificado.');
-    await carregarAdminAgenda();
+    await recarregarAgendaUI();
   } catch (err) {
     alert('Erro ao atribuir visita: ' + err.message);
   }
@@ -22365,7 +22843,7 @@ window.handleAdminAgDetalhes = async function(id) {
   const ag = (ags || []).find(a => String(a.id) === String(id));
   if (!ag) {
     alert('Agendamento não encontrado.');
-    await carregarAdminAgenda();
+    await recarregarAgendaUI();
     return;
   }
   showModalAdminAgDetalhes(ag);
@@ -22559,7 +23037,7 @@ window.handleEditarAgendamentoAdmin = async function(id) {
   const ag = (ags || []).find(a => String(a.id) === String(id));
   if (!ag) {
     alert('Agendamento não encontrado.');
-    await carregarAdminAgenda();
+    await recarregarAgendaUI();
     return;
   }
   const instsAtivas = (insts || []).filter(i => i.ativo !== false);
@@ -22579,7 +23057,7 @@ window.handleEditarAgendamentoAdmin = async function(id) {
   try {
     await atualizarAgendamento(id, dados);
     setFlash('success', 'Agendamento atualizado.');
-    await carregarAdminAgenda();
+    await recarregarAgendaUI();
   } catch (err) {
     alert('Erro ao atualizar: ' + err.message);
   }
@@ -22597,7 +23075,7 @@ window.handleReatribuirAgendamento = async function(id) {
   try {
     await reatribuirAgendamento(id, novoId);
     setFlash('success', 'Reatribuído! Novo profissional foi notificado.');
-    await carregarAdminAgenda();
+    await recarregarAgendaUI();
   } catch (err) {
     alert('Erro ao reatribuir: ' + err.message);
   }
@@ -22663,7 +23141,7 @@ window.handleCancelarAgendamentoAdmin = async function(id) {
   try {
     await cancelarAgendamento(id);
     setFlash('info', 'Agendamento cancelado.');
-    await carregarAdminAgenda();
+    await recarregarAgendaUI();
   } catch (err) {
     alert('Erro ao cancelar: ' + err.message);
   }
@@ -22811,13 +23289,13 @@ function renderAdminEquipe() {
           }
         }
       } catch {}
-      await carregarEquipe();
+      await recarregarEquipeUI();
       destacarItemDaURL('.eq-card[data-id="%ID%"]');
     }, 0);
   } else if (filtroPorRota) {
     // Filtro veio explícito na rota — respeita
     setTimeout(async () => {
-      await carregarEquipe();
+      await recarregarEquipeUI();
     }, 0);
   } else {
     // Modo inteligente: se tiver pendentes, abre em "Pendentes" (alerta); senão em "Ativos"
@@ -22829,7 +23307,7 @@ function renderAdminEquipe() {
           atualizarAbaAtivaEquipe('pendentes');
         }
       } catch {}
-      await carregarEquipe();
+      await recarregarEquipeUI();
     }, 0);
   }
 
@@ -22915,7 +23393,7 @@ window.trocarEquipeFiltro = function(filtro) {
   // Limpa busca anterior ao trocar de aba
   const buscaInput = document.getElementById('equipeBusca');
   if (buscaInput) buscaInput.value = '';
-  carregarEquipe();
+  recarregarEquipeUI();
 };
 
 // Filtra os cards já renderizados (filtro local, sem nova consulta ao banco)
@@ -23109,7 +23587,7 @@ window.novaCategoria = async function() {
   } else {
     setFlash('success', 'Categoria criada.');
   }
-  carregarEquipe();
+  recarregarEquipeUI();
 };
 
 window.renomearCategoria = async function(id, nomeAtual) {
@@ -23128,7 +23606,7 @@ window.renomearCategoria = async function(id, nomeAtual) {
   } else {
     setFlash('success', 'Categoria renomeada.');
   }
-  carregarEquipe();
+  recarregarEquipeUI();
 };
 
 window.desativarCategoria = async function(id, nome) {
@@ -23143,14 +23621,14 @@ window.desativarCategoria = async function(id, nome) {
   const { error } = await db.from('categorias_profissionais').update({ ativo: false }).eq('id', id);
   if (error) { setFlash('error', 'Erro: ' + error.message); }
   else { setFlash('success', 'Categoria desativada.'); }
-  carregarEquipe();
+  recarregarEquipeUI();
 };
 
 window.reativarCategoria = async function(id) {
   const { error } = await db.from('categorias_profissionais').update({ ativo: true }).eq('id', id);
   if (error) { setFlash('error', 'Erro: ' + error.message); }
   else { setFlash('success', 'Categoria reativada.'); }
-  carregarEquipe();
+  recarregarEquipeUI();
 };
 
 window.excluirCategoria = async function(id, nome) {
@@ -23165,7 +23643,7 @@ window.excluirCategoria = async function(id, nome) {
   const { error } = await db.from('categorias_profissionais').delete().eq('id', id);
   if (error) { setFlash('error', 'Erro: ' + error.message); }
   else { setFlash('success', 'Categoria excluída.'); }
-  carregarEquipe();
+  recarregarEquipeUI();
 };
 
 // Modal reutilizável de input de texto
@@ -23219,10 +23697,16 @@ function renderEquipeCard(u, filtro) {
 
   // Botões de ação variam por filtro. Admins não recebem botões de ação
   // (sem aprovar/rejeitar/desativar/excluir admin pela tela de equipe — usar SQL)
+  // Sprint 9.17.1: mesma lógica do desktop — super admin protegido, admin pode ser rebaixado, membro promovido
+  const ehSuperAdmin = u.super_admin === true;
   const ehAdmin = u.perfil === 'admin';
+  const me = getCurrentUser();
+  const souEu = me && me.id === u.id;
   let acoes = '';
-  if (ehAdmin) {
-    acoes = `<div style="font-size:11px;color:var(--neutral-500);padding:8px;text-align:center;font-style:italic;">Conta de administrador — gerencie via SQL.</div>`;
+
+  if (ehSuperAdmin) {
+    // Super admin é intocável
+    acoes = `<div style="font-size:11px;color:var(--neutral-500);padding:8px;text-align:center;font-style:italic;display:flex;align-items:center;justify-content:center;gap:4px;"><span class="material-symbols-rounded" style="font-size:14px;color:var(--brand-lime);">shield</span>Super administrador — protegido</div>`;
   } else if (filtro === 'pendentes') {
     acoes = `
       <button class="eq-btn eq-btn--primary" onclick="aprovarProfissional('${u.id}')">
@@ -23235,7 +23719,27 @@ function renderEquipeCard(u, filtro) {
       </button>
     `;
   } else if (filtro === 'ativos') {
+    // Botão de promover/rebaixar (muda conforme o perfil)
+    const btnPerfil = ehAdmin
+      ? `<button class="eq-btn eq-btn--warning-outline" onclick="rebaixarParaMembro('${u.id}')" title="${souEu ? 'Rebaixar minha conta' : 'Rebaixar a membro'}">
+           <span class="material-symbols-rounded" style="font-size:16px;">arrow_downward</span>
+           Rebaixar
+         </button>`
+      : `<button class="eq-btn eq-btn--primary" onclick="promoverParaAdmin('${u.id}')" title="Promover a admin">
+           <span class="material-symbols-rounded" style="font-size:16px;">admin_panel_settings</span>
+           Promover
+         </button>`;
+
+    // Admin não pode se auto-desativar
+    const btnDesativar = souEu && ehAdmin
+      ? ''
+      : `<button class="eq-btn eq-btn--warning-outline" onclick="desativarProfissional('${u.id}')">
+           <span class="material-symbols-rounded" style="font-size:16px;">person_off</span>
+           Desativar
+         </button>`;
+
     acoes = `
+      ${btnPerfil}
       <button class="eq-btn eq-btn--secondary" onclick="editarCategoriaProfissional('${u.id}')">
         <span class="material-symbols-rounded" style="font-size:16px;">edit</span>
         Categoria
@@ -23244,10 +23748,7 @@ function renderEquipeCard(u, filtro) {
         <span class="material-symbols-rounded" style="font-size:16px;">photo_camera</span>
         Foto
       </button>
-      <button class="eq-btn eq-btn--warning-outline" onclick="desativarProfissional('${u.id}')">
-        <span class="material-symbols-rounded" style="font-size:16px;">person_off</span>
-        Desativar
-      </button>
+      ${btnDesativar}
     `;
   } else {
     // desativados
@@ -23281,10 +23782,15 @@ function renderEquipeCard(u, filtro) {
         <div class="eq-card__info">
           <div class="eq-card__name">
             ${(u.nome || '(sem nome)').replace(/"/g,'&quot;')}
-            ${ehAdmin ? '<span class="badge badge--info" style="margin-left:6px;font-size:10px;vertical-align:middle;"><span class="material-symbols-rounded" style="font-size:11px;">shield_person</span>Admin</span>' : ''}
+            ${ehSuperAdmin
+              ? '<span class="badge" style="margin-left:6px;font-size:10px;vertical-align:middle;background:linear-gradient(135deg, var(--brand-lime), var(--brand-navy));color:#fff;padding:2px 8px;border-radius:9999px;font-weight:700;letter-spacing:0.03em;text-transform:uppercase;"><span class="material-symbols-rounded" style="font-size:11px;vertical-align:-1px;">shield</span> Super admin</span>'
+              : ehAdmin
+              ? '<span class="badge badge--info" style="margin-left:6px;font-size:10px;vertical-align:middle;"><span class="material-symbols-rounded" style="font-size:11px;">shield_person</span>Admin</span>'
+              : ''
+            }
           </div>
           <div class="eq-card__meta">
-            <span>${ehAdmin ? 'Administrador' : categoria}</span>
+            <span>${ehSuperAdmin ? 'Super administrador' : ehAdmin ? 'Administrador' : categoria}</span>
             <span>·</span>
             ${statusBadge}
           </div>
@@ -23303,6 +23809,15 @@ function renderEquipeCard(u, filtro) {
 
 // ====== Equipe: ações ======
 
+// Sprint 9.17.4: helper único pra recarregar lista de equipe (mobile OU desktop).
+// Usado por todos os handlers (aprovar/rejeitar/desativar/reativar/excluir/editarCategoria/foto/promover/rebaixar).
+// Evita ter que lembrar de chamar ambos manualmente em cada handler.
+async function recarregarEquipeUI() {
+  if (typeof carregarEquipe === 'function') await carregarEquipe();
+  if (typeof carregarAdminEquipeDesktop === 'function') await carregarAdminEquipeDesktop();
+  if (typeof atualizarBadgesSidebarDesktop === 'function') atualizarBadgesSidebarDesktop();
+}
+
 window.aprovarProfissional = async function(id) {
   const ok = await showModalConfirmacao({
     icone: 'check_circle', iconeCor: 'success',
@@ -23318,7 +23833,7 @@ window.aprovarProfissional = async function(id) {
   } else {
     setFlash('success', 'Profissional aprovado. Acesso liberado.');
   }
-  carregarEquipe();
+  recarregarEquipeUI();
 };
 
 window.rejeitarProfissional = async function(id) {
@@ -23336,7 +23851,7 @@ window.rejeitarProfissional = async function(id) {
   } else {
     setFlash('success', 'Cadastro rejeitado.');
   }
-  carregarEquipe();
+  recarregarEquipeUI();
 };
 
 window.desativarProfissional = async function(id) {
@@ -23354,7 +23869,7 @@ window.desativarProfissional = async function(id) {
   } else {
     setFlash('success', 'Profissional desativado.');
   }
-  carregarEquipe();
+  recarregarEquipeUI();
 };
 
 // Admin altera foto de qualquer profissional ativo (Sprint 8.4)
@@ -23387,7 +23902,7 @@ window.alterarFotoDeOutro = async function(userId, nomeProf, fotoAtual) {
         try { await apagarFotoDoStorage(fotoAtual); } catch {}
         await atualizarFotoUsuario(userId, null);
         setFlash('info', `Foto de ${nomeProf} removida.`);
-        await carregarEquipe();
+        await recarregarEquipeUI();
       } catch (err) {
         alert('Erro ao remover: ' + err.message);
       }
@@ -23424,7 +23939,7 @@ window.alterarFotoDeOutro = async function(userId, nomeProf, fotoAtual) {
       }
       await atualizarFotoUsuario(userId, url);
       setFlash('success', `Foto de ${nomeProf} atualizada!`);
-      await carregarEquipe();
+      await recarregarEquipeUI();
     } catch (err) {
       console.error('[alterar foto outro]', err);
       alert('Erro ao enviar: ' + err.message);
@@ -23449,7 +23964,7 @@ window.reativarProfissional = async function(id) {
   } else {
     setFlash('success', 'Profissional reativado.');
   }
-  carregarEquipe();
+  recarregarEquipeUI();
 };
 
 // Sprint 9.14: Promover membro → admin
@@ -23575,14 +24090,59 @@ window.excluirProfissional = async function(id) {
     btnCancelar: 'Não, voltar',
   });
   if (!ok2) return;
-  const { error } = await db.from('usuarios').delete().eq('id', id);
-  if (error) {
-    // Pode falhar se tem FKs (visitas, etc.). Orientar.
-    setFlash('error', 'Não foi possível excluir: ' + error.message + '. Use "Desativar" se o profissional tem histórico de visitas.');
-  } else {
-    setFlash('success', 'Profissional excluído em definitivo.');
+
+  try {
+    // Busca o usuário antes pra saber o nome e conferir o que há vinculado
+    const { data: alvo, error: eAlvo } = await db.from('usuarios').select('id, nome, super_admin').eq('id', id).maybeSingle();
+    if (eAlvo) throw new Error('Erro ao buscar usuário: ' + eAlvo.message);
+    if (!alvo) {
+      setFlash('error', 'Usuário não encontrado.');
+      return;
+    }
+    if (alvo.super_admin) {
+      setFlash('error', 'Super admin não pode ser excluído.');
+      return;
+    }
+
+    // Conta visitas vinculadas ANTES de tentar o delete (mostra aviso mais útil)
+    const { count: qtdVisitas } = await db
+      .from('visitas')
+      .select('id', { count: 'exact', head: true })
+      .eq('nutricionista_id', id);
+
+    if (qtdVisitas && qtdVisitas > 0) {
+      await showModalConfirmacao({
+        icone: 'block', iconeCor: 'warning',
+        titulo: 'Não pode excluir',
+        subtitulo: `${alvo.nome} tem ${qtdVisitas} ${qtdVisitas === 1 ? 'visita' : 'visitas'} no histórico. Excluir quebraria o registro dessas visitas. Deixe desativado — ele não pode fazer login de qualquer jeito.`,
+        btnConfirmar: 'Entendi',
+        btnCancelar: null,
+      });
+      return;
+    }
+
+    // Tenta o delete com .select() pra saber se afetou algo
+    const { data: deletado, error } = await db.from('usuarios').delete().eq('id', id).select();
+
+    if (error) {
+      // Erro do Postgres (FK violation, RLS, permission, etc)
+      console.error('[excluir profissional]', error);
+      setFlash('error', `Erro do banco: ${error.message || error.code || 'sem detalhes'}. Tente desativar no lugar.`);
+      return;
+    }
+    if (!deletado || deletado.length === 0) {
+      // RLS bloqueou silenciosamente (retorna 0 linhas sem erro)
+      setFlash('error', 'DELETE não afetou nenhum registro. Possíveis causas: RLS no banco, trigger bloqueando, ou o usuário já foi removido. Abra o console (F12) pra detalhes.');
+      console.warn('[excluir profissional] 0 rows affected — possible RLS block', { id });
+      return;
+    }
+
+    setFlash('success', `${alvo.nome} excluído em definitivo.`);
+    await recarregarEquipeUI();
+  } catch (err) {
+    console.error('[excluir profissional] exceção:', err);
+    setFlash('error', 'Erro inesperado: ' + (err.message || err));
   }
-  carregarEquipe();
 };
 
 window.editarCategoriaProfissional = async function(id) {
