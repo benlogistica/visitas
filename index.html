@@ -5052,6 +5052,301 @@ a {
   border: 0;
 }
 
+/* ==========================================================================
+   DESKTOP SHELL — Sprint 9.13 Parte 1
+   Sidebar navy fixa à esquerda + topbar branca + área de conteúdo
+   Ativo apenas em telas ≥ 1024px E quando user é admin
+   ========================================================================== */
+
+.ds-shell {
+  display: flex;
+  min-height: 100vh;
+  background: var(--neutral-50, #FAFBFC);
+  font-family: 'Inter', sans-serif;
+}
+
+/* Sidebar */
+.ds-sidebar {
+  width: 240px;
+  background: var(--brand-navy);
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  min-height: 100vh;
+  position: sticky;
+  top: 0;
+}
+.ds-sidebar__logo {
+  padding: 22px 20px 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.ds-sidebar__logo img { height: 30px; width: auto; }
+.ds-sidebar__logo-text {
+  font-family: 'Poppins', sans-serif;
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: 0.5px;
+  color: #fff;
+}
+.ds-sidebar__divider {
+  height: 1px;
+  background: rgba(255,255,255,0.08);
+  margin: 0 16px 10px;
+}
+.ds-sidebar__nav {
+  display: flex;
+  flex-direction: column;
+  padding: 4px 8px;
+  gap: 1px;
+  flex: 1;
+}
+.ds-sidebar__item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 12px;
+  background: transparent;
+  color: rgba(255,255,255,0.78);
+  border: 0;
+  border-left: 3px solid transparent;
+  padding-left: 15px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13.5px;
+  font-weight: 500;
+  text-align: left;
+  font-family: inherit;
+  text-decoration: none;
+  transition: background 120ms;
+}
+.ds-sidebar__item:hover { background: rgba(255,255,255,0.06); }
+.ds-sidebar__item.is-active {
+  background: rgba(139,198,63,0.14);
+  color: #fff;
+  font-weight: 600;
+  border-left-color: var(--brand-lime);
+  padding-left: 12px;
+}
+.ds-sidebar__item-icon { flex-shrink: 0; }
+.ds-sidebar__item.is-active .ds-sidebar__item-icon { color: var(--brand-lime); }
+.ds-sidebar__item-label { flex: 1; }
+.ds-sidebar__item-badge {
+  background: var(--status-danger);
+  color: #fff;
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 9999px;
+  min-width: 20px;
+  text-align: center;
+  line-height: 1.3;
+}
+.ds-sidebar__item-badge--warning { background: var(--status-warning); }
+.ds-sidebar__item-badge--info { background: var(--status-info); }
+
+.ds-sidebar__user {
+  padding: 14px 14px 18px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.ds-sidebar__user-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--brand-lime), #7AB033);
+  background-size: cover;
+  background-position: center;
+  color: var(--brand-navy);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Poppins', sans-serif;
+  font-weight: 700;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+.ds-sidebar__user-info { flex: 1; min-width: 0; }
+.ds-sidebar__user-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ds-sidebar__user-role {
+  font-size: 11px;
+  color: rgba(255,255,255,0.5);
+  margin-top: 2px;
+}
+.ds-sidebar__user-logout {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: transparent;
+  border: 0;
+  color: rgba(255,255,255,0.5);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  text-decoration: none;
+}
+.ds-sidebar__user-logout:hover { color: #fff; background: rgba(255,255,255,0.08); }
+
+/* Main area (topbar + content) */
+.ds-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* Topbar */
+.ds-topbar {
+  height: 64px;
+  background: #fff;
+  border-bottom: 1px solid var(--neutral-200);
+  display: flex;
+  align-items: center;
+  padding: 0 28px;
+  gap: 16px;
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+.ds-topbar__title-wrap { flex: 1; min-width: 0; }
+.ds-topbar__title {
+  font-family: 'Poppins', sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--brand-navy);
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+.ds-topbar__breadcrumb {
+  font-size: 12px;
+  color: var(--neutral-500);
+  margin-top: 2px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.ds-topbar__breadcrumb-sep { color: var(--neutral-300); }
+.ds-topbar__search {
+  height: 38px;
+  border-radius: 9999px;
+  background: var(--neutral-100);
+  padding: 0 16px 0 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 340px;
+  border: 1px solid transparent;
+  transition: border-color 120ms;
+}
+.ds-topbar__search:focus-within { border-color: var(--neutral-300); }
+.ds-topbar__search input {
+  flex: 1;
+  background: transparent;
+  border: 0;
+  outline: 0;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--brand-navy);
+}
+.ds-topbar__search kbd {
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--neutral-500);
+  background: #fff;
+  padding: 1px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--neutral-200);
+}
+.ds-topbar__divider {
+  width: 1px;
+  height: 24px;
+  background: var(--neutral-200);
+}
+.ds-topbar__icon-btn {
+  height: 38px;
+  width: 38px;
+  border-radius: 9999px;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  color: var(--brand-navy);
+}
+.ds-topbar__icon-btn:hover { background: var(--neutral-100); }
+.ds-topbar__icon-btn .notif-badge-desktop {
+  position: absolute;
+  top: 7px;
+  right: 9px;
+  min-width: 15px;
+  height: 15px;
+  border-radius: 9999px;
+  background: var(--status-danger);
+  border: 2px solid #fff;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 3px;
+}
+.ds-topbar__avatar-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 12px 4px 4px;
+  border-radius: 9999px;
+  background: var(--neutral-100);
+  cursor: pointer;
+  border: 0;
+  font-family: inherit;
+}
+.ds-topbar__avatar-btn:hover { background: var(--neutral-200); }
+.ds-topbar__avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--brand-navy);
+  background-size: cover;
+  background-position: center;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: 'Poppins', sans-serif;
+}
+.ds-topbar__avatar-info { line-height: 1.1; text-align: left; }
+.ds-topbar__avatar-name { font-size: 12.5px; font-weight: 600; color: var(--brand-navy); }
+.ds-topbar__avatar-role { font-size: 10.5px; color: var(--neutral-500); }
+
+/* Content area */
+.ds-content {
+  padding: 28px;
+  flex: 1;
+  min-width: 0;
+}
+
 </style>
 </head>
 <body>
@@ -5084,7 +5379,7 @@ a {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.11.1-fix-checkout-timestamp',
+  APP_VERSION: '1.0.0-alpha.sprint9.12-dashboard-admin-evo',
   APP_NAME: 'Nutricionais Visitas',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -6498,42 +6793,134 @@ function calcularDataInicio(periodo) {
   return inicio.toISOString();
 }
 
+// Sprint 9.12: calcula a janela do período IMEDIATAMENTE anterior, com mesma duração.
+// Retorna { inicio, fim } em ISO, ou null se período = 'all'.
+function calcularPeriodoAnterior(periodo) {
+  const hoje = new Date();
+  if (periodo === 'all') return null;
+  if (periodo === '7' || periodo === '30') {
+    const dias = periodo === '7' ? 7 : 30;
+    const fim = new Date(hoje);
+    fim.setDate(hoje.getDate() - dias);
+    fim.setHours(23, 59, 59, 999);
+    const inicio = new Date(fim);
+    inicio.setDate(fim.getDate() - dias);
+    inicio.setHours(0, 0, 0, 0);
+    return { inicio: inicio.toISOString(), fim: fim.toISOString() };
+  }
+  if (periodo === 'mes') {
+    // Mês anterior completo
+    const inicio = new Date(hoje.getFullYear(), hoje.getMonth() - 1, 1, 0, 0, 0, 0);
+    const fim = new Date(hoje.getFullYear(), hoje.getMonth(), 0, 23, 59, 59, 999);
+    return { inicio: inicio.toISOString(), fim: fim.toISOString() };
+  }
+  if (periodo === 'tri') {
+    const triAtual = Math.floor(hoje.getMonth() / 3);
+    const inicio = new Date(hoje.getFullYear(), (triAtual - 1) * 3, 1, 0, 0, 0, 0);
+    const fim = new Date(hoje.getFullYear(), triAtual * 3, 0, 23, 59, 59, 999);
+    return { inicio: inicio.toISOString(), fim: fim.toISOString() };
+  }
+  return null;
+}
+
+// Sprint 9.12: conta quantos dias tem o período (pra calcular média visitas/dia)
+// Pra 'all', usa o intervalo entre a primeira visita e hoje.
+function calcularDiasDoPeriodo(periodo, dataInicioISO, visitas) {
+  const hoje = new Date();
+  if (periodo === '7') return 7;
+  if (periodo === '30') return 30;
+  if (periodo === 'mes') {
+    const inicio = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+    return Math.ceil((hoje - inicio) / (1000 * 60 * 60 * 24)) + 1;
+  }
+  if (periodo === 'tri') {
+    const tri = Math.floor(hoje.getMonth() / 3);
+    const inicio = new Date(hoje.getFullYear(), tri * 3, 1);
+    return Math.ceil((hoje - inicio) / (1000 * 60 * 60 * 24)) + 1;
+  }
+  // 'all' ou dataInicio custom — usa intervalo da primeira à última visita
+  if (dataInicioISO) {
+    const inicio = new Date(dataInicioISO);
+    return Math.max(1, Math.ceil((hoje - inicio) / (1000 * 60 * 60 * 24)));
+  }
+  if (visitas && visitas.length > 0) {
+    const primeira = visitas.reduce((min, v) => {
+      if (!v.checkin_timestamp) return min;
+      const d = new Date(v.checkin_timestamp);
+      return (!min || d < min) ? d : min;
+    }, null);
+    if (primeira) return Math.max(1, Math.ceil((hoje - primeira) / (1000 * 60 * 60 * 24)));
+  }
+  return 1;
+}
+
+// Sprint 9.12: gera HTML do chip de tendência ±%  (verde/vermelho/cinza com ícone)
+// Se inversaBoa=true, uma queda é boa (ex.: %  divergência GPS).
+function formatDiffTrend(atual, anterior, { inversaBoa = false, sufixo = '%' } = {}) {
+  if (anterior === null || anterior === undefined) return '';
+  if (anterior === 0) {
+    if (atual === 0) return '';
+    // Mostra "novo" em vez de um número enganoso tipo "+∞%"
+    return `<span class="material-symbols-rounded" style="font-size:13px;">fiber_new</span>novo`;
+  }
+  const diff = atual - anterior;
+  if (diff === 0) return '';
+  const pct = Math.round((diff / Math.abs(anterior)) * 100);
+  const sinal = diff > 0 ? '+' : '';
+  const icon = diff > 0 ? 'trending_up' : 'trending_down';
+  const bom = inversaBoa ? diff < 0 : diff > 0;
+  const cor = bom ? 'var(--status-success)' : 'var(--status-danger)';
+  return `<span class="material-symbols-rounded" style="font-size:13px;color:${cor};">${icon}</span><span style="color:${cor};">${sinal}${pct}${sufixo}</span>`;
+}
+
 async function carregarDashboardData(periodo) {
   if (!db) return;
   window._dashPeriodoAtual = periodo; // pra drilldown
   const dataInicio = calcularDataInicio(periodo);
+  // Sprint 9.12: janela do período anterior pra comparação
+  const periodoAnt = calcularPeriodoAnterior(periodo);
 
   // Query base de visitas no período
+  // Sprint 9.12: adicionado checkout_timestamp pra cálculo de tempo médio
   let query = db.from('visitas').select(`
-    id, status, data_visita, checkin_timestamp, checkin_manual,
+    id, status, data_visita, checkin_timestamp, checkout_timestamp, checkin_manual,
     flag_gps_divergente, visita_realizada,
     nutricionista_id, instituicao_id,
     usuarios:nutricionista_id(nome),
     instituicoes(nome)
   `);
   if (dataInicio) query = query.gte('checkin_timestamp', dataInicio);
-  const { data: visitas, error } = await query;
-  if (error) {
-    console.warn('[dashboard] erro:', error.message);
+
+  // Sprint 9.12: query paralela do período ANTERIOR (mesmos campos, só pra comparação)
+  let queryAnt = null;
+  if (periodoAnt) {
+    queryAnt = db.from('visitas').select('id, checkin_timestamp, checkout_timestamp, checkin_manual, flag_gps_divergente, visita_realizada')
+      .gte('checkin_timestamp', periodoAnt.inicio)
+      .lte('checkin_timestamp', periodoAnt.fim);
+  }
+
+  const [visitasRes, visitasAntRes] = await Promise.all([query, queryAnt || Promise.resolve({ data: null })]);
+  if (visitasRes.error) {
+    console.warn('[dashboard] erro:', visitasRes.error.message);
     return;
   }
-  const v = visitas || [];
+  const v = visitasRes.data || [];
+  const vAnt = visitasAntRes?.data || null; // null se "Tudo"
 
-  // ===== KPIs =====
+  // ===== KPIs PERÍODO ATUAL =====
   const total = v.length;
   const realizadas = v.filter(x => x.visita_realizada === true).length;
   const canceladas = v.filter(x => x.visita_realizada === false).length;
   const naoPreenchida = v.filter(x => x.visita_realizada === null || x.visita_realizada === undefined).length;
   const taxaRealiz = total > 0 ? Math.round((realizadas / total) * 100) : 0;
 
-  // Pendências (contagens das outras tabelas)
-  const [instPendRes, objPendRes] = await Promise.all([
-    db.from('instituicoes').select('*', { count: 'exact', head: true }).eq('pendente_aprovacao', true).eq('ativo', true),
-    db.from('objetivos_visita').select('*', { count: 'exact', head: true }).eq('pendente_aprovacao', true),
-  ]);
-  const pendInst = instPendRes.count || 0;
-  const pendObj = objPendRes.count || 0;
-  const pendTotal = pendInst + pendObj;
+  // Tempo médio (só visitas com checkin + checkout)
+  const duracoes = v
+    .map(x => calcularDuracaoMin(x.checkin_timestamp, x.checkout_timestamp))
+    .filter(m => m !== null && m > 0);
+  const tempoMedio = duracoes.length > 0
+    ? Math.round(duracoes.reduce((s, n) => s + n, 0) / duracoes.length)
+    : null;
 
   // Qualidade GPS
   const comGps = v.filter(x => !x.checkin_manual).length;
@@ -6542,19 +6929,68 @@ async function carregarDashboardData(periodo) {
   const gpsValidos = comGps - divergentes;
   const qualidadeGps = total > 0 ? Math.round((gpsValidos / total) * 100) : 0;
 
+  // Visitas/dia (média por dia do período)
+  const diasPeriodo = calcularDiasDoPeriodo(periodo, dataInicio, v);
+  const visitasDia = diasPeriodo > 0 ? (total / diasPeriodo) : 0;
+
+  // ===== KPIs PERÍODO ANTERIOR (se aplicável) =====
+  let totalAnt = null, taxaRealizAnt = null, qualidadeGpsAnt = null, tempoMedioAnt = null, visitasDiaAnt = null;
+  if (vAnt) {
+    totalAnt = vAnt.length;
+    const realizadasAnt = vAnt.filter(x => x.visita_realizada === true).length;
+    taxaRealizAnt = totalAnt > 0 ? Math.round((realizadasAnt / totalAnt) * 100) : 0;
+    const comGpsAnt = vAnt.filter(x => !x.checkin_manual).length;
+    const divergentesAnt = vAnt.filter(x => x.flag_gps_divergente === true).length;
+    qualidadeGpsAnt = totalAnt > 0 ? Math.round(((comGpsAnt - divergentesAnt) / totalAnt) * 100) : 0;
+    const duracoesAnt = vAnt
+      .map(x => calcularDuracaoMin(x.checkin_timestamp, x.checkout_timestamp))
+      .filter(m => m !== null && m > 0);
+    tempoMedioAnt = duracoesAnt.length > 0
+      ? Math.round(duracoesAnt.reduce((s, n) => s + n, 0) / duracoesAnt.length)
+      : null;
+    // Visitas/dia anterior — mesma duração então é proporcional
+    const diasAnt = calcularDiasDoPeriodo(periodo, periodoAnt.inicio, vAnt);
+    visitasDiaAnt = diasAnt > 0 ? (totalAnt / diasAnt) : 0;
+  }
+
+  // Pendências (contagens das outras tabelas) — SEM comparação, é estado atual
+  const [instPendRes, objPendRes] = await Promise.all([
+    db.from('instituicoes').select('*', { count: 'exact', head: true }).eq('pendente_aprovacao', true).eq('ativo', true),
+    db.from('objetivos_visita').select('*', { count: 'exact', head: true }).eq('pendente_aprovacao', true),
+  ]);
+  const pendInst = instPendRes.count || 0;
+  const pendObj = objPendRes.count || 0;
+  const pendTotal = pendInst + pendObj;
+
   // Atualiza cards KPI
   const set = (id, html) => { const el = document.getElementById(id); if (el) el.innerHTML = html; };
   set('kpiTotalVisitas', total);
   set('kpiTotalHint', `${realizadas} ${realizadas === 1 ? 'realizada' : 'realizadas'} · ${canceladas} ${canceladas === 1 ? 'cancelada' : 'canceladas'}${naoPreenchida > 0 ? ` · ${naoPreenchida} sem status` : ''}`);
+  set('kpiTotalDiff', formatDiffTrend(total, totalAnt));
   set('kpiTaxaRealiz', total > 0 ? `${taxaRealiz}%` : '—');
   set('kpiTaxaHint', total > 0 ? `${realizadas} de ${total} visitas` : 'sem dados no período');
+  set('kpiTaxaDiff', total > 0 ? formatDiffTrend(taxaRealiz, taxaRealizAnt, { sufixo: 'pp' }) : '');
   set('kpiPendencias', pendTotal);
   set('kpiPendHint', pendTotal === 0 ? 'nada pra revisar' : `${pendInst} inst · ${pendObj} obj`);
   set('kpiQualidadeGps', total > 0 ? `${qualidadeGps}%` : '—');
   set('kpiGpsHint', total > 0 ? `${divergentes} ${divergentes === 1 ? 'divergente' : 'divergentes'} · ${manuais} ${manuais === 1 ? 'manual' : 'manuais'}` : 'sem dados');
+  set('kpiGpsDiff', total > 0 ? formatDiffTrend(qualidadeGps, qualidadeGpsAnt, { sufixo: 'pp' }) : '');
+  // Tempo médio
+  set('kpiTempoMedio', tempoMedio !== null ? formatarDuracao(tempoMedio) : '—');
+  set('kpiTempoHint', duracoes.length > 0 ? `base: ${duracoes.length} ${duracoes.length === 1 ? 'visita' : 'visitas'}` : 'sem check-out registrado');
+  // Pra tempo: diff é em minutos, mas mostramos em % também pra consistência visual
+  set('kpiTempoDiff', tempoMedio !== null ? formatDiffTrend(tempoMedio, tempoMedioAnt) : '');
+  // Visitas/dia
+  set('kpiVisitasDia', total > 0 ? visitasDia.toFixed(1).replace('.', ',') : '—');
+  set('kpiVisitasDiaHint', total > 0 ? `${total} em ${diasPeriodo} dia${diasPeriodo === 1 ? '' : 's'}` : 'sem dados');
+  set('kpiVisitasDiaDiff', total > 0 ? formatDiffTrend(Math.round(visitasDia * 10), visitasDiaAnt !== null ? Math.round(visitasDiaAnt * 10) : null) : '');
 
   // ===== Gráfico de linha — visitas por dia =====
   renderDashChartLine(v, dataInicio);
+
+  // Sprint 9.12 Parte B: padrões semanais e de horário
+  renderDashBarsWeekday(v);
+  renderDashBarsHora(v);
 
   // ===== Rankings =====
   renderDashRanking(v, 'nutricionista_id', 'usuarios', 'dashRankProf', 5);
@@ -6564,6 +7000,10 @@ async function carregarDashboardData(periodo) {
   renderDashPieStatus(v);
   renderDashPieCheckin(v);
   await renderDashBarsObjetivos(dataInicio);
+
+  // Sprint 9.12 Parte C: insights operacionais
+  renderDashNutrisInativos(v);
+  renderDashPieTipoInst(v);
 }
 
 function renderDashChartLine(visitas, dataInicio) {
@@ -6800,6 +7240,278 @@ async function renderDashBarsObjetivos(dataInicio) {
       <strong style="color:var(--brand-navy);">${total}</strong> objetivos trabalhados em ${Object.keys(contagem).length} categoria${Object.keys(contagem).length === 1 ? '' : 's'}
     </div>
   `;
+}
+
+// Sprint 9.12 Parte B: distribuição de visitas por DIA DA SEMANA
+// Mostra em qual dia da semana a operação é mais intensa.
+function renderDashBarsWeekday(visitas) {
+  const container = document.getElementById('dashBarsWeekday');
+  if (!container) return;
+  if (!visitas || visitas.length === 0) {
+    container.innerHTML = '<div style="padding:20px;text-align:center;color:var(--neutral-400);font-size:12px;">Sem dados no período.</div>';
+    return;
+  }
+  // Conta por dia da semana (0=dom, 1=seg, ..., 6=sáb)
+  const nomes = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+  const contagem = [0, 0, 0, 0, 0, 0, 0];
+  visitas.forEach(v => {
+    if (!v.checkin_timestamp) return;
+    const d = new Date(v.checkin_timestamp);
+    contagem[d.getDay()]++;
+  });
+  // Reorganiza pra Seg→Dom (padrão brasileiro, semana começa na segunda)
+  const ordem = [1, 2, 3, 4, 5, 6, 0];
+  const max = Math.max(...contagem, 1);
+  const total = contagem.reduce((s, n) => s + n, 0);
+
+  container.innerHTML = ordem.map(idx => {
+    const count = contagem[idx];
+    const pct = total > 0 ? Math.round(count / total * 100) : 0;
+    const ehHoje = idx === new Date().getDay();
+    return `
+      <div style="padding:6px 0;${ehHoje ? 'background:rgba(139,198,63,0.08);border-radius:6px;padding-left:6px;padding-right:6px;' : ''}">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px;">
+          <span style="color:${ehHoje ? 'var(--brand-lime)' : 'var(--brand-navy)'};font-weight:${ehHoje ? '700' : '600'};font-size:12px;font-family:var(--font-mono);">${nomes[idx]}${ehHoje ? ' · hoje' : ''}</span>
+          <span style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+            <span style="color:var(--neutral-500);font-family:var(--font-mono);font-size:10.5px;font-weight:700;">${pct}%</span>
+            <span style="color:var(--brand-navy);font-family:var(--font-mono);font-size:12px;font-weight:700;min-width:18px;text-align:right;">${count}</span>
+          </span>
+        </div>
+        <div style="height:6px;background:var(--neutral-100);border-radius:3px;overflow:hidden;">
+          <div style="height:100%;width:${(count / max * 100).toFixed(1)}%;background:linear-gradient(90deg,var(--status-info),#6C9BE6);border-radius:3px;transition:width 600ms ease-out;"></div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// Sprint 9.12 Parte B: distribuição de visitas por HORA DO DIA
+// Mostra os picos da operação (manhã vs tarde).
+function renderDashBarsHora(visitas) {
+  const container = document.getElementById('dashBarsHora');
+  if (!container) return;
+  if (!visitas || visitas.length === 0) {
+    container.innerHTML = '<div style="padding:20px;text-align:center;color:var(--neutral-400);font-size:12px;">Sem dados no período.</div>';
+    return;
+  }
+  // Agrupa em faixas de 2h (6-8h, 8-10h, ..., 20-22h) pra caber visualmente
+  const faixas = [
+    { label: '06-08h', min: 6,  max: 8  },
+    { label: '08-10h', min: 8,  max: 10 },
+    { label: '10-12h', min: 10, max: 12 },
+    { label: '12-14h', min: 12, max: 14 },
+    { label: '14-16h', min: 14, max: 16 },
+    { label: '16-18h', min: 16, max: 18 },
+    { label: '18-20h', min: 18, max: 20 },
+    { label: '20-22h', min: 20, max: 22 },
+  ];
+  const contagem = faixas.map(() => 0);
+  let foraDeFaixa = 0;
+  visitas.forEach(v => {
+    if (!v.checkin_timestamp) return;
+    const h = new Date(v.checkin_timestamp).getHours();
+    const idx = faixas.findIndex(f => h >= f.min && h < f.max);
+    if (idx === -1) foraDeFaixa++;
+    else contagem[idx]++;
+  });
+  const max = Math.max(...contagem, 1);
+  const total = contagem.reduce((s, n) => s + n, 0);
+  // Destaca o pico (maior valor)
+  const idxPico = contagem.indexOf(Math.max(...contagem));
+
+  container.innerHTML = faixas.map((f, idx) => {
+    const count = contagem[idx];
+    const pct = total > 0 ? Math.round(count / total * 100) : 0;
+    const ehPico = idx === idxPico && count > 0;
+    return `
+      <div style="padding:5px 0;${ehPico ? 'background:rgba(139,198,63,0.08);border-radius:6px;padding-left:6px;padding-right:6px;' : ''}">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:3px;">
+          <span style="color:${ehPico ? 'var(--brand-lime)' : 'var(--brand-navy)'};font-weight:${ehPico ? '700' : '600'};font-size:11.5px;font-family:var(--font-mono);">${f.label}${ehPico ? ' · pico' : ''}</span>
+          <span style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+            <span style="color:var(--neutral-500);font-family:var(--font-mono);font-size:10.5px;font-weight:700;">${pct}%</span>
+            <span style="color:var(--brand-navy);font-family:var(--font-mono);font-size:12px;font-weight:700;min-width:18px;text-align:right;">${count}</span>
+          </span>
+        </div>
+        <div style="height:6px;background:var(--neutral-100);border-radius:3px;overflow:hidden;">
+          <div style="height:100%;width:${(count / max * 100).toFixed(1)}%;background:linear-gradient(90deg,var(--status-info),#6C9BE6);border-radius:3px;transition:width 600ms ease-out;"></div>
+        </div>
+      </div>
+    `;
+  }).join('') + (foraDeFaixa > 0 ? `
+    <div style="padding-top:8px;font-size:10.5px;color:var(--neutral-500);text-align:right;">
+      + ${foraDeFaixa} fora das faixas (madrugada/noite)
+    </div>
+  ` : '');
+}
+
+// Sprint 9.12 Parte C: lista nutris ativos que não visitam há X+ dias
+// Threshold default: 7 dias. Inclui também nutris que NUNCA visitaram.
+async function renderDashNutrisInativos(visitasPeriodo) {
+  const container = document.getElementById('dashNutrisInativos');
+  if (!container) return;
+  try {
+    // Busca todos os nutris ativos
+    const { data: nutris, error } = await db
+      .from('usuarios')
+      .select('id, nome, foto_url, ultimo_login')
+      .eq('perfil', 'profissional')
+      .eq('status', 'ativo')
+      .order('nome');
+    if (error) throw new Error(error.message);
+    if (!nutris || nutris.length === 0) {
+      container.innerHTML = '<div style="padding:20px;text-align:center;color:var(--neutral-400);font-size:12px;">Nenhum nutri ativo cadastrado.</div>';
+      return;
+    }
+
+    // Pra cada nutri, busca a data da ÚLTIMA visita (ao longo de todo o histórico, não só período)
+    const ids = nutris.map(n => n.id);
+    const { data: ultimasVisitas } = await db
+      .from('visitas')
+      .select('nutricionista_id, checkin_timestamp')
+      .in('nutricionista_id', ids)
+      .order('checkin_timestamp', { ascending: false });
+
+    // Pega a MAIS recente de cada nutri (primeira ocorrência já é a mais recente pq ordenado desc)
+    const ultimoVisitPorNutri = {};
+    (ultimasVisitas || []).forEach(v => {
+      if (!ultimoVisitPorNutri[v.nutricionista_id] && v.checkin_timestamp) {
+        ultimoVisitPorNutri[v.nutricionista_id] = new Date(v.checkin_timestamp);
+      }
+    });
+
+    const agora = new Date();
+    const THRESHOLD_DIAS = 7;
+    // Monta lista, filtrando só os inativos
+    const inativos = nutris.map(n => {
+      const ultima = ultimoVisitPorNutri[n.id];
+      const diasSemVisitar = ultima
+        ? Math.floor((agora - ultima) / (1000 * 60 * 60 * 24))
+        : null; // nunca visitou
+      return { ...n, ultimaVisita: ultima, diasSemVisitar };
+    }).filter(n => n.diasSemVisitar === null || n.diasSemVisitar >= THRESHOLD_DIAS)
+      .sort((a, b) => {
+        if (a.diasSemVisitar === null && b.diasSemVisitar !== null) return -1;
+        if (a.diasSemVisitar !== null && b.diasSemVisitar === null) return 1;
+        return (b.diasSemVisitar || 0) - (a.diasSemVisitar || 0);
+      });
+
+    if (inativos.length === 0) {
+      container.innerHTML = `
+        <div style="padding:16px;text-align:center;">
+          <span class="material-symbols-rounded" style="font-size:28px;color:var(--status-success);">check_circle</span>
+          <div style="margin-top:6px;font-size:12.5px;color:var(--brand-navy);font-weight:600;">Equipe em dia!</div>
+          <div style="font-size:11px;color:var(--neutral-500);margin-top:2px;">Todos visitaram nos últimos ${THRESHOLD_DIAS} dias.</div>
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = inativos.slice(0, 8).map(n => {
+      const avatar = n.foto_url
+        ? `<div style="width:32px;height:32px;border-radius:50%;background-image:url('${n.foto_url}');background-size:cover;background-position:center;flex-shrink:0;"></div>`
+        : `<div style="width:32px;height:32px;border-radius:50%;background:var(--brand-navy);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;">${iniciais(n.nome)}</div>`;
+      const texto = n.diasSemVisitar === null
+        ? '<span style="color:var(--status-danger);font-weight:700;">Nunca visitou</span>'
+        : `há <strong style="color:${n.diasSemVisitar >= 30 ? 'var(--status-danger)' : 'var(--status-warning)'};">${n.diasSemVisitar}</strong> dias`;
+      return `
+        <a href="#/admin/equipe?id=${n.id}" style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--neutral-100);text-decoration:none;color:inherit;">
+          ${avatar}
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:12.5px;font-weight:600;color:var(--brand-navy);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${(n.nome || '').replace(/</g,'&lt;')}</div>
+            <div style="font-size:10.5px;color:var(--neutral-500);">${texto}</div>
+          </div>
+          <span class="material-symbols-rounded" style="font-size:14px;color:var(--neutral-300);">chevron_right</span>
+        </a>
+      `;
+    }).join('') + (inativos.length > 8 ? `
+      <div style="padding-top:8px;font-size:10.5px;color:var(--neutral-500);text-align:right;">
+        + ${inativos.length - 8} outros inativos
+      </div>
+    ` : `
+      <div style="padding-top:8px;font-size:10.5px;color:var(--neutral-500);text-align:right;">
+        ${inativos.length} de ${nutris.length} nutri${nutris.length === 1 ? '' : 's'} ativo${nutris.length === 1 ? '' : 's'}
+      </div>
+    `);
+  } catch (err) {
+    container.innerHTML = `<div style="padding:16px;color:var(--status-danger);font-size:12px;">Erro: ${err.message}</div>`;
+  }
+}
+
+// Sprint 9.12 Parte C: distribuição de visitas por tipo de instituição (público / privado / outros)
+// Usa o campo instituicoes.tipo cadastrado na Sprint 9.3
+async function renderDashPieTipoInst(visitasPeriodo) {
+  const container = document.getElementById('dashPieTipoInst');
+  if (!container) return;
+  try {
+    if (!visitasPeriodo || visitasPeriodo.length === 0) {
+      container.innerHTML = '<div style="padding:20px;text-align:center;color:var(--neutral-400);font-size:12px;">Sem visitas no período.</div>';
+      return;
+    }
+    // Puxa o tipo de todas as instituições únicas que aparecem nas visitas
+    const instIds = [...new Set(visitasPeriodo.map(v => v.instituicao_id).filter(Boolean))];
+    if (instIds.length === 0) {
+      container.innerHTML = '<div style="padding:20px;text-align:center;color:var(--neutral-400);font-size:12px;">Sem vínculos de instituição.</div>';
+      return;
+    }
+    const { data: insts, error } = await db
+      .from('instituicoes')
+      .select('id, tipo')
+      .in('id', instIds);
+    if (error) throw new Error(error.message);
+
+    const tipoPorId = {};
+    (insts || []).forEach(i => { tipoPorId[i.id] = i.tipo || null; });
+
+    // Conta visitas por tipo
+    const contagem = { publica: 0, privada: 0, sem_tipo: 0 };
+    visitasPeriodo.forEach(v => {
+      if (!v.instituicao_id) { contagem.sem_tipo++; return; }
+      const t = tipoPorId[v.instituicao_id];
+      if (t === 'publica') contagem.publica++;
+      else if (t === 'privada') contagem.privada++;
+      else contagem.sem_tipo++;
+    });
+    const total = contagem.publica + contagem.privada + contagem.sem_tipo;
+    if (total === 0) {
+      container.innerHTML = '<div style="padding:20px;text-align:center;color:var(--neutral-400);font-size:12px;">Sem dados.</div>';
+      return;
+    }
+
+    const rows = [
+      { key: 'publica',  label: 'Pública',  count: contagem.publica,  cor: 'var(--brand-navy)' },
+      { key: 'privada',  label: 'Privada',  count: contagem.privada,  cor: 'var(--brand-lime)' },
+      { key: 'sem_tipo', label: 'Sem classificação', count: contagem.sem_tipo, cor: 'var(--neutral-400)' },
+    ].filter(r => r.count > 0);
+    const max = Math.max(...rows.map(r => r.count));
+
+    container.innerHTML = rows.map(r => {
+      const pct = Math.round(r.count / total * 100);
+      return `
+        <div style="padding:8px 0;border-bottom:1px solid var(--neutral-100);">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:5px;">
+            <span style="color:var(--brand-navy);font-weight:600;font-size:12.5px;display:flex;align-items:center;gap:6px;">
+              <span style="width:10px;height:10px;background:${r.cor};border-radius:3px;display:inline-block;"></span>
+              ${r.label}
+            </span>
+            <span style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+              <span style="color:var(--neutral-500);font-family:var(--font-mono);font-size:10.5px;font-weight:700;">${pct}%</span>
+              <span style="color:var(--brand-navy);font-family:var(--font-mono);font-size:12px;font-weight:700;min-width:18px;text-align:right;">${r.count}</span>
+            </span>
+          </div>
+          <div style="height:6px;background:var(--neutral-100);border-radius:3px;overflow:hidden;">
+            <div style="height:100%;width:${(r.count / max * 100).toFixed(1)}%;background:${r.cor};border-radius:3px;transition:width 600ms ease-out;"></div>
+          </div>
+        </div>
+      `;
+    }).join('') + (contagem.sem_tipo > 0 ? `
+      <div style="padding-top:8px;font-size:10.5px;color:var(--neutral-500);">
+        <span class="material-symbols-rounded" style="font-size:12px;vertical-align:-2px;">info</span>
+        Complete o tipo (pública/privada) no cadastro das instituições pra refinar.
+      </div>
+    ` : '');
+  } catch (err) {
+    container.innerHTML = `<div style="padding:16px;color:var(--status-danger);font-size:12px;">Erro: ${err.message}</div>`;
+  }
 }
 
 // Cria uma instituição minimamente cadastrada pelo nutri — marcada como pendente
@@ -13686,14 +14398,17 @@ function renderAdminDashboard() {
           </button>
         </div>
 
-        <!-- Seção 1: KPIs Gerais (4 cards) -->
+        <!-- Seção 1: KPIs Gerais (6 cards em grid 2x3) -->
         <div class="dash-kpi-grid" id="dashKpiGrid">
           <a href="#" onclick="irParaVisitasComPeriodoAtual(); return false;" class="dash-kpi-card dash-kpi-card--clickable" title="Ver lista completa de visitas">
             <div class="dash-kpi-card__label">
               Total de visitas
               <span class="material-symbols-rounded" style="font-size:13px;color:var(--neutral-400);vertical-align:middle;margin-left:3px;">arrow_forward</span>
             </div>
-            <div class="dash-kpi-card__value" id="kpiTotalVisitas">—</div>
+            <div style="display:flex;align-items:baseline;justify-content:space-between;gap:6px;">
+              <div class="dash-kpi-card__value" id="kpiTotalVisitas">—</div>
+              <span id="kpiTotalDiff" style="font-size:11px;font-weight:700;display:inline-flex;align-items:center;gap:2px;"></span>
+            </div>
             <div class="dash-kpi-card__hint" id="kpiTotalHint">&nbsp;</div>
           </a>
           <a href="#" onclick="irParaVisitasRealizadas(); return false;" class="dash-kpi-card dash-kpi-card--clickable" title="Ver apenas visitas realizadas">
@@ -13701,7 +14416,10 @@ function renderAdminDashboard() {
               Taxa de realização
               <span class="material-symbols-rounded" style="font-size:13px;color:var(--neutral-400);vertical-align:middle;margin-left:3px;">arrow_forward</span>
             </div>
-            <div class="dash-kpi-card__value" id="kpiTaxaRealiz">—</div>
+            <div style="display:flex;align-items:baseline;justify-content:space-between;gap:6px;">
+              <div class="dash-kpi-card__value" id="kpiTaxaRealiz">—</div>
+              <span id="kpiTaxaDiff" style="font-size:11px;font-weight:700;display:inline-flex;align-items:center;gap:2px;"></span>
+            </div>
             <div class="dash-kpi-card__hint" id="kpiTaxaHint">&nbsp;</div>
           </a>
           <a href="#" onclick="irParaPendenciasInteligente(); return false;" class="dash-kpi-card dash-kpi-card--clickable" title="Ver itens aguardando aprovação">
@@ -13717,9 +14435,28 @@ function renderAdminDashboard() {
               Qualidade GPS
               <span class="material-symbols-rounded" style="font-size:13px;color:var(--neutral-400);vertical-align:middle;margin-left:3px;">arrow_forward</span>
             </div>
-            <div class="dash-kpi-card__value" id="kpiQualidadeGps">—</div>
+            <div style="display:flex;align-items:baseline;justify-content:space-between;gap:6px;">
+              <div class="dash-kpi-card__value" id="kpiQualidadeGps">—</div>
+              <span id="kpiGpsDiff" style="font-size:11px;font-weight:700;display:inline-flex;align-items:center;gap:2px;"></span>
+            </div>
             <div class="dash-kpi-card__hint" id="kpiGpsHint">&nbsp;</div>
           </a>
+          <div class="dash-kpi-card" title="Tempo médio efetivo por visita realizada">
+            <div class="dash-kpi-card__label">Tempo médio</div>
+            <div style="display:flex;align-items:baseline;justify-content:space-between;gap:6px;">
+              <div class="dash-kpi-card__value" id="kpiTempoMedio">—</div>
+              <span id="kpiTempoDiff" style="font-size:11px;font-weight:700;display:inline-flex;align-items:center;gap:2px;"></span>
+            </div>
+            <div class="dash-kpi-card__hint" id="kpiTempoHint">&nbsp;</div>
+          </div>
+          <div class="dash-kpi-card" title="Média de visitas por dia no período">
+            <div class="dash-kpi-card__label">Visitas/dia</div>
+            <div style="display:flex;align-items:baseline;justify-content:space-between;gap:6px;">
+              <div class="dash-kpi-card__value" id="kpiVisitasDia">—</div>
+              <span id="kpiVisitasDiaDiff" style="font-size:11px;font-weight:700;display:inline-flex;align-items:center;gap:2px;"></span>
+            </div>
+            <div class="dash-kpi-card__hint" id="kpiVisitasDiaHint">&nbsp;</div>
+          </div>
         </div>
 
         <!-- Seção 2: Gráfico de linha - visitas no tempo -->
@@ -13730,6 +14467,24 @@ function renderAdminDashboard() {
           </div>
           <div id="dashChartLine" style="min-height:150px;display:flex;align-items:center;justify-content:center;color:var(--neutral-400);font-size:12px;">
             Carregando...
+          </div>
+        </div>
+
+        <!-- Sprint 9.12 Parte B: padrões semanais e de horário -->
+        <div class="dash-pies-grid">
+          <div class="dash-card">
+            <div class="dash-card__title">
+              <span class="material-symbols-rounded" style="font-size:18px;color:var(--status-info);">calendar_view_week</span>
+              Padrão semanal
+            </div>
+            <div id="dashBarsWeekday" style="min-height:120px;font-size:12px;color:var(--neutral-400);">—</div>
+          </div>
+          <div class="dash-card">
+            <div class="dash-card__title">
+              <span class="material-symbols-rounded" style="font-size:18px;color:var(--status-info);">schedule</span>
+              Padrão de horário
+            </div>
+            <div id="dashBarsHora" style="min-height:120px;font-size:12px;color:var(--neutral-400);">—</div>
           </div>
         </div>
 
@@ -13770,6 +14525,24 @@ function renderAdminDashboard() {
             Top objetivos
           </div>
           <div id="dashPieObj" style="min-height:120px;font-size:12px;color:var(--neutral-400);">—</div>
+        </div>
+
+        <!-- Sprint 9.12 Parte C: insights operacionais -->
+        <div class="dash-rankings-grid">
+          <div class="dash-card">
+            <div class="dash-card__title">
+              <span class="material-symbols-rounded" style="font-size:18px;color:var(--status-warning);">person_off</span>
+              Nutris inativos
+            </div>
+            <div id="dashNutrisInativos" style="min-height:120px;font-size:12px;color:var(--neutral-400);">Carregando...</div>
+          </div>
+          <div class="dash-card">
+            <div class="dash-card__title">
+              <span class="material-symbols-rounded" style="font-size:18px;color:var(--brand-navy);">domain</span>
+              Tipo de instituição
+            </div>
+            <div id="dashPieTipoInst" style="min-height:120px;font-size:12px;color:var(--neutral-400);">Carregando...</div>
+          </div>
         </div>
 
       </main>
