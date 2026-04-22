@@ -5445,7 +5445,7 @@ a {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.21.3-faturar-desabilitado',
+  APP_VERSION: '1.0.0-alpha.sprint9.21.5-frase-fundo-claro',
   APP_NAME: 'Nutricionais Visitas',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -14933,12 +14933,12 @@ async function carregarFraseDoDia() {
   }
 
   const autorHtml = frase.autor
-    ? `<div style="font-size:11.5px;color:rgba(255,255,255,0.65);margin-top:8px;font-style:italic;">— ${frase.autor.replace(/</g,'&lt;')}</div>`
+    ? `<div style="font-size:11.5px;color:var(--neutral-500);margin-top:8px;font-style:italic;">— ${frase.autor.replace(/</g,'&lt;')}</div>`
     : '';
 
   el.innerHTML = `
     <!-- Decorativo: aspa grande ao fundo -->
-    <div style="position:absolute;top:-18px;right:-8px;font-family:'Poppins',serif;font-size:120px;line-height:1;color:rgba(139,198,63,0.12);font-weight:800;user-select:none;pointer-events:none;">"</div>
+    <div style="position:absolute;top:-22px;right:-6px;font-family:'Poppins',serif;font-size:130px;line-height:1;color:rgba(139,198,63,0.18);font-weight:800;user-select:none;pointer-events:none;">"</div>
 
     <div style="position:relative;display:flex;gap:13px;align-items:flex-start;">
       <div style="width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,var(--brand-lime) 0%,#6FAD28 100%);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 4px 12px rgba(139,198,63,0.4);">
@@ -14946,11 +14946,15 @@ async function carregarFraseDoDia() {
       </div>
       <div style="flex:1;min-width:0;">
         <div style="font-size:10px;font-weight:700;color:var(--brand-lime);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">Frase do dia</div>
-        <div style="font-size:14px;color:#fff;font-weight:500;line-height:1.5;font-family:'Poppins',sans-serif;">${frase.texto.replace(/</g,'&lt;')}</div>
+        <div style="font-size:14px;color:var(--brand-navy);font-weight:500;line-height:1.5;font-family:'Poppins',sans-serif;">${frase.texto.replace(/</g,'&lt;')}</div>
         ${autorHtml}
       </div>
     </div>
   `;
+
+  // Sprint 9.21.4: exibe o wrapper externo (com borda gradiente animada)
+  const wrapper = document.getElementById('fraseDoDiaWrapper');
+  if (wrapper) wrapper.style.display = 'block';
   el.style.display = 'block';
 }
 
@@ -15036,8 +15040,19 @@ function renderInicio() {
           <div class="home__greeting-date">${formatarDataPtBr(new Date())}</div>
         </div>
 
-        <!-- Sprint 9.21: Frase motivacional do dia -->
-        <div id="fraseDoDiaCard" style="display:none;position:relative;background:linear-gradient(135deg,#0A1F5C 0%,#1E3A8A 100%);border-radius:16px;padding:18px 18px 18px 20px;margin:0 0 14px;box-shadow:0 6px 20px rgba(10,31,92,0.18);overflow:hidden;"></div>
+        <!-- Sprint 9.21: Frase motivacional do dia com borda gradiente animada (Sprint 9.21.5) -->
+        <div id="fraseDoDiaWrapper" style="display:none;position:relative;margin:0 0 14px;border-radius:18px;padding:2px;overflow:hidden;">
+          <!-- Camada 1: gradient girando (atrás) -->
+          <div class="frase-aura" style="position:absolute;inset:-50%;background:conic-gradient(from 0deg, #8BC63F, #22D3EE, #A78BFA, #F472B6, #FCD34D, #8BC63F);animation:fraseAuraSpin 6s linear infinite;"></div>
+          <!-- Camada 2: card interno (fundo clarinho quase branco) -->
+          <div id="fraseDoDiaCard" style="position:relative;background:linear-gradient(135deg,#FFFFFF 0%,#F8FAFC 100%);border-radius:16px;padding:18px 18px 18px 20px;box-shadow:0 4px 14px rgba(10,31,92,0.08);overflow:hidden;z-index:1;"></div>
+        </div>
+        <style>
+          @keyframes fraseAuraSpin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+          }
+        </style>
 
         <!-- Banners de reabertura (Sprint 8.12) — preenchidos async -->
         <div id="nutriReaberturaBanner" style="display:none;"></div>
