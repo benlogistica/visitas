@@ -2644,7 +2644,7 @@ a {
     margin-bottom: 10px;
     gap: 6px;
   }
-  .relatorio-btn {
+  .relatorio-actions .relatorio-btn {
     padding: 10px 14px;
     font-size: 12px;
     flex: 1;
@@ -2744,22 +2744,48 @@ a {
 }
 
 @media print {
-  body, html {
-    background: #fff !important;
+  /* Sprint 9.21.11: SOLUÇÃO CIRÚRGICA — esconder TUDO no print exceto o relatório
+     Isso elimina qualquer elemento órfão (splash, sidebar, topbar, etc) que possa estar
+     renderizando indevidamente no PDF gerado pelo navegador. */
+  body > *:not(#app),
+  body > #app > *:not(.relatorio-page) {
+    display: none !important;
+  }
+
+  /* Esconde também elementos fixed que podem persistir */
+  .splash, .ds-sidebar, .mbar, .bnav, .perfil-dropdown, .admin-drawer {
+    display: none !important;
+  }
+
+  /* Reset total dos containers principais */
+  html, body {
+    background: none !important;
+    background-color: transparent !important;
     margin: 0 !important;
     padding: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
   }
   .no-print { display: none !important; }
-  .relatorio-page {
-    background: #fff !important;
-    padding: 0 !important;
-  }
-  .relatorio-paper {
+  .relatorio-page,
+  .relatorio-paper,
+  #app,
+  main#app {
+    background: none !important;
+    background-color: transparent !important;
+    background-image: none !important;
     box-shadow: none !important;
-    max-width: none !important;
-    margin: 0 !important;
-    padding: 0 !important;
+    border: 0 !important;
+    outline: 0 !important;
     border-radius: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+    min-height: 0 !important;
+    display: block !important;
   }
   /* Garante cores na impressão */
   * {
@@ -2774,6 +2800,21 @@ a {
   .relatorio-kpis { grid-template-columns: repeat(4, 1fr); gap: 8px; }
   .relatorio-kpi__value { font-size: 18px; }
   .relatorio-section { margin-bottom: 18px; }
+
+  /* Sprint 9.21.9: fix bug Chrome onde bordas vazam na quebra de página
+     Substitui border por box-shadow inset (que não tem esse bug) */
+  .relatorio-kpi {
+    border: 0 !important;
+    background: #FAFBFD !important;
+    box-shadow: inset 0 0 0 1px #E5E7EB !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+  /* Garante que seções inteiras não quebram no meio */
+  .relatorio-section {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
 }
 
 .home__greeting {
@@ -5553,7 +5594,7 @@ a {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.21.6-relatorio-mobile',
+  APP_VERSION: '1.0.0-alpha.sprint9.21.11-print-cirurgico',
   APP_NAME: 'Nutricionais Visitas',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
