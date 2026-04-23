@@ -5620,7 +5620,7 @@ a {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.25.5-itens-pad-mobile-shell',
+  APP_VERSION: '1.0.0-alpha.sprint9.26.2-debug-itens-pad',
   APP_NAME: 'Nutricionais Visitas',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -8775,6 +8775,91 @@ function desktopShell({ title, breadcrumb, titleExtra, content, activeId }) {
   return `
     <div class="ds-shell">
       ${desktopSidebar(activeId || sidebarActiveFromHash(window.location.hash || '#/'))}
+      <div class="ds-main">
+        ${desktopTopbar({ title, breadcrumb, titleExtra })}
+        <main class="ds-content">
+          ${content || ''}
+        </main>
+      </div>
+    </div>
+  `;
+}
+
+/* ==========================================================================
+   DESKTOP NUTRI — Sidebar + shell específicos do perfil nutri (Sprint 9.26)
+   ========================================================================== */
+
+// Mapeia hash da rota pra id do item ativo na sidebar do nutri
+function sidebarActiveFromHashNutri(hash) {
+  if (hash === '#/inicio' || hash === '#/') return 'home';
+  if (hash.startsWith('#/visitas/relatorio')) return 'visits';
+  if (hash.startsWith('#/visitas')) return 'visits';
+  if (hash.startsWith('#/checkin')) return 'checkin';
+  if (hash.startsWith('#/agenda')) return 'agenda';
+  if (hash.startsWith('#/nutri/instituicoes')) return 'institutions';
+  if (hash.startsWith('#/nutri/profissionais')) return 'professions';
+  if (hash.startsWith('#/nutri/itens-padronizados')) return 'standardized';
+  if (hash.startsWith('#/nutri/indicadores')) return 'indicators';
+  if (hash.startsWith('#/nutri/performance')) return 'performance';
+  return '';
+}
+
+// Sidebar do desktop nutri — menu focado nas tarefas do profissional
+function desktopSidebarNutri(activeId) {
+  const user = getCurrentUser();
+  const items = [
+    { id: 'home',         href: '#/inicio',                   icon: 'home',             label: 'Início' },
+    { id: 'checkin',      href: '#/checkin',                  icon: 'my_location',      label: 'Fazer check-in', highlight: true },
+    { id: 'visits',       href: '#/visitas',                  icon: 'location_on',      label: 'Minhas visitas' },
+    { id: 'agenda',       href: '#/agenda',                   icon: 'calendar_month',   label: 'Agenda' },
+    { id: 'institutions', href: '#/nutri/instituicoes',       icon: 'local_hospital',   label: 'Instituições' },
+    { id: 'professions',  href: '#/nutri/profissionais',      icon: 'stethoscope',      label: 'Profissionais' },
+    { id: 'standardized', href: '#/nutri/itens-padronizados', icon: 'inventory_2',      label: 'Itens padronizados' },
+    { id: 'indicators',   href: '#/nutri/indicadores',        icon: 'bar_chart',        label: 'Indicadores' },
+    { id: 'performance',  href: '#/nutri/performance',        icon: 'insights',         label: 'Performance' },
+  ];
+  const userInitials = user ? iniciais(user.nome || 'U') : 'U';
+  const userName = user?.nome || 'Profissional';
+  const userEmail = user?.email || '';
+  const userFoto = user?.foto_url || '';
+
+  return `
+    <aside class="ds-sidebar">
+      <div class="ds-sidebar__logo">
+        <img src="icons/logo-color.png" alt="Nutricionais" style="height:28px;width:28px;object-fit:contain;display:block;flex-shrink:0;" />
+        <span class="ds-sidebar__logo-text">NUTRICIONAIS</span>
+      </div>
+      <div class="ds-sidebar__divider"></div>
+      <nav class="ds-sidebar__nav">
+        ${items.map(it => `
+          <a href="${it.href}" class="ds-sidebar__item ${activeId === it.id ? 'is-active' : ''}"
+             ${it.highlight ? 'style="background:linear-gradient(135deg,rgba(139,198,63,0.14) 0%,rgba(139,198,63,0.06) 100%);border:1px solid rgba(139,198,63,0.3);margin-bottom:6px;"' : ''}>
+            <span class="ds-sidebar__item-icon material-symbols-rounded" style="font-size:19px;${it.highlight ? 'color:var(--brand-lime);' : ''}">${it.icon}</span>
+            <span class="ds-sidebar__item-label" ${it.highlight ? 'style="font-weight:700;"' : ''}>${it.label}</span>
+          </a>
+        `).join('')}
+      </nav>
+      <div class="ds-sidebar__user">
+        <div class="ds-sidebar__user-avatar" ${userFoto ? `style="background-image:url('${userFoto}')"` : ''}>
+          ${userFoto ? '' : userInitials}
+        </div>
+        <div class="ds-sidebar__user-info">
+          <div class="ds-sidebar__user-name">${userName}</div>
+          <div class="ds-sidebar__user-role">${userEmail}</div>
+        </div>
+        <a href="#/logout" class="ds-sidebar__user-logout" title="Sair">
+          <span class="material-symbols-rounded" style="font-size:18px;">logout</span>
+        </a>
+      </div>
+    </aside>
+  `;
+}
+
+// Shell desktop do nutri: reusa desktopTopbar mas troca a sidebar
+function desktopShellNutri({ title, breadcrumb, titleExtra, content, activeId }) {
+  return `
+    <div class="ds-shell">
+      ${desktopSidebarNutri(activeId || sidebarActiveFromHashNutri(window.location.hash || '#/'))}
       <div class="ds-main">
         ${desktopTopbar({ title, breadcrumb, titleExtra })}
         <main class="ds-content">
@@ -14254,11 +14339,25 @@ const DESKTOP_RENDERERS = {
   // 🎉 Desktop completo!
 };
 
+// Sprint 9.26: renderers desktop pro nutri.
+// Mesma lógica do DESKTOP_RENDERERS, mas pras rotas que o nutri usa.
+const DESKTOP_RENDERERS_NUTRI = {
+  '#/inicio':                   renderInicioNutriDesktop,
+  '#/visitas':                  renderVisitasDesktopNutri,
+  '#/visitas/relatorio':        renderRelatorioDesktopNutri,
+  '#/checkin':                  renderCheckinDesktopNutri,
+  '#/agenda':                   renderAgendaDesktopNutri,
+  '#/nutri/itens-padronizados': renderItensPadronizadosDesktopNutri,
+  // Fase 3+: #/nutri/instituicoes, #/nutri/profissionais,
+  //         #/nutri/indicadores, #/nutri/performance
+};
+
 function getRendererForRoute(hash, route) {
   const user = getCurrentUser();
-  if (!user || user.perfil !== 'admin') return route.render;
-  if (!isDesktop()) return route.render;
-  return DESKTOP_RENDERERS[hash] || route.render;
+  if (!user || !isDesktop()) return route.render;
+  if (user.perfil === 'admin') return DESKTOP_RENDERERS[hash] || route.render;
+  // Sprint 9.26: nutri no desktop usa renderers específicos (se existirem)
+  return DESKTOP_RENDERERS_NUTRI[hash] || route.render;
 }
 
 function router() {
@@ -15459,6 +15558,600 @@ function renderInicio() {
     </div>
   `;
 }
+
+/* ==========================================================================
+   SPRINT 9.26 — Desktop Nutri: primeiras telas (Home + Itens padronizados)
+   Estratégia: criar wrappers que montam o shell nutri e injetam conteúdo
+   rico pensado pra desktop (grids mais espaçosos, mais info simultânea).
+   ========================================================================== */
+
+// Home do nutri no desktop: reusa mesma info da mobile mas com layout espaçado
+function renderInicioNutriDesktop() {
+  const user = requireAuth();
+  if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
+
+  stopTimer(); // limpa timer se veio de tela de visita ativa
+
+  const primeiroNome = (user.nome || '').split(' ')[0] || 'Profissional';
+
+  // Async: carrega dados dos cards + verifica visita ativa
+  setTimeout(async () => {
+    try {
+      const [visitaAtiva, visitas, totalMes] = await Promise.all([
+        getVisitaAtiva(),
+        listarMinhasVisitas(8),
+        contarVisitasDoMes(),
+      ]);
+
+      // Se tem visita ativa, redireciona
+      if (visitaAtiva) {
+        window.location.hash = '#/checkin/ativo';
+        return;
+      }
+
+      const kpiMes = document.getElementById('kpiMesD');
+      if (kpiMes) kpiMes.textContent = String(totalMes);
+
+      // Reusa o carregador dos KPIs extras da mobile (populam kpiSemana, kpiAno, kpiHospitais, kpiMesDiff)
+      // Adaptamos IDs pra "*D" no desktop — fazemos aliasing aqui.
+      carregarKpisHomeNutri().then(() => {
+        // Alias dos valores populados pelos IDs mobile pros IDs desktop
+        const aliases = [
+          ['kpiSemana', 'kpiSemanaD'],
+          ['kpiAno', 'kpiAnoD'],
+          ['kpiHospitais', 'kpiHospitaisD'],
+          ['kpiMesDiff', 'kpiMesDiffD'],
+        ];
+        aliases.forEach(([src, dst]) => {
+          const s = document.getElementById(src);
+          const d = document.getElementById(dst);
+          if (s && d) d.innerHTML = s.innerHTML;
+        });
+      }).catch(err => console.warn('[Home KPIs desktop]', err));
+
+      // Lista de visitas recentes
+      const lista = document.getElementById('recentVisitsListD');
+      if (lista) {
+        if (visitas.length === 0) {
+          lista.innerHTML = `
+            <div style="text-align:center;padding:40px 20px;color:var(--neutral-500);">
+              <span class="material-symbols-rounded" style="font-size:44px;color:var(--neutral-300);">explore</span>
+              <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);margin-top:10px;">Nenhuma visita ainda</div>
+              <div style="font-size:12.5px;margin-top:4px;">Suas visitas aparecerão aqui após o primeiro check-in.</div>
+            </div>
+          `;
+        } else {
+          lista.innerHTML = visitas.map(v => {
+            const inst = v.instituicoes?.nome || 'Instituição';
+            const data = v.checkin_timestamp ? new Date(v.checkin_timestamp).toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit' }) : '—';
+            const hora = v.checkin_timestamp ? new Date(v.checkin_timestamp).toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' }) : '';
+            const cancelada = !!v.cancelado_em;
+            const naoRealizada = v.visita_realizada === false && !v.cancelado_em;
+            const realizada = v.visita_realizada === true;
+            const rascunho = v.status === 'rascunho' && !v.cancelado_em;
+            let pill, pillCor;
+            if (cancelada) { pill = 'Cancelada'; pillCor = 'background:#FCE8E8;color:#D33;'; }
+            else if (naoRealizada) { pill = 'Não realizada'; pillCor = 'background:#FFF4E5;color:#C77700;'; }
+            else if (realizada) { pill = 'Realizada'; pillCor = 'background:#E7F5E7;color:#2E7D32;'; }
+            else if (rascunho) { pill = 'Rascunho'; pillCor = 'background:#EEF0F5;color:#5C6B84;'; }
+            else { pill = v.status || '—'; pillCor = 'background:#EEF0F5;color:#5C6B84;'; }
+            return `
+              <a href="#/visitas/relatorio?id=${v.id}" style="display:flex;align-items:center;gap:14px;padding:12px 14px;border-radius:10px;text-decoration:none;border:1px solid var(--neutral-200);background:var(--neutral-0);transition:transform 140ms, box-shadow 140ms;"
+                 onmouseover="this.style.boxShadow='0 4px 14px rgba(10,31,92,0.08)';this.style.transform='translateY(-1px)';"
+                 onmouseout="this.style.boxShadow='';this.style.transform='';">
+                <div style="width:36px;height:36px;border-radius:9px;background:linear-gradient(135deg,#F0F5F0,#E8F2E8);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                  <span class="material-symbols-rounded" style="font-size:20px;color:var(--brand-lime);">local_hospital</span>
+                </div>
+                <div style="flex:1;min-width:0;">
+                  <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${inst.replace(/</g,'&lt;')}</div>
+                  <div style="font-size:11.5px;color:var(--neutral-500);margin-top:2px;">${data}${hora ? ' · ' + hora : ''}</div>
+                </div>
+                <span style="font-size:10.5px;font-weight:700;padding:4px 10px;border-radius:9999px;${pillCor}white-space:nowrap;">${pill}</span>
+              </a>
+            `;
+          }).join('');
+        }
+      }
+    } catch (err) {
+      console.error('[home nutri desktop]', err);
+    }
+  }, 0);
+
+  const anoAtual = new Date().getFullYear();
+  const content = `
+    <div style="max-width:1280px;margin:0 auto;">
+      <!-- Saudação + CTA check-in lado a lado -->
+      <div style="display:grid;grid-template-columns:1fr auto;gap:24px;align-items:end;margin-bottom:22px;flex-wrap:wrap;">
+        <div>
+          <div style="font-family:var(--font-display);font-size:28px;font-weight:700;color:var(--brand-navy);line-height:1.1;">${getSaudacao()}, ${primeiroNome} 👋</div>
+          <div style="font-size:13.5px;color:var(--neutral-600);margin-top:6px;">${formatarDataPtBr(new Date())}</div>
+        </div>
+        <a href="#/checkin" style="display:inline-flex;align-items:center;gap:10px;background:var(--brand-lime);color:#fff;padding:14px 24px;border-radius:9999px;text-decoration:none;font-weight:700;font-size:14px;box-shadow:0 4px 14px rgba(139,198,63,0.35);transition:transform 140ms;"
+           onmouseover="this.style.transform='translateY(-1px)';" onmouseout="this.style.transform='';">
+          <span class="material-symbols-rounded" style="font-size:22px;">my_location</span>
+          Fazer check-in
+        </a>
+      </div>
+
+      <!-- Grid 4 KPIs espaçado -->
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px;">
+        <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:14px;padding:18px 20px;">
+          <div style="font-size:11px;color:var(--neutral-500);text-transform:uppercase;letter-spacing:0.5px;font-weight:600;margin-bottom:8px;">Mês atual</div>
+          <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;">
+            <span id="kpiMesD" style="font-family:var(--font-display);font-weight:700;font-size:34px;color:var(--brand-navy);line-height:1;">—</span>
+            <span id="kpiMesDiffD" style="display:inline-flex;align-items:center;gap:2px;font-size:11px;font-weight:700;"></span>
+          </div>
+        </div>
+        <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:14px;padding:18px 20px;">
+          <div style="font-size:11px;color:var(--neutral-500);text-transform:uppercase;letter-spacing:0.5px;font-weight:600;margin-bottom:8px;">Esta semana</div>
+          <span id="kpiSemanaD" style="font-family:var(--font-display);font-weight:700;font-size:34px;color:var(--brand-navy);line-height:1;">—</span>
+        </div>
+        <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:14px;padding:18px 20px;">
+          <div style="font-size:11px;color:var(--neutral-500);text-transform:uppercase;letter-spacing:0.5px;font-weight:600;margin-bottom:8px;">Total ${anoAtual}</div>
+          <span id="kpiAnoD" style="font-family:var(--font-display);font-weight:700;font-size:34px;color:var(--brand-navy);line-height:1;">—</span>
+        </div>
+        <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:14px;padding:18px 20px;">
+          <div style="font-size:11px;color:var(--neutral-500);text-transform:uppercase;letter-spacing:0.5px;font-weight:600;margin-bottom:8px;">Hospitais únicos</div>
+          <span id="kpiHospitaisD" style="font-family:var(--font-display);font-weight:700;font-size:34px;color:var(--brand-navy);line-height:1;">—</span>
+        </div>
+      </div>
+
+      <!-- Duas colunas: visitas recentes (principal) + atalhos (lateral) -->
+      <div style="display:grid;grid-template-columns:1fr 320px;gap:20px;">
+        <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:14px;padding:18px 20px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+            <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:15px;">Visitas recentes</div>
+            <a href="#/visitas" style="font-size:12.5px;color:var(--brand-lime);text-decoration:none;font-weight:600;">Ver todas →</a>
+          </div>
+          <div id="recentVisitsListD" style="display:flex;flex-direction:column;gap:8px;">
+            <div style="padding:20px;text-align:center;color:var(--neutral-500);font-size:13px;">Carregando...</div>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <a href="#/nutri/indicadores" style="display:flex;align-items:center;gap:12px;padding:14px 16px;background:linear-gradient(135deg,#F0F5F0 0%,#E8F2E8 100%);border:1px solid rgba(139,198,63,0.25);border-radius:12px;text-decoration:none;transition:transform 140ms;"
+             onmouseover="this.style.transform='translateY(-1px)';" onmouseout="this.style.transform='';">
+            <span class="material-symbols-rounded" style="font-size:24px;color:var(--brand-lime);">bar_chart</span>
+            <div style="flex:1;min-width:0;">
+              <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:13.5px;">Indicadores</div>
+              <div style="color:var(--neutral-600);font-size:11px;margin-top:2px;">Gráficos e top hospitais</div>
+            </div>
+            <span class="material-symbols-rounded" style="font-size:18px;color:var(--brand-navy);">arrow_forward</span>
+          </a>
+
+          <a href="#/nutri/itens-padronizados" style="display:flex;align-items:center;gap:12px;padding:14px 16px;background:linear-gradient(135deg,#F5F0F8 0%,#EFE4F5 100%);border:1px solid rgba(167,139,250,0.30);border-radius:12px;text-decoration:none;transition:transform 140ms;"
+             onmouseover="this.style.transform='translateY(-1px)';" onmouseout="this.style.transform='';">
+            <span class="material-symbols-rounded" style="font-size:24px;color:#7C3AED;">inventory_2</span>
+            <div style="flex:1;min-width:0;">
+              <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:13.5px;">Itens padronizados</div>
+              <div style="color:var(--neutral-600);font-size:11px;margin-top:2px;">Mapear concorrentes</div>
+            </div>
+            <span class="material-symbols-rounded" style="font-size:18px;color:var(--brand-navy);">arrow_forward</span>
+          </a>
+
+          <a href="#/agenda" style="display:flex;align-items:center;gap:12px;padding:14px 16px;background:linear-gradient(135deg,#FFF8E5 0%,#FFF2CC 100%);border:1px solid rgba(245,158,11,0.25);border-radius:12px;text-decoration:none;transition:transform 140ms;"
+             onmouseover="this.style.transform='translateY(-1px)';" onmouseout="this.style.transform='';">
+            <span class="material-symbols-rounded" style="font-size:24px;color:#D97706;">calendar_month</span>
+            <div style="flex:1;min-width:0;">
+              <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:13.5px;">Agenda</div>
+              <div style="color:var(--neutral-600);font-size:11px;margin-top:2px;">Próximos agendamentos</div>
+            </div>
+            <span class="material-symbols-rounded" style="font-size:18px;color:var(--brand-navy);">arrow_forward</span>
+          </a>
+
+          <a href="#/nutri/performance" style="display:flex;align-items:center;gap:12px;padding:14px 16px;background:linear-gradient(135deg,#E8F0FD 0%,#DDE7F9 100%);border:1px solid rgba(29,78,216,0.25);border-radius:12px;text-decoration:none;transition:transform 140ms;"
+             onmouseover="this.style.transform='translateY(-1px)';" onmouseout="this.style.transform='';">
+            <span class="material-symbols-rounded" style="font-size:24px;color:#1D4ED8;">insights</span>
+            <div style="flex:1;min-width:0;">
+              <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:13.5px;">Performance</div>
+              <div style="color:var(--neutral-600);font-size:11px;margin-top:2px;">ROI das suas visitas</div>
+            </div>
+            <span class="material-symbols-rounded" style="font-size:18px;color:var(--brand-navy);">arrow_forward</span>
+          </a>
+        </div>
+      </div>
+    </div>
+  `;
+
+  return desktopShellNutri({
+    title: 'Início',
+    breadcrumb: ['Nutri', 'Início'],
+    content,
+    activeId: 'home',
+  });
+}
+
+// Wrapper: reusa renderItensPadronizados({embed:true}) dentro do shell nutri
+function renderItensPadronizadosDesktopNutri() {
+  const user = requireAuth();
+  if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
+  return desktopShellNutri({
+    title: 'Itens padronizados',
+    breadcrumb: ['Nutri', 'Itens padronizados'],
+    content: renderItensPadronizados({ embed: true }),
+    activeId: 'standardized',
+  });
+}
+
+// Sprint 9.26 Fase 2: Minhas visitas no desktop nutri.
+// Reusa carregarMinhasVisitas / trocarFiltroMinhasVisitas / filtrarMinhasVisitasLocal
+// (os DOMs #visitasList, #mvBusca, #cntMv* são os mesmos, só o shell muda).
+function renderVisitasDesktopNutri() {
+  const user = requireAuth();
+  if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
+
+  if (!window._visitasNutriFiltro) window._visitasNutriFiltro = 'todas';
+
+  setTimeout(async () => {
+    await carregarMinhasVisitas();
+  }, 0);
+
+  const content = `
+    <div style="max-width:1280px;margin:0 auto;">
+      <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:14px;padding:18px 20px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:14px;flex-wrap:wrap;">
+          <div>
+            <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:16px;">Minhas visitas</div>
+            <div style="font-size:12.5px;color:var(--neutral-600);margin-top:2px;">Histórico completo, rascunhos e pendências.</div>
+          </div>
+          <a href="#/checkin" style="display:inline-flex;align-items:center;gap:8px;background:var(--brand-lime);color:#fff;padding:10px 18px;border-radius:9999px;text-decoration:none;font-weight:700;font-size:12.5px;">
+            <span class="material-symbols-rounded" style="font-size:18px;">my_location</span>
+            Nova visita
+          </a>
+        </div>
+
+        <div class="review-tabs" style="margin-bottom:14px;">
+          <button class="review-tab ${window._visitasNutriFiltro === 'todas' ? 'is-active' : ''}" onclick="trocarFiltroMinhasVisitas('todas')">
+            Todas <span class="review-tab__count" id="cntMvTodas">—</span>
+          </button>
+          <button class="review-tab ${window._visitasNutriFiltro === 'concluidas' ? 'is-active' : ''}" onclick="trocarFiltroMinhasVisitas('concluidas')">
+            Concluídas <span class="review-tab__count" id="cntMvConcluidas">—</span>
+          </button>
+          <button class="review-tab ${window._visitasNutriFiltro === 'em_revisao' ? 'is-active' : ''}" onclick="trocarFiltroMinhasVisitas('em_revisao')">
+            Pendências <span class="review-tab__count" id="cntMvRevisao">—</span>
+          </button>
+          <button class="review-tab ${window._visitasNutriFiltro === 'canceladas' ? 'is-active' : ''}" onclick="trocarFiltroMinhasVisitas('canceladas')">
+            Canceladas <span class="review-tab__count" id="cntMvCanceladas">—</span>
+          </button>
+        </div>
+
+        <div style="position:relative;margin:0 0 14px;max-width:460px;">
+          <span class="material-symbols-rounded" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--neutral-500);font-size:18px;pointer-events:none;">search</span>
+          <input type="text"
+                 id="mvBusca"
+                 placeholder="Filtrar por instituição..."
+                 oninput="filtrarMinhasVisitasLocal(this.value)"
+                 style="width:100%;padding:10px 14px 10px 38px;border:1px solid var(--neutral-200);border-radius:10px;font-family:inherit;font-size:13px;background:var(--neutral-0);color:var(--brand-navy);" />
+        </div>
+
+        <div class="visits-list" id="visitasList" style="background:var(--neutral-0);">
+          <div style="padding:30px;text-align:center;color:var(--neutral-500);font-size:13px;">Carregando...</div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  return desktopShellNutri({
+    title: 'Minhas visitas',
+    breadcrumb: ['Nutri', 'Minhas visitas'],
+    content,
+    activeId: 'visits',
+  });
+}
+
+// Sprint 9.26 Fase 2: Relatório da visita no desktop nutri.
+// Reusa hydrateReportForm (popula #reportBody). O save indicator fica na topbar custom.
+function renderRelatorioDesktopNutri() {
+  const user = requireAuth();
+  if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
+
+  const visitaId = window._routeParams?.id;
+  if (!visitaId) {
+    setTimeout(() => { window.location.hash = '#/visitas'; }, 0);
+    return '<div class="splash"><div class="splash__spinner"></div></div>';
+  }
+
+  // Mesma inicialização do mobile renderRelatorio
+  ReportState.visitaId = visitaId;
+  ReportState.visita = null;
+  ReportState.profissionaisInstituicao = [];
+  ReportState.profissionaisSelecionados = [];
+  ReportState.objetivos = [];
+  ReportState.objetivosSelecionados = new Set();
+  if (ReportState.autoSaveTimer) clearTimeout(ReportState.autoSaveTimer);
+  ReportState.pendingChanges = {};
+
+  setTimeout(async () => {
+    try {
+      const [visita, objetivos] = await Promise.all([
+        getVisitaCompleta(visitaId),
+        listarObjetivos(),
+      ]);
+      ReportState.visita = visita;
+      ReportState.objetivos = objetivos;
+      ReportState.objetivosSelecionados = new Set(visita.objetivos_selecionados || []);
+      ReportState.profissionaisSelecionados = visita.profissionais_selecionados || [];
+      const profs = await listarProfissionaisDaInstituicao(visita.instituicao_id);
+      ReportState.profissionaisInstituicao = profs;
+      hydrateReportForm();
+    } catch (err) {
+      const body = document.getElementById('reportBody');
+      if (err.cancelada) {
+        try {
+          const { data: vCanc } = await db
+            .from('visitas')
+            .select('id, cancelamento_motivo, cancelado_em, instituicoes(nome)')
+            .eq('id', visitaId)
+            .maybeSingle();
+          const inst = vCanc?.instituicoes?.nome || 'Instituição';
+          const dtCanc = vCanc?.cancelado_em ? new Date(vCanc.cancelado_em).toLocaleString('pt-BR') : '—';
+          const motivo = vCanc?.cancelamento_motivo || 'Sem motivo registrado.';
+          if (body) body.innerHTML = `
+            <div style="max-width:620px;margin:0 auto;background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:14px;padding:24px;">
+              <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+                <div style="width:44px;height:44px;border-radius:50%;background:#FCE8E8;color:#D33;display:flex;align-items:center;justify-content:center;">
+                  <span class="material-symbols-rounded" style="font-size:24px;">cancel</span>
+                </div>
+                <div>
+                  <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:18px;">Visita cancelada</div>
+                  <div style="color:var(--neutral-600);font-size:13px;">${inst.replace(/</g,'&lt;')}</div>
+                </div>
+              </div>
+              <div style="background:#FCE8E8;border-radius:10px;padding:12px 14px;margin-bottom:12px;">
+                <div style="font-size:10.5px;font-weight:700;color:#D33;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">Motivo</div>
+                <div style="font-size:14px;color:var(--brand-navy);">${motivo.replace(/</g,'&lt;')}</div>
+              </div>
+              <div style="font-size:12px;color:var(--neutral-500);">Cancelado em ${dtCanc}. Registro preservado no histórico.</div>
+            </div>
+          `;
+        } catch {}
+        return;
+      }
+      if (body) body.innerHTML = `
+        <div style="padding:40px 20px;text-align:center;color:var(--neutral-500);">
+          <span class="material-symbols-rounded" style="font-size:44px;color:var(--neutral-300);">error_outline</span>
+          <div style="margin-top:10px;font-family:var(--font-display);font-weight:700;color:var(--brand-navy);">Erro ao carregar visita</div>
+          <div style="font-size:12.5px;margin-top:4px;">${(err.message || 'Tente novamente').replace(/</g,'&lt;')}</div>
+          <a href="#/visitas" style="display:inline-block;margin-top:14px;color:var(--brand-lime);font-weight:600;text-decoration:none;">← Voltar pra lista</a>
+        </div>
+      `;
+    }
+  }, 0);
+
+  const titleExtra = `
+    <span class="save-indicator" id="saveIndicator" style="margin-left:6px;">
+      <span class="material-symbols-rounded">cloud_done</span>
+      <span id="saveIndicatorText">Pronto</span>
+    </span>
+  `;
+  const content = `
+    <div style="max-width:860px;margin:0 auto;" id="reportBody">
+      <div style="padding:40px 20px;text-align:center;color:var(--neutral-500);">
+        <span class="material-symbols-rounded" style="font-size:36px;color:var(--neutral-400);">hourglass_empty</span>
+        <div style="margin-top:8px;">Carregando relatório...</div>
+      </div>
+    </div>
+  `;
+
+  return desktopShellNutri({
+    title: 'Relatório',
+    breadcrumb: ['Nutri', 'Minhas visitas', 'Relatório'],
+    titleExtra,
+    content,
+    activeId: 'visits',
+  });
+}
+
+// Sprint 9.26 Fase 2: Check-in no desktop nutri — layout split.
+// Lado esquerdo: lista de instituições com filtro/busca.
+// Lado direito: card fixo com GPS, instituição selecionada, objetivo e confirmação.
+// Reusa TODOS os handlers do fluxo mobile (CheckinFlow, selectInstitution, handleConfirmCheckin).
+function renderCheckinDesktopNutri() {
+  const user = requireAuth();
+  if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
+
+  CheckinFlow.instituicaoSelecionada = null;
+  CheckinFlow.manual = false;
+
+  // Reusa a lógica async do mobile renderCheckin: popula #instList + #gpsStatus
+  setTimeout(async () => {
+    const listEl = document.getElementById('instList');
+    const gpsEl = document.getElementById('gpsStatus');
+
+    try {
+      const instituicoes = await listarInstituicoes();
+      if (instituicoes.length === 0) {
+        if (listEl) {
+          listEl.innerHTML = `
+            <div style="padding:30px 20px;text-align:center;color:var(--neutral-500);">
+              <span class="material-symbols-rounded" style="font-size:44px;color:var(--neutral-300);">local_hospital</span>
+              <div style="margin-top:10px;font-family:var(--font-display);font-weight:700;color:var(--brand-navy);">Nenhuma instituição cadastrada</div>
+              <div style="font-size:12.5px;margin-top:4px;">Cadastre uma instituição pra começar.</div>
+              <button onclick="cadastrarInstituicaoECheckin()" style="margin-top:14px;background:var(--brand-lime);color:#fff;border:0;padding:10px 18px;border-radius:9999px;cursor:pointer;font-weight:700;font-size:12.5px;font-family:inherit;">
+                + Cadastrar instituição
+              </button>
+            </div>
+          `;
+        }
+        return;
+      }
+
+      // Pega GPS
+      let userPos = null;
+      try {
+        userPos = await getGeolocation({ maximumAge: 0, timeout: 15000 });
+        CheckinFlow.userPos = userPos;
+        if (gpsEl) {
+          gpsEl.className = 'gps-status';
+          gpsEl.innerHTML = `
+            <span class="gps-status__icon"><span class="material-symbols-rounded">gps_fixed</span></span>
+            <div class="gps-status__body">
+              <div class="gps-status__label">GPS ativo · ±${Math.round(userPos.accuracy)}m</div>
+              <div class="gps-status__detail" style="font-family:var(--font-mono);font-size:10.5px;">${userPos.lat.toFixed(5)}, ${userPos.lng.toFixed(5)}</div>
+            </div>
+            <button type="button" onclick="atualizarGPSManual()" title="Atualizar GPS" style="background:none;border:none;padding:6px;border-radius:50%;cursor:pointer;color:var(--brand-navy);">
+              <span class="material-symbols-rounded" style="font-size:18px;">refresh</span>
+            </button>
+          `;
+        }
+      } catch (gpsErr) {
+        if (gpsEl) {
+          gpsEl.className = 'gps-status gps-status--warning';
+          gpsEl.innerHTML = `
+            <span class="gps-status__icon"><span class="material-symbols-rounded">gps_off</span></span>
+            <div class="gps-status__body">
+              <div class="gps-status__label">GPS indisponível</div>
+              <div class="gps-status__detail">${gpsErr.message}</div>
+            </div>
+          `;
+        }
+      }
+
+      const instComDist = userPos
+        ? ordenarPorProximidade(instituicoes, userPos.lat, userPos.lng, CONFIG.GPS_RADIUS_METERS)
+        : instituicoes.map(i => ({ ...i, distancia: null, distanciaFmt: '—', dentroDoRaio: false }));
+      CheckinFlow.instituicoes = instComDist;
+
+      if (listEl) {
+        listEl.innerHTML = instComDist.map((inst, i) => {
+          const isClosest = i === 0 && userPos;
+          return `
+            <button type="button" onclick="selectInstitution('${inst.id}')"
+                    class="inst-item ${isClosest ? 'inst-item--closest' : ''}"
+                    style="display:flex;align-items:center;gap:12px;width:100%;padding:12px 14px;border:1px solid var(--neutral-200);border-radius:10px;background:var(--neutral-0);cursor:pointer;text-align:left;font-family:inherit;margin-bottom:8px;transition:border-color 140ms;">
+              <div style="width:36px;height:36px;border-radius:9px;background:linear-gradient(135deg,#F0F5F0,#E8F2E8);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <span class="material-symbols-rounded" style="font-size:20px;color:var(--brand-lime);">local_hospital</span>
+              </div>
+              <div style="flex:1;min-width:0;">
+                <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${(inst.nome || '').replace(/</g,'&lt;')}</div>
+                <div style="font-size:11.5px;color:var(--neutral-500);margin-top:2px;">${(inst.cidade || '').replace(/</g,'&lt;')}${inst.estado ? ' · ' + inst.estado : ''}${inst.distanciaFmt && inst.distanciaFmt !== '—' ? ' · ' + inst.distanciaFmt : ''}</div>
+              </div>
+              ${!inst.dentroDoRaio && userPos ? '<span style="font-size:10px;color:var(--status-warning,#C77700);background:#FFF4E5;padding:3px 7px;border-radius:9999px;white-space:nowrap;">fora do raio</span>' : ''}
+              ${isClosest ? '<span class="material-symbols-rounded" style="font-size:20px;color:var(--brand-lime);">near_me</span>' : ''}
+            </button>
+          `;
+        }).join('');
+      }
+    } catch (err) {
+      console.error('[checkin desktop]', err);
+      if (listEl) listEl.innerHTML = `<div style="padding:20px;text-align:center;color:var(--status-danger,#D33);font-size:13px;">Erro ao carregar instituições: ${(err.message || '').replace(/</g,'&lt;')}</div>`;
+    }
+  }, 0);
+
+  const content = `
+    <div style="max-width:1280px;margin:0 auto;display:grid;grid-template-columns:1fr 380px;gap:20px;align-items:start;">
+      <!-- Esquerda: lista de instituições -->
+      <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:14px;padding:18px 20px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:12px;flex-wrap:wrap;">
+          <div>
+            <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:16px;">Selecione a instituição</div>
+            <div style="font-size:12.5px;color:var(--neutral-600);margin-top:2px;">Instituições ordenadas pela proximidade do seu GPS.</div>
+          </div>
+          <button onclick="cadastrarInstituicaoECheckin()" style="background:transparent;border:1px solid var(--brand-lime);color:var(--brand-lime);padding:8px 14px;border-radius:9999px;cursor:pointer;font-weight:700;font-size:12px;font-family:inherit;">
+            + Nova instituição
+          </button>
+        </div>
+
+        <div id="gpsStatus" class="gps-status" style="margin-bottom:14px;">
+          <span class="gps-status__icon">
+            <span class="material-symbols-rounded" style="animation:gpsSpin 1.2s linear infinite;">gps_not_fixed</span>
+          </span>
+          <div class="gps-status__body">
+            <div class="gps-status__label">Capturando GPS...</div>
+            <div class="gps-status__detail">Aguarde alguns segundos</div>
+          </div>
+        </div>
+
+        <div id="instList">
+          <div style="padding:30px;text-align:center;color:var(--neutral-500);font-size:13px;">Carregando instituições...</div>
+        </div>
+      </div>
+
+      <!-- Direita: info + dica -->
+      <div style="display:flex;flex-direction:column;gap:14px;position:sticky;top:20px;">
+        <div style="background:linear-gradient(135deg,#F0F5F0 0%,#E8F2E8 100%);border:1px solid rgba(139,198,63,0.25);border-radius:14px;padding:18px 20px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span class="material-symbols-rounded" style="font-size:24px;color:var(--brand-lime);">tips_and_updates</span>
+            <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:14px;">Como funciona o check-in</div>
+          </div>
+          <ol style="margin:0;padding-left:18px;font-size:12.5px;color:var(--neutral-700);line-height:1.6;">
+            <li>Selecione a instituição na lista ao lado (as mais próximas aparecem no topo).</li>
+            <li>Escolha um objetivo e confirme.</li>
+            <li>O timer inicia automaticamente. Ao finalizar, preencha o relatório.</li>
+          </ol>
+        </div>
+
+        <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:14px;padding:16px 18px;">
+          <div style="font-size:11px;color:var(--neutral-500);text-transform:uppercase;letter-spacing:0.4px;font-weight:600;margin-bottom:8px;">Modo manual</div>
+          <div style="font-size:12.5px;color:var(--neutral-600);line-height:1.5;margin-bottom:10px;">Sem GPS ou instituição não listada? Use o modo manual.</div>
+          <button onclick="startManualCheckin()" style="width:100%;background:transparent;border:1px solid var(--neutral-300);color:var(--brand-navy);padding:10px 14px;border-radius:10px;cursor:pointer;font-weight:600;font-size:12.5px;font-family:inherit;">
+            Check-in manual
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  return desktopShellNutri({
+    title: 'Fazer check-in',
+    breadcrumb: ['Nutri', 'Check-in'],
+    content,
+    activeId: 'checkin',
+  });
+}
+
+// Sprint 9.26 Fase 2: Agenda no desktop nutri.
+// Reusa carregarAgenda + trocarNutriAgendaView (DOMs compartilhados).
+function renderAgendaDesktopNutri() {
+  const user = requireAuth();
+  if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
+
+  setTimeout(async () => {
+    await carregarAgenda();
+  }, 0);
+
+  const view = window._nutriAgendaView || 'lista';
+  const content = `
+    <div style="max-width:1280px;margin:0 auto;">
+      <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:14px;padding:18px 20px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:14px;flex-wrap:wrap;">
+          <div>
+            <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:16px;">Seus próximos compromissos</div>
+            <div style="font-size:12.5px;color:var(--neutral-600);margin-top:2px;">Planeje suas visitas e inicie o check-in com um clique.</div>
+          </div>
+          <button onclick="handleNovoAgendamento()" style="display:inline-flex;align-items:center;gap:8px;background:var(--brand-lime);color:#fff;border:0;padding:10px 18px;border-radius:9999px;cursor:pointer;font-weight:700;font-size:12.5px;font-family:inherit;">
+            <span class="material-symbols-rounded" style="font-size:18px;">add</span>
+            Novo agendamento
+          </button>
+        </div>
+
+        <div class="review-tabs" style="margin-bottom:14px;">
+          <button class="review-tab ${view === 'lista' ? 'is-active' : ''}" onclick="trocarNutriAgendaView('lista')">
+            <span class="material-symbols-rounded" style="font-size:16px;vertical-align:-3px;margin-right:4px;">view_list</span>Lista
+          </button>
+          <button class="review-tab ${view === 'semana' ? 'is-active' : ''}" onclick="trocarNutriAgendaView('semana')">
+            <span class="material-symbols-rounded" style="font-size:16px;vertical-align:-3px;margin-right:4px;">date_range</span>Semana
+          </button>
+          <button class="review-tab ${view === 'calendario' ? 'is-active' : ''}" onclick="trocarNutriAgendaView('calendario')">
+            <span class="material-symbols-rounded" style="font-size:16px;vertical-align:-3px;margin-right:4px;">calendar_month</span>Calendário
+          </button>
+        </div>
+
+        <div id="agendaLista">
+          <div style="padding:30px;text-align:center;color:var(--neutral-500);font-size:13px;">Carregando...</div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  return desktopShellNutri({
+    title: 'Agenda',
+    breadcrumb: ['Nutri', 'Agenda'],
+    content,
+    activeId: 'agenda',
+  });
+}
+
 
 function renderCheckin() {
   const user = requireAuth();
@@ -25988,16 +26681,27 @@ async function showModalItemPadronizado({ modo = 'cadastro', itemExistente = nul
 window.handleNovoItemPadronizado = async function() {
   if (await bloqueioSimulacao('cadastrar item padronizado')) return;
   const user = getCurrentUserReal();
-  if (!user) return;
+  if (!user) { console.warn('[itemPad] abortado: getCurrentUserReal() retornou null'); return; }
   const dados = await showModalItemPadronizado({ modo: 'cadastro' });
-  if (!dados) return;
+  if (!dados) { console.log('[itemPad] modal cancelado pelo user'); return; }
+  // Sprint 9.26.2: debug completo pra investigar cadastro que não salva
+  const payload = { ...dados, registrado_por: user.id };
+  console.log('[itemPad] tentando INSERT. user.id:', user.id, 'user.perfil:', user.perfil);
+  console.log('[itemPad] payload:', JSON.parse(JSON.stringify(payload)));
   try {
-    const { data: inserido, error } = await db
+    const { data: inserido, error, status, statusText } = await db
       .from('itens_padronizados')
-      .insert({ ...dados, registrado_por: user.id })
+      .insert(payload)
       .select()
       .single();
-    if (error) throw new Error(error.message);
+    console.log('[itemPad] resposta Supabase — status:', status, statusText, '| data:', inserido, '| error:', error);
+    if (error) {
+      console.error('[itemPad] Erro Supabase detalhado:', error);
+      throw new Error(error.message + (error.details ? ' | details: ' + error.details : '') + (error.hint ? ' | hint: ' + error.hint : ''));
+    }
+    if (!inserido) {
+      throw new Error('INSERT retornou sem data (provável RLS silencioso bloqueando SELECT após INSERT)');
+    }
     await registrarLogItem({
       itemId: inserido.id,
       instituicaoId: inserido.instituicao_id,
@@ -26007,6 +26711,7 @@ window.handleNovoItemPadronizado = async function() {
     setFlash('success', 'Item padronizado cadastrado.');
     if (typeof window._reloadItensPadronizados === 'function') window._reloadItensPadronizados();
   } catch (err) {
+    console.error('[itemPad] falha final:', err);
     setFlash('danger', 'Erro ao cadastrar: ' + err.message);
   }
 };
