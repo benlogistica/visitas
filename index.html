@@ -5620,7 +5620,7 @@ a {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.25-empresa-pf-pj',
+  APP_VERSION: '1.0.0-alpha.sprint9.25.5-itens-pad-mobile-shell',
   APP_NAME: 'Nutricionais Visitas',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -6996,6 +6996,66 @@ function getGeolocation(opts = {}) {
         timeout: opts.timeout || 10000,
         maximumAge: opts.maximumAge || 60000,
       }
+    );
+  });
+}
+
+// Sprint 9.25.3: captura FRESH via watchPosition.
+// Motivo: alguns browsers (Chrome desktop, iOS Safari) ignoram `maximumAge: 0`
+// em getCurrentPosition e devolvem a última leitura cacheada do sensor.
+// watchPosition obriga o sensor a ligar de novo e retornar ao menos uma leitura nova.
+// Usado prioritariamente no checkout onde a confiança na nova leitura é crítica.
+function getGeolocationFresh(opts = {}) {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) {
+      reject(new Error('Geolocalização não suportada neste navegador'));
+      return;
+    }
+    const timeout = opts.timeout || 12000;
+    let watchId = null;
+    let resolved = false;
+    const started = Date.now();
+
+    const timer = setTimeout(() => {
+      if (resolved) return;
+      resolved = true;
+      if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+      reject(new Error('Tempo esgotado. Tente novamente'));
+    }, timeout);
+
+    watchId = navigator.geolocation.watchPosition(
+      (pos) => {
+        if (resolved) return;
+        resolved = true;
+        clearTimeout(timer);
+        if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+        const elapsed = Date.now() - started;
+        const result = {
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+          accuracy: pos.coords.accuracy,
+          timestamp: pos.timestamp,
+          capturedAt: Date.now(),
+          elapsedMs: elapsed,
+        };
+        console.log('[getGeolocationFresh] capturado em %dms · lat: %s · lng: %s · ±%dm',
+          elapsed, result.lat.toFixed(5), result.lng.toFixed(5), Math.round(result.accuracy));
+        resolve(result);
+      },
+      (err) => {
+        if (resolved) return;
+        resolved = true;
+        clearTimeout(timer);
+        if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+        console.warn('[getGeolocationFresh] erro código %d: %s', err.code, err.message);
+        reject(new Error(
+          err.code === 1 ? 'Permissão de localização negada' :
+          err.code === 2 ? 'Posição indisponível' :
+          err.code === 3 ? 'Tempo esgotado. Tente novamente' :
+          'Erro ao obter localização'
+        ));
+      },
+      { enableHighAccuracy: true, timeout, maximumAge: 0 }
     );
   });
 }
@@ -13159,8 +13219,11 @@ async function getVisitaCompleta(visitaId) {
     .maybeSingle();
   if (error) throw new Error(error.message);
   if (!visita) throw new Error('Visita não encontrada (pode ter sido excluída ou cancelada).');
-  // Sprint 9.22.5: se visita foi cancelada (visita_realizada=false), também sinaliza
-  if (visita.visita_realizada === false) {
+  // Sprint 9.22.5: se visita foi cancelada, sinaliza.
+  // Sprint 9.25.2 FIX: testar cancelado_em (marcador explícito do fluxo cancelarVisita)
+  // em vez de visita_realizada=false — senão visitas "não realizadas com motivo"
+  // (que também têm visita_realizada=false) eram tratadas como canceladas.
+  if (visita.cancelado_em) {
     const err = new Error('Esta visita foi cancelada e não pode mais ser editada.');
     err.cancelada = true;
     throw err;
@@ -13187,11 +13250,18 @@ async function getVisitaCompleta(visitaId) {
 async function atualizarRelatorio(visitaId, campos) {
   if (!db) throw new Error('Banco não conectado');
   const payload = { ...campos, atualizado_em: new Date().toISOString() };
+  // Sprint 9.25.1: debug — loga payload pra investigar erros de schema
+  console.log('[atualizarRelatorio] visitaId:', visitaId, 'payload:', JSON.parse(JSON.stringify(payload)));
   const { error } = await db
     .from('visitas')
     .update(payload)
     .eq('id', visitaId);
-  if (error) throw new Error(error.message);
+  if (error) {
+    // Loga payload pra o usuário conseguir copiar e reportar
+    console.error('[atualizarRelatorio] Erro do Supabase:', error);
+    console.error('[atualizarRelatorio] Payload enviado:', payload);
+    throw new Error(error.message);
+  }
 }
 
 // Sync objetivos da visita (N:N) — substitui tudo
@@ -16139,7 +16209,15 @@ window.handleConfirmCheckin = async function() {
       checkinManual: CheckinFlow.manual,
     });
 
-    setFlash('success', 'Check-in registrado!');
+    // Sprint 9.25.3: feedback explícito do GPS no toast de sucesso
+    const up = CheckinFlow.userPos;
+    if (CheckinFlow.manual) {
+      setFlash('warning', 'Check-in registrado (modo manual, sem GPS).');
+    } else if (up) {
+      setFlash('success', `Check-in registrado! GPS capturado · ±${Math.round(up.accuracy)}m`);
+    } else {
+      setFlash('info', 'Check-in registrado (GPS indisponível).');
+    }
     window.location.hash = '#/checkin/ativo';
   } catch (err) {
     alert('Erro ao registrar check-in: ' + err.message);
@@ -16238,13 +16316,23 @@ window.handleCheckoutAtivo = async function() {
     return;
   }
 
-  // Modal de confirmação de checkout
-  const confirmou = await showConfirmCheckoutModal();
-  if (!confirmou) return;
+  // Sprint 9.25.3: dispara captura de GPS ANTES do modal e passa a promise pro modal.
+  // Motivo: antes, a captura era background silenciosa e o user não tinha feedback —
+  // se o GPS falhasse/ficasse cacheado, ele nem sabia. Agora o modal aguarda e mostra.
+  // getGeolocationFresh: usa watchPosition pra garantir leitura nova do sensor
+  // (getCurrentPosition com maximumAge:0 às vezes devolve cache em Chrome/Safari).
+  console.log('[checkout] iniciando captura FRESH de GPS...');
+  const gpsPromise = getGeolocationFresh({ timeout: 12000 })
+    .then(pos => ({ ok: true, pos }))
+    .catch(err => ({ ok: false, error: err.message }));
 
-  // Sprint 9.22.4: feedback INSTANTÂNEO
-  // Estratégia: para o timer, calcula duração local, mostra modal "finalizada"
-  // e salva no Supabase em paralelo (não espera GPS nem network)
+  // Modal de confirmação (agora aguarda e exibe o GPS)
+  const resultado = await showConfirmCheckoutModal(gpsPromise);
+  if (!resultado.confirmou) return;
+  const checkoutPos = resultado.checkoutPos; // { lat, lng, accuracy } | null
+
+  // Sprint 9.22.4: feedback INSTANTÂNEO — para o timer, calcula duração local,
+  // dispara o save em paralelo com o modal pós-checkout.
   stopTimer();
 
   // Calcula duração LOCALMENTE (sem chamada DB)
@@ -16253,20 +16341,11 @@ window.handleCheckoutAtivo = async function() {
   const duracaoMin = checkinTs ? Math.floor((Date.now() - checkinTs.getTime()) / 60000) : 0;
   const instName = cache.instituicao_nome || 'Instituição';
 
-  // Dispara save em background (não bloqueia UI)
-  // Timeout 10s + sem cache = posição fresca confiável
-  // (a UI já avançou pro modal, então o user não percebe a espera)
+  // Save em background (GPS já capturado antes do modal)
   const savePromise = (async () => {
-    let checkoutPos = null;
-    try {
-      checkoutPos = await getGeolocation({ timeout: 10000, maximumAge: 0 });
-    } catch (e) {
-      console.warn('[checkout] GPS pulado:', e.message);
-    }
     try {
       await finalizarCheckin(visitaId, checkoutPos);
     } catch (err) {
-      // Em raríssimo caso de falha de save, avisa o user
       console.error('[checkout] save falhou:', err);
       setFlash('warning', 'Visita finalizada localmente. Sincronizando...');
       // Tenta de novo em background
@@ -16281,7 +16360,6 @@ window.handleCheckoutAtivo = async function() {
   });
 
   // Garante que o save terminou antes de navegar pro relatório
-  // (se ele ainda não terminou, dá um aviso - mas geralmente já terminou enquanto o user lia o modal)
   await savePromise;
 
   // Sprint 9.22.5: limpa cache da visita ativa
@@ -16297,8 +16375,18 @@ window.handleCheckoutAtivo = async function() {
 };
 
 // Modal de confirmação de checkout
-function showConfirmCheckoutModal() {
+// Sprint 9.25.3: agora aceita uma gpsPromise pra exibir estado do GPS ao vivo.
+// Botão só habilita quando GPS resolve (ok ou falha explícita com "finalizar sem GPS").
+function showConfirmCheckoutModal(gpsPromise) {
   return new Promise((resolve) => {
+    // Injeta keyframe de spin se ainda não existe
+    if (!document.getElementById('gpsSpinStyle')) {
+      const style = document.createElement('style');
+      style.id = 'gpsSpinStyle';
+      style.textContent = '@keyframes gpsSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }';
+      document.head.appendChild(style);
+    }
+
     const backdrop = document.createElement('div');
     backdrop.className = 'modal-backdrop';
     backdrop.innerHTML = `
@@ -16310,9 +16398,20 @@ function showConfirmCheckoutModal() {
           <div class="modal-card__title">Finalizar visita?</div>
           <div class="modal-card__subtitle">O cronômetro será parado e o horário de saída registrado.</div>
         </div>
+        <div style="padding:2px 20px 0;">
+          <div id="mcGpsBox" class="gps-status" style="margin:4px 0 14px;background:var(--neutral-50,#F5F6FA);">
+            <span class="gps-status__icon">
+              <span class="material-symbols-rounded" style="animation: gpsSpin 1.2s linear infinite; color: var(--brand-navy);">gps_not_fixed</span>
+            </span>
+            <div class="gps-status__body">
+              <div class="gps-status__label">Capturando GPS do check-out...</div>
+              <div class="gps-status__detail">Aguarde alguns segundos</div>
+            </div>
+          </div>
+        </div>
         <div class="modal-card__footer">
-          <button class="modal-btn modal-btn--primary" id="mcConfirm">
-            <span class="material-symbols-rounded">check_circle</span>Sim, finalizar
+          <button class="modal-btn modal-btn--primary" id="mcConfirm" disabled style="opacity:.55;cursor:not-allowed;">
+            <span class="material-symbols-rounded">hourglass_empty</span>Aguardando GPS...
           </button>
           <button class="modal-btn modal-btn--secondary" id="mcCancel">
             Voltar
@@ -16322,11 +16421,53 @@ function showConfirmCheckoutModal() {
     `;
     document.body.appendChild(backdrop);
 
+    let checkoutPos = null;
+    const gpsBox = backdrop.querySelector('#mcGpsBox');
+    const confirmBtn = backdrop.querySelector('#mcConfirm');
+
     const cleanup = () => backdrop.remove();
-    backdrop.querySelector('#mcConfirm').onclick = () => { cleanup(); resolve(true); };
-    backdrop.querySelector('#mcCancel').onclick = () => { cleanup(); resolve(false); };
+
+    // Aguarda GPS e atualiza o modal conforme o resultado
+    gpsPromise.then(r => {
+      if (r.ok) {
+        checkoutPos = r.pos;
+        const hora = new Date(r.pos.capturedAt || Date.now()).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        const tempoMs = r.pos.elapsedMs || 0;
+        gpsBox.className = 'gps-status';
+        gpsBox.style.background = '';
+        gpsBox.innerHTML = `
+          <span class="gps-status__icon"><span class="material-symbols-rounded">gps_fixed</span></span>
+          <div class="gps-status__body">
+            <div class="gps-status__label">GPS capturado · ±${Math.round(r.pos.accuracy)}m</div>
+            <div class="gps-status__detail" style="font-family:var(--font-mono);font-size:10.5px;">${r.pos.lat.toFixed(5)}, ${r.pos.lng.toFixed(5)}</div>
+            <div class="gps-status__detail" style="font-size:10px;color:var(--neutral-500);margin-top:2px;">leitura às ${hora}${tempoMs ? ` · ${(tempoMs/1000).toFixed(1)}s` : ''}</div>
+          </div>
+        `;
+        confirmBtn.disabled = false;
+        confirmBtn.style.opacity = '';
+        confirmBtn.style.cursor = '';
+        confirmBtn.innerHTML = '<span class="material-symbols-rounded">check_circle</span>Sim, finalizar';
+      } else {
+        gpsBox.className = 'gps-status gps-status--warning';
+        gpsBox.style.background = '';
+        gpsBox.innerHTML = `
+          <span class="gps-status__icon"><span class="material-symbols-rounded">gps_off</span></span>
+          <div class="gps-status__body">
+            <div class="gps-status__label">GPS indisponível</div>
+            <div class="gps-status__detail">${r.error || 'Não foi possível capturar'}</div>
+          </div>
+        `;
+        confirmBtn.disabled = false;
+        confirmBtn.style.opacity = '';
+        confirmBtn.style.cursor = '';
+        confirmBtn.innerHTML = '<span class="material-symbols-rounded">warning</span>Finalizar sem GPS';
+      }
+    });
+
+    confirmBtn.onclick = () => { cleanup(); resolve({ confirmou: true, checkoutPos }); };
+    backdrop.querySelector('#mcCancel').onclick = () => { cleanup(); resolve({ confirmou: false }); };
     backdrop.onclick = (e) => {
-      if (e.target === backdrop) { cleanup(); resolve(false); }
+      if (e.target === backdrop) { cleanup(); resolve({ confirmou: false }); }
     };
   });
 }
@@ -25968,7 +26109,8 @@ window.handleMudarStatusItem = async function(id, novoStatus) {
 };
 
 // Renderizador principal — funciona pra admin e nutri
-function renderItensPadronizados() {
+function renderItensPadronizados(opts = {}) {
+  const embed = opts.embed === true;
   const user = requireAuth();
   if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
 
@@ -25990,7 +26132,7 @@ function renderItensPadronizados() {
     await window._reloadItensPadronizados();
   }, 0);
 
-  return `
+  const content = `
     <div style="padding:18px 16px 60px;max-width:1200px;margin:0 auto;">
       <!-- Header -->
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:14px;">
@@ -26116,6 +26258,19 @@ function renderItensPadronizados() {
       .ip-rank-row:last-child { border-bottom: 0; }
     </style>
   `;
+
+  // Sprint 9.25.5: embed=true (chamada pelo desktopShell) retorna só conteúdo.
+  // Standalone mobile envolve com mobileTopBar + bottomNav pra ter voltar/menu.
+  if (embed) return content;
+  return `
+    <div class="mobile-app">
+      ${mobileTopBar({ title: 'Itens padronizados', showBack: true })}
+      <main class="mcontent" style="padding:0;">
+        ${content}
+      </main>
+      ${bottomNav('')}
+    </div>
+  `;
 }
 
 // Wrapper desktop: envolve com desktopShell pra ter sidebar + topbar
@@ -26126,7 +26281,7 @@ function renderItensPadronizadosDesktop() {
   return desktopShell({
     title: 'Itens padronizados',
     breadcrumb: ['Admin', 'Itens padronizados'],
-    content: renderItensPadronizados(),
+    content: renderItensPadronizados({ embed: true }),
     activeId: 'standardized',
   });
 }
