@@ -5620,7 +5620,7 @@ a {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.29.3-base-jan25-mar26',
+  APP_VERSION: '1.0.0-alpha.sprint9.29.8-banner-data-e-cal-nutri',
   APP_NAME: 'Nutricionais Visitas',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -19685,10 +19685,10 @@ function renderNutriAgendaCalendario(ags) {
     `<div style="text-align:center;font-family:var(--font-display);font-weight:700;font-size:10px;color:var(--neutral-500);padding:6px 0;text-transform:uppercase;letter-spacing:.5px;">${d}</div>`
   ).join('');
 
-  // Células vazias antes do dia 1
+  // Células vazias antes do dia 1 (altura 56px pra alinhar com dias)
   let cellsHtml = '';
   for (let i = 0; i < primeiroOffset; i++) {
-    cellsHtml += `<div></div>`;
+    cellsHtml += `<div style="min-height:56px;"></div>`;
   }
 
   // Dias do mês
@@ -19708,7 +19708,7 @@ function renderNutriAgendaCalendario(ags) {
 
     cellsHtml += `
       <button onclick="nutriAbrirDiaCalendario('${dtStr}')"
-              style="aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;border:${borda};background:${bg};color:${cor};border-radius:8px;cursor:pointer;font-family:var(--font-display);font-weight:600;font-size:13px;padding:0;position:relative;">
+              style="min-height:56px;aspect-ratio:auto;display:flex;flex-direction:column;align-items:center;justify-content:center;border:${borda};background:${bg};color:${cor};border-radius:8px;cursor:pointer;font-family:var(--font-display);font-weight:600;font-size:13px;padding:6px 0;position:relative;">
         ${dia}
         ${temAgs && !isHoje ? `<div style="position:absolute;bottom:4px;width:4px;height:4px;border-radius:50%;background:var(--status-info);"></div>` : ''}
         ${temAgs && isHoje ? `<div style="position:absolute;bottom:4px;font-size:9px;font-weight:700;">${agsDoDia.length}</div>` : ''}
@@ -25283,7 +25283,13 @@ function _fatRenderInner() {
   }, 0);
 
   return `
-    <div style="padding:18px 16px 60px;max-width:1400px;margin:0 auto;">
+    <div class="fat-wrapper" style="padding:14px 14px 60px;max-width:1400px;margin:0 auto;">
+      <style>
+        @media (max-width: 640px) {
+          .fat-wrapper { padding: 12px 10px 60px !important; }
+          .fat-wrapper h1 { font-size: 20px !important; }
+        }
+      </style>
       <!-- Header -->
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:18px;">
         <div>
@@ -25295,6 +25301,7 @@ function _fatRenderInner() {
             Análise completa de vendas, clientes, marcas e performance comercial.
             <span id="fatPeriodoInfo" style="color:var(--neutral-500);"></span>
           </div>
+          <div id="fatBannerAtualizacao" style="margin-top:8px;"></div>
         </div>
         <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:11.5px;">
           <select id="fatPeriodo" onchange="_fatTrocarFiltro('periodo', this.value)" style="padding:6px 9px;border:1.5px solid var(--neutral-200);border-radius:7px;font-size:11.5px;font-family:inherit;background:var(--neutral-0);">
@@ -25349,8 +25356,8 @@ function _fatRenderInner() {
       <!-- Banner N/D (explicativo) -->
       <div id="fatBannerND"></div>
 
-      <!-- KPIs grandes -->
-      <div id="fatKpis" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:20px;"></div>
+      <!-- KPIs grandes (mobile: 2 colunas / desktop: auto-fit) -->
+      <div id="fatKpis" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:10px;margin-bottom:20px;"></div>
 
       <!-- Linha 1: Evolução mensal (chart grande) + Top vendedores -->
       <div style="display:grid;grid-template-columns:1fr;gap:14px;margin-bottom:14px;" id="fatRow1">
@@ -25563,7 +25570,21 @@ function _fatRenderInner() {
 
 // Wrapper "padrão" do roteador (mobile + fallback). Retorna o conteúdo direto.
 function renderFaturamento() {
-  return _fatRenderInner();
+  // Sprint 9.29.7: mobileTopBar com voltar + bottomNav CONDICIONAL.
+  // bottomNav aparece pra nutri (incl. em modo simulação) pra manter
+  // navegação consistente; pra admin puro, só voltar + menu lateral.
+  const user = requireAdmin();
+  if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
+  const ehNutri = user.perfil !== 'admin';
+  return `
+    <div class="mobile-app">
+      ${mobileTopBar({ title: 'Faturamento', showBack: true })}
+      <main class="mcontent" style="padding:0;">
+        ${_fatRenderInner()}
+      </main>
+      ${ehNutri ? bottomNav('') : ''}
+    </div>
+  `;
 }
 
 // Wrapper desktop: envolve com desktopShell pra ter sidebar + topbar
@@ -28198,6 +28219,58 @@ function _fatRender() {
   document.getElementById('fatPeriodoInfo').textContent =
     mensal.length > 0 ? `· ${_mesLabel(mensal[0].ano_mes)} a ${_mesLabel(mensal[mensal.length-1].ano_mes)}` : '';
 
+  // Banner de atualização (Sprint 9.29.8) — mostra "Dados até DD/MM · atualizado há X"
+  const bannerEl = document.getElementById('fatBannerAtualizacao');
+  if (bannerEl && FAT_DATA?.meta) {
+    const meta = FAT_DATA.meta;
+    let bannerHtml = '';
+    try {
+      // Parse periodo_fim (formato YYYY-MM-DD) pra mostrar DD/MM/YYYY
+      const periodoFim = meta.periodo_fim || '';
+      const [ano, mes, dia] = periodoFim.split('-');
+      const periodoFimLabel = (ano && mes && dia) ? `${dia}/${mes}/${ano}` : periodoFim;
+
+      // Calcula "atualizado há X" a partir de gerado_em
+      let atualizadoLabel = '';
+      if (meta.gerado_em) {
+        const geradoEm = new Date(meta.gerado_em);
+        const agora = new Date();
+        const diffMs = agora - geradoEm;
+        const diffMin = Math.floor(diffMs / 60000);
+        const diffHrs = Math.floor(diffMin / 60);
+        const diffDias = Math.floor(diffHrs / 24);
+
+        if (diffMin < 1) atualizadoLabel = 'agora há pouco';
+        else if (diffMin < 60) atualizadoLabel = `há ${diffMin} min`;
+        else if (diffHrs < 24) atualizadoLabel = `há ${diffHrs} h`;
+        else if (diffDias < 7) atualizadoLabel = `há ${diffDias} dia${diffDias > 1 ? 's' : ''}`;
+        else if (diffDias < 30) atualizadoLabel = `há ${Math.floor(diffDias/7)} sem`;
+        else atualizadoLabel = `há ${Math.floor(diffDias/30)} mês${Math.floor(diffDias/30) > 1 ? 'es' : ''}`;
+      }
+
+      // Se >7 dias sem sync, sinaliza com cor de aviso
+      const diasDesdeSync = meta.gerado_em
+        ? Math.floor((new Date() - new Date(meta.gerado_em)) / (1000*60*60*24))
+        : 0;
+      const isStale = diasDesdeSync > 7;
+
+      const bgCor = isStale ? '#FEF4E1' : '#E8F1FD';
+      const txtCor = isStale ? '#945200' : '#0A3A8F';
+      const iconeCor = isStale ? '#CF8500' : '#185FA5';
+      const icone = isStale ? 'warning' : 'schedule';
+
+      bannerHtml = `
+        <span style="display:inline-flex;align-items:center;gap:6px;background:${bgCor};color:${txtCor};padding:4px 10px;border-radius:6px;font-size:11.5px;font-weight:500;line-height:1.2;">
+          <span class="material-symbols-rounded" style="font-size:14px;color:${iconeCor};">${icone}</span>
+          <span>Dados até <strong>${periodoFimLabel}</strong>${atualizadoLabel ? ` · sync ${atualizadoLabel}` : ''}</span>
+        </span>
+      `;
+    } catch (e) {
+      console.warn('Erro no banner de atualização:', e);
+    }
+    bannerEl.innerHTML = bannerHtml;
+  }
+
   // Chart Evolução ====
   // Sempre mostra todo o range de meses (ignora filtro de mês isolado)
   // Quando mês selecionado: barra desse mês fica colorida normal, outras esmaecidas
@@ -29118,15 +29191,17 @@ function renderItensPadronizados(opts = {}) {
   `;
 
   // Sprint 9.25.5: embed=true (chamada pelo desktopShell) retorna só conteúdo.
-  // Standalone mobile envolve com mobileTopBar + bottomNav pra ter voltar/menu.
+  // Sprint 9.29.7: bottomNav CONDICIONAL — aparece pra nutri (incl. simulação)
+  // ou quando admin tá na rota #/nutri/itens-padronizados (ver como nutri).
   if (embed) return content;
+  const mostrarBottomNav = !ehAdmin || ehNutriRoute;
   return `
     <div class="mobile-app">
       ${mobileTopBar({ title: 'Itens padronizados', showBack: true })}
       <main class="mcontent" style="padding:0;">
         ${content}
       </main>
-      ${bottomNav('')}
+      ${mostrarBottomNav ? bottomNav('') : ''}
     </div>
   `;
 }
