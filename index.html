@@ -5620,7 +5620,7 @@ a {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.29.8-banner-data-e-cal-nutri',
+  APP_VERSION: '1.0.0-alpha.sprint9.30-aba-devolucoes',
   APP_NAME: 'Nutricionais Visitas',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -25343,6 +25343,10 @@ function _fatRenderInner() {
           <span class="material-symbols-rounded" style="font-size:17px;">insights</span>
           Análises avançadas
         </button>
+        <button id="fatTabDevolucoes" onclick="_fatTrocarAba('devolucoes')" style="padding:10px 18px;background:transparent;border:0;border-bottom:3px solid transparent;color:var(--neutral-500);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px;margin-bottom:-1.5px;transition:color 140ms;">
+          <span class="material-symbols-rounded" style="font-size:17px;">undo</span>
+          Devoluções
+        </button>
         <button id="fatTabInsights" onclick="_fatTrocarAba('insights')" style="padding:10px 18px;background:transparent;border:0;border-bottom:3px solid transparent;color:var(--neutral-500);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px;margin-bottom:-1.5px;transition:color 140ms;">
           <span class="material-symbols-rounded" style="font-size:17px;">auto_awesome</span>
           Insights
@@ -25517,6 +25521,67 @@ function _fatRenderInner() {
         </div>
         <div id="fatInsights" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;"></div>
       </div>
+
+      <!-- PÁGINA 4: Devoluções (Sprint 9.30) -->
+      <div id="fatPagina4" style="display:none;">
+        <!-- Header explicativo da aba -->
+        <div style="background:linear-gradient(135deg,#FEF2F2 0%,#FFE4E4 100%);border-left:4px solid #E24B4A;border-radius:10px;padding:12px 16px;margin-bottom:18px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px;">
+            <span class="material-symbols-rounded" style="font-size:22px;color:#A32D2D;">undo</span>
+            <div style="font-family:var(--font-display);font-weight:700;color:#A32D2D;font-size:14px;">Análise de Devoluções</div>
+          </div>
+          <div style="font-size:12px;color:#7F1D1D;line-height:1.4;">
+            Estudo operacional e financeiro das devoluções. Inclui devoluções de venda e emissões do cliente (CFOP 1.2xx, 5.2xx, 6.2xx).
+            <strong>Algumas são esperadas (acordo comercial), outras sinalizam oportunidade de melhoria.</strong>
+          </div>
+        </div>
+
+        <!-- KPIs de devoluções -->
+        <div id="fatDevKpis" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-bottom:18px;"></div>
+
+        <!-- Gráfico: Evolução mensal -->
+        <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:12px;padding:16px;margin-bottom:14px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
+            <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:14px;display:flex;align-items:center;gap:8px;">
+              <span class="material-symbols-rounded" style="font-size:18px;color:#E24B4A;">show_chart</span>
+              Evolução mensal — Devoluções e % do faturamento
+            </div>
+          </div>
+          <canvas id="fatDevChartMensal" style="max-height:280px;"></canvas>
+        </div>
+
+        <!-- Grid 2 colunas: Empresas + Hospitais -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:14px;margin-bottom:14px;">
+
+          <!-- Por empresa -->
+          <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:12px;padding:16px;">
+            <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:14px;margin-bottom:10px;display:flex;align-items:center;gap:8px;">
+              <span class="material-symbols-rounded" style="font-size:18px;color:#A32D2D;">apartment</span>
+              Por empresa
+            </div>
+            <div id="fatDevPorEmpresa"></div>
+          </div>
+
+          <!-- Por marca -->
+          <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:12px;padding:16px;">
+            <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:14px;margin-bottom:10px;display:flex;align-items:center;gap:8px;">
+              <span class="material-symbols-rounded" style="font-size:18px;color:#A32D2D;">label</span>
+              Top marcas devolvidas
+            </div>
+            <div id="fatDevPorMarca"></div>
+          </div>
+        </div>
+
+        <!-- Insights automáticos -->
+        <div style="background:linear-gradient(135deg,#FEF2F2 0%,#FFFBFB 100%);border:1px solid #FECACA;border-radius:12px;padding:16px;margin-bottom:14px;">
+          <div style="font-family:var(--font-display);font-weight:700;color:#A32D2D;font-size:14px;margin-bottom:10px;display:flex;align-items:center;gap:8px;">
+            <span class="material-symbols-rounded" style="font-size:18px;">lightbulb</span>
+            Insights automáticos
+          </div>
+          <div id="fatDevInsights" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px;"></div>
+        </div>
+
+      </div><!-- /fatPagina4 -->
 
       <!-- Footer: meta info -->
       <div style="text-align:center;color:var(--neutral-500);font-size:11px;margin-top:24px;font-style:italic;">
@@ -26819,14 +26884,17 @@ window._fatTrocarAba = function(aba) {
   const tabV = document.getElementById('fatTabVisao');
   const tabA = document.getElementById('fatTabAnalises');
   const tabI = document.getElementById('fatTabInsights');
+  const tabD = document.getElementById('fatTabDevolucoes');
 
   // Oculta todas as páginas primeiro
   if (p1) p1.style.display = 'none';
   if (p2) p2.style.display = 'none';
   if (p3) p3.style.display = 'none';
+  const p4 = document.getElementById('fatPagina4');
+  if (p4) p4.style.display = 'none';
 
   // Reset visual dos tabs
-  [tabV, tabA, tabI].forEach(t => {
+  [tabV, tabA, tabI, tabD].forEach(t => {
     if (!t) return;
     t.style.borderBottomColor = 'transparent';
     t.style.color = 'var(--neutral-500)';
@@ -26841,6 +26909,11 @@ window._fatTrocarAba = function(aba) {
     if (tabA) { tabA.style.borderBottomColor = 'var(--brand-lime)'; tabA.style.color = 'var(--brand-navy)'; tabA.style.fontWeight = '700'; }
     // Renderiza página 2 lazy
     _fatRenderPagina2();
+  } else if (aba === 'devolucoes') {
+    if (p4) p4.style.display = '';
+    if (tabD) { tabD.style.borderBottomColor = '#E24B4A'; tabD.style.color = '#A32D2D'; tabD.style.fontWeight = '700'; }
+    // Renderiza página 4 lazy
+    _fatRenderDevolucoes();
   } else if (aba === 'insights') {
     if (p3) p3.style.display = '';
     if (tabI) { tabI.style.borderBottomColor = 'var(--brand-lime)'; tabI.style.color = 'var(--brand-navy)'; tabI.style.fontWeight = '700'; }
@@ -27711,6 +27784,392 @@ function _fatRenderInsights() {
 
 // ============================================================================
 // Fim Sprint 9.24
+// ============================================================================
+
+// ============================================================================
+// SPRINT 9.30 — Aba Devoluções (análise operacional + financeira)
+// ============================================================================
+
+function _fatRenderDevolucoes() {
+  if (!FAT_DATA) return;
+
+  const devMensal = FAT_DATA.devolucoes_mensal || [];
+  const devEmpresa = FAT_DATA.devolucoes_empresa || [];
+  const devMarca = FAT_DATA.devolucoes_marca || [];
+  const devClientes = FAT_DATA.devolucoes_clientes_top || [];
+  const mensal = FAT_DATA.mensal || [];
+  const empresaTotal = FAT_DATA.empresa_total || [];
+  const marcasTotal = FAT_DATA.marcas || [];
+  const clientesTotal = FAT_DATA.clientes_top || [];
+  const metaFat = FAT_DATA.meta?.faturamento_total || 0;
+  const metaDev = FAT_DATA.meta?.total_devolucoes || 0;
+
+  // ========= KPIs =========
+  const kpisEl = document.getElementById('fatDevKpis');
+  if (kpisEl) {
+    const taxaMedia = metaFat > 0 ? (metaDev / metaFat * 100) : 0;
+
+    // Último mês
+    const ultimo = devMensal[devMensal.length - 1];
+    const penult = devMensal[devMensal.length - 2];
+    const ultimoFat = mensal[mensal.length - 1];
+    const ultimoVal = ultimo?.valor_devolucao || 0;
+    const ultimoFatVal = ultimoFat?.faturamento || 0;
+    const taxaUltimo = ultimoFatVal > 0 ? (ultimoVal / ultimoFatVal * 100) : 0;
+    const diffVsMedia = taxaMedia > 0 ? ((taxaUltimo - taxaMedia) / taxaMedia * 100) : 0;
+
+    // Mês com pior taxa
+    let piorMes = null;
+    let piorTaxa = 0;
+    devMensal.forEach(d => {
+      const m = mensal.find(x => x.ano_mes === d.ano_mes);
+      if (m && m.faturamento > 0) {
+        const taxa = d.valor_devolucao / m.faturamento * 100;
+        if (taxa > piorTaxa) { piorTaxa = taxa; piorMes = d.ano_mes; }
+      }
+    });
+
+    // Tendência últimos 3 meses
+    let tendencia = null;
+    if (devMensal.length >= 6) {
+      const ult3 = devMensal.slice(-3).reduce((s, d) => s + d.valor_devolucao, 0);
+      const ant3 = devMensal.slice(-6, -3).reduce((s, d) => s + d.valor_devolucao, 0);
+      tendencia = ant3 > 0 ? ((ult3 - ant3) / ant3 * 100) : 0;
+    }
+
+    const kpiCard = (label, valor, ref, corValor = 'var(--brand-navy)', bgCor = 'var(--neutral-0)') => `
+      <div style="background:${bgCor};border:1px solid var(--neutral-200);border-radius:12px;padding:14px 16px;">
+        <div style="font-size:10.5px;color:var(--neutral-500);font-weight:700;letter-spacing:0.06em;text-transform:uppercase;">${label}</div>
+        <div style="font-family:var(--font-display);font-size:22px;font-weight:700;color:${corValor};line-height:1.15;margin-top:3px;">${valor}</div>
+        <div style="font-size:10.5px;color:var(--neutral-500);margin-top:3px;">${ref}</div>
+      </div>
+    `;
+
+    kpisEl.innerHTML = [
+      kpiCard(
+        'Total devoluções',
+        _fmtMoeda(metaDev, true),
+        `${taxaMedia.toFixed(2)}% do faturamento`,
+        '#A32D2D',
+      ),
+      kpiCard(
+        'Último mês',
+        _fmtMoeda(ultimoVal, true),
+        taxaUltimo > 0
+          ? `${taxaUltimo.toFixed(2)}% · ${diffVsMedia >= 0 ? '↑' : '↓'} ${Math.abs(diffVsMedia).toFixed(0)}% vs média`
+          : 'sem dados',
+        diffVsMedia > 15 ? '#A32D2D' : (diffVsMedia < -15 ? '#0F7334' : 'var(--brand-navy)'),
+      ),
+      kpiCard(
+        'Qtd notas devol.',
+        (devMensal.reduce((s, d) => s + d.qtd, 0)).toLocaleString('pt-BR'),
+        `média ${(devMensal.reduce((s, d) => s + d.qtd, 0) / Math.max(1, devMensal.length)).toFixed(0)}/mês`,
+      ),
+      kpiCard(
+        'Mês pior taxa',
+        piorMes ? _mesLabel(piorMes) : '—',
+        piorTaxa > 0 ? `${piorTaxa.toFixed(2)}% devolveu` : '',
+        piorTaxa > 3 ? '#A32D2D' : 'var(--brand-navy)',
+      ),
+      tendencia !== null
+        ? kpiCard(
+            'Tendência 3m',
+            `${tendencia >= 0 ? '↑' : '↓'} ${Math.abs(tendencia).toFixed(0)}%`,
+            'últ. 3 meses vs 3 anteriores',
+            tendencia > 20 ? '#A32D2D' : (tendencia < -20 ? '#0F7334' : 'var(--brand-navy)'),
+          )
+        : '',
+    ].join('');
+  }
+
+  // ========= Gráfico mensal (bar + linha %) =========
+  const chartCtx = document.getElementById('fatDevChartMensal');
+  if (chartCtx && typeof Chart !== 'undefined') {
+    if (window._fatDevChartInst) window._fatDevChartInst.destroy();
+
+    const labels = devMensal.map(d => _mesLabel(d.ano_mes));
+    const valores = devMensal.map(d => d.valor_devolucao);
+    const pcts = devMensal.map(d => {
+      const m = mensal.find(x => x.ano_mes === d.ano_mes);
+      return (m && m.faturamento > 0) ? (d.valor_devolucao / m.faturamento * 100) : 0;
+    });
+
+    window._fatDevChartInst = new Chart(chartCtx, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [
+          {
+            type: 'bar',
+            label: 'Devoluções (R$)',
+            data: valores,
+            backgroundColor: 'rgba(226, 75, 74, 0.78)',
+            borderColor: 'rgba(163, 45, 45, 1)',
+            borderWidth: 1,
+            yAxisID: 'y',
+            order: 2,
+          },
+          {
+            type: 'line',
+            label: '% devolução',
+            data: pcts,
+            borderColor: 'rgba(29, 78, 216, 1)',
+            backgroundColor: 'rgba(29, 78, 216, 0.1)',
+            borderWidth: 2.5,
+            fill: false,
+            tension: 0.35,
+            pointRadius: 3,
+            pointBackgroundColor: 'rgba(29, 78, 216, 1)',
+            yAxisID: 'y1',
+            order: 1,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { intersect: false, mode: 'index' },
+        plugins: {
+          legend: { display: true, position: 'top', labels: { font: { size: 11, family: 'inherit' } } },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => {
+                if (ctx.datasetIndex === 0) return ` Devolução: ${_fmtMoeda(ctx.parsed.y)}`;
+                return ` Taxa: ${ctx.parsed.y.toFixed(2)}%`;
+              },
+            },
+          },
+        },
+        scales: {
+          y: {
+            type: 'linear',
+            position: 'left',
+            ticks: { callback: v => _fmtMoeda(v, true), font: { size: 10 } },
+            grid: { color: 'rgba(0,0,0,0.05)' },
+          },
+          y1: {
+            type: 'linear',
+            position: 'right',
+            ticks: { callback: v => v.toFixed(1) + '%', font: { size: 10 } },
+            grid: { display: false },
+            min: 0,
+          },
+          x: { ticks: { font: { size: 10 } }, grid: { display: false } },
+        },
+      },
+    });
+  }
+
+  // ========= Por empresa =========
+  const empresaEl = document.getElementById('fatDevPorEmpresa');
+  if (empresaEl) {
+    if (devEmpresa.length === 0) {
+      empresaEl.innerHTML = '<div style="color:var(--neutral-500);font-size:12px;padding:16px;text-align:center;">Sem devoluções no período.</div>';
+    } else {
+      const maxVal = Math.max(...devEmpresa.map(e => e.valor_devolucao));
+      empresaEl.innerHTML = devEmpresa.map(e => {
+        const fatEmp = empresaTotal.find(f => f.Empresa === e.Empresa);
+        const taxa = (fatEmp && fatEmp.faturamento > 0) ? (e.valor_devolucao / fatEmp.faturamento * 100) : 0;
+        const pct = (e.valor_devolucao / maxVal * 100);
+        const corBarra = taxa > 3 ? '#E24B4A' : (taxa > 1.5 ? '#F59E0B' : '#F97E7D');
+        return `
+          <div style="padding:10px 0;border-bottom:1px dashed var(--neutral-200);">
+            <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;">
+              <div style="font-weight:600;font-size:12.5px;color:var(--brand-navy);">${_esc(e.Empresa)}</div>
+              <div style="font-size:11px;color:var(--neutral-600);">
+                <strong style="color:#A32D2D;">${_fmtMoeda(e.valor_devolucao, true)}</strong>
+                <span style="margin-left:6px;color:${taxa > 2 ? '#A32D2D' : 'var(--neutral-500)'};font-weight:600;">${taxa.toFixed(2)}%</span>
+              </div>
+            </div>
+            <div style="height:6px;background:var(--neutral-100);border-radius:3px;overflow:hidden;">
+              <div style="height:100%;width:${pct}%;background:${corBarra};border-radius:3px;"></div>
+            </div>
+            <div style="font-size:10.5px;color:var(--neutral-500);margin-top:4px;">${e.qtd} notas · Fat: ${fatEmp ? _fmtMoeda(fatEmp.faturamento, true) : '—'}</div>
+          </div>
+        `;
+      }).join('');
+    }
+  }
+
+  // ========= Por marca =========
+  const marcaEl = document.getElementById('fatDevPorMarca');
+  if (marcaEl) {
+    const top10 = devMarca.slice(0, 10);
+    if (top10.length === 0) {
+      marcaEl.innerHTML = '<div style="color:var(--neutral-500);font-size:12px;padding:16px;text-align:center;">Sem devoluções no período.</div>';
+    } else {
+      const maxVal = Math.max(...top10.map(m => m.valor_devolucao));
+      marcaEl.innerHTML = top10.map(m => {
+        const marcaFat = marcasTotal.find(mm => mm.Marca === m.Marca);
+        const taxa = (marcaFat && marcaFat.faturamento > 0) ? (m.valor_devolucao / marcaFat.faturamento * 100) : 0;
+        const pct = (m.valor_devolucao / maxVal * 100);
+        return `
+          <div style="display:flex;align-items:center;gap:8px;padding:6px 0;font-size:11.5px;">
+            <div style="flex:0 0 35%;max-width:35%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--brand-navy);font-weight:600;" title="${_esc(m.Marca)}">${_esc(m.Marca)}</div>
+            <div style="flex:1;height:12px;background:var(--neutral-100);border-radius:3px;position:relative;">
+              <div style="height:100%;width:${pct}%;background:#E24B4A;border-radius:3px;"></div>
+            </div>
+            <div style="flex:0 0 100px;text-align:right;">
+              <strong style="color:#A32D2D;">${_fmtMoeda(m.valor_devolucao, true)}</strong>
+              <span style="color:${taxa > 5 ? '#A32D2D' : 'var(--neutral-500)'};margin-left:4px;font-size:10px;">${taxa > 0 ? taxa.toFixed(1) + '%' : ''}</span>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+  }
+
+  // ========= Insights automáticos =========
+  const insightsEl = document.getElementById('fatDevInsights');
+  if (insightsEl) {
+    const insights = _fatGerarInsightsDevolucoes({
+      devMensal, devEmpresa, devMarca, devClientes, mensal, empresaTotal, marcasTotal, clientesTotal, metaDev, metaFat,
+    });
+    if (insights.length === 0) {
+      insightsEl.innerHTML = '<div style="grid-column:1/-1;padding:14px;text-align:center;color:var(--neutral-500);font-size:12px;">Nenhum insight relevante no momento.</div>';
+    } else {
+      insightsEl.innerHTML = insights.map(i => `
+        <div style="background:var(--neutral-0);border:1px solid #FECACA;border-radius:8px;padding:11px 13px;">
+          <div style="display:flex;align-items:flex-start;gap:8px;">
+            <span class="material-symbols-rounded" style="font-size:18px;color:${i.cor};flex:0 0 auto;margin-top:1px;">${i.icone}</span>
+            <div style="flex:1;">
+              <div style="font-weight:700;color:${i.cor};font-size:12px;line-height:1.3;margin-bottom:3px;">${i.titulo}</div>
+              <div style="font-size:11.5px;color:var(--neutral-700);line-height:1.4;">${i.descricao}</div>
+            </div>
+          </div>
+        </div>
+      `).join('');
+    }
+  }
+}
+
+// Gera insights automáticos de devoluções
+function _fatGerarInsightsDevolucoes(d) {
+  const insights = [];
+  const { devMensal, devEmpresa, devMarca, devClientes, mensal, empresaTotal, marcasTotal, clientesTotal, metaDev, metaFat } = d;
+
+  // 1. Taxa geral acima de 2%
+  const taxaGeral = metaFat > 0 ? (metaDev / metaFat * 100) : 0;
+  if (taxaGeral > 2) {
+    insights.push({
+      titulo: `Taxa geral de devolução elevada (${taxaGeral.toFixed(2)}%)`,
+      descricao: `Acima da média de mercado (geralmente 1-2%). Investigar causas raiz pode reduzir perda significativa.`,
+      cor: '#A32D2D', icone: 'warning',
+    });
+  } else if (taxaGeral > 0) {
+    insights.push({
+      titulo: `Taxa de devolução saudável (${taxaGeral.toFixed(2)}%)`,
+      descricao: `Dentro da normalidade. Continue monitorando pra identificar anomalias pontuais.`,
+      cor: '#0F7334', icone: 'check_circle',
+    });
+  }
+
+  // 2. Tendência dos últimos 3 meses
+  if (devMensal.length >= 6) {
+    const ult3 = devMensal.slice(-3).reduce((s, x) => s + x.valor_devolucao, 0);
+    const ant3 = devMensal.slice(-6, -3).reduce((s, x) => s + x.valor_devolucao, 0);
+    if (ant3 > 0) {
+      const diff = ((ult3 - ant3) / ant3 * 100);
+      if (diff > 25) {
+        insights.push({
+          titulo: `Devoluções cresceram ${diff.toFixed(0)}% nos últimos 3 meses`,
+          descricao: `Tendência de alerta: ${_fmtMoeda(ant3)} → ${_fmtMoeda(ult3)}. Investigar se há causa específica (produto novo, cliente novo, processo logístico).`,
+          cor: '#A32D2D', icone: 'trending_up',
+        });
+      } else if (diff < -25) {
+        insights.push({
+          titulo: `Devoluções caíram ${Math.abs(diff).toFixed(0)}% nos últimos 3 meses`,
+          descricao: `Tendência positiva: ${_fmtMoeda(ant3)} → ${_fmtMoeda(ult3)}. Vale mapear o que mudou pra replicar.`,
+          cor: '#0F7334', icone: 'trending_down',
+        });
+      }
+    }
+  }
+
+  // 3. Empresa com taxa pior
+  if (devEmpresa.length > 1) {
+    const comTaxa = devEmpresa.map(e => {
+      const fatEmp = empresaTotal.find(f => f.Empresa === e.Empresa);
+      const taxa = (fatEmp && fatEmp.faturamento > 0) ? (e.valor_devolucao / fatEmp.faturamento * 100) : 0;
+      return { empresa: e.Empresa, taxa, valor: e.valor_devolucao };
+    }).filter(x => x.taxa > 0).sort((a, b) => b.taxa - a.taxa);
+
+    if (comTaxa.length > 0) {
+      const pior = comTaxa[0];
+      const media = comTaxa.reduce((s, x) => s + x.taxa, 0) / comTaxa.length;
+      if (pior.taxa > media * 1.5 && comTaxa.length > 1) {
+        insights.push({
+          titulo: `${pior.empresa} tem taxa ${(pior.taxa / media).toFixed(1)}x acima das outras filiais`,
+          descricao: `Taxa de ${pior.taxa.toFixed(2)}% vs ${media.toFixed(2)}% média. Investigar processo operacional dessa unidade.`,
+          cor: '#A32D2D', icone: 'apartment',
+        });
+      }
+    }
+  }
+
+  // 4. Concentração em poucos clientes
+  if (devClientes.length >= 5 && metaDev > 0) {
+    const top5 = devClientes.slice(0, 5).reduce((s, c) => s + c.valor_devolucao, 0);
+    const pct = (top5 / metaDev * 100);
+    if (pct >= 50) {
+      const topList = devClientes.slice(0, 3).map(c => c['Cliente (Nome Fantasia)']).join(', ');
+      insights.push({
+        titulo: `Top 5 clientes concentram ${pct.toFixed(0)}% das devoluções`,
+        descricao: `Foco comercial nesses contratos pode reduzir muito o total. Top 3: ${_esc(topList)}.`,
+        cor: '#CF8500', icone: 'group',
+      });
+    }
+  }
+
+  // 5. Marca com taxa crítica
+  if (devMarca.length > 0) {
+    const marcasComTaxa = devMarca.map(m => {
+      const fatM = marcasTotal.find(mm => mm.Marca === m.Marca);
+      const taxa = (fatM && fatM.faturamento > 0) ? (m.valor_devolucao / fatM.faturamento * 100) : 0;
+      return { marca: m.Marca, taxa, valor: m.valor_devolucao };
+    }).filter(x => x.taxa > 0 && x.valor > 5000).sort((a, b) => b.taxa - a.taxa);
+
+    if (marcasComTaxa.length > 0 && marcasComTaxa[0].taxa > 5) {
+      const pior = marcasComTaxa[0];
+      insights.push({
+        titulo: `${pior.marca}: taxa de devolução ${pior.taxa.toFixed(1)}%`,
+        descricao: `Acima do aceitável. Pode indicar problema de qualidade, prazo de entrega ou acordo comercial específico.`,
+        cor: '#A32D2D', icone: 'label_off',
+      });
+    }
+  }
+
+  // 6. Cliente com devolução massiva
+  if (devClientes.length > 0) {
+    const top = devClientes[0];
+    if (top.qtd <= 3 && top.valor_devolucao > (metaDev * 0.15)) {
+      const pct = (top.valor_devolucao / metaDev * 100);
+      insights.push({
+        titulo: `1 cliente concentra ${pct.toFixed(0)}% das devoluções`,
+        descricao: `${_esc(top['Cliente (Nome Fantasia)'])} devolveu ${_fmtMoeda(top.valor_devolucao)} em apenas ${top.qtd} nota${top.qtd > 1 ? 's' : ''}. Provavelmente licitação/acordo pontual — vale validar contrato.`,
+        cor: '#CF8500', icone: 'person',
+      });
+    }
+  }
+
+  // 7. Pico mensal atípico
+  if (devMensal.length >= 4) {
+    const media = devMensal.reduce((s, d) => s + d.valor_devolucao, 0) / devMensal.length;
+    const pico = devMensal.slice().sort((a, b) => b.valor_devolucao - a.valor_devolucao)[0];
+    if (pico.valor_devolucao > media * 2.5) {
+      insights.push({
+        titulo: `Pico atípico em ${_mesLabel(pico.ano_mes)}`,
+        descricao: `Devolveu ${_fmtMoeda(pico.valor_devolucao)} — ${(pico.valor_devolucao/media).toFixed(1)}x a média (${_fmtMoeda(media)}). Investigar causa raiz nesse mês.`,
+        cor: '#CF8500', icone: 'priority_high',
+      });
+    }
+  }
+
+  return insights;
+}
+
+// ============================================================================
+// Fim Sprint 9.30
 // ============================================================================
 
 // ============================================================================
