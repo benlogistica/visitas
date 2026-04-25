@@ -5680,7 +5680,7 @@ a {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.15-fix-visitas-sumindo',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.16-modal-conversao',
   APP_NAME: 'Nutricionais Visitas',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -30657,6 +30657,253 @@ window.handleExcluirItemPadronizado = async function(id) {
 };
 
 // Mudança rápida de status (sem modal completo)
+// ─── Sprint 9.32.16: Modal de conversão ───────────────────────────────
+// Quando o nutri clica em "Converter", abre um modal pedindo qual produto
+// NHSC entrou no lugar. Autocomplete do catálogo + opção de cadastrar novo.
+async function showModalConversao(itemPadronizado) {
+  return new Promise(async (resolve) => {
+    // Carrega catálogo de produtos NHSC
+    let catalogo = [];
+    try {
+      const { data, error } = await db
+        .from('catalogo_produtos')
+        .select('id, descricao, marca, categoria, qtd_uso')
+        .eq('ativo', true)
+        .order('qtd_uso', { ascending: false });
+      if (!error && data) catalogo = data;
+    } catch (err) {
+      console.warn('[modalConversao] erro carregando catálogo:', err);
+    }
+
+    const itemDesc = (itemPadronizado.descricao_produto || '').replace(/</g, '&lt;');
+    const itemMarca = (itemPadronizado.marca || '').replace(/</g, '&lt;');
+
+    const backdrop = document.createElement('div');
+    backdrop.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,0.55);display:flex;align-items:center;justify-content:center;z-index:9999;padding:20px;';
+    backdrop.innerHTML = `
+      <div style="background:var(--neutral-0);border-radius:16px;max-width:520px;width:100%;max-height:90vh;overflow-y:auto;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,0.25);">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+          <span style="font-size:24px;">🏆</span>
+          <h2 style="margin:0;font-family:var(--font-display);font-size:18px;color:var(--brand-navy);font-weight:700;">Converter item</h2>
+        </div>
+        <div style="font-size:13px;color:var(--neutral-600);margin-bottom:14px;line-height:1.4;">
+          Este item virou qual produto da nossa linha? Procure o produto NHSC ou cadastre um novo.
+        </div>
+
+        <!-- Card mostrando o item original -->
+        <div style="background:var(--neutral-100);border-radius:10px;padding:10px 14px;margin-bottom:18px;font-size:12.5px;">
+          <div style="color:var(--neutral-500);margin-bottom:2px;font-size:11px;text-transform:uppercase;letter-spacing:0.4px;font-weight:600;">Item padronizado (concorrente)</div>
+          <div style="font-weight:600;color:var(--brand-navy);">${itemDesc}</div>
+          ${itemMarca ? `<div style="color:var(--neutral-600);font-size:11.5px;margin-top:1px;">Marca: ${itemMarca}</div>` : ''}
+        </div>
+
+        <!-- Campo de busca/seleção do produto NHSC -->
+        <div style="margin-bottom:14px;position:relative;">
+          <label style="display:block;font-size:13px;font-weight:600;color:var(--brand-navy);margin-bottom:6px;">Produto NHSC que entrou no lugar <span style="color:var(--status-danger);">*</span></label>
+          <input type="text" id="mcvProduto" autocomplete="off" placeholder="Digite o nome do produto NHSC..."
+                 style="width:100%;padding:10px 12px;border:1.5px solid var(--neutral-200);border-radius:10px;font-size:14px;font-family:inherit;" />
+          <div id="mcvProdutoSugestoes" style="position:absolute;top:100%;left:0;right:0;background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:10px;margin-top:4px;max-height:200px;overflow-y:auto;z-index:10;display:none;box-shadow:0 4px 12px rgba(0,0,0,0.1);"></div>
+        </div>
+
+        <!-- Card que aparece quando seleciona um produto do catálogo -->
+        <div id="mcvSelecionado" style="display:none;background:#E6F6EF;border:1.5px solid var(--status-success);border-radius:10px;padding:12px 14px;margin-bottom:14px;">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">
+            <div style="flex:1;">
+              <div style="font-size:11px;color:var(--status-success);text-transform:uppercase;letter-spacing:0.4px;font-weight:700;margin-bottom:2px;">✓ Selecionado</div>
+              <div id="mcvSelecionadoNome" style="font-weight:600;color:var(--brand-navy);font-size:14px;"></div>
+              <div id="mcvSelecionadoMarca" style="font-size:12px;color:var(--neutral-600);margin-top:2px;"></div>
+            </div>
+            <button id="mcvLimparSelecao" type="button" style="background:transparent;border:0;cursor:pointer;color:var(--neutral-500);font-size:18px;line-height:1;padding:2px 6px;">×</button>
+          </div>
+        </div>
+
+        <!-- Card que aparece quando vai cadastrar novo (não achado no catálogo) -->
+        <div id="mcvCadastroNovo" style="display:none;background:#FEF3C7;border:1.5px solid #F59E0B;border-radius:10px;padding:12px 14px;margin-bottom:14px;">
+          <div style="font-size:11px;color:#92400E;text-transform:uppercase;letter-spacing:0.4px;font-weight:700;margin-bottom:8px;">⚠ Cadastrar produto novo</div>
+          <div style="font-size:12.5px;color:#78350F;line-height:1.4;margin-bottom:10px;">
+            O produto não está no nosso catálogo. Cadastre agora — vai pra revisão do admin.
+          </div>
+          <label style="display:block;font-size:12px;font-weight:600;color:#78350F;margin-bottom:4px;">Marca <span style="color:var(--status-danger);">*</span></label>
+          <input type="text" id="mcvNovaMarca" autocomplete="off" placeholder="Ex: Nestlé, Danone, Fresenius..."
+                 style="width:100%;padding:8px 10px;border:1.5px solid #FCD34D;border-radius:8px;font-size:13px;font-family:inherit;background:#fff;margin-bottom:10px;" />
+          <label style="display:block;font-size:12px;font-weight:600;color:#78350F;margin-bottom:4px;">Categoria <span style="color:var(--neutral-400);font-weight:normal;">(opcional)</span></label>
+          <input type="text" id="mcvNovaCat" autocomplete="off" placeholder="Ex: Dieta enteral, Suplemento..."
+                 style="width:100%;padding:8px 10px;border:1.5px solid #FCD34D;border-radius:8px;font-size:13px;font-family:inherit;background:#fff;" />
+        </div>
+
+        <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:18px;">
+          <button id="mcvCancel" type="button" style="background:transparent;border:1.5px solid var(--neutral-200);color:var(--neutral-600);padding:10px 20px;border-radius:10px;font-weight:600;cursor:pointer;font-family:inherit;font-size:13px;">Cancelar</button>
+          <button id="mcvOk" type="button" style="background:var(--status-success);border:0;color:#fff;padding:10px 20px;border-radius:10px;font-weight:700;cursor:pointer;font-family:inherit;font-size:13px;">🏆 Confirmar conversão</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(backdrop);
+
+    let produtoSelecionado = null; // { id, descricao, marca, categoria } ou null se cadastro novo
+    let modoCadastroNovo = false;
+
+    const inputProduto = backdrop.querySelector('#mcvProduto');
+    const sugBox = backdrop.querySelector('#mcvProdutoSugestoes');
+    const selBox = backdrop.querySelector('#mcvSelecionado');
+    const novoBox = backdrop.querySelector('#mcvCadastroNovo');
+
+    inputProduto.focus();
+
+    // Função debounce simples (caso `debounce` não esteja disponível neste escopo)
+    let timerSug;
+    const filtrarProduto = (termo) => {
+      clearTimeout(timerSug);
+      timerSug = setTimeout(() => {
+        if (!termo || termo.length < 2) {
+          sugBox.style.display = 'none';
+          return;
+        }
+        const termoLower = termo.toLowerCase();
+        const matches = catalogo
+          .filter(c => c.descricao.toLowerCase().includes(termoLower) || (c.marca && c.marca.toLowerCase().includes(termoLower)))
+          .slice(0, 10);
+
+        let html = matches.map((c, idx) => `
+          <div data-idx="${idx}" class="mcv-sug-item" style="padding:9px 12px;cursor:pointer;border-bottom:1px solid var(--neutral-100);font-size:13px;">
+            <strong>${c.descricao.replace(/</g,'&lt;')}</strong>
+            <div style="font-size:11.5px;color:var(--neutral-500);margin-top:1px;">${(c.marca || '').replace(/</g,'&lt;')}${c.categoria ? ' · ' + c.categoria.replace(/</g,'&lt;') : ''}</div>
+          </div>
+        `).join('');
+
+        // Sempre adiciona opção de cadastrar novo no fim
+        html += `
+          <div class="mcv-sug-novo" style="padding:10px 12px;cursor:pointer;background:#FEF3C7;border-top:2px solid #F59E0B;font-size:13px;color:#92400E;font-weight:600;">
+            ➕ Cadastrar "<span style="font-style:italic;">${termo.replace(/</g,'&lt;')}</span>" como novo produto
+          </div>
+        `;
+
+        sugBox.innerHTML = html;
+        sugBox.style.display = 'block';
+
+        sugBox.querySelectorAll('.mcv-sug-item').forEach(el => {
+          el.addEventListener('mouseenter', () => el.style.background = 'var(--neutral-100)');
+          el.addEventListener('mouseleave', () => el.style.background = '');
+          el.addEventListener('click', () => {
+            const c = matches[parseInt(el.dataset.idx)];
+            produtoSelecionado = c;
+            modoCadastroNovo = false;
+            inputProduto.value = '';
+            sugBox.style.display = 'none';
+            backdrop.querySelector('#mcvSelecionadoNome').textContent = c.descricao;
+            backdrop.querySelector('#mcvSelecionadoMarca').textContent = `Marca: ${c.marca || '—'}${c.categoria ? ' · ' + c.categoria : ''}`;
+            selBox.style.display = 'block';
+            novoBox.style.display = 'none';
+          });
+        });
+
+        const novoEl = sugBox.querySelector('.mcv-sug-novo');
+        if (novoEl) {
+          novoEl.addEventListener('mouseenter', () => novoEl.style.background = '#FDE68A');
+          novoEl.addEventListener('mouseleave', () => novoEl.style.background = '#FEF3C7');
+          novoEl.addEventListener('click', () => {
+            modoCadastroNovo = true;
+            produtoSelecionado = null;
+            sugBox.style.display = 'none';
+            selBox.style.display = 'none';
+            novoBox.style.display = 'block';
+            backdrop.querySelector('#mcvNovaMarca').focus();
+          });
+        }
+      }, 150);
+    };
+
+    inputProduto.addEventListener('input', (e) => filtrarProduto(e.target.value));
+
+    backdrop.querySelector('#mcvLimparSelecao').addEventListener('click', () => {
+      produtoSelecionado = null;
+      selBox.style.display = 'none';
+      inputProduto.value = '';
+      inputProduto.focus();
+    });
+
+    const cleanup = () => backdrop.remove();
+    backdrop.querySelector('#mcvCancel').onclick = () => { cleanup(); resolve(null); };
+    backdrop.onclick = (e) => { if (e.target === backdrop) { cleanup(); resolve(null); } };
+
+    backdrop.querySelector('#mcvOk').onclick = async () => {
+      // Validação: ou tem produto selecionado, ou está no modo cadastro novo
+      if (!produtoSelecionado && !modoCadastroNovo) {
+        setFlash('warning', 'Selecione um produto NHSC ou cadastre um novo.');
+        inputProduto.focus();
+        return;
+      }
+
+      let resultado;
+      if (produtoSelecionado) {
+        // Caso 1: produto já existe no catálogo
+        resultado = {
+          catalogo_id: produtoSelecionado.id,
+          descricao: produtoSelecionado.descricao,
+          marca: produtoSelecionado.marca || '',
+        };
+      } else {
+        // Caso 2: cadastrar novo produto no catálogo
+        const novaDesc = inputProduto.value.trim() || '';
+        const novaMarca = backdrop.querySelector('#mcvNovaMarca').value.trim();
+        const novaCat = backdrop.querySelector('#mcvNovaCat').value.trim();
+
+        if (!novaDesc) {
+          setFlash('warning', 'Digite a descrição do produto novo.');
+          inputProduto.focus();
+          return;
+        }
+        if (!novaMarca) {
+          setFlash('warning', 'Informe a marca do produto novo.');
+          backdrop.querySelector('#mcvNovaMarca').focus();
+          return;
+        }
+
+        // Cadastra produto novo no catálogo (não-revisado pelo admin ainda)
+        try {
+          const { data: novoCat, error: errCat } = await db
+            .from('catalogo_produtos')
+            .insert({
+              descricao: novaDesc,
+              marca: novaMarca,
+              categoria: novaCat || null,
+              fonte: 'manual',
+              ativo: true,
+            })
+            .select()
+            .single();
+
+          if (errCat) {
+            // Se já existe (UNIQUE violation), tenta buscar
+            if (errCat.code === '23505') {
+              const { data: jaExiste } = await db
+                .from('catalogo_produtos')
+                .select('id, descricao, marca')
+                .ilike('descricao', novaDesc)
+                .ilike('marca', novaMarca)
+                .maybeSingle();
+              if (jaExiste) {
+                resultado = { catalogo_id: jaExiste.id, descricao: jaExiste.descricao, marca: jaExiste.marca };
+              } else {
+                throw new Error(errCat.message);
+              }
+            } else {
+              throw new Error(errCat.message);
+            }
+          } else {
+            resultado = { catalogo_id: novoCat.id, descricao: novoCat.descricao, marca: novoCat.marca };
+          }
+        } catch (err) {
+          setFlash('danger', 'Erro ao cadastrar produto: ' + err.message);
+          return;
+        }
+      }
+
+      cleanup();
+      resolve(resultado);
+    };
+  });
+}
+
 window.handleMudarStatusItem = async function(id, novoStatus) {
   if (await bloqueioSimulacao('mudar status do item')) return;
   if (!ITENS_PAD_STATUS[novoStatus]) return;
@@ -30665,9 +30912,25 @@ window.handleMudarStatusItem = async function(id, novoStatus) {
     if (error) throw new Error(error.message);
     if (!antes) return;
     if (antes.status === novoStatus) return;
+
+    // Sprint 9.32.16: se for converter, abre modal pedindo qual produto NHSC entrou
+    let dadosConversao = null;
+    if (novoStatus === 'convertido') {
+      dadosConversao = await showModalConversao(antes);
+      if (!dadosConversao) return; // cancelou
+    }
+
+    const updatePayload = { status: novoStatus };
+    if (novoStatus === 'convertido' && dadosConversao) {
+      updatePayload.convertido_em_descricao = dadosConversao.descricao;
+      updatePayload.convertido_em_marca = dadosConversao.marca || null;
+      updatePayload.convertido_em_catalogo_id = dadosConversao.catalogo_id || null;
+      updatePayload.convertido_em = new Date().toISOString();
+    }
+
     const { data: depois, error: upErr } = await db
       .from('itens_padronizados')
-      .update({ status: novoStatus })
+      .update(updatePayload)
       .eq('id', id)
       .select()
       .single();
@@ -30679,7 +30942,11 @@ window.handleMudarStatusItem = async function(id, novoStatus) {
       dadosAntes: antes,
       dadosDepois: depois,
     });
-    setFlash('success', `Status: ${ITENS_PAD_STATUS[novoStatus].label}${novoStatus === 'convertido' ? ' 🎉' : ''}`);
+    if (novoStatus === 'convertido' && dadosConversao) {
+      setFlash('success', `🎉 Convertido para "${dadosConversao.descricao}"!`);
+    } else {
+      setFlash('success', `Status: ${ITENS_PAD_STATUS[novoStatus].label}`);
+    }
     if (typeof window._reloadItensPadronizados === 'function') window._reloadItensPadronizados();
   } catch (err) {
     setFlash('danger', 'Erro: ' + err.message);
@@ -31069,6 +31336,18 @@ function _ipRender() {
               </div>
             </div>
             ${it.observacao ? `<div style="font-size:12px;color:var(--neutral-600);font-style:italic;padding:0 4px;">💬 ${it.observacao.replace(/</g,'&lt;')}</div>` : ''}
+
+            <!-- Sprint 9.32.16: mostra produto NHSC pra qual foi convertido -->
+            ${it.status === 'convertido' && it.convertido_em_descricao ? `
+              <div style="background:#E6F6EF;border:1.5px solid var(--status-success);border-radius:8px;padding:8px 12px;margin:0 4px;display:flex;align-items:center;gap:8px;">
+                <span style="font-size:18px;">🎯</span>
+                <div style="flex:1;font-size:12px;line-height:1.3;">
+                  <span style="color:var(--neutral-600);">Convertido para</span>
+                  <strong style="color:var(--brand-navy);display:block;">${it.convertido_em_descricao.replace(/</g,'&lt;')}</strong>
+                  ${it.convertido_em_marca ? `<span style="color:var(--neutral-500);font-size:11px;">${it.convertido_em_marca.replace(/</g,'&lt;')}</span>` : ''}
+                </div>
+              </div>
+            ` : ''}
 
             <!-- Bloco "atribuição": cadastrador + convertedor (se houver) -->
             <div style="display:flex;flex-wrap:wrap;gap:10px;font-size:11px;color:var(--neutral-600);padding:6px 4px 0;">
