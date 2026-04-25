@@ -5620,7 +5620,7 @@ a {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.30-aba-devolucoes',
+  APP_VERSION: '1.0.0-alpha.sprint9.30.5-dev-rankings-por-mes',
   APP_NAME: 'Nutricionais Visitas',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -25572,6 +25572,43 @@ function _fatRenderInner() {
           </div>
         </div>
 
+        <!-- Grid 2 colunas: Produtos e Cidades -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:14px;margin-bottom:14px;">
+
+          <!-- Produtos devolvidos com toggle Top 10/20/30 -->
+          <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:12px;padding:16px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+              <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:14px;display:flex;align-items:center;gap:8px;">
+                <span class="material-symbols-rounded" style="font-size:18px;color:#A32D2D;">inventory_2</span>
+                Produtos mais devolvidos
+              </div>
+              <div id="fatDevToggleProdutos" style="display:inline-flex;background:var(--neutral-100);border-radius:8px;padding:2px;gap:1px;">
+                <button onclick="_fatDevMudarTopN('produtos', 10)" data-top="10" style="padding:5px 12px;border:0;background:var(--neutral-0);border-radius:6px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:inherit;color:var(--brand-navy);">Top 10</button>
+                <button onclick="_fatDevMudarTopN('produtos', 20)" data-top="20" style="padding:5px 12px;border:0;background:transparent;border-radius:6px;font-size:11.5px;font-weight:600;cursor:pointer;font-family:inherit;color:var(--neutral-600);">Top 20</button>
+                <button onclick="_fatDevMudarTopN('produtos', 30)" data-top="30" style="padding:5px 12px;border:0;background:transparent;border-radius:6px;font-size:11.5px;font-weight:600;cursor:pointer;font-family:inherit;color:var(--neutral-600);">Top 30</button>
+              </div>
+            </div>
+            <div id="fatDevProdutos"></div>
+          </div>
+
+          <!-- Cidades que mais devolvem com toggle Top 10/20/30 -->
+          <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:12px;padding:16px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+              <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:14px;display:flex;align-items:center;gap:8px;">
+                <span class="material-symbols-rounded" style="font-size:18px;color:#A32D2D;">location_city</span>
+                Cidades com mais devoluções
+              </div>
+              <div id="fatDevToggleCidades" style="display:inline-flex;background:var(--neutral-100);border-radius:8px;padding:2px;gap:1px;">
+                <button onclick="_fatDevMudarTopN('cidades', 10)" data-top="10" style="padding:5px 12px;border:0;background:var(--neutral-0);border-radius:6px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:inherit;color:var(--brand-navy);">Top 10</button>
+                <button onclick="_fatDevMudarTopN('cidades', 20)" data-top="20" style="padding:5px 12px;border:0;background:transparent;border-radius:6px;font-size:11.5px;font-weight:600;cursor:pointer;font-family:inherit;color:var(--neutral-600);">Top 20</button>
+                <button onclick="_fatDevMudarTopN('cidades', 30)" data-top="30" style="padding:5px 12px;border:0;background:transparent;border-radius:6px;font-size:11.5px;font-weight:600;cursor:pointer;font-family:inherit;color:var(--neutral-600);">Top 30</button>
+              </div>
+            </div>
+            <div id="fatDevCidades"></div>
+          </div>
+
+        </div>
+
         <!-- Insights automáticos -->
         <div style="background:linear-gradient(135deg,#FEF2F2 0%,#FFFBFB 100%);border:1px solid #FECACA;border-radius:12px;padding:16px;margin-bottom:14px;">
           <div style="font-family:var(--font-display);font-weight:700;color:#A32D2D;font-size:14px;margin-bottom:10px;display:flex;align-items:center;gap:8px;">
@@ -27790,19 +27827,177 @@ function _fatRenderInsights() {
 // SPRINT 9.30 — Aba Devoluções (análise operacional + financeira)
 // ============================================================================
 
+// Retorna o conjunto de meses que passam no filtro atual de período + mês isolado
+function _fatDevMesesFiltrados() {
+  const f = window._fatFiltro || {};
+  const todosMeses = (FAT_DATA?.mensal || []).map(m => m.ano_mes);
+  if (todosMeses.length === 0) return new Set();
+
+  const hoje = new Date();
+  const mesAtual = `${hoje.getFullYear()}-${String(hoje.getMonth()+1).padStart(2,'0')}`;
+
+  let meses = todosMeses.slice();
+  if (f.periodo === 'ano2026') meses = meses.filter(m => m.startsWith('2026'));
+  else if (f.periodo === 'ano2025') meses = meses.filter(m => m.startsWith('2025'));
+  else if (f.periodo === 'ult12m') meses = meses.slice(-12);
+  else if (f.periodo === 'ult6m') meses = meses.slice(-6);
+  else if (f.periodo === 'ult3m') meses = meses.slice(-3);
+  else if (f.periodo === 'mes_atual') meses = meses.filter(m => m === mesAtual);
+
+  // Mês isolado (chip de mês clicado)
+  if (f.mes && f.mes !== 'todos') {
+    meses = meses.filter(m => m === f.mes);
+  }
+
+  return new Set(meses);
+}
+
+// Retorna dados de devolução aplicando o filtro de período atual.
+// Sprint 9.30.5: quando há filtro de mês isolado, recalcula os rankings
+// a partir dos dados granulares (_mes). Quando há filtro de período (sem
+// mês isolado) E há dados mensais granulares, também agrega eles.
+function _fatDevObterDados() {
+  const f = window._fatFiltro || {};
+  const mesesSet = _fatDevMesesFiltrados();
+  const temFiltroPeriodo = (f.periodo && f.periodo !== 'todos') ||
+                           (f.mes && f.mes !== 'todos');
+
+  // Sempre filtra devoluções_mensal e mensal pelo conjunto de meses
+  const devMensal = (FAT_DATA?.devolucoes_mensal || []).filter(d => mesesSet.has(d.ano_mes));
+  const mensal = (FAT_DATA?.mensal || []).filter(m => mesesSet.has(m.ano_mes));
+
+  // Recalcula totais quando há filtro
+  const totalDev = devMensal.reduce((s, d) => s + d.valor_devolucao, 0);
+  const totalFat = mensal.reduce((s, m) => s + m.faturamento, 0);
+
+  // Se não há filtro, usa agregações do período total direto
+  if (!temFiltroPeriodo) {
+    return {
+      devMensal, mensal, totalDev, totalFat, temFiltroPeriodo,
+      devEmpresa: FAT_DATA?.devolucoes_empresa || [],
+      devMarca:   FAT_DATA?.devolucoes_marca || [],
+      devClientes: FAT_DATA?.devolucoes_clientes_top || [],
+      devProdutos: FAT_DATA?.devolucoes_produtos || [],
+      devCidades:  FAT_DATA?.devolucoes_cidades || [],
+    };
+  }
+
+  // Há filtro — tenta recalcular rankings a partir dos dados granulares (_mes)
+  const temGranular = FAT_DATA?.devolucoes_empresa_mes && FAT_DATA?.devolucoes_marca_mes;
+
+  if (!temGranular) {
+    // Fallback: JSON antigo sem os _mes → mostra aviso
+    return {
+      devMensal, mensal, totalDev, totalFat, temFiltroPeriodo,
+      devEmpresa: null, devMarca: null, devClientes: null,
+      devProdutos: null, devCidades: null,
+    };
+  }
+
+  // Agrega Por Empresa no recorte do filtro
+  const empresaMap = {};
+  (FAT_DATA.devolucoes_empresa_mes || []).forEach(r => {
+    if (!mesesSet.has(r.ano_mes)) return;
+    if (!empresaMap[r.Empresa]) empresaMap[r.Empresa] = { Empresa: r.Empresa, valor_devolucao: 0, qtd: 0 };
+    empresaMap[r.Empresa].valor_devolucao += r.valor_devolucao;
+    empresaMap[r.Empresa].qtd += r.qtd;
+  });
+  const devEmpresa = Object.values(empresaMap)
+    .map(e => ({ ...e, valor_devolucao: Math.round(e.valor_devolucao * 100) / 100 }))
+    .sort((a, b) => b.valor_devolucao - a.valor_devolucao);
+
+  // Agrega Por Marca no recorte
+  const marcaMap = {};
+  (FAT_DATA.devolucoes_marca_mes || []).forEach(r => {
+    if (!mesesSet.has(r.ano_mes)) return;
+    if (!marcaMap[r.Marca]) marcaMap[r.Marca] = { Marca: r.Marca, valor_devolucao: 0, qtd: 0 };
+    marcaMap[r.Marca].valor_devolucao += r.valor_devolucao;
+    marcaMap[r.Marca].qtd += r.qtd;
+  });
+  const devMarca = Object.values(marcaMap)
+    .map(m => ({ ...m, valor_devolucao: Math.round(m.valor_devolucao * 100) / 100 }))
+    .filter(m => m.valor_devolucao > 0)
+    .sort((a, b) => b.valor_devolucao - a.valor_devolucao);
+
+  // Agrega Produtos no recorte
+  const produtosMap = {};
+  (FAT_DATA.devolucoes_produtos_mes || []).forEach(r => {
+    if (!mesesSet.has(r.ano_mes)) return;
+    const k = `${r['Código do Produto']}||${r['Descrição do Produto']}`;
+    if (!produtosMap[k]) produtosMap[k] = {
+      'Código do Produto': r['Código do Produto'],
+      'Descrição do Produto': r['Descrição do Produto'],
+      'Marca': r.Marca,
+      valor_devolucao: 0, qtd_itens: 0, qtd_notas: 0,
+    };
+    produtosMap[k].valor_devolucao += r.valor_devolucao;
+    produtosMap[k].qtd_itens += (r.qtd_itens || 0);
+    produtosMap[k].qtd_notas += r.qtd_notas;
+  });
+  const devProdutos = Object.values(produtosMap)
+    .map(p => ({ ...p, valor_devolucao: Math.round(p.valor_devolucao * 100) / 100 }))
+    .filter(p => p.valor_devolucao > 0)
+    .sort((a, b) => b.valor_devolucao - a.valor_devolucao)
+    .slice(0, 30);
+
+  // Agrega Cidades no recorte
+  const cidadesMap = {};
+  (FAT_DATA.devolucoes_cidades_mes || []).forEach(r => {
+    if (!mesesSet.has(r.ano_mes)) return;
+    const k = `${r.Cidade}||${r.Estado}`;
+    if (!cidadesMap[k]) cidadesMap[k] = {
+      Cidade: r.Cidade, Estado: r.Estado,
+      valor_devolucao: 0, qtd_notas: 0, qtd_clientes_set: new Set(),
+    };
+    cidadesMap[k].valor_devolucao += r.valor_devolucao;
+    cidadesMap[k].qtd_notas += r.qtd_notas;
+    // qtd_clientes: aproximação (soma pode dobrar entre meses, mas sem dados granulares
+    // não dá pra ser exato; somamos e descontamos sobreposições prováveis)
+    cidadesMap[k].qtd_clientes_set.add(r.qtd_clientes);
+  });
+  const devCidades = Object.values(cidadesMap)
+    .map(c => ({
+      Cidade: c.Cidade,
+      Estado: c.Estado,
+      valor_devolucao: Math.round(c.valor_devolucao * 100) / 100,
+      qtd_notas: c.qtd_notas,
+      qtd_clientes: Math.max(...c.qtd_clientes_set), // aprox: maior qtd entre os meses
+    }))
+    .filter(c => c.valor_devolucao > 0)
+    .sort((a, b) => b.valor_devolucao - a.valor_devolucao)
+    .slice(0, 30);
+
+  // Clientes top: não temos _mes pra clientes (ficaria grande demais);
+  // quando há filtro, esconde esse dado.
+  const devClientes = null;
+
+  return {
+    devMensal, mensal, totalDev, totalFat, temFiltroPeriodo,
+    devEmpresa, devMarca, devClientes, devProdutos, devCidades,
+  };
+}
+
 function _fatRenderDevolucoes() {
   if (!FAT_DATA) return;
 
-  const devMensal = FAT_DATA.devolucoes_mensal || [];
-  const devEmpresa = FAT_DATA.devolucoes_empresa || [];
-  const devMarca = FAT_DATA.devolucoes_marca || [];
-  const devClientes = FAT_DATA.devolucoes_clientes_top || [];
-  const mensal = FAT_DATA.mensal || [];
+  // Helper local: escape HTML (mesma lógica de _fatRenderInsights)
+  const esc = s => String(s || '').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+
+  // State global pros toggles (default Top 10)
+  if (!window._fatDevTopN) window._fatDevTopN = { produtos: 10, cidades: 10 };
+
+  // Aplica filtros de período do topo
+  const dados = _fatDevObterDados();
+  // Cache pro _fatDevRenderProdutos e _fatDevRenderCidades acessarem
+  window._fatDevDadosCache = dados;
+  const { devMensal, mensal, totalDev, totalFat, temFiltroPeriodo } = dados;
   const empresaTotal = FAT_DATA.empresa_total || [];
   const marcasTotal = FAT_DATA.marcas || [];
   const clientesTotal = FAT_DATA.clientes_top || [];
-  const metaFat = FAT_DATA.meta?.faturamento_total || 0;
-  const metaDev = FAT_DATA.meta?.total_devolucoes || 0;
+
+  // Recalcula metaDev/metaFat baseado no filtro (afeta KPI "total devoluções")
+  const metaDev = totalDev;
+  const metaFat = totalFat;
 
   // ========= KPIs =========
   const kpisEl = document.getElementById('fatDevKpis');
@@ -27882,17 +28077,50 @@ function _fatRenderDevolucoes() {
     ].join('');
   }
 
-  // ========= Gráfico mensal (bar + linha %) =========
+  // ========= Gráfico mensal (bar + linha %) — INTERATIVO =========
+  // Sprint 9.30.4: sempre mostra TODOS os meses (do período filtrado,
+  // mas ignorando filtro de mês isolado). Click numa barra filtra/toggle
+  // o mês. Mês selecionado aparece em cor forte, outros esmaecidos.
   const chartCtx = document.getElementById('fatDevChartMensal');
   if (chartCtx && typeof Chart !== 'undefined') {
     if (window._fatDevChartInst) window._fatDevChartInst.destroy();
 
-    const labels = devMensal.map(d => _mesLabel(d.ano_mes));
-    const valores = devMensal.map(d => d.valor_devolucao);
-    const pcts = devMensal.map(d => {
-      const m = mensal.find(x => x.ano_mes === d.ano_mes);
-      return (m && m.faturamento > 0) ? (d.valor_devolucao / m.faturamento * 100) : 0;
+    // Pega TODOS os meses do período (ignorando filtro de mês isolado)
+    const mensalChart = _fatFiltrarMensal({ ignorarMes: true });
+    const mesIsolado = (window._fatFiltro.mes && window._fatFiltro.mes !== 'todos') ? window._fatFiltro.mes : null;
+
+    // Recalcula devoluções pra cada mês do chart (não usa devMensal filtrado,
+    // pois precisa mostrar todos os meses do período pra permitir navegação)
+    const devPorMes = {};
+    (FAT_DATA.devolucoes_mensal || []).forEach(d => {
+      devPorMes[d.ano_mes] = d.valor_devolucao;
     });
+
+    const labels = mensalChart.map(m => _mesLabel(m.ano_mes));
+    const valores = mensalChart.map(m => devPorMes[m.ano_mes] || 0);
+    const pcts = mensalChart.map(m => {
+      const devVal = devPorMes[m.ano_mes] || 0;
+      return m.faturamento > 0 ? (devVal / m.faturamento * 100) : 0;
+    });
+
+    // Cores: destaque vermelho forte no mês selecionado, esmaecidas nas outras
+    const corBarraNormal = 'rgba(226, 75, 74, 0.78)';
+    const corBarraDestaque = 'rgba(163, 45, 45, 1)';        // vermelho escuro forte
+    const corBarraEsmaecida = 'rgba(226, 75, 74, 0.20)';
+    const corLinhaNormal = 'rgba(29, 78, 216, 1)';
+    const corLinhaEsmaecida = 'rgba(29, 78, 216, 0.25)';
+
+    const corBarras = mensalChart.map(m =>
+      mesIsolado
+        ? (m.ano_mes === mesIsolado ? corBarraDestaque : corBarraEsmaecida)
+        : corBarraNormal
+    );
+    const corBordas = mensalChart.map(m =>
+      mesIsolado && m.ano_mes === mesIsolado ? '#7F1D1D' : 'rgba(163, 45, 45, 0.3)'
+    );
+    const larguraBordas = mensalChart.map(m =>
+      mesIsolado && m.ano_mes === mesIsolado ? 2.5 : 1
+    );
 
     window._fatDevChartInst = new Chart(chartCtx, {
       type: 'bar',
@@ -27903,9 +28131,11 @@ function _fatRenderDevolucoes() {
             type: 'bar',
             label: 'Devoluções (R$)',
             data: valores,
-            backgroundColor: 'rgba(226, 75, 74, 0.78)',
-            borderColor: 'rgba(163, 45, 45, 1)',
-            borderWidth: 1,
+            backgroundColor: corBarras,
+            borderColor: corBordas,
+            borderWidth: larguraBordas,
+            borderRadius: 6,
+            barPercentage: 0.7,
             yAxisID: 'y',
             order: 2,
           },
@@ -27913,13 +28143,17 @@ function _fatRenderDevolucoes() {
             type: 'line',
             label: '% devolução',
             data: pcts,
-            borderColor: 'rgba(29, 78, 216, 1)',
+            borderColor: mesIsolado ? corLinhaEsmaecida : corLinhaNormal,
             backgroundColor: 'rgba(29, 78, 216, 0.1)',
             borderWidth: 2.5,
             fill: false,
             tension: 0.35,
-            pointRadius: 3,
-            pointBackgroundColor: 'rgba(29, 78, 216, 1)',
+            pointRadius: mensalChart.map(m =>
+              mesIsolado && m.ano_mes === mesIsolado ? 6 : 3
+            ),
+            pointBackgroundColor: mensalChart.map(m =>
+              mesIsolado && m.ano_mes === mesIsolado ? corLinhaNormal : (mesIsolado ? 'rgba(29, 78, 216, 0.4)' : corLinhaNormal)
+            ),
             yAxisID: 'y1',
             order: 1,
           },
@@ -27929,6 +28163,20 @@ function _fatRenderDevolucoes() {
         responsive: true,
         maintainAspectRatio: false,
         interaction: { intersect: false, mode: 'index' },
+        onHover: (evt, elements) => {
+          evt.native.target.style.cursor = elements.length > 0 ? 'pointer' : 'default';
+        },
+        onClick: (evt, elements) => {
+          if (elements.length > 0) {
+            const idx = elements[0].index;
+            const ymClicado = mensalChart[idx]?.ano_mes;
+            if (ymClicado) {
+              // Toggle: se já está selecionado, desmarca; senão seleciona
+              const novoFiltro = (window._fatFiltro.mes === ymClicado) ? 'todos' : ymClicado;
+              window._fatTrocarFiltro('mes', novoFiltro);
+            }
+          }
+        },
         plugins: {
           legend: { display: true, position: 'top', labels: { font: { size: 11, family: 'inherit' } } },
           tooltip: {
@@ -27936,6 +28184,13 @@ function _fatRenderDevolucoes() {
               label: (ctx) => {
                 if (ctx.datasetIndex === 0) return ` Devolução: ${_fmtMoeda(ctx.parsed.y)}`;
                 return ` Taxa: ${ctx.parsed.y.toFixed(2)}%`;
+              },
+              footer: (items) => {
+                if (!items || items.length === 0) return '';
+                const idx = items[0].dataIndex;
+                const ym = mensalChart[idx]?.ano_mes;
+                if (ym === mesIsolado) return 'Clique pra desmarcar';
+                return 'Clique pra ver só este mês';
               },
             },
           },
@@ -27963,7 +28218,10 @@ function _fatRenderDevolucoes() {
   // ========= Por empresa =========
   const empresaEl = document.getElementById('fatDevPorEmpresa');
   if (empresaEl) {
-    if (devEmpresa.length === 0) {
+    const devEmpresa = dados.devEmpresa;
+    if (devEmpresa === null) {
+      empresaEl.innerHTML = '<div style="color:var(--neutral-500);font-size:11.5px;padding:14px;text-align:center;line-height:1.5;"><span class="material-symbols-rounded" style="font-size:16px;vertical-align:middle;opacity:0.6;">info</span> Ranking sem filtro — aplicável ao período total.</div>';
+    } else if (devEmpresa.length === 0) {
       empresaEl.innerHTML = '<div style="color:var(--neutral-500);font-size:12px;padding:16px;text-align:center;">Sem devoluções no período.</div>';
     } else {
       const maxVal = Math.max(...devEmpresa.map(e => e.valor_devolucao));
@@ -27975,7 +28233,7 @@ function _fatRenderDevolucoes() {
         return `
           <div style="padding:10px 0;border-bottom:1px dashed var(--neutral-200);">
             <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;">
-              <div style="font-weight:600;font-size:12.5px;color:var(--brand-navy);">${_esc(e.Empresa)}</div>
+              <div style="font-weight:600;font-size:12.5px;color:var(--brand-navy);">${esc(e.Empresa)}</div>
               <div style="font-size:11px;color:var(--neutral-600);">
                 <strong style="color:#A32D2D;">${_fmtMoeda(e.valor_devolucao, true)}</strong>
                 <span style="margin-left:6px;color:${taxa > 2 ? '#A32D2D' : 'var(--neutral-500)'};font-weight:600;">${taxa.toFixed(2)}%</span>
@@ -27994,7 +28252,11 @@ function _fatRenderDevolucoes() {
   // ========= Por marca =========
   const marcaEl = document.getElementById('fatDevPorMarca');
   if (marcaEl) {
-    const top10 = devMarca.slice(0, 10);
+    const devMarca = dados.devMarca;
+    if (devMarca === null) {
+      marcaEl.innerHTML = '<div style="color:var(--neutral-500);font-size:11.5px;padding:14px;text-align:center;line-height:1.5;"><span class="material-symbols-rounded" style="font-size:16px;vertical-align:middle;opacity:0.6;">info</span> Ranking sem filtro — aplicável ao período total.</div>';
+    } else {
+      const top10 = devMarca.slice(0, 10);
     if (top10.length === 0) {
       marcaEl.innerHTML = '<div style="color:var(--neutral-500);font-size:12px;padding:16px;text-align:center;">Sem devoluções no período.</div>';
     } else {
@@ -28005,7 +28267,7 @@ function _fatRenderDevolucoes() {
         const pct = (m.valor_devolucao / maxVal * 100);
         return `
           <div style="display:flex;align-items:center;gap:8px;padding:6px 0;font-size:11.5px;">
-            <div style="flex:0 0 35%;max-width:35%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--brand-navy);font-weight:600;" title="${_esc(m.Marca)}">${_esc(m.Marca)}</div>
+            <div style="flex:0 0 35%;max-width:35%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--brand-navy);font-weight:600;" title="${esc(m.Marca)}">${esc(m.Marca)}</div>
             <div style="flex:1;height:12px;background:var(--neutral-100);border-radius:3px;position:relative;">
               <div style="height:100%;width:${pct}%;background:#E24B4A;border-radius:3px;"></div>
             </div>
@@ -28017,13 +28279,20 @@ function _fatRenderDevolucoes() {
         `;
       }).join('');
     }
+    } // fim else (devMarca !== null)
   }
+
+  // ========= Produtos mais devolvidos (com toggle Top N) =========
+  _fatDevRenderProdutos();
+
+  // ========= Cidades que mais devolvem (com toggle Top N) =========
+  _fatDevRenderCidades();
 
   // ========= Insights automáticos =========
   const insightsEl = document.getElementById('fatDevInsights');
   if (insightsEl) {
     const insights = _fatGerarInsightsDevolucoes({
-      devMensal, devEmpresa, devMarca, devClientes, mensal, empresaTotal, marcasTotal, clientesTotal, metaDev, metaFat,
+      devMensal, devEmpresa: dados.devEmpresa, devMarca: dados.devMarca, devClientes: dados.devClientes, mensal, empresaTotal, marcasTotal, clientesTotal, metaDev, metaFat, temFiltroPeriodo,
     });
     if (insights.length === 0) {
       insightsEl.innerHTML = '<div style="grid-column:1/-1;padding:14px;text-align:center;color:var(--neutral-500);font-size:12px;">Nenhum insight relevante no momento.</div>';
@@ -28043,16 +28312,136 @@ function _fatRenderDevolucoes() {
   }
 }
 
+// Renderiza top produtos devolvidos (respeita window._fatDevTopN.produtos)
+// Usa window._fatDevDadosCache.devProdutos (já filtrado pelo período atual).
+function _fatDevRenderProdutos() {
+  const el = document.getElementById('fatDevProdutos');
+  if (!el || !FAT_DATA) return;
+  const esc = s => String(s || '').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+
+  const cache = window._fatDevDadosCache || {};
+  const fonte = cache.devProdutos;
+
+  // Se for null (não temos dados granulares pro filtro), mostra aviso
+  if (fonte === null) {
+    el.innerHTML = '<div style="color:var(--neutral-500);font-size:11.5px;padding:14px;text-align:center;line-height:1.5;"><span class="material-symbols-rounded" style="font-size:16px;vertical-align:middle;opacity:0.6;">info</span> Ranking sem filtro — aplicável ao período total.</div>';
+    return;
+  }
+
+  const topN = (window._fatDevTopN?.produtos) || 10;
+  const lista = (fonte || FAT_DATA.devolucoes_produtos || []).slice(0, topN);
+
+  if (lista.length === 0) {
+    el.innerHTML = '<div style="color:var(--neutral-500);font-size:12px;padding:16px;text-align:center;">Sem devoluções no período.</div>';
+    return;
+  }
+
+  const maxVal = Math.max(...lista.map(p => p.valor_devolucao));
+  el.innerHTML = lista.map((p, idx) => {
+    const pct = (p.valor_devolucao / maxVal * 100);
+    const desc = p['Descrição do Produto'] || '—';
+    const marca = p.Marca && p.Marca !== 'N/D' ? p.Marca : '';
+    return `
+      <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px dashed var(--neutral-200);font-size:11.5px;">
+        <div style="flex:0 0 24px;height:24px;background:var(--neutral-100);color:var(--neutral-600);border-radius:4px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:10.5px;">${idx + 1}</div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-weight:600;color:var(--brand-navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${esc(desc)}">${esc(desc)}</div>
+          <div style="display:flex;align-items:center;gap:6px;margin-top:3px;">
+            <div style="flex:1;height:5px;background:var(--neutral-100);border-radius:3px;overflow:hidden;">
+              <div style="height:100%;width:${pct}%;background:#E24B4A;border-radius:3px;"></div>
+            </div>
+            ${marca ? `<span style="font-size:10px;color:var(--neutral-500);flex:0 0 auto;">${esc(marca)}</span>` : ''}
+          </div>
+        </div>
+        <div style="flex:0 0 auto;text-align:right;">
+          <div style="font-weight:700;color:#A32D2D;">${_fmtMoeda(p.valor_devolucao, true)}</div>
+          <div style="font-size:10px;color:var(--neutral-500);">${p.qtd_notas} nota${p.qtd_notas > 1 ? 's' : ''}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// Renderiza top cidades que devolvem (respeita window._fatDevTopN.cidades)
+// Usa window._fatDevDadosCache.devCidades (já filtrado pelo período atual).
+function _fatDevRenderCidades() {
+  const el = document.getElementById('fatDevCidades');
+  if (!el || !FAT_DATA) return;
+  const esc = s => String(s || '').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+
+  const cache = window._fatDevDadosCache || {};
+  const fonte = cache.devCidades;
+
+  if (fonte === null) {
+    el.innerHTML = '<div style="color:var(--neutral-500);font-size:11.5px;padding:14px;text-align:center;line-height:1.5;"><span class="material-symbols-rounded" style="font-size:16px;vertical-align:middle;opacity:0.6;">info</span> Ranking sem filtro — aplicável ao período total.</div>';
+    return;
+  }
+
+  const topN = (window._fatDevTopN?.cidades) || 10;
+  const lista = (fonte || FAT_DATA.devolucoes_cidades || []).slice(0, topN);
+
+  if (lista.length === 0) {
+    el.innerHTML = '<div style="color:var(--neutral-500);font-size:12px;padding:16px;text-align:center;">Sem devoluções no período.</div>';
+    return;
+  }
+
+  const maxVal = Math.max(...lista.map(c => c.valor_devolucao));
+  el.innerHTML = lista.map((c, idx) => {
+    const pct = (c.valor_devolucao / maxVal * 100);
+    return `
+      <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px dashed var(--neutral-200);font-size:11.5px;">
+        <div style="flex:0 0 24px;height:24px;background:var(--neutral-100);color:var(--neutral-600);border-radius:4px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:10.5px;">${idx + 1}</div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-weight:600;color:var(--brand-navy);">${esc(c.Cidade)}<span style="color:var(--neutral-500);font-weight:500;margin-left:4px;">${esc(c.Estado)}</span></div>
+          <div style="display:flex;align-items:center;gap:6px;margin-top:3px;">
+            <div style="flex:1;height:5px;background:var(--neutral-100);border-radius:3px;overflow:hidden;">
+              <div style="height:100%;width:${pct}%;background:#E24B4A;border-radius:3px;"></div>
+            </div>
+            <span style="font-size:10px;color:var(--neutral-500);flex:0 0 auto;">${c.qtd_clientes} cliente${c.qtd_clientes > 1 ? 's' : ''}</span>
+          </div>
+        </div>
+        <div style="flex:0 0 auto;text-align:right;">
+          <div style="font-weight:700;color:#A32D2D;">${_fmtMoeda(c.valor_devolucao, true)}</div>
+          <div style="font-size:10px;color:var(--neutral-500);">${c.qtd_notas} nota${c.qtd_notas > 1 ? 's' : ''}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// Muda o Top N de produtos ou cidades e re-renderiza só o bloco correspondente
+window._fatDevMudarTopN = function(tipo, n) {
+  if (!window._fatDevTopN) window._fatDevTopN = { produtos: 10, cidades: 10 };
+  window._fatDevTopN[tipo] = n;
+
+  // Atualiza visual dos botões do toggle
+  const toggleId = tipo === 'produtos' ? 'fatDevToggleProdutos' : 'fatDevToggleCidades';
+  const toggle = document.getElementById(toggleId);
+  if (toggle) {
+    toggle.querySelectorAll('button').forEach(btn => {
+      const ativo = parseInt(btn.dataset.top) === n;
+      btn.style.background = ativo ? 'var(--neutral-0)' : 'transparent';
+      btn.style.color = ativo ? 'var(--brand-navy)' : 'var(--neutral-600)';
+      btn.style.fontWeight = ativo ? '700' : '600';
+    });
+  }
+
+  // Re-renderiza só o bloco correspondente
+  if (tipo === 'produtos') _fatDevRenderProdutos();
+  else if (tipo === 'cidades') _fatDevRenderCidades();
+};
+
 // Gera insights automáticos de devoluções
 function _fatGerarInsightsDevolucoes(d) {
+  const esc = s => String(s || '').replace(/</g, '&lt;').replace(/"/g, '&quot;');
   const insights = [];
-  const { devMensal, devEmpresa, devMarca, devClientes, mensal, empresaTotal, marcasTotal, clientesTotal, metaDev, metaFat } = d;
+  const { devMensal, devEmpresa, devMarca, devClientes, mensal, empresaTotal, marcasTotal, clientesTotal, metaDev, metaFat, temFiltroPeriodo } = d;
 
   // 1. Taxa geral acima de 2%
   const taxaGeral = metaFat > 0 ? (metaDev / metaFat * 100) : 0;
   if (taxaGeral > 2) {
     insights.push({
-      titulo: `Taxa geral de devolução elevada (${taxaGeral.toFixed(2)}%)`,
+      titulo: `Taxa ${temFiltroPeriodo ? 'no período filtrado' : 'geral'} de devolução elevada (${taxaGeral.toFixed(2)}%)`,
       descricao: `Acima da média de mercado (geralmente 1-2%). Investigar causas raiz pode reduzir perda significativa.`,
       cor: '#A32D2D', icone: 'warning',
     });
@@ -28087,7 +28476,7 @@ function _fatGerarInsightsDevolucoes(d) {
   }
 
   // 3. Empresa com taxa pior
-  if (devEmpresa.length > 1) {
+  if (devEmpresa && devEmpresa.length > 1) {
     const comTaxa = devEmpresa.map(e => {
       const fatEmp = empresaTotal.find(f => f.Empresa === e.Empresa);
       const taxa = (fatEmp && fatEmp.faturamento > 0) ? (e.valor_devolucao / fatEmp.faturamento * 100) : 0;
@@ -28108,21 +28497,21 @@ function _fatGerarInsightsDevolucoes(d) {
   }
 
   // 4. Concentração em poucos clientes
-  if (devClientes.length >= 5 && metaDev > 0) {
+  if (devClientes && devClientes.length >= 5 && metaDev > 0) {
     const top5 = devClientes.slice(0, 5).reduce((s, c) => s + c.valor_devolucao, 0);
     const pct = (top5 / metaDev * 100);
     if (pct >= 50) {
       const topList = devClientes.slice(0, 3).map(c => c['Cliente (Nome Fantasia)']).join(', ');
       insights.push({
         titulo: `Top 5 clientes concentram ${pct.toFixed(0)}% das devoluções`,
-        descricao: `Foco comercial nesses contratos pode reduzir muito o total. Top 3: ${_esc(topList)}.`,
+        descricao: `Foco comercial nesses contratos pode reduzir muito o total. Top 3: ${esc(topList)}.`,
         cor: '#CF8500', icone: 'group',
       });
     }
   }
 
   // 5. Marca com taxa crítica
-  if (devMarca.length > 0) {
+  if (devMarca && devMarca.length > 0) {
     const marcasComTaxa = devMarca.map(m => {
       const fatM = marcasTotal.find(mm => mm.Marca === m.Marca);
       const taxa = (fatM && fatM.faturamento > 0) ? (m.valor_devolucao / fatM.faturamento * 100) : 0;
@@ -28140,13 +28529,13 @@ function _fatGerarInsightsDevolucoes(d) {
   }
 
   // 6. Cliente com devolução massiva
-  if (devClientes.length > 0) {
+  if (devClientes && devClientes.length > 0) {
     const top = devClientes[0];
     if (top.qtd <= 3 && top.valor_devolucao > (metaDev * 0.15)) {
       const pct = (top.valor_devolucao / metaDev * 100);
       insights.push({
         titulo: `1 cliente concentra ${pct.toFixed(0)}% das devoluções`,
-        descricao: `${_esc(top['Cliente (Nome Fantasia)'])} devolveu ${_fmtMoeda(top.valor_devolucao)} em apenas ${top.qtd} nota${top.qtd > 1 ? 's' : ''}. Provavelmente licitação/acordo pontual — vale validar contrato.`,
+        descricao: `${esc(top['Cliente (Nome Fantasia)'])} devolveu ${_fmtMoeda(top.valor_devolucao)} em apenas ${top.qtd} nota${top.qtd > 1 ? 's' : ''}. Provavelmente licitação/acordo pontual — vale validar contrato.`,
         cor: '#CF8500', icone: 'person',
       });
     }
@@ -28618,6 +29007,10 @@ function _fatRender() {
   // Sprint 9.28: se estiver na aba Insights, re-renderiza os cards (reage a mudanças de dados)
   if (_fatAbaAtiva === 'insights') {
     _fatRenderInsights();
+  }
+  // Sprint 9.30.3: se estiver na aba Devoluções, re-renderiza (reage a mudanças de filtro)
+  if (_fatAbaAtiva === 'devolucoes') {
+    _fatRenderDevolucoes();
   }
 
   const mensal = _fatFiltrarMensal();
