@@ -5703,7 +5703,7 @@ a {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.24-perf-mobile-acordeao',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.25-perf-mobile-acesso',
   APP_NAME: 'Nutricionais Visitas',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -13453,8 +13453,8 @@ function bottomNav(active) {
     { id: 'visits',  icon: 'list_alt',       label: 'Visitas', href: '#/visitas' },
     { id: 'checkin', icon: 'my_location',    label: 'Check-in', href: '#/checkin', primary: true },
     { id: 'agenda',  icon: 'calendar_month', label: 'Agenda',  href: '#/agenda' },
-    // Sprint 9.21.3: Faturar desabilitado (em desenvolvimento)
-    { id: 'billing', icon: 'payments',       label: 'Faturar', href: '#/faturamento', disabled: true },
+    // Sprint 9.32.25: Faturar substituído por Performance (já está funcional)
+    { id: 'performance', icon: 'insights',  label: 'Performance', href: '#/nutri/performance' },
   ];
   return `
     <nav class="bnav">
@@ -17245,24 +17245,46 @@ window._perfTrocarPeriodo = async function(periodo) {
 function renderNutriPerformanceFallback() {
   const user = requireAuth();
   if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
+
+  const periodo = window._perfPeriodo || '6m';
+  window._perfPeriodo = periodo;
+
+  // Sprint 9.32.25: agora renderiza de verdade no mobile (acordeão da Sprint 9.32.24)
+  setTimeout(async () => {
+    window._perfState = null;
+    _perfRender();
+    const state = await _perfCalcular({ userId: user.id, periodo });
+    window._perfState = state;
+    _perfRender();
+  }, 0);
+
   return `
     <div class="mobile-app">
       ${mobileTopBar({ title: 'Performance', showBack: true })}
-      <main class="mcontent">
-        <div style="padding:40px 24px;text-align:center;">
-          <span class="material-symbols-rounded" style="font-size:56px;color:#1D4ED8;">insights</span>
-          <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:18px;margin-top:14px;">Performance &amp; ROI</div>
-          <div style="font-size:13px;color:var(--neutral-600);margin-top:8px;line-height:1.5;">
-            Esta tela cruza suas visitas com o faturamento real das instituições.<br>
-            Por ora, só está disponível <strong>no desktop</strong> — é uma análise densa que fica melhor em tela grande.
+      <main class="mcontent" style="padding:14px;">
+        <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:12px;padding:12px 14px;margin-bottom:12px;">
+          <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:14px;display:flex;align-items:center;gap:6px;">
+            <span class="material-symbols-rounded" style="font-size:18px;color:#1D4ED8;">insights</span>
+            Performance &amp; ROI
           </div>
-          <a href="#/nutri/indicadores" style="display:inline-flex;align-items:center;gap:6px;margin-top:20px;background:var(--brand-lime);color:#fff;padding:12px 22px;border-radius:9999px;text-decoration:none;font-weight:700;font-size:13px;">
-            <span class="material-symbols-rounded" style="font-size:18px;">bar_chart</span>
-            Ver indicadores (mobile)
-          </a>
+          <div style="font-size:11.5px;color:var(--neutral-600);margin-top:3px;line-height:1.35;">Suas visitas × faturamento por CNPJ.</div>
+          <div class="review-tabs" style="margin-top:10px;display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;">
+            <button class="review-tab ${periodo === 'mes' ? 'is-active' : ''}" id="perfBtn-mes" onclick="_perfTrocarPeriodo('mes')" style="white-space:nowrap;flex-shrink:0;">Mês</button>
+            <button class="review-tab ${periodo === '3m' ? 'is-active' : ''}" id="perfBtn-3m" onclick="_perfTrocarPeriodo('3m')" style="white-space:nowrap;flex-shrink:0;">3m</button>
+            <button class="review-tab ${periodo === '6m' ? 'is-active' : ''}" id="perfBtn-6m" onclick="_perfTrocarPeriodo('6m')" style="white-space:nowrap;flex-shrink:0;">6m</button>
+            <button class="review-tab ${periodo === '12m' ? 'is-active' : ''}" id="perfBtn-12m" onclick="_perfTrocarPeriodo('12m')" style="white-space:nowrap;flex-shrink:0;">12m</button>
+            <button class="review-tab ${periodo === 'tudo' ? 'is-active' : ''}" id="perfBtn-tudo" onclick="_perfTrocarPeriodo('tudo')" style="white-space:nowrap;flex-shrink:0;">Tudo</button>
+          </div>
+        </div>
+
+        <div id="perfContent">
+          <div style="padding:40px;text-align:center;color:var(--neutral-500);font-size:13px;background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:12px;">
+            <div class="splash__spinner" style="margin:0 auto 10px;"></div>
+            Calculando performance...
+          </div>
         </div>
       </main>
-      ${bottomNav('')}
+      ${bottomNav('performance')}
     </div>
   `;
 }
@@ -22327,7 +22349,8 @@ function renderAdminDrawer() {
     { href: '#/nutri/profissionais',  icon: 'stethoscope',    titulo: 'Profissionais', desc: 'Contatos nos hospitais' },
     { href: '#/nutri/itens-padronizados', icon: 'inventory_2', titulo: 'Itens padronizados', desc: 'Concorrentes nos hospitais que você visita' },
     { href: '#/nutri/indicadores',    icon: 'bar_chart',      titulo: 'Indicadores',   desc: 'Sua produção em números' },
-    // Sprint 9.32.11: Faturamento removido do menu — funcionalidade ainda não disponível pra nutri
+    // Sprint 9.32.25: Performance & ROI agora também no drawer
+    { href: '#/nutri/performance',    icon: 'insights',       titulo: 'Performance & ROI', desc: 'Faturamento dos hospitais que você visita' },
     { href: '#/logout',               icon: 'logout',         titulo: 'Sair',          desc: 'Encerrar sessão' },
   ];
   const items = perfil === 'admin' ? itemsAdmin : itemsNutri;
