@@ -5703,7 +5703,7 @@ a {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.28-fix-json-nan',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.29-clientes-lista-separado',
   APP_NAME: 'Nutricionais Visitas',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -27961,8 +27961,39 @@ window._fatToggleClienteDropdown = function() {
       const inp = document.getElementById('fatClienteBusca');
       if (inp) { inp.value = ''; inp.focus(); _fatFiltrarClientes(); }
     }, 50);
+    // Sprint 9.32.29: lazy fetch do clientes_lista.json (só na primeira vez)
+    _fatCarregarClientesLista();
   }
 };
+
+// Sprint 9.32.29: carrega clientes_lista.json sob demanda (em vez de embutir no HTML)
+window._fatClientesListaLoading = false;
+window._fatClientesListaErro = null;
+async function _fatCarregarClientesLista() {
+  // Já carregado? Sai
+  if (FAT_DATA?.clientes_lista && FAT_DATA.clientes_lista.length > 0) return;
+  if (window._fatClientesListaLoading) return; // já tá carregando
+
+  window._fatClientesListaLoading = true;
+  window._fatClientesListaErro = null;
+  try {
+    const resp = await fetch('clientes_lista.json', { cache: 'no-store' });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const lista = await resp.json();
+    if (!Array.isArray(lista)) throw new Error('JSON não é array');
+    if (!FAT_DATA) FAT_DATA = {};
+    FAT_DATA.clientes_lista = lista;
+    console.log(`[Faturamento] clientes_lista carregado: ${lista.length} clientes`);
+  } catch (e) {
+    console.error('[Faturamento] Erro ao carregar clientes_lista.json:', e);
+    window._fatClientesListaErro = e.message || String(e);
+  } finally {
+    window._fatClientesListaLoading = false;
+    // Re-renderiza o dropdown se ainda estiver aberto
+    const dd = document.getElementById('fatClienteDropdown');
+    if (dd && dd.style.display !== 'none') _fatFiltrarClientes();
+  }
+}
 
 window._fatFiltrarClientes = function() {
   const inp = document.getElementById('fatClienteBusca');
@@ -27996,12 +28027,32 @@ window._fatFiltrarClientes = function() {
 
   const todos = FAT_DATA?.clientes_lista || [];
 
+  // Sprint 9.32.29: estado de loading do fetch lazy
+  if (window._fatClientesListaLoading) {
+    html += `<div style="padding:18px 14px;text-align:center;color:var(--neutral-500);font-size:11.5px;line-height:1.5;">
+      <div class="splash__spinner" style="width:20px;height:20px;margin:0 auto 8px;"></div>
+      Carregando lista de clientes...
+    </div>`;
+    lista.innerHTML = html;
+    return;
+  }
+
+  if (window._fatClientesListaErro) {
+    html += `<div style="padding:18px 14px;text-align:center;color:var(--status-danger);font-size:11.5px;line-height:1.5;">
+      <div style="font-weight:600;margin-bottom:6px;">Erro ao carregar lista de clientes</div>
+      <div style="color:var(--neutral-500);font-size:10.5px;">${(window._fatClientesListaErro || '').replace(/</g,'&lt;').slice(0,150)}</div>
+      <div style="color:var(--neutral-500);font-size:10.5px;margin-top:4px;">Verifique se <code>clientes_lista.json</code> está na mesma pasta do app.</div>
+    </div>`;
+    lista.innerHTML = html;
+    return;
+  }
+
   // Se não tem clientes_lista (Python antigo), avisa pro usuário
   if (todos.length === 0) {
     html += `<div style="padding:18px 14px;text-align:center;color:var(--neutral-500);font-size:11.5px;line-height:1.5;">
       <div style="color:var(--brand-navy);font-weight:600;margin-bottom:6px;">Busca de clientes não disponível</div>
       Rode <code style="background:var(--neutral-100);padding:1px 5px;border-radius:3px;">gerar_faturamento_json.py</code><br>
-      e atualize o JSON no index.html.
+      pra gerar o arquivo <code>clientes_lista.json</code>.
     </div>`;
     lista.innerHTML = html;
     return;
