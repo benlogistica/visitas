@@ -5680,7 +5680,7 @@ a {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.17-negociar-cancelar-trocar',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.19-fix-voltar-ranking',
   APP_NAME: 'Nutricionais Visitas',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -14533,6 +14533,8 @@ const routes = {
   '#/admin/pendentes':{ title: 'Pendências de aprovação', icon: 'hourglass_top', render: renderAdminPendentes },
   '#/admin/objetivos':{ title: 'Objetivos de visita', icon: 'flag', render: renderAdminObjetivos },
   '#/admin/itens-padronizados':{ title: 'Itens padronizados', icon: 'inventory_2', render: renderItensPadronizados },
+  // Sprint 9.32.18: tela de Ranking & Insights (mesma rota pra admin e nutri)
+  '#/itens-padronizados/ranking': { title: 'Ranking & Insights', icon: 'emoji_events', render: renderItensRankingInsights },
   '#/admin/faturamento':{ title: 'Faturamento', icon: 'paid', render: renderFaturamento },
   '#/admin/roi-equipe':{ title: 'ROI da Equipe', icon: 'insights', render: renderAdminRoiEquipeDesktop },
   '#/admin/mapear-cnpjs':{ title: 'Mapear CNPJs', icon: 'link', render: renderAdminMapearCnpjsDesktop },
@@ -30213,7 +30215,8 @@ async function listarItensPadronizados({ apenasMeus = false } = {}) {
     .from('itens_padronizados')
     .select(`
       id, instituicao_id, descricao_produto, marca, categoria, observacao,
-      status, convertido_em, registrado_por, criado_em, atualizado_em,
+      status, convertido_em, convertido_em_descricao, convertido_em_marca, convertido_em_catalogo_id,
+      registrado_por, criado_em, atualizado_em,
       origem, profissional_conversao_id, conversao_iniciada_em,
       revisado_admin, revisado_por, revisado_em,
       instituicoes(id, nome, cidade),
@@ -31089,6 +31092,223 @@ window.handleAssumirConversao = async function(id) {
 // Sprint 9.32.17: cancelar negociação (quem está negociando + admin)
 // Pergunta motivo (texto livre), volta status pra 'padronizado',
 // limpa profissional_conversao_id e item-alvo. Tudo registrado no log.
+// Sprint 9.32.18: Modal estilizado pra pedir motivo de cancelamento (substitui prompt nativo)
+async function showModalMotivoCancelamento(itemDesc) {
+  return new Promise((resolve) => {
+    const sugestoes = [
+      'Hospital optou por outra marca',
+      'Hospital não quis',
+      'Desisti — produto não atende',
+      'Sem orçamento no momento',
+      'Vou tentar outra hora',
+      'Decisão postergada pelo hospital',
+    ];
+
+    const backdrop = document.createElement('div');
+    backdrop.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,0.55);display:flex;align-items:center;justify-content:center;z-index:9999;padding:20px;';
+    backdrop.innerHTML = `
+      <div style="background:var(--neutral-0);border-radius:16px;max-width:480px;width:100%;max-height:90vh;overflow-y:auto;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,0.25);">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+          <span style="font-size:24px;">✕</span>
+          <h2 style="margin:0;font-family:var(--font-display);font-size:18px;color:var(--brand-navy);font-weight:700;">Cancelar negociação</h2>
+        </div>
+        <div style="font-size:13px;color:var(--neutral-600);margin-bottom:14px;line-height:1.4;">
+          O item <strong style="color:var(--brand-navy);">${itemDesc.replace(/</g,'&lt;')}</strong> voltará pra "padronizado" e o histórico será preservado.
+        </div>
+
+        <label style="display:block;font-size:13px;font-weight:600;color:var(--brand-navy);margin-bottom:6px;">Motivo do cancelamento <span style="color:var(--status-danger);">*</span></label>
+        <textarea id="mmcMotivo" rows="3" placeholder="Por que está cancelando?"
+                  style="width:100%;padding:10px 12px;border:1.5px solid var(--neutral-200);border-radius:10px;font-size:14px;font-family:inherit;resize:vertical;min-height:70px;"></textarea>
+
+        <div style="margin-top:10px;font-size:11.5px;color:var(--neutral-500);margin-bottom:6px;font-weight:600;">Sugestões rápidas:</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:18px;">
+          ${sugestoes.map(s => `
+            <button type="button" data-motivo="${s.replace(/"/g,'&quot;')}" class="mmc-sug" style="background:var(--neutral-100);border:1px solid var(--neutral-200);color:var(--neutral-600);padding:5px 10px;border-radius:9999px;font-size:11.5px;font-weight:500;cursor:pointer;font-family:inherit;">${s.replace(/</g,'&lt;')}</button>
+          `).join('')}
+        </div>
+
+        <div style="display:flex;gap:10px;justify-content:flex-end;">
+          <button id="mmcCancel" type="button" style="background:transparent;border:1.5px solid var(--neutral-200);color:var(--neutral-600);padding:10px 20px;border-radius:10px;font-weight:600;cursor:pointer;font-family:inherit;font-size:13px;">Voltar</button>
+          <button id="mmcOk" type="button" style="background:var(--status-danger);border:0;color:#fff;padding:10px 20px;border-radius:10px;font-weight:700;cursor:pointer;font-family:inherit;font-size:13px;">Cancelar negociação</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(backdrop);
+
+    const txt = backdrop.querySelector('#mmcMotivo');
+    txt.focus();
+
+    backdrop.querySelectorAll('.mmc-sug').forEach(btn => {
+      btn.addEventListener('click', () => {
+        txt.value = btn.getAttribute('data-motivo');
+        txt.focus();
+      });
+    });
+
+    const cleanup = () => backdrop.remove();
+    backdrop.querySelector('#mmcCancel').onclick = () => { cleanup(); resolve(null); };
+    backdrop.onclick = (e) => { if (e.target === backdrop) { cleanup(); resolve(null); } };
+    backdrop.querySelector('#mmcOk').onclick = () => {
+      const motivo = txt.value.trim();
+      if (!motivo) {
+        setFlash('warning', 'Informe um motivo pra cancelar.');
+        txt.focus();
+        return;
+      }
+      cleanup();
+      resolve(motivo);
+    };
+  });
+}
+
+// Sprint 9.32.18: Modal de histórico do item (timeline visual)
+async function showModalHistoricoItem(itemId) {
+  // Carrega item + log
+  let item = null;
+  let logs = [];
+  try {
+    const { data: it } = await db.from('itens_padronizados').select('*, instituicoes(nome)').eq('id', itemId).maybeSingle();
+    item = it;
+    const { data: lg } = await db.from('itens_padronizados_log').select('*').eq('item_id', itemId).order('feito_em', { ascending: true });
+    logs = lg || [];
+
+    // Pega usuários referenciados pra mostrar nome no timeline
+    const userIds = [...new Set(logs.map(l => l.feito_por).filter(Boolean))];
+    let usuariosPorId = {};
+    if (userIds.length > 0) {
+      const { data: us } = await db.from('usuarios').select('id, nome').in('id', userIds);
+      if (us) for (const u of us) usuariosPorId[u.id] = u.nome;
+    }
+    // Anexa nome no log
+    logs.forEach(l => { l._nomeUsuario = usuariosPorId[l.feito_por] || 'Usuário desconhecido'; });
+  } catch (err) {
+    setFlash('danger', 'Erro ao carregar histórico: ' + err.message);
+    return;
+  }
+
+  if (!item) {
+    setFlash('warning', 'Item não encontrado.');
+    return;
+  }
+
+  // Mapeia ações pra labels visuais
+  const acoesConfig = {
+    cadastrou:           { icon: '📌', label: 'Item cadastrado',    cor: 'var(--neutral-500)' },
+    mudou_status:        { icon: '🔄', label: 'Mudou status',       cor: 'var(--status-info)' },
+    realocou_alvo:       { icon: '↔', label: 'Trocou produto-alvo', cor: 'var(--status-info)' },
+    assumiu_conversao:   { icon: '🤝', label: 'Assumiu negociação', cor: 'var(--status-info)' },
+    cancelou_negociacao: { icon: '✕', label: 'Cancelou negociação', cor: 'var(--status-danger)' },
+    editou:              { icon: '✏️', label: 'Editou item',         cor: 'var(--neutral-500)' },
+    excluiu:             { icon: '🗑', label: 'Excluiu',             cor: 'var(--status-danger)' },
+  };
+
+  const fmtDt = (iso) => {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+  };
+
+  // Renderiza cada entrada do timeline com detalhes contextuais
+  const timelineHtml = logs.length === 0 ? `
+    <div style="text-align:center;padding:30px 14px;color:var(--neutral-500);font-size:13px;">
+      <div style="font-size:32px;margin-bottom:8px;opacity:0.5;">📭</div>
+      Nenhuma ação registrada ainda
+    </div>
+  ` : logs.map((l, idx) => {
+    const cfg = acoesConfig[l.acao] || { icon: '•', label: l.acao, cor: 'var(--neutral-500)' };
+    const ehUltimo = idx === logs.length - 1;
+
+    // Detalhe contextual baseado na ação
+    let detalhe = '';
+    if (l.acao === 'mudou_status' && l.dados_antes && l.dados_depois) {
+      const sAntes = l.dados_antes.status;
+      const sDepois = l.dados_depois.status;
+      const lblAntes = ITENS_PAD_STATUS[sAntes]?.label || sAntes;
+      const lblDepois = ITENS_PAD_STATUS[sDepois]?.label || sDepois;
+      detalhe = `<span style="color:var(--neutral-600);">${lblAntes}</span> → <strong style="color:${cfg.cor};">${lblDepois}</strong>`;
+      if (sDepois === 'convertido' && l.dados_depois.convertido_em_descricao) {
+        detalhe += `<div style="margin-top:4px;font-size:11.5px;color:var(--status-success);">🎯 Pra: <strong>${l.dados_depois.convertido_em_descricao.replace(/</g,'&lt;')}</strong></div>`;
+      }
+    } else if (l.acao === 'realocou_alvo' && l.dados_antes && l.dados_depois) {
+      const de = l.dados_antes.convertido_em_descricao || '—';
+      const para = l.dados_depois.convertido_em_descricao || '—';
+      detalhe = `<span style="color:var(--neutral-600);">${de.replace(/</g,'&lt;')}</span> → <strong style="color:${cfg.cor};">${para.replace(/</g,'&lt;')}</strong>`;
+    } else if (l.acao === 'assumiu_conversao' && l.dados_depois) {
+      const ofer = l.dados_depois.convertido_em_descricao;
+      if (ofer) detalhe = `<span style="color:var(--neutral-600);">Oferecendo</span> <strong>${ofer.replace(/</g,'&lt;')}</strong>`;
+    } else if (l.acao === 'cancelou_negociacao' && l.dados_depois) {
+      const motivo = l.dados_depois.motivo_cancelamento;
+      if (motivo) {
+        detalhe = `<div style="background:#FEE2E2;color:#991B1B;border-radius:6px;padding:6px 10px;margin-top:4px;font-size:11.5px;font-style:italic;">💬 "${motivo.replace(/</g,'&lt;').replace(/"/g,'&quot;')}"</div>`;
+      }
+    } else if (l.acao === 'cadastrou' && l.dados_depois) {
+      detalhe = `<span style="color:var(--neutral-600);">Item criado: <strong>${(l.dados_depois.descricao_produto || '').replace(/</g,'&lt;')}</strong></span>`;
+    }
+
+    return `
+      <div style="display:flex;gap:12px;position:relative;padding-bottom:${ehUltimo ? '4px' : '20px'};">
+        <!-- Linha vertical do timeline -->
+        ${!ehUltimo ? `<div style="position:absolute;left:14px;top:30px;bottom:0;width:2px;background:var(--neutral-200);"></div>` : ''}
+        <!-- Bolinha com ícone -->
+        <div style="width:30px;height:30px;border-radius:50%;background:${cfg.cor};color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;z-index:1;">
+          ${cfg.icon}
+        </div>
+        <!-- Conteúdo -->
+        <div style="flex:1;padding-top:2px;">
+          <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;">
+            <strong style="color:var(--brand-navy);font-size:13px;">${cfg.label}</strong>
+            <span style="font-size:11px;color:var(--neutral-500);">${fmtDt(l.feito_em)}</span>
+          </div>
+          <div style="font-size:11.5px;color:var(--neutral-600);margin-top:1px;">por <strong>${l._nomeUsuario.replace(/</g,'&lt;')}</strong></div>
+          ${detalhe ? `<div style="margin-top:5px;font-size:12.5px;line-height:1.4;">${detalhe}</div>` : ''}
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  const itemDesc = (item.descricao_produto || '').replace(/</g, '&lt;');
+  const itemMarca = (item.marca || '').replace(/</g, '&lt;');
+  const instNome = (item.instituicoes?.nome || '').replace(/</g, '&lt;');
+  const stCfg = ITENS_PAD_STATUS[item.status] || ITENS_PAD_STATUS.padronizado;
+
+  const backdrop = document.createElement('div');
+  backdrop.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,0.55);display:flex;align-items:center;justify-content:center;z-index:9999;padding:20px;';
+  backdrop.innerHTML = `
+    <div style="background:var(--neutral-0);border-radius:16px;max-width:560px;width:100%;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.25);">
+      <!-- Header -->
+      <div style="padding:20px 24px 14px;border-bottom:1px solid var(--neutral-100);">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+          <span style="font-size:24px;">📜</span>
+          <h2 style="margin:0;font-family:var(--font-display);font-size:18px;color:var(--brand-navy);font-weight:700;flex:1;">Histórico do item</h2>
+          <button id="mhiClose" type="button" style="background:transparent;border:0;cursor:pointer;color:var(--neutral-500);font-size:22px;line-height:1;padding:2px 6px;">×</button>
+        </div>
+        <div style="background:var(--neutral-100);border-radius:10px;padding:10px 14px;margin-top:8px;">
+          <div style="font-size:11px;color:var(--neutral-500);text-transform:uppercase;letter-spacing:0.4px;font-weight:600;margin-bottom:2px;">${instNome}</div>
+          <div style="font-weight:600;color:var(--brand-navy);font-size:14px;">${itemDesc}</div>
+          ${itemMarca ? `<div style="color:var(--neutral-600);font-size:12px;margin-top:1px;">Marca: ${itemMarca}</div>` : ''}
+          <div style="margin-top:8px;display:inline-flex;align-items:center;gap:5px;background:${stCfg.bg};color:${stCfg.cor};padding:3px 10px;border-radius:9999px;font-size:11px;font-weight:700;">
+            ${stCfg.emoji} ${stCfg.label}
+          </div>
+        </div>
+      </div>
+
+      <!-- Timeline -->
+      <div style="overflow-y:auto;flex:1;padding:18px 24px 22px;">
+        ${timelineHtml}
+      </div>
+    </div>
+  `;
+  document.body.appendChild(backdrop);
+
+  const cleanup = () => backdrop.remove();
+  backdrop.querySelector('#mhiClose').onclick = cleanup;
+  backdrop.onclick = (e) => { if (e.target === backdrop) cleanup(); };
+}
+
+window.handleVerHistoricoItem = function(id) {
+  showModalHistoricoItem(id);
+};
+
 window.handleCancelarNegociacao = async function(id) {
   if (await bloqueioSimulacao('cancelar negociação')) return;
   const user = getCurrentUserReal();
@@ -31115,18 +31335,10 @@ window.handleCancelarNegociacao = async function(id) {
       return;
     }
 
-    // Pergunta motivo (texto livre)
+    // Pergunta motivo (modal estilizado em vez de prompt nativo) — Sprint 9.32.18
     const itemDesc = antes.descricao_produto || 'item';
-    const motivoBruto = prompt(
-      `Cancelar negociação de "${itemDesc}".\n\nQual o motivo? (ex: hospital não quis, desisti, vou tentar outra hora)`,
-      ''
-    );
-    if (motivoBruto === null) return; // cancelou prompt
-    const motivo = motivoBruto.trim();
-    if (!motivo) {
-      setFlash('warning', 'Informe um motivo pra cancelar a negociação.');
-      return;
-    }
+    const motivo = await showModalMotivoCancelamento(itemDesc);
+    if (!motivo) return; // cancelou ou vazio
 
     // Volta pra padronizado, limpa convertedor e item-alvo
     const payload = {
@@ -31163,6 +31375,259 @@ window.handleCancelarNegociacao = async function(id) {
 };
 
 // Renderizador principal — funciona pra admin e nutri
+// ─── Sprint 9.32.18: Tela de Ranking & Insights ──────────────────────────
+// Página dedicada com KPIs, ranking de conversões, top hospitais convertidos,
+// produtos mais oferecidos. Acessível pelo botão "Ranking & Insights" na
+// página de Itens padronizados (visível em mobile + desktop).
+function renderItensRankingInsights() {
+  const user = requireAuth();
+  if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
+
+  setTimeout(async () => {
+    let itens = [];
+    try {
+      itens = await listarItensPadronizados({ apenasMeus: false });
+    } catch (err) {
+      console.warn('[ranking] erro listar:', err);
+    }
+    _renderRankingConteudo(itens);
+  }, 0);
+
+  const isDesk = isDesktop();
+  const ehAdmin = user.perfil === 'admin';
+  const ehNutriRoute = (window.location.hash || '').includes('nutri');
+  // Rota de volta correta baseada em perfil/rota atual
+  const rotaVoltar = (ehAdmin && !ehNutriRoute) ? '#/admin/itens-padronizados' : '#/nutri/itens-padronizados';
+
+  const content = `
+    <div style="padding:18px 16px 60px;max-width:1100px;margin:0 auto;">
+      <!-- Sprint 9.32.19: link de voltar elegante acima do título -->
+      <a href="${rotaVoltar}" style="display:inline-flex;align-items:center;gap:6px;color:var(--neutral-600);font-size:12.5px;font-weight:600;text-decoration:none;margin-bottom:10px;padding:4px 0;transition:color 140ms;" onmouseover="this.style.color='var(--brand-navy)'" onmouseout="this.style.color='var(--neutral-600)'">
+        <span style="font-size:16px;line-height:1;">←</span>
+        Voltar pra Itens padronizados
+      </a>
+
+      <!-- Header com título -->
+      <div style="margin-bottom:18px;">
+        <h1 style="font-family:var(--font-display);font-size:24px;font-weight:700;color:var(--brand-navy);margin:0;line-height:1.15;display:flex;align-items:center;gap:10px;">
+          <span style="font-size:28px;">🏆</span>
+          Ranking & Insights
+        </h1>
+        <div style="font-size:13px;color:var(--neutral-600);margin-top:6px;line-height:1.4;max-width:640px;">Quem mais converteu, hospitais com mais ações, produtos mais oferecidos.</div>
+      </div>
+
+      <div id="riConteudo">
+        <div style="text-align:center;padding:40px;color:var(--neutral-500);font-size:13px;">Carregando insights...</div>
+      </div>
+    </div>
+  `;
+
+  // No desktop, usa shell do admin/nutri pra ter sidebar + topbar
+  if (isDesk) {
+    if (ehAdmin && !ehNutriRoute) {
+      return desktopShell({ content, title: 'Ranking & Insights', icon: 'emoji_events', breadcrumb: ['Itens padronizados', 'Ranking'], activeId: 'itens-padronizados' });
+    }
+    return desktopShellNutri({ content, title: 'Ranking & Insights', breadcrumb: ['Itens padronizados', 'Ranking'], activeId: 'itens-padronizados' });
+  }
+
+  // Mobile
+  return `
+    <div class="mobile-app">
+      ${mobileTopBar({ title: 'Ranking & Insights', showBack: true })}
+      <main class="mcontent">
+        ${content}
+      </main>
+      ${bottomNav('itens-padronizados')}
+    </div>
+  `;
+}
+
+// Renderiza o conteúdo (separado pra reutilizar)
+function _renderRankingConteudo(itens) {
+  const cont = document.getElementById('riConteudo');
+  if (!cont) return;
+
+  const total = itens.length;
+  const convertidos = itens.filter(i => i.status === 'convertido').length;
+  const emNeg = itens.filter(i => i.status === 'em_negociacao').length;
+  const padronizados = itens.filter(i => i.status === 'padronizado').length;
+  const perdidos = itens.filter(i => i.status === 'perdido').length;
+  const taxaConv = total > 0 ? Math.round((convertidos / total) * 100) : 0;
+
+  // Ranking pessoal: quem mais converteu
+  const porUsuario = {};
+  itens.forEach(i => {
+    if (i.status !== 'convertido' || !i.profissional_conversao_id) return;
+    const uid = i.profissional_conversao_id;
+    if (!porUsuario[uid]) {
+      porUsuario[uid] = {
+        nome: i.convertedor?.nome || 'Sem nome',
+        foto: i.convertedor?.foto_url || null,
+        qtd: 0,
+      };
+    }
+    porUsuario[uid].qtd++;
+  });
+  const rankingUsuarios = Object.values(porUsuario).sort((a, b) => b.qtd - a.qtd).slice(0, 10);
+
+  // Top hospitais com mais conversões
+  const porHospital = {};
+  itens.forEach(i => {
+    if (i.status !== 'convertido') return;
+    const hid = i.instituicao_id;
+    if (!porHospital[hid]) {
+      porHospital[hid] = {
+        nome: i.instituicoes?.nome || 'Sem nome',
+        cidade: i.instituicoes?.cidade || '',
+        qtd: 0,
+      };
+    }
+    porHospital[hid].qtd++;
+  });
+  const rankingHospitais = Object.values(porHospital).sort((a, b) => b.qtd - a.qtd).slice(0, 10);
+
+  // Produtos mais oferecidos (em negociação + convertidos)
+  const porProduto = {};
+  itens.forEach(i => {
+    if (!i.convertido_em_descricao) return;
+    const key = i.convertido_em_descricao.toLowerCase().trim();
+    if (!porProduto[key]) {
+      porProduto[key] = {
+        descricao: i.convertido_em_descricao,
+        marca: i.convertido_em_marca || '',
+        oferecendo: 0,
+        convertidos: 0,
+      };
+    }
+    if (i.status === 'em_negociacao') porProduto[key].oferecendo++;
+    if (i.status === 'convertido') porProduto[key].convertidos++;
+  });
+  const topProdutos = Object.values(porProduto).sort((a, b) => (b.oferecendo + b.convertidos) - (a.oferecendo + a.convertidos)).slice(0, 10);
+
+  // Top concorrentes (marcas mais cadastradas como padronizadas)
+  const porMarca = {};
+  itens.forEach(i => {
+    if (!i.marca) return;
+    const key = i.marca.trim();
+    if (!porMarca[key]) porMarca[key] = 0;
+    porMarca[key]++;
+  });
+  const topConcorrentes = Object.entries(porMarca).sort((a, b) => b[1] - a[1]).slice(0, 8);
+
+  cont.innerHTML = `
+    <!-- KPIs -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:18px;">
+      <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:12px;padding:14px;">
+        <div style="font-size:10.5px;color:var(--neutral-500);font-weight:700;letter-spacing:0.04em;text-transform:uppercase;">Total cadastrado</div>
+        <div style="font-family:var(--font-display);font-size:26px;font-weight:700;color:var(--brand-navy);line-height:1.1;margin-top:4px;">${total}</div>
+        <div style="font-size:11px;color:var(--neutral-500);margin-top:2px;">itens em todos status</div>
+      </div>
+      <div style="background:linear-gradient(135deg,#FBBF24 0%,#F59E0B 100%);border:0;border-radius:12px;padding:14px;color:#fff;">
+        <div style="font-size:10.5px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;opacity:0.9;">🏆 Convertidos</div>
+        <div style="font-family:var(--font-display);font-size:26px;font-weight:700;line-height:1.1;margin-top:4px;">${convertidos}</div>
+        <div style="font-size:11px;opacity:0.9;margin-top:2px;">${taxaConv}% de taxa</div>
+      </div>
+      <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:12px;padding:14px;">
+        <div style="font-size:10.5px;color:var(--neutral-500);font-weight:700;letter-spacing:0.04em;text-transform:uppercase;">🤝 Em negociação</div>
+        <div style="font-family:var(--font-display);font-size:26px;font-weight:700;color:var(--status-info);line-height:1.1;margin-top:4px;">${emNeg}</div>
+        <div style="font-size:11px;color:var(--neutral-500);margin-top:2px;">ativas agora</div>
+      </div>
+      <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:12px;padding:14px;">
+        <div style="font-size:10.5px;color:var(--neutral-500);font-weight:700;letter-spacing:0.04em;text-transform:uppercase;">📋 Padronizados</div>
+        <div style="font-family:var(--font-display);font-size:26px;font-weight:700;color:var(--neutral-700);line-height:1.1;margin-top:4px;">${padronizados}</div>
+        <div style="font-size:11px;color:var(--neutral-500);margin-top:2px;">aguardando ação</div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr;gap:14px;" class="ri-grid">
+      <!-- Ranking de profissionais -->
+      <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:12px;padding:16px;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+          <span style="font-size:20px;">🥇</span>
+          <h3 style="margin:0;font-family:var(--font-display);font-size:15px;font-weight:700;color:var(--brand-navy);">Top conversores da equipe</h3>
+        </div>
+        ${rankingUsuarios.length === 0 ? `
+          <div style="text-align:center;padding:24px;color:var(--neutral-500);font-size:13px;">Nenhuma conversão registrada ainda</div>
+        ` : rankingUsuarios.map((u, i) => {
+          const medalhas = ['🥇', '🥈', '🥉'];
+          const medalha = medalhas[i] || `${i+1}º`;
+          return `
+            <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--neutral-100);">
+              <div style="width:30px;text-align:center;font-size:${i < 3 ? '18px' : '12px'};font-weight:700;color:var(--neutral-600);">${medalha}</div>
+              <div style="flex:1;font-size:13px;color:var(--brand-navy);font-weight:600;">${u.nome.replace(/</g,'&lt;')}</div>
+              <div style="display:inline-flex;align-items:center;gap:4px;background:var(--brand-lime);color:#fff;padding:3px 10px;border-radius:9999px;font-size:11.5px;font-weight:700;">${u.qtd}</div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+
+      <!-- Top hospitais -->
+      <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:12px;padding:16px;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+          <span style="font-size:20px;">🏥</span>
+          <h3 style="margin:0;font-family:var(--font-display);font-size:15px;font-weight:700;color:var(--brand-navy);">Hospitais com mais conversões</h3>
+        </div>
+        ${rankingHospitais.length === 0 ? `
+          <div style="text-align:center;padding:24px;color:var(--neutral-500);font-size:13px;">Nenhuma conversão registrada ainda</div>
+        ` : rankingHospitais.map((h, i) => `
+          <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--neutral-100);">
+            <div style="width:24px;text-align:center;font-size:12px;font-weight:700;color:var(--neutral-500);">${i+1}º</div>
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:13px;color:var(--brand-navy);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${h.nome.replace(/</g,'&lt;')}</div>
+              ${h.cidade ? `<div style="font-size:11px;color:var(--neutral-500);">${h.cidade.replace(/</g,'&lt;')}</div>` : ''}
+            </div>
+            <div style="display:inline-flex;align-items:center;gap:4px;background:var(--status-success);color:#fff;padding:3px 10px;border-radius:9999px;font-size:11.5px;font-weight:700;">${h.qtd}</div>
+          </div>
+        `).join('')}
+      </div>
+
+      <!-- Produtos NHSC mais oferecidos / convertidos -->
+      <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:12px;padding:16px;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+          <span style="font-size:20px;">📦</span>
+          <h3 style="margin:0;font-family:var(--font-display);font-size:15px;font-weight:700;color:var(--brand-navy);">Nossos produtos no jogo</h3>
+        </div>
+        ${topProdutos.length === 0 ? `
+          <div style="text-align:center;padding:24px;color:var(--neutral-500);font-size:13px;">Nenhum produto em negociação ainda</div>
+        ` : topProdutos.map(p => `
+          <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--neutral-100);">
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:13px;color:var(--brand-navy);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${p.descricao.replace(/</g,'&lt;')}</div>
+              ${p.marca ? `<div style="font-size:11px;color:var(--neutral-500);">${p.marca.replace(/</g,'&lt;')}</div>` : ''}
+            </div>
+            <div style="display:flex;gap:4px;flex-shrink:0;">
+              ${p.oferecendo > 0 ? `<span title="Em negociação" style="background:#E4ECFD;color:var(--status-info);padding:2px 8px;border-radius:9999px;font-size:11px;font-weight:700;">🤝 ${p.oferecendo}</span>` : ''}
+              ${p.convertidos > 0 ? `<span title="Convertidos" style="background:#E6F6EF;color:var(--status-success);padding:2px 8px;border-radius:9999px;font-size:11px;font-weight:700;">🏆 ${p.convertidos}</span>` : ''}
+            </div>
+          </div>
+        `).join('')}
+      </div>
+
+      <!-- Top concorrentes (marcas) -->
+      <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:12px;padding:16px;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+          <span style="font-size:20px;">⚔️</span>
+          <h3 style="margin:0;font-family:var(--font-display);font-size:15px;font-weight:700;color:var(--brand-navy);">Concorrentes mais presentes</h3>
+        </div>
+        ${topConcorrentes.length === 0 ? `
+          <div style="text-align:center;padding:24px;color:var(--neutral-500);font-size:13px;">Nenhum concorrente cadastrado</div>
+        ` : topConcorrentes.map(([marca, qtd]) => `
+          <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--neutral-100);">
+            <div style="flex:1;font-size:13px;color:var(--brand-navy);font-weight:600;">${marca.replace(/</g,'&lt;')}</div>
+            <div style="display:inline-flex;align-items:center;gap:4px;background:var(--neutral-100);color:var(--neutral-700);padding:3px 10px;border-radius:9999px;font-size:11.5px;font-weight:700;">${qtd}</div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+
+    <style>
+      @media (min-width: 768px) {
+        .ri-grid { grid-template-columns: 1fr 1fr !important; }
+      }
+    </style>
+  `;
+}
+
 function renderItensPadronizados(opts = {}) {
   const embed = opts.embed === true;
   const user = requireAuth();
@@ -31176,7 +31641,7 @@ function renderItensPadronizados(opts = {}) {
   const apenasMeus = false;
 
   // State local
-  if (!window._ipFiltro) window._ipFiltro = { categoria: 'todas', status: 'todos', instituicao: 'todas', busca: '' };
+  if (!window._ipFiltro) window._ipFiltro = { categoria: 'todas', status: 'todos', instituicao: 'todas', busca: '', esconderPadronizado: false, esconderEmNeg: false, esconderConvertido: false };
 
   setTimeout(async () => {
     window._reloadItensPadronizados = async () => {
@@ -31200,10 +31665,16 @@ function renderItensPadronizados(opts = {}) {
               : 'Catálogo de produtos por instituição — visível pra todos da equipe.'}
           </div>
         </div>
-        <button onclick="handleNovoItemPadronizado()" style="background:var(--brand-lime);color:#fff;border:0;padding:10px 18px;border-radius:9999px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-family:inherit;flex-shrink:0;">
-          <span class="material-symbols-rounded" style="font-size:18px;">add</span>
-          Novo item
-        </button>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;flex-shrink:0;">
+          <button onclick="window.location.hash='#/itens-padronizados/ranking'" style="background:linear-gradient(135deg,#FBBF24 0%,#F59E0B 100%);color:#fff;border:0;padding:10px 18px;border-radius:9999px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-family:inherit;box-shadow:0 4px 12px rgba(245,158,11,0.25);" title="Ver ranking, KPIs e insights">
+            <span style="font-size:16px;">🏆</span>
+            Ranking & Insights
+          </button>
+          <button onclick="handleNovoItemPadronizado()" style="background:var(--brand-lime);color:#fff;border:0;padding:10px 18px;border-radius:9999px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-family:inherit;">
+            <span class="material-symbols-rounded" style="font-size:18px;">add</span>
+            Novo item
+          </button>
+        </div>
       </div>
 
       <!-- KPIs rápidos -->
@@ -31228,6 +31699,22 @@ function renderItensPadronizados(opts = {}) {
               <option value="todos">Todos status</option>
               ${Object.entries(ITENS_PAD_STATUS).map(([id, s]) => `<option value="${id}"${window._ipFiltro.status === id ? ' selected' : ''}>${s.label}</option>`).join('')}
             </select>
+          </div>
+
+          <!-- Sprint 9.32.18: 3 toggles de esconder por status -->
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;font-size:12px;">
+            <button type="button" id="ipTogglePad" onclick="window.toggleEsconderStatusIp('padronizado')" class="ip-toggle${window._ipFiltro.esconderPadronizado ? ' is-off' : ''}" title="Mostrar/esconder padronizados">
+              <span class="ip-toggle__dot"></span>
+              📋 Padronizados
+            </button>
+            <button type="button" id="ipToggleNeg" onclick="window.toggleEsconderStatusIp('em_negociacao')" class="ip-toggle${window._ipFiltro.esconderEmNeg ? ' is-off' : ''}" title="Mostrar/esconder em negociação">
+              <span class="ip-toggle__dot"></span>
+              🤝 Em negociação
+            </button>
+            <button type="button" id="ipToggleConv" onclick="window.toggleEsconderStatusIp('convertido')" class="ip-toggle${window._ipFiltro.esconderConvertido ? ' is-off' : ''}" title="Mostrar/esconder convertidos">
+              <span class="ip-toggle__dot"></span>
+              🏆 Convertidos
+            </button>
           </div>
           <div id="ipLista" style="display:flex;flex-direction:column;gap:10px;">
             <div style="text-align:center;padding:30px;color:var(--neutral-500);font-size:13px;">Carregando...</div>
@@ -31315,6 +31802,38 @@ function renderItensPadronizados(opts = {}) {
         border-bottom: 1px solid var(--neutral-100);
       }
       .ip-rank-row:last-child { border-bottom: 0; }
+      /* Sprint 9.32.18: toggles de esconder por status */
+      .ip-toggle {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        border-radius: 9999px;
+        border: 1.5px solid var(--neutral-200);
+        background: var(--neutral-0);
+        color: var(--neutral-700);
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        font-family: inherit;
+        transition: all 140ms;
+      }
+      .ip-toggle:hover { border-color: var(--neutral-400); }
+      .ip-toggle__dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--brand-lime);
+        flex-shrink: 0;
+      }
+      .ip-toggle.is-off {
+        background: var(--neutral-100);
+        color: var(--neutral-400);
+        border-color: var(--neutral-200);
+        text-decoration: line-through;
+        opacity: 0.7;
+      }
+      .ip-toggle.is-off .ip-toggle__dot { background: var(--neutral-300); }
     </style>
   `;
 
@@ -31348,12 +31867,35 @@ function renderItensPadronizadosDesktop() {
 }
 
 // Aplica filtros + monta o DOM
+// Sprint 9.32.18: liga/desliga toggle de esconder por status, atualiza UI e re-renderiza
+window.toggleEsconderStatusIp = function(status) {
+  if (!window._ipFiltro) return;
+  if (status === 'padronizado') {
+    window._ipFiltro.esconderPadronizado = !window._ipFiltro.esconderPadronizado;
+    const btn = document.getElementById('ipTogglePad');
+    if (btn) btn.classList.toggle('is-off', window._ipFiltro.esconderPadronizado);
+  } else if (status === 'em_negociacao') {
+    window._ipFiltro.esconderEmNeg = !window._ipFiltro.esconderEmNeg;
+    const btn = document.getElementById('ipToggleNeg');
+    if (btn) btn.classList.toggle('is-off', window._ipFiltro.esconderEmNeg);
+  } else if (status === 'convertido') {
+    window._ipFiltro.esconderConvertido = !window._ipFiltro.esconderConvertido;
+    const btn = document.getElementById('ipToggleConv');
+    if (btn) btn.classList.toggle('is-off', window._ipFiltro.esconderConvertido);
+  }
+  if (typeof _ipRender === 'function') _ipRender();
+};
+
 function _ipRender() {
   const itens = window._ipItens || [];
   const filtro = window._ipFiltro;
   const filtrados = itens.filter(it => {
     if (filtro.categoria !== 'todas' && it.categoria !== filtro.categoria) return false;
     if (filtro.status !== 'todos' && it.status !== filtro.status) return false;
+    // Sprint 9.32.18: 3 toggles de esconder por status
+    if (filtro.esconderPadronizado && it.status === 'padronizado') return false;
+    if (filtro.esconderEmNeg && it.status === 'em_negociacao') return false;
+    if (filtro.esconderConvertido && it.status === 'convertido') return false;
     if (filtro.busca) {
       const q = filtro.busca.toLowerCase();
       const hay = [
@@ -31510,6 +32052,7 @@ function _ipRender() {
                 ${it.status === 'em_negociacao' && !euConvertendo ? `<button class="ip-status-quick" onclick="handleAssumirConversao('${it.id}')" style="color:var(--status-info);" title="Assumir a negociação deste item">↪ Assumir</button>` : ''}
                 ${it.status !== 'convertido' ? `<button class="ip-status-quick" onclick="handleMudarStatusItem('${it.id}', 'convertido')" style="color:var(--status-success);">🏆 Converteu!</button>` : ''}
                 ${it.status === 'em_negociacao' && (euConvertendo || (userAtual && userAtual.perfil === 'admin')) ? `<button class="ip-status-quick" onclick="handleCancelarNegociacao('${it.id}')" style="color:var(--status-danger);" title="Cancelar negociação (volta o item pra padronizado)">✕ Cancelar negociação</button>` : ''}
+                ${(it.status === 'convertido' || it.status === 'em_negociacao') ? `<button class="ip-status-quick" onclick="handleVerHistoricoItem('${it.id}')" style="color:var(--neutral-600);" title="Ver histórico completo">📜 Histórico</button>` : ''}
                 ${ehMeuItem || (userAtual && userAtual.perfil === 'admin') ? `<button class="ip-status-quick" onclick="handleEditarItemPadronizado('${it.id}')">✏️ Editar</button>` : ''}
                 ${ehMeuItem || (userAtual && userAtual.perfil === 'admin') ? `<button class="ip-status-quick" onclick="handleExcluirItemPadronizado('${it.id}')" style="color:var(--status-danger);">🗑️</button>` : ''}
               </div>
