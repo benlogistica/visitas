@@ -5620,7 +5620,7 @@ a {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.7-fix-edicao-devolvida',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.8-banner-pendencias-sino-desktop',
   APP_NAME: 'Nutricionais Visitas',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -6123,14 +6123,20 @@ function iconeNotificacao(tipo) {
 // Atualiza o badge do sininho — chamado pelo polling e depois de ações
 async function atualizarBadgeNotificacoes() {
   const badge = document.getElementById('notifBadge');
-  if (!badge) return;
+  const badgeDesktop = document.getElementById('notifBadgeDesktop');
+  if (!badge && !badgeDesktop) return;
   const n = await contarNotificacoesNaoLidas();
-  if (n > 0) {
-    badge.textContent = n > 99 ? '99+' : String(n);
-    badge.style.display = 'flex';
-  } else {
-    badge.style.display = 'none';
-  }
+  const setVal = (el) => {
+    if (!el) return;
+    if (n > 0) {
+      el.textContent = n > 99 ? '99+' : String(n);
+      el.style.display = 'flex';
+    } else {
+      el.style.display = 'none';
+    }
+  };
+  setVal(badge);
+  setVal(badgeDesktop);
 }
 
 // Abre/fecha o dropdown
@@ -6138,7 +6144,17 @@ window.toggleNotifDropdown = async function(ev) {
   if (ev) ev.stopPropagation();
   const existing = document.getElementById('notifDropdown');
   if (existing) { existing.remove(); return; }
-  const trigger = document.getElementById('notifTrigger');
+  // Trigger pode ser o sino mobile (#notifTrigger) ou o sino desktop (botão da topbar)
+  // Sprint 9.32.8: suporta ambos contextos
+  let trigger = document.getElementById('notifTrigger');
+  if (!trigger && ev && ev.currentTarget) {
+    trigger = ev.currentTarget;
+  }
+  if (!trigger) {
+    // Último fallback: busca pelo badge desktop
+    const badge = document.getElementById('notifBadgeDesktop');
+    if (badge && badge.parentElement) trigger = badge.parentElement;
+  }
   if (!trigger) return;
 
   // Cria dropdown anexado ao body (pra ficar acima de tudo)
@@ -15525,6 +15541,13 @@ function renderInicio() {
     } catch (err) {
       console.warn('[Home] Erro banner reabertura:', err);
     }
+
+    // Sprint 9.32.8: Banner de pendências de revisão
+    try {
+      await carregarBannerPendenciasRevisaoNutri();
+    } catch (err) {
+      console.warn('[Home] Erro banner pendências revisão:', err);
+    }
   }, 0);
 
   const primeiroNome = user.nome.split(' ')[0];
@@ -15554,6 +15577,8 @@ function renderInicio() {
 
         <!-- Banners de reabertura (Sprint 8.12) — preenchidos async -->
         <div id="nutriReaberturaBanner" style="display:none;"></div>
+        <!-- Banner de pendências de revisão (Sprint 9.32.8) — preenchido async -->
+        <div id="nutriPendenciasRevisaoBanner" style="display:none;"></div>
 
         <a href="#/checkin" class="cta-checkin">
           <span class="cta-checkin__icon">
@@ -15722,6 +15747,13 @@ function renderInicioNutriDesktop() {
     } catch (err) {
       console.error('[home nutri desktop]', err);
     }
+
+    // Sprint 9.32.8: Banner de pendências de revisão
+    try {
+      await carregarBannerPendenciasRevisaoNutri();
+    } catch (err) {
+      console.warn('[home nutri desktop] erro banner pendências:', err);
+    }
   }, 0);
 
   const anoAtual = new Date().getFullYear();
@@ -15739,6 +15771,9 @@ function renderInicioNutriDesktop() {
           Fazer check-in
         </a>
       </div>
+
+      <!-- Sprint 9.32.8: Banner de pendências de revisão (preenchido async) -->
+      <div id="nutriPendenciasRevisaoBanner" style="display:none;margin-bottom:18px;"></div>
 
       <!-- Grid 4 KPIs espaçado -->
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px;">
@@ -23738,6 +23773,71 @@ async function carregarBannerReaberturaNutri() {
   }
   banner.style.display = 'block';
   banner.innerHTML = cards.join('');
+}
+
+// Sprint 9.32.8: Banner de pendências de revisão na home do nutri
+// Mostra visitas devolvidas pelo admin que precisam de correção (status=rascunho
+// com revisao_motivo preenchido e revisao_resolvida_em null).
+// Funciona tanto na home mobile quanto desktop (mesmo ID de elemento).
+async function carregarBannerPendenciasRevisaoNutri() {
+  const banner = document.getElementById('nutriPendenciasRevisaoBanner');
+  if (!banner || !db) return;
+  const user = getCurrentUser();
+  if (!user) return;
+
+  // Busca visitas do nutri em revisão solicitada
+  const { data, error } = await db
+    .from('visitas')
+    .select('id, revisao_motivo, revisao_solicitada_em, instituicoes(nome)')
+    .eq('nutricionista_id', user.id)
+    .eq('status', 'rascunho')
+    .not('revisao_motivo', 'is', null)
+    .is('revisao_resolvida_em', null)
+    .order('revisao_solicitada_em', { ascending: false })
+    .limit(10);
+
+  if (error || !data || data.length === 0) {
+    banner.style.display = 'none';
+    return;
+  }
+
+  const total = data.length;
+  const primeira = data[0];
+  const instNome = primeira.instituicoes?.nome || 'Instituição';
+  const dt = primeira.revisao_solicitada_em ? new Date(primeira.revisao_solicitada_em) : null;
+  const dataFmt = dt ? dt.toLocaleDateString('pt-BR') : '';
+
+  // Texto adaptativo: 1 visita vs várias
+  const titulo = total === 1
+    ? '1 visita aguardando correção'
+    : `${total} visitas aguardando correção`;
+  const subtitulo = total === 1
+    ? `<strong>${instNome.replace(/</g,'&lt;')}</strong> — devolvida${dataFmt ? ` em ${dataFmt}` : ''}`
+    : `Mais recente: <strong>${instNome.replace(/</g,'&lt;')}</strong>${dataFmt ? ` em ${dataFmt}` : ''}`;
+
+  // Link: se for 1 só, vai direto pro relatório; se for várias, vai pra lista
+  const href = total === 1
+    ? `#/visitas/relatorio?id=${primeira.id}`
+    : `#/visitas`;
+
+  banner.style.display = 'block';
+  banner.innerHTML = `
+    <a href="${href}" style="
+      display:flex;align-items:center;gap:12px;padding:14px 16px;margin-bottom:10px;
+      background:linear-gradient(135deg,#FEF4E1 0%,#FFF9EB 100%);
+      border:1.5px solid rgba(245,158,11,0.45);border-radius:12px;
+      text-decoration:none;color:inherit;transition:all 140ms;position:relative;
+    " onmouseover="this.style.transform='translateY(-1px)';this.style.boxShadow='0 4px 12px rgba(245,158,11,0.18)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
+      <div style="width:40px;height:40px;border-radius:10px;background:#F59E0B;color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+        <span class="material-symbols-rounded" style="font-size:22px;">rate_review</span>
+      </div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:14px;line-height:1.3;">${titulo}</div>
+        <div style="font-size:11.5px;color:#92400E;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${subtitulo}</div>
+      </div>
+      <span class="material-symbols-rounded" style="font-size:18px;color:#B45309;">arrow_forward</span>
+    </a>
+  `;
 }
 
 // Modal genérico de input (com textarea)
