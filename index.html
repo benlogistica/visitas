@@ -5680,7 +5680,7 @@ a {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.16-modal-conversao',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.17-negociar-cancelar-trocar',
   APP_NAME: 'Nutricionais Visitas',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -30656,11 +30656,12 @@ window.handleExcluirItemPadronizado = async function(id) {
   }
 };
 
-// Mudança rápida de status (sem modal completo)
-// ─── Sprint 9.32.16: Modal de conversão ───────────────────────────────
-// Quando o nutri clica em "Converter", abre um modal pedindo qual produto
-// NHSC entrou no lugar. Autocomplete do catálogo + opção de cadastrar novo.
-async function showModalConversao(itemPadronizado) {
+// ─── Sprint 9.32.16/17: Modal de seleção de produto NHSC ──────────────
+// Reutilizado em "Negociar" (define alvo) E "Converter" (registra resultado).
+// Modo: 'negociar' | 'converter' (padrão)
+//   - negociar: título "Negociar item" / botão "🤝 Iniciar negociação"
+//   - converter: título "Converter item" / botão "🏆 Confirmar conversão"
+async function showModalConversao(itemPadronizado, modo = 'converter') {
   return new Promise(async (resolve) => {
     // Carrega catálogo de produtos NHSC
     let catalogo = [];
@@ -30678,38 +30679,61 @@ async function showModalConversao(itemPadronizado) {
     const itemDesc = (itemPadronizado.descricao_produto || '').replace(/</g, '&lt;');
     const itemMarca = (itemPadronizado.marca || '').replace(/</g, '&lt;');
 
+    // Configuração por modo
+    const cfg = modo === 'negociar' ? {
+      icone: '🤝',
+      titulo: 'Negociar item',
+      descricao: 'Qual produto da nossa linha você vai oferecer no lugar deste? Pesquise o catálogo ou cadastre um novo.',
+      labelCampo: 'Produto que você vai oferecer',
+      btnLabel: '🤝 Iniciar negociação',
+      btnCor: 'var(--status-info)',
+      cardCor: '#E4ECFD',
+      cardBorda: 'var(--status-info)',
+      cardLabel: 'Vou oferecer',
+    } : {
+      icone: '🏆',
+      titulo: 'Converter item',
+      descricao: 'Este item virou qual produto da nossa linha? Procure o produto ou cadastre um novo.',
+      labelCampo: 'Produto que entrou no lugar',
+      btnLabel: '🏆 Confirmar conversão',
+      btnCor: 'var(--status-success)',
+      cardCor: '#E6F6EF',
+      cardBorda: 'var(--status-success)',
+      cardLabel: 'Selecionado',
+    };
+
     const backdrop = document.createElement('div');
     backdrop.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,0.55);display:flex;align-items:center;justify-content:center;z-index:9999;padding:20px;';
     backdrop.innerHTML = `
       <div style="background:var(--neutral-0);border-radius:16px;max-width:520px;width:100%;max-height:90vh;overflow-y:auto;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,0.25);">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
-          <span style="font-size:24px;">🏆</span>
-          <h2 style="margin:0;font-family:var(--font-display);font-size:18px;color:var(--brand-navy);font-weight:700;">Converter item</h2>
+          <span style="font-size:24px;">${cfg.icone}</span>
+          <h2 style="margin:0;font-family:var(--font-display);font-size:18px;color:var(--brand-navy);font-weight:700;">${cfg.titulo}</h2>
         </div>
         <div style="font-size:13px;color:var(--neutral-600);margin-bottom:14px;line-height:1.4;">
-          Este item virou qual produto da nossa linha? Procure o produto NHSC ou cadastre um novo.
+          ${cfg.descricao}
         </div>
 
         <!-- Card mostrando o item original -->
         <div style="background:var(--neutral-100);border-radius:10px;padding:10px 14px;margin-bottom:18px;font-size:12.5px;">
-          <div style="color:var(--neutral-500);margin-bottom:2px;font-size:11px;text-transform:uppercase;letter-spacing:0.4px;font-weight:600;">Item padronizado (concorrente)</div>
+          <div style="color:var(--neutral-500);margin-bottom:2px;font-size:11px;text-transform:uppercase;letter-spacing:0.4px;font-weight:600;">Item do hospital (concorrente)</div>
           <div style="font-weight:600;color:var(--brand-navy);">${itemDesc}</div>
           ${itemMarca ? `<div style="color:var(--neutral-600);font-size:11.5px;margin-top:1px;">Marca: ${itemMarca}</div>` : ''}
         </div>
 
         <!-- Campo de busca/seleção do produto NHSC -->
         <div style="margin-bottom:14px;position:relative;">
-          <label style="display:block;font-size:13px;font-weight:600;color:var(--brand-navy);margin-bottom:6px;">Produto NHSC que entrou no lugar <span style="color:var(--status-danger);">*</span></label>
-          <input type="text" id="mcvProduto" autocomplete="off" placeholder="Digite o nome do produto NHSC..."
+          <label style="display:block;font-size:13px;font-weight:600;color:var(--brand-navy);margin-bottom:6px;">${cfg.labelCampo} <span style="color:var(--status-danger);">*</span></label>
+          <input type="text" id="mcvProduto" autocomplete="off" placeholder="Digite o nome do produto..."
                  style="width:100%;padding:10px 12px;border:1.5px solid var(--neutral-200);border-radius:10px;font-size:14px;font-family:inherit;" />
           <div id="mcvProdutoSugestoes" style="position:absolute;top:100%;left:0;right:0;background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:10px;margin-top:4px;max-height:200px;overflow-y:auto;z-index:10;display:none;box-shadow:0 4px 12px rgba(0,0,0,0.1);"></div>
         </div>
 
         <!-- Card que aparece quando seleciona um produto do catálogo -->
-        <div id="mcvSelecionado" style="display:none;background:#E6F6EF;border:1.5px solid var(--status-success);border-radius:10px;padding:12px 14px;margin-bottom:14px;">
+        <div id="mcvSelecionado" style="display:none;background:${cfg.cardCor};border:1.5px solid ${cfg.cardBorda};border-radius:10px;padding:12px 14px;margin-bottom:14px;">
           <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">
             <div style="flex:1;">
-              <div style="font-size:11px;color:var(--status-success);text-transform:uppercase;letter-spacing:0.4px;font-weight:700;margin-bottom:2px;">✓ Selecionado</div>
+              <div style="font-size:11px;color:${cfg.cardBorda};text-transform:uppercase;letter-spacing:0.4px;font-weight:700;margin-bottom:2px;">✓ ${cfg.cardLabel}</div>
               <div id="mcvSelecionadoNome" style="font-weight:600;color:var(--brand-navy);font-size:14px;"></div>
               <div id="mcvSelecionadoMarca" style="font-size:12px;color:var(--neutral-600);margin-top:2px;"></div>
             </div>
@@ -30733,7 +30757,7 @@ async function showModalConversao(itemPadronizado) {
 
         <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:18px;">
           <button id="mcvCancel" type="button" style="background:transparent;border:1.5px solid var(--neutral-200);color:var(--neutral-600);padding:10px 20px;border-radius:10px;font-weight:600;cursor:pointer;font-family:inherit;font-size:13px;">Cancelar</button>
-          <button id="mcvOk" type="button" style="background:var(--status-success);border:0;color:#fff;padding:10px 20px;border-radius:10px;font-weight:700;cursor:pointer;font-family:inherit;font-size:13px;">🏆 Confirmar conversão</button>
+          <button id="mcvOk" type="button" style="background:${cfg.btnCor};border:0;color:#fff;padding:10px 20px;border-radius:10px;font-weight:700;cursor:pointer;font-family:inherit;font-size:13px;">${cfg.btnLabel}</button>
         </div>
       </div>
     `;
@@ -30913,11 +30937,24 @@ window.handleMudarStatusItem = async function(id, novoStatus) {
     if (!antes) return;
     if (antes.status === novoStatus) return;
 
-    // Sprint 9.32.16: se for converter, abre modal pedindo qual produto NHSC entrou
+    // Sprint 9.32.16/17: se for converter, define o produto-alvo
+    // - Se já tem item-alvo (vindo de negociação), USA ele direto, sem perguntar
+    // - Senão (conversão direta sem negociação prévia), abre modal
     let dadosConversao = null;
     if (novoStatus === 'convertido') {
-      dadosConversao = await showModalConversao(antes);
-      if (!dadosConversao) return; // cancelou
+      const jaTemAlvo = antes.convertido_em_descricao && antes.status === 'em_negociacao';
+      if (jaTemAlvo) {
+        // Reutiliza o item-alvo definido na negociação
+        dadosConversao = {
+          descricao: antes.convertido_em_descricao,
+          marca: antes.convertido_em_marca,
+          catalogo_id: antes.convertido_em_catalogo_id,
+        };
+      } else {
+        // Sem item-alvo prévio — abre modal
+        dadosConversao = await showModalConversao(antes, 'converter');
+        if (!dadosConversao) return; // cancelou
+      }
     }
 
     const updatePayload = { status: novoStatus };
@@ -30980,11 +31017,8 @@ window.handleAssumirConversao = async function(id) {
       } catch (_) {}
     }
 
-    // Se EU já estou convertendo, nada a fazer
-    if (antes.profissional_conversao_id === user.id && antes.status === 'em_negociacao') {
-      setFlash('info', 'Você já está convertendo este item.');
-      return;
-    }
+    // Sprint 9.32.17: detecta se é troca de alvo (eu já estou negociando, troca produto)
+    const ehTrocaDeAlvo = antes.profissional_conversao_id === user.id && antes.status === 'em_negociacao';
 
     // Se OUTRO está convertendo, pergunta antes de assumir
     if (antes.profissional_conversao_id && antes.profissional_conversao_id !== user.id) {
@@ -30994,18 +31028,29 @@ window.handleAssumirConversao = async function(id) {
       const tempoLabel = dias === null ? '' : (dias === 0 ? ' (hoje)' : (dias === 1 ? ' (ontem)' : ` (há ${dias} dias)`));
 
       const ok = confirm(
-        `Esse item já está em conversão por ${convAnterior?.nome || 'outro profissional'} desde ${dataLabel}${tempoLabel}.\n\n` +
-        `Você quer ASSUMIR a conversão? Em casos comuns como férias do colega, isso é esperado.\n\n` +
+        `Esse item já está em negociação por ${convAnterior?.nome || 'outro profissional'} desde ${dataLabel}${tempoLabel}.\n\n` +
+        `Você quer ASSUMIR a negociação? Em casos comuns como férias do colega, isso é esperado.\n\n` +
         `O histórico ficará registrado.`
       );
       if (!ok) return;
     }
 
-    // Atualiza: status, profissional, data de início
+    // Sprint 9.32.17: pede produto NHSC alvo (modo "negociar")
+    const dadosNeg = await showModalConversao(antes, 'negociar');
+    if (!dadosNeg) return; // cancelou
+
+    // Atualiza: status, profissional, data de início, item-alvo da negociação
     const payload = {
       status: 'em_negociacao',
       profissional_conversao_id: user.id,
-      conversao_iniciada_em: new Date().toISOString(),
+      conversao_iniciada_em: ehTrocaDeAlvo
+        ? antes.conversao_iniciada_em  // mantém data original se for só troca de alvo
+        : new Date().toISOString(),
+      // Salvamos o "item-alvo da negociação" nos mesmos campos de conversão.
+      // Quando converter, esse alvo já vira o item convertido (não pergunta de novo).
+      convertido_em_descricao: dadosNeg.descricao,
+      convertido_em_marca: dadosNeg.marca || null,
+      convertido_em_catalogo_id: dadosNeg.catalogo_id || null,
     };
 
     const { data: depois, error: upErr } = await db
@@ -31019,20 +31064,100 @@ window.handleAssumirConversao = async function(id) {
     await registrarLogItem({
       itemId: id,
       instituicaoId: depois.instituicao_id,
-      acao: antes.profissional_conversao_id && antes.profissional_conversao_id !== user.id ? 'assumiu_conversao' : 'mudou_status',
+      acao: ehTrocaDeAlvo ? 'realocou_alvo' :
+            (antes.profissional_conversao_id && antes.profissional_conversao_id !== user.id ? 'assumiu_conversao' : 'mudou_status'),
       dadosAntes: antes,
       dadosDepois: depois,
     });
 
-    if (antes.profissional_conversao_id && antes.profissional_conversao_id !== user.id) {
-      setFlash('success', `Você assumiu a conversão deste item. 🤝`);
+    // Toast contextual
+    if (ehTrocaDeAlvo && antes.convertido_em_descricao) {
+      setFlash('success', `Realocado de "${antes.convertido_em_descricao}" para "${dadosNeg.descricao}". 🔄`);
+    } else if (antes.profissional_conversao_id && antes.profissional_conversao_id !== user.id) {
+      setFlash('success', `Você assumiu a negociação. Oferecendo "${dadosNeg.descricao}". 🤝`);
     } else {
-      setFlash('success', `Item em negociação por você. 🤝`);
+      setFlash('success', `Em negociação por você. Oferecendo "${dadosNeg.descricao}". 🤝`);
     }
 
     if (typeof window._reloadItensPadronizados === 'function') window._reloadItensPadronizados();
   } catch (err) {
     console.error('[itens] erro assumir:', err);
+    setFlash('danger', 'Erro: ' + err.message);
+  }
+};
+
+// Sprint 9.32.17: cancelar negociação (quem está negociando + admin)
+// Pergunta motivo (texto livre), volta status pra 'padronizado',
+// limpa profissional_conversao_id e item-alvo. Tudo registrado no log.
+window.handleCancelarNegociacao = async function(id) {
+  if (await bloqueioSimulacao('cancelar negociação')) return;
+  const user = getCurrentUserReal();
+  if (!user) return;
+  try {
+    const { data: antes, error } = await db
+      .from('itens_padronizados')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!antes) { setFlash('warning', 'Item não encontrado.'); return; }
+
+    if (antes.status !== 'em_negociacao') {
+      setFlash('warning', 'Este item não está em negociação.');
+      return;
+    }
+
+    // Permissão: só quem está negociando OU admin pode cancelar
+    const ehAdmin = user.perfil === 'admin';
+    const ehDono = antes.profissional_conversao_id === user.id;
+    if (!ehAdmin && !ehDono) {
+      setFlash('warning', 'Apenas quem está negociando ou um admin pode cancelar.');
+      return;
+    }
+
+    // Pergunta motivo (texto livre)
+    const itemDesc = antes.descricao_produto || 'item';
+    const motivoBruto = prompt(
+      `Cancelar negociação de "${itemDesc}".\n\nQual o motivo? (ex: hospital não quis, desisti, vou tentar outra hora)`,
+      ''
+    );
+    if (motivoBruto === null) return; // cancelou prompt
+    const motivo = motivoBruto.trim();
+    if (!motivo) {
+      setFlash('warning', 'Informe um motivo pra cancelar a negociação.');
+      return;
+    }
+
+    // Volta pra padronizado, limpa convertedor e item-alvo
+    const payload = {
+      status: 'padronizado',
+      profissional_conversao_id: null,
+      conversao_iniciada_em: null,
+      convertido_em_descricao: null,
+      convertido_em_marca: null,
+      convertido_em_catalogo_id: null,
+    };
+
+    const { data: depois, error: upErr } = await db
+      .from('itens_padronizados')
+      .update(payload)
+      .eq('id', id)
+      .select()
+      .single();
+    if (upErr) throw new Error(upErr.message);
+
+    await registrarLogItem({
+      itemId: id,
+      instituicaoId: depois.instituicao_id,
+      acao: 'cancelou_negociacao',
+      dadosAntes: antes,
+      dadosDepois: { ...depois, motivo_cancelamento: motivo },
+    });
+
+    setFlash('success', `Negociação cancelada. Motivo: "${motivo}"`);
+    if (typeof window._reloadItensPadronizados === 'function') window._reloadItensPadronizados();
+  } catch (err) {
+    console.error('[itens] erro cancelar negociação:', err);
     setFlash('danger', 'Erro: ' + err.message);
   }
 };
@@ -31337,6 +31462,21 @@ function _ipRender() {
             </div>
             ${it.observacao ? `<div style="font-size:12px;color:var(--neutral-600);font-style:italic;padding:0 4px;">💬 ${it.observacao.replace(/</g,'&lt;')}</div>` : ''}
 
+            <!-- Sprint 9.32.17: card mostra item-alvo durante negociação -->
+            ${it.status === 'em_negociacao' && it.convertido_em_descricao ? `
+              <div style="background:#E4ECFD;border:1.5px solid var(--status-info);border-radius:8px;padding:8px 12px;margin:0 4px;display:flex;align-items:center;gap:8px;">
+                <span style="font-size:18px;">🎯</span>
+                <div style="flex:1;font-size:12px;line-height:1.3;">
+                  <span style="color:var(--neutral-600);">Oferecendo</span>
+                  <strong style="color:var(--brand-navy);display:block;">${it.convertido_em_descricao.replace(/</g,'&lt;')}</strong>
+                  ${it.convertido_em_marca ? `<span style="color:var(--neutral-500);font-size:11px;">${it.convertido_em_marca.replace(/</g,'&lt;')}</span>` : ''}
+                </div>
+                ${(euConvertendo || (userAtual && userAtual.perfil === 'admin')) ? `
+                  <button class="ip-status-quick" onclick="handleAssumirConversao('${it.id}')" style="color:var(--status-info);background:transparent;border:1px solid var(--status-info);font-size:10.5px;padding:3px 8px;" title="Trocar pra outro produto">↔ Trocar</button>
+                ` : ''}
+              </div>
+            ` : ''}
+
             <!-- Sprint 9.32.16: mostra produto NHSC pra qual foi convertido -->
             ${it.status === 'convertido' && it.convertido_em_descricao ? `
               <div style="background:#E6F6EF;border:1.5px solid var(--status-success);border-radius:8px;padding:8px 12px;margin:0 4px;display:flex;align-items:center;gap:8px;">
@@ -31366,9 +31506,10 @@ function _ipRender() {
 
             <div class="ip-card__row" style="border-top:1px dashed var(--neutral-200);padding-top:8px;margin-top:2px;">
               <div style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap;">
-                ${it.status !== 'em_negociacao' && it.status !== 'convertido' ? `<button class="ip-status-quick" onclick="handleAssumirConversao('${it.id}')" style="color:var(--status-info);" title="Marcar item como em negociação por você">🤝 Negociar</button>` : ''}
-                ${it.status === 'em_negociacao' && !euConvertendo ? `<button class="ip-status-quick" onclick="handleAssumirConversao('${it.id}')" style="color:var(--status-info);" title="Assumir a conversão deste item">↪ Assumir</button>` : ''}
+                ${it.status !== 'em_negociacao' && it.status !== 'convertido' ? `<button class="ip-status-quick" onclick="handleAssumirConversao('${it.id}')" style="color:var(--status-info);" title="Iniciar negociação (vai pedir qual produto você vai oferecer)">🤝 Negociar</button>` : ''}
+                ${it.status === 'em_negociacao' && !euConvertendo ? `<button class="ip-status-quick" onclick="handleAssumirConversao('${it.id}')" style="color:var(--status-info);" title="Assumir a negociação deste item">↪ Assumir</button>` : ''}
                 ${it.status !== 'convertido' ? `<button class="ip-status-quick" onclick="handleMudarStatusItem('${it.id}', 'convertido')" style="color:var(--status-success);">🏆 Converteu!</button>` : ''}
+                ${it.status === 'em_negociacao' && (euConvertendo || (userAtual && userAtual.perfil === 'admin')) ? `<button class="ip-status-quick" onclick="handleCancelarNegociacao('${it.id}')" style="color:var(--status-danger);" title="Cancelar negociação (volta o item pra padronizado)">✕ Cancelar negociação</button>` : ''}
                 ${ehMeuItem || (userAtual && userAtual.perfil === 'admin') ? `<button class="ip-status-quick" onclick="handleEditarItemPadronizado('${it.id}')">✏️ Editar</button>` : ''}
                 ${ehMeuItem || (userAtual && userAtual.perfil === 'admin') ? `<button class="ip-status-quick" onclick="handleExcluirItemPadronizado('${it.id}')" style="color:var(--status-danger);">🗑️</button>` : ''}
               </div>
