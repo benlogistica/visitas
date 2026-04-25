@@ -4386,6 +4386,27 @@ a {
   color: var(--brand-lime);
 }
 
+/* Sprint 9.32.13: chips de filtro de data em Minhas Visitas */
+.mv-chip {
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 9999px;
+  border: 1px solid var(--neutral-200);
+  background: var(--neutral-0);
+  color: var(--neutral-600);
+  cursor: pointer;
+  transition: all 140ms;
+  white-space: nowrap;
+}
+.mv-chip:hover { border-color: var(--brand-lime); color: var(--brand-navy); }
+.mv-chip.is-active {
+  background: var(--brand-navy);
+  color: #fff;
+  border-color: var(--brand-navy);
+}
+
 /* Calendário semanal da agenda admin (Sprint 7 Mini 2b) */
 @keyframes spin {
   from { transform: rotate(0deg); }
@@ -5487,8 +5508,8 @@ a {
   background: var(--neutral-200);
 }
 .ds-topbar__icon-btn {
-  height: 38px;
-  width: 38px;
+  height: 46px;
+  width: 46px;
   border-radius: 9999px;
   background: transparent;
   border: 0;
@@ -5500,22 +5521,28 @@ a {
   color: var(--brand-navy);
 }
 .ds-topbar__icon-btn:hover { background: var(--neutral-100); }
+.ds-topbar__icon-btn .material-symbols-rounded {
+  /* Sprint 9.32.12: sino BEM maior, dava pra ver direito o badge antes */
+  font-size: 30px !important;
+}
 .ds-topbar__icon-btn .notif-badge-desktop {
+  /* Sprint 9.32.12: badge compacto, fica no cantinho sem cobrir o sino */
   position: absolute;
-  top: 7px;
-  right: 9px;
-  min-width: 15px;
-  height: 15px;
+  top: 0px;
+  right: 0px;
+  min-width: 16px;
+  height: 16px;
   border-radius: 9999px;
   background: var(--status-danger);
-  border: 2px solid #fff;
+  border: 1.5px solid #fff;
   color: #fff;
   font-size: 9px;
   font-weight: 700;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0 3px;
+  padding: 0 4px;
+  line-height: 1;
 }
 .ds-topbar__avatar-btn {
   display: flex;
@@ -5653,7 +5680,7 @@ a {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.10-tabs-stack-vertical',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.13-filtros-data-busca-avancada',
   APP_NAME: 'Nutricionais Visitas',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -8303,9 +8330,10 @@ async function listarMinhasVisitas(limit = 5) {
   const user = getCurrentUser();
   if (!user) return [];
 
+  // Sprint 9.32.13: traz campos extras pra busca avançada (resumo/observacoes/profissionais)
   const { data, error } = await db
     .from('visitas')
-    .select('id, data_visita, horario_inicio, status, revisao_motivo, revisao_solicitada_em, revisao_resolvida_em, reabertura_expira_em, visita_realizada, cancelamento_motivo, cancelado_em, checkin_timestamp, checkout_timestamp, instituicoes(nome)')
+    .select('id, data_visita, horario_inicio, status, revisao_motivo, revisao_solicitada_em, revisao_resolvida_em, reabertura_expira_em, visita_realizada, cancelamento_motivo, cancelado_em, checkin_timestamp, checkout_timestamp, resumo, observacoes, profissionais_conversados, instituicoes(nome)')
     .eq('nutricionista_id', user.id)
     .order('checkin_timestamp', { ascending: false, nullsFirst: false })
     .limit(limit);
@@ -15968,13 +15996,40 @@ function renderVisitasDesktopNutri() {
           </button>
         </div>
 
-        <div style="position:relative;margin:0 0 14px;max-width:460px;">
-          <span class="material-symbols-rounded" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--neutral-500);font-size:18px;pointer-events:none;">search</span>
-          <input type="text"
-                 id="mvBusca"
-                 placeholder="Filtrar por instituição..."
-                 oninput="filtrarMinhasVisitasLocal(this.value)"
-                 style="width:100%;padding:10px 14px 10px 38px;border:1px solid var(--neutral-200);border-radius:10px;font-family:inherit;font-size:13px;background:var(--neutral-0);color:var(--brand-navy);" />
+        <!-- Sprint 9.32.13: campo de busca + toggle avançado -->
+        <div style="display:flex;gap:10px;align-items:center;margin:0 0 12px;flex-wrap:wrap;">
+          <div style="position:relative;flex:1;min-width:240px;max-width:460px;">
+            <span class="material-symbols-rounded" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--neutral-500);font-size:18px;pointer-events:none;">search</span>
+            <input type="text"
+                   id="mvBusca"
+                   placeholder="Buscar por instituição..."
+                   oninput="filtrarMinhasVisitasLocal(this.value)"
+                   style="width:100%;padding:10px 44px 10px 38px;border:1px solid var(--neutral-200);border-radius:10px;font-family:inherit;font-size:13px;background:var(--neutral-0);color:var(--brand-navy);" />
+            <button type="button" id="mvBuscaToggle" onclick="window.toggleBuscaAvancada()" title="Busca avançada"
+                    style="position:absolute;right:6px;top:50%;transform:translateY(-50%);width:32px;height:32px;border-radius:8px;border:0;background:transparent;color:var(--neutral-500);cursor:pointer;display:flex;align-items:center;justify-content:center;">
+              <span class="material-symbols-rounded" style="font-size:18px;">tune</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Sprint 9.32.13: chips de data -->
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px;">
+          <button type="button" data-mv-data="todas" class="mv-chip${(window._mvFiltroData || 'todas') === 'todas' ? ' is-active' : ''}" onclick="window.aplicarFiltroDataMv('todas')">Todas</button>
+          <button type="button" data-mv-data="hoje" class="mv-chip${window._mvFiltroData === 'hoje' ? ' is-active' : ''}" onclick="window.aplicarFiltroDataMv('hoje')">Hoje</button>
+          <button type="button" data-mv-data="semana" class="mv-chip${window._mvFiltroData === 'semana' ? ' is-active' : ''}" onclick="window.aplicarFiltroDataMv('semana')">Esta semana</button>
+          <button type="button" data-mv-data="mes" class="mv-chip${window._mvFiltroData === 'mes' ? ' is-active' : ''}" onclick="window.aplicarFiltroDataMv('mes')">Este mês</button>
+          <button type="button" data-mv-data="custom" class="mv-chip${window._mvFiltroData === 'custom' ? ' is-active' : ''}" onclick="window.aplicarFiltroDataMv('custom')">Personalizado</button>
+        </div>
+
+        <div id="mvDataCustomBox" style="display:${window._mvFiltroData === 'custom' ? 'flex' : 'none'};gap:10px;margin:0 0 14px;align-items:center;max-width:460px;">
+          <input type="date" id="mvDataDe" value="${window._mvDataDe || ''}" onchange="window.aplicarFiltroCustomMv()" style="flex:1;padding:8px 10px;border:1px solid var(--neutral-200);border-radius:8px;font-family:inherit;font-size:13px;background:var(--neutral-0);color:var(--brand-navy);" />
+          <span style="font-size:12px;color:var(--neutral-500);">até</span>
+          <input type="date" id="mvDataAte" value="${window._mvDataAte || ''}" onchange="window.aplicarFiltroCustomMv()" style="flex:1;padding:8px 10px;border:1px solid var(--neutral-200);border-radius:8px;font-family:inherit;font-size:13px;background:var(--neutral-0);color:var(--brand-navy);" />
+        </div>
+
+        <div id="mvBuscaAvancadaInfo" style="display:${window._mvBuscaAvancada ? 'flex' : 'none'};align-items:center;gap:6px;padding:6px 10px;margin:0 0 10px;background:#EEF0F5;border-radius:8px;font-size:11.5px;color:var(--neutral-600);max-width:460px;">
+          <span class="material-symbols-rounded" style="font-size:14px;">manage_search</span>
+          <span>Buscando também em resumo, observações e profissionais</span>
         </div>
 
         <div class="visits-list" id="visitasList" style="background:var(--neutral-0);">
@@ -18034,13 +18089,40 @@ function renderVisitas() {
           </button>
         </div>
 
-        <div style="position:relative;margin:0 0 12px;">
+        <!-- Sprint 9.32.13: campo de busca com toggle pra busca avançada -->
+        <div style="position:relative;margin:0 0 8px;">
           <span class="material-symbols-rounded" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--neutral-500);font-size:18px;pointer-events:none;">search</span>
           <input type="text"
                  id="mvBusca"
-                 placeholder="Filtrar por instituição..."
+                 placeholder="Buscar por instituição..."
                  oninput="filtrarMinhasVisitasLocal(this.value)"
-                 style="width:100%;padding:10px 14px 10px 38px;border:1px solid var(--neutral-200);border-radius:10px;font-family:inherit;font-size:13px;background:var(--neutral-0);color:var(--brand-navy);" />
+                 style="width:100%;padding:10px 44px 10px 38px;border:1px solid var(--neutral-200);border-radius:10px;font-family:inherit;font-size:13px;background:var(--neutral-0);color:var(--brand-navy);" />
+          <button type="button" id="mvBuscaToggle" onclick="window.toggleBuscaAvancada()" title="Busca avançada"
+                  style="position:absolute;right:6px;top:50%;transform:translateY(-50%);width:32px;height:32px;border-radius:8px;border:0;background:transparent;color:var(--neutral-500);cursor:pointer;display:flex;align-items:center;justify-content:center;">
+            <span class="material-symbols-rounded" style="font-size:18px;">tune</span>
+          </button>
+        </div>
+
+        <!-- Sprint 9.32.13: barra de filtros de data + estado da busca avançada -->
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px;">
+          <button type="button" data-mv-data="todas" class="mv-chip${(window._mvFiltroData || 'todas') === 'todas' ? ' is-active' : ''}" onclick="window.aplicarFiltroDataMv('todas')">Todas</button>
+          <button type="button" data-mv-data="hoje" class="mv-chip${window._mvFiltroData === 'hoje' ? ' is-active' : ''}" onclick="window.aplicarFiltroDataMv('hoje')">Hoje</button>
+          <button type="button" data-mv-data="semana" class="mv-chip${window._mvFiltroData === 'semana' ? ' is-active' : ''}" onclick="window.aplicarFiltroDataMv('semana')">Esta semana</button>
+          <button type="button" data-mv-data="mes" class="mv-chip${window._mvFiltroData === 'mes' ? ' is-active' : ''}" onclick="window.aplicarFiltroDataMv('mes')">Este mês</button>
+          <button type="button" data-mv-data="custom" class="mv-chip${window._mvFiltroData === 'custom' ? ' is-active' : ''}" onclick="window.aplicarFiltroDataMv('custom')">Personalizado</button>
+        </div>
+
+        <!-- Inputs de data personalizada (escondidos até clicar em Personalizado) -->
+        <div id="mvDataCustomBox" style="display:${window._mvFiltroData === 'custom' ? 'flex' : 'none'};gap:8px;margin:0 0 10px;align-items:center;">
+          <input type="date" id="mvDataDe" value="${window._mvDataDe || ''}" onchange="window.aplicarFiltroCustomMv()" style="flex:1;padding:8px 10px;border:1px solid var(--neutral-200);border-radius:8px;font-family:inherit;font-size:12.5px;background:var(--neutral-0);color:var(--brand-navy);" />
+          <span style="font-size:11px;color:var(--neutral-500);">até</span>
+          <input type="date" id="mvDataAte" value="${window._mvDataAte || ''}" onchange="window.aplicarFiltroCustomMv()" style="flex:1;padding:8px 10px;border:1px solid var(--neutral-200);border-radius:8px;font-family:inherit;font-size:12.5px;background:var(--neutral-0);color:var(--brand-navy);" />
+        </div>
+
+        <!-- Aviso de busca avançada ativa -->
+        <div id="mvBuscaAvancadaInfo" style="display:${window._mvBuscaAvancada ? 'flex' : 'none'};align-items:center;gap:6px;padding:6px 10px;margin:0 0 10px;background:#EEF0F5;border-radius:8px;font-size:11.5px;color:var(--neutral-600);">
+          <span class="material-symbols-rounded" style="font-size:14px;">manage_search</span>
+          <span>Buscando também em resumo, observações e profissionais</span>
         </div>
 
         <div class="visits-list" id="visitasList" style="background:var(--neutral-0);">
@@ -18113,6 +18195,19 @@ async function carregarMinhasVisitas() {
       visitas = todas.filter(v => v.visita_realizada === false);
     }
 
+    // Sprint 9.32.13: aplica filtro de data sobre o resultado
+    const intervalo = _mvIntervaloDoFiltro();
+    if (intervalo) {
+      const [ini, fim] = intervalo;
+      visitas = visitas.filter(v => {
+        // Usa data_visita (campo principal) com fallback pra checkin_timestamp
+        let d = v.data_visita;
+        if (!d && v.checkin_timestamp) d = v.checkin_timestamp.split('T')[0];
+        if (!d) return false;
+        return d >= ini && d <= fim;
+      });
+    }
+
     if (visitas.length === 0) {
       // Empty state contextual por filtro
       const empties = {
@@ -18146,8 +18241,15 @@ async function carregarMinhasVisitas() {
       const motivoHtml = (cancelada && v.cancelamento_motivo)
         ? `<div style="font-size:11.5px;color:var(--neutral-500);margin-top:4px;line-height:1.35;font-style:italic;display:flex;gap:4px;align-items:flex-start;"><span class="material-symbols-rounded" style="font-size:12px;flex-shrink:0;margin-top:1px;">info</span><span>${v.cancelamento_motivo.replace(/</g,'&lt;')}</span></div>`
         : '';
+      // Sprint 9.32.13: campos extras pra busca avançada (não exibidos no card)
+      const profsConv = Array.isArray(v.profissionais_conversados)
+        ? v.profissionais_conversados.map(p => (p && (p.nome || p)) || '').join(' ')
+        : '';
+      const extra = `${v.resumo || ''} ${v.observacoes || ''} ${profsConv}`
+        .replace(/"/g, '&quot;')
+        .replace(/</g, '&lt;');
       return `
-      <a href="#/visitas/relatorio?id=${v.id}" data-id="${v.id}" class="visits-list__item${reaberta ? ' visits-list__item--reaberta' : ''}">
+      <a href="#/visitas/relatorio?id=${v.id}" data-id="${v.id}" data-search-extra="${extra}" class="visits-list__item${reaberta ? ' visits-list__item--reaberta' : ''}">
         <div class="visits-list__icon">
           <span class="material-symbols-rounded">${cancelada ? 'cancel' : 'local_hospital'}</span>
         </div>
@@ -18184,14 +18286,22 @@ window.trocarFiltroMinhasVisitas = function(filtro) {
   carregarMinhasVisitas();
 };
 
-// Filtro local nos cards já renderizados (Sprint 8.10)
+// Sprint 9.32.13: filtro local com suporte a busca avançada (resumo/observações/profissionais)
+// Lê data-search-extra dos cards (preenchido em carregarMinhasVisitas) só quando busca avançada está ON
 window.filtrarMinhasVisitasLocal = function(termo) {
   const t = (termo || '').trim().toLowerCase();
+  const avancada = !!window._mvBuscaAvancada;
   const cards = document.querySelectorAll('#visitasList .visits-list__item');
   let matches = 0;
   cards.forEach(card => {
     if (!t) { card.style.display = ''; matches++; return; }
-    const texto = card.textContent.toLowerCase();
+    // Texto base sempre buscável (instituição, tempo, motivo)
+    let texto = card.textContent.toLowerCase();
+    // Texto extra (resumo, observações, profissionais) só se busca avançada ON
+    if (avancada) {
+      const extra = card.getAttribute('data-search-extra') || '';
+      texto = texto + ' ' + extra.toLowerCase();
+    }
     const visivel = texto.includes(t);
     card.style.display = visivel ? '' : 'none';
     if (visivel) matches++;
@@ -18211,6 +18321,92 @@ window.filtrarMinhasVisitasLocal = function(termo) {
     msgEl.remove();
   }
 };
+
+// Sprint 9.32.13: alterna busca avançada (em resumo/observações/profissionais)
+window.toggleBuscaAvancada = function() {
+  window._mvBuscaAvancada = !window._mvBuscaAvancada;
+  const btn = document.getElementById('mvBuscaToggle');
+  const info = document.getElementById('mvBuscaAvancadaInfo');
+  const inp = document.getElementById('mvBusca');
+  if (btn) {
+    if (window._mvBuscaAvancada) {
+      btn.style.background = 'var(--brand-lime)';
+      btn.style.color = '#fff';
+    } else {
+      btn.style.background = 'transparent';
+      btn.style.color = 'var(--neutral-500)';
+    }
+  }
+  if (info) info.style.display = window._mvBuscaAvancada ? 'flex' : 'none';
+  if (inp) {
+    inp.placeholder = window._mvBuscaAvancada
+      ? 'Buscar em instituição, resumo, observações...'
+      : 'Buscar por instituição...';
+  }
+  // Reaplica busca atual
+  if (inp && inp.value) window.filtrarMinhasVisitasLocal(inp.value);
+};
+
+// Sprint 9.32.13: aplica filtro de data (todas | hoje | semana | mes | custom)
+window.aplicarFiltroDataMv = function(tipo) {
+  window._mvFiltroData = tipo;
+  // Atualiza chips visualmente
+  document.querySelectorAll('.mv-chip[data-mv-data]').forEach(c => {
+    c.classList.toggle('is-active', c.getAttribute('data-mv-data') === tipo);
+  });
+  // Mostra/esconde inputs de data custom
+  const box = document.getElementById('mvDataCustomBox');
+  if (box) box.style.display = tipo === 'custom' ? 'flex' : 'none';
+  // Recarrega lista (carregarMinhasVisitas vai aplicar o filtro de data internamente)
+  carregarMinhasVisitas();
+};
+
+// Sprint 9.32.13: aplicar filtro custom quando o usuário muda os inputs de data
+window.aplicarFiltroCustomMv = function() {
+  const de = document.getElementById('mvDataDe')?.value || '';
+  const ate = document.getElementById('mvDataAte')?.value || '';
+  window._mvDataDe = de;
+  window._mvDataAte = ate;
+  if (de || ate) carregarMinhasVisitas();
+};
+
+// Sprint 9.32.13: dado um filtro de data, retorna [inicioYYYY-MM-DD, fimYYYY-MM-DD] ou null pra "todas"
+function _mvIntervaloDoFiltro() {
+  const tipo = window._mvFiltroData || 'todas';
+  if (tipo === 'todas') return null;
+  const hoje = new Date();
+  hoje.setHours(0, 0, 0, 0);
+  const fmt = (d) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${dd}`;
+  };
+  if (tipo === 'hoje') {
+    const s = fmt(hoje);
+    return [s, s];
+  }
+  if (tipo === 'semana') {
+    // Segunda a domingo da semana atual
+    const diaSem = hoje.getDay(); // 0=dom, 1=seg ... 6=sab
+    const offsetSeg = diaSem === 0 ? -6 : 1 - diaSem;
+    const seg = new Date(hoje); seg.setDate(hoje.getDate() + offsetSeg);
+    const dom = new Date(seg); dom.setDate(seg.getDate() + 6);
+    return [fmt(seg), fmt(dom)];
+  }
+  if (tipo === 'mes') {
+    const ini = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+    const fim = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0);
+    return [fmt(ini), fmt(fim)];
+  }
+  if (tipo === 'custom') {
+    const de = window._mvDataDe || '';
+    const ate = window._mvDataAte || '';
+    if (!de && !ate) return null;
+    return [de || '0001-01-01', ate || '9999-12-31'];
+  }
+  return null;
+}
 
 /* ==========================================================================
    Sprint 2.3 — RELATÓRIO DA VISITA
@@ -21685,7 +21881,7 @@ function renderAdminDrawer() {
     { href: '#/nutri/profissionais',  icon: 'stethoscope',    titulo: 'Profissionais', desc: 'Contatos nos hospitais' },
     { href: '#/nutri/itens-padronizados', icon: 'inventory_2', titulo: 'Itens padronizados', desc: 'Concorrentes nos hospitais que você visita' },
     { href: '#/nutri/indicadores',    icon: 'bar_chart',      titulo: 'Indicadores',   desc: 'Sua produção em números' },
-    { href: '#/faturamento',          icon: 'payments',       titulo: 'Faturamento',   desc: 'Faturar visitas concluídas' },
+    // Sprint 9.32.11: Faturamento removido do menu — funcionalidade ainda não disponível pra nutri
     { href: '#/logout',               icon: 'logout',         titulo: 'Sair',          desc: 'Encerrar sessão' },
   ];
   const items = perfil === 'admin' ? itemsAdmin : itemsNutri;
