@@ -5620,7 +5620,7 @@ a {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.6-janela-72h-uniforme',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.7-fix-edicao-devolvida',
   APP_NAME: 'Nutricionais Visitas',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -13915,15 +13915,19 @@ function visitaPendenteDeAcaoNutri(v) {
   return estaEmRevisao(v) || temReaberturaAtiva(v).ativa;
 }
 
-// - em_revisao: travada (admin decide)
+// - em_revisao (status legado): travada (admin decide)
 // - rascunho devolvido pelo admin (tem revisao_solicitada_em): 72h a partir da devolução
 // - rascunho / completa normal: 72h a partir do check-in
-// (Sprint 9.32.5: janela uniforme de 72h em ambos cenários — 24h era apertado demais)
+// (Sprint 9.32.6: janela uniforme de 72h em ambos cenários)
+// (Sprint 9.32.7: removida checagem `estaEmRevisao` que bloqueava a edição
+//  justamente das visitas devolvidas — que é o caso onde o nutri PRECISA editar.
+//  Só bloqueia o status legado 'em_revisao' agora.)
 function visitaPodeSerEditada(visita) {
   if (visita.status === 'aprovada_pos_revisao') {
     return { pode: false, motivo: 'Visita aprovada pelo administrador. Histórico imutável.' };
   }
-  if (estaEmRevisao(visita)) {
+  // Status legado: bloqueia. No fluxo atual, devolução vira rascunho com revisao_motivo.
+  if (visita.status === 'em_revisao') {
     return { pode: false, motivo: 'Visita em revisão pelo administrador.' };
   }
 
