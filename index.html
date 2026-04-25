@@ -5703,7 +5703,7 @@ a {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.25-perf-mobile-acesso',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.27-fat-cliente-busca',
   APP_NAME: 'Nutricionais Visitas',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -26351,14 +26351,35 @@ function _fatRenderInner() {
           <select id="fatMarca" onchange="_fatTrocarFiltro('marca', this.value)" style="padding:6px 9px;border:1.5px solid var(--neutral-200);border-radius:7px;font-size:11.5px;font-family:inherit;background:var(--neutral-0);max-width:170px;">
             <option value="todos">Todas as marcas</option>
           </select>
+
+          <!-- Sprint 9.32.27: Filtro Empresa (3 empresas, select simples sem busca) -->
+          <select id="fatEmpresa" onchange="_fatTrocarFiltro('empresa', this.value)" style="padding:6px 9px;border:1.5px solid var(--neutral-200);border-radius:7px;font-size:11.5px;font-family:inherit;background:var(--neutral-0);max-width:170px;">
+            <option value="todos">Todas as empresas</option>
+          </select>
+
+          <!-- Sprint 9.32.27: Combobox de Cliente com busca (lazy load — só renderiza ao digitar) -->
+          <div id="fatClienteCombo" style="position:relative;display:inline-block;">
+            <button type="button" id="fatClienteTrigger" onclick="_fatToggleClienteDropdown()" style="padding:6px 9px;border:1.5px solid var(--neutral-200);border-radius:7px;font-size:11.5px;font-family:inherit;background:var(--neutral-0);cursor:pointer;display:inline-flex;align-items:center;gap:6px;min-width:170px;max-width:220px;justify-content:space-between;">
+              <span style="display:inline-flex;align-items:center;gap:6px;min-width:0;">
+                <span class="material-symbols-rounded" style="font-size:15px;color:var(--neutral-500);flex-shrink:0;">search</span>
+                <span id="fatClienteLabel" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Todos os clientes</span>
+              </span>
+              <span class="material-symbols-rounded" style="font-size:16px;color:var(--neutral-400);flex-shrink:0;">expand_more</span>
+            </button>
+            <div id="fatClienteDropdown" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:auto;min-width:300px;max-width:420px;background:var(--neutral-0);border:1px solid var(--neutral-300);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,0.08);z-index:100;overflow:hidden;">
+              <div style="padding:8px;border-bottom:1px solid var(--neutral-200);">
+                <input type="text" id="fatClienteBusca" placeholder="Digite pra buscar (mín. 2 letras)..." oninput="_fatFiltrarClientes()" style="width:100%;padding:6px 10px;border:1px solid var(--neutral-200);border-radius:6px;font-size:12px;font-family:inherit;outline:none;" />
+              </div>
+              <div id="fatClienteLista" style="max-height:280px;overflow-y:auto;">
+                <div style="padding:18px 14px;text-align:center;color:var(--neutral-500);font-size:11.5px;line-height:1.5;">Digite no campo acima<br>pra buscar entre todos os clientes</div>
+              </div>
+            </div>
+          </div>
+
           <select id="fatEstado" onchange="_fatTrocarFiltro('estado', this.value)" style="padding:6px 9px;border:1.5px solid var(--neutral-200);border-radius:7px;font-size:11.5px;font-family:inherit;background:var(--neutral-0);max-width:110px;">
             <option value="todos">Todos UF</option>
           </select>
           <span id="fatLimparSlot"></span>
-          <label style="display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--neutral-700);cursor:pointer;padding:5px 9px;border:1.5px solid var(--neutral-200);border-radius:7px;background:var(--neutral-0);">
-            <input type="checkbox" id="fatIncluirDev" onchange="_fatTrocarFiltro('incluirDevolucoes', this.checked)" style="width:13px;height:13px;accent-color:var(--brand-lime-dark,#6FA62E);" />
-            Abater devoluções
-          </label>
         </div>
       </div>
 
@@ -27413,16 +27434,18 @@ window._fatLimparFiltros = function() {
     mes: 'todos',
     vendedor: 'todos',
     marca: 'todos',
+    empresa: 'todos',
+    cliente: 'todos',
     estado: 'todos',
-    incluirDevolucoes: false,
   };
   // Reseta os selects visualmente
-  ['fatPeriodo','fatMes','fatVendedor','fatMarca','fatEstado'].forEach(id => {
+  ['fatPeriodo','fatMes','fatVendedor','fatMarca','fatEmpresa','fatEstado'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = 'todos';
   });
-  const chk = document.getElementById('fatIncluirDev');
-  if (chk) chk.checked = false;
+  // Sprint 9.32.27: limpa label do combobox cliente
+  const labelCli = document.getElementById('fatClienteLabel');
+  if (labelCli) labelCli.textContent = 'Todos os clientes';
   _fatRender();
 };
 
@@ -27434,8 +27457,9 @@ function _fatContarFiltrosAtivos() {
   if (f.mes && f.mes !== 'todos') n++;
   if (f.vendedor && f.vendedor !== 'todos') n++;
   if (f.marca && f.marca !== 'todos') n++;
+  if (f.empresa && f.empresa !== 'todos') n++;
+  if (f.cliente && f.cliente !== 'todos') n++; // Sprint 9.32.27
   if (f.estado && f.estado !== 'todos') n++;
-  if (f.incluirDevolucoes) n++;
   return n;
 }
 
@@ -27786,8 +27810,32 @@ function _fatFiltrarMensal(opts = {}) {
   const f = window._fatFiltro;
   let mensal;
 
+  // Sprint 9.32.27: filtro de cliente (mais específico que empresa) — usa clientes_mes
+  if (f.cliente && f.cliente !== 'todos' && FAT_DATA.clientes_mes) {
+    const map = {};
+    FAT_DATA.clientes_mes
+      .filter(c => c['CNPJ/CPF'] === f.cliente)
+      .forEach(c => {
+        if (!map[c.ano_mes]) map[c.ano_mes] = { ano_mes: c.ano_mes, faturamento: 0, qtd_notas: 0, qtd_itens: 0 };
+        map[c.ano_mes].faturamento += c.faturamento;
+        map[c.ano_mes].qtd_notas += c.qtd_notas;
+      });
+    mensal = Object.values(map).sort((a, b) => a.ano_mes.localeCompare(b.ano_mes));
+  }
+  // Sprint 9.32.26: filtro de empresa — recompõe agregado a partir de empresa_mes
+  else if (f.empresa && f.empresa !== 'todos' && FAT_DATA.empresa_mes) {
+    const map = {};
+    FAT_DATA.empresa_mes
+      .filter(e => e.Empresa === f.empresa)
+      .forEach(e => {
+        if (!map[e.ano_mes]) map[e.ano_mes] = { ano_mes: e.ano_mes, faturamento: 0, qtd_notas: 0, qtd_itens: 0 };
+        map[e.ano_mes].faturamento += e.faturamento;
+        map[e.ano_mes].qtd_notas += e.qtd_notas;
+      });
+    mensal = Object.values(map).sort((a, b) => a.ano_mes.localeCompare(b.ano_mes));
+  }
   // Se há filtro de vendedor, recompõe agregado mensal a partir de vendedor_mes
-  if (f.vendedor && f.vendedor !== 'todos' && FAT_DATA.vendedor_mes) {
+  else if (f.vendedor && f.vendedor !== 'todos' && FAT_DATA.vendedor_mes) {
     const map = {};
     FAT_DATA.vendedor_mes
       .filter(v => v.Vendedor === f.vendedor)
@@ -27879,9 +27927,111 @@ function _fatPopularSelects() {
     });
   }
 
+  // Sprint 9.32.27: popula select de Empresas (3 itens, sem busca)
+  const selEmp = document.getElementById('fatEmpresa');
+  if (selEmp && FAT_DATA?.empresa_total && selEmp.options.length === 1) {
+    FAT_DATA.empresa_total.forEach(e => {
+      const opt = document.createElement('option');
+      opt.value = e.Empresa;
+      opt.textContent = e.Empresa.length > 26 ? e.Empresa.slice(0, 26) + '…' : e.Empresa;
+      selEmp.appendChild(opt);
+    });
+  }
+
   // Marca selects ativos com valores atuais do filtro
   _fatSincronizarSelects();
 }
+
+// Sprint 9.32.27: combobox de Cliente com busca lazy (TODOS os clientes do JSON)
+// Só renderiza resultados quando o usuário digita ≥2 chars (evita travar com 8k+ clientes)
+
+window._fatToggleClienteDropdown = function() {
+  const dd = document.getElementById('fatClienteDropdown');
+  if (!dd) return;
+  const aberto = dd.style.display !== 'none';
+  dd.style.display = aberto ? 'none' : 'block';
+  if (!aberto) {
+    setTimeout(() => {
+      const inp = document.getElementById('fatClienteBusca');
+      if (inp) { inp.value = ''; inp.focus(); _fatFiltrarClientes(); }
+    }, 50);
+  }
+};
+
+window._fatFiltrarClientes = function() {
+  const inp = document.getElementById('fatClienteBusca');
+  const lista = document.getElementById('fatClienteLista');
+  if (!inp || !lista) return;
+  const termo = (inp.value || '').toLowerCase().trim();
+  const f = window._fatFiltro;
+  const selecionado = f.cliente || 'todos';
+
+  // Sempre mostra "Todos os clientes" no topo se não há busca ou se busca casa
+  let html = '';
+  const matchTodos = !termo || 'todos os clientes'.includes(termo);
+  if (matchTodos) {
+    const ativo = selecionado === 'todos';
+    html += `
+      <div onclick="_fatSelecionarCliente('todos')"
+           style="padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--neutral-100);font-size:12px;${ativo ? 'background:rgba(139,198,63,0.12);font-weight:700;color:var(--brand-navy);' : ''}"
+           onmouseover="if (!${ativo}) this.style.background='var(--neutral-50,#F5F6FA)'"
+           onmouseout="if (!${ativo}) this.style.background=''">
+        Todos os clientes
+      </div>
+    `;
+  }
+
+  // Lista vazia se busca tem menos que 2 chars
+  if (termo.length < 2) {
+    html += `<div style="padding:18px 14px;text-align:center;color:var(--neutral-500);font-size:11.5px;line-height:1.5;">Digite no campo acima<br>pra buscar entre todos os clientes</div>`;
+    lista.innerHTML = html;
+    return;
+  }
+
+  const todos = FAT_DATA?.clientes_lista || [];
+  // Procura tanto em razão social quanto em nome fantasia + cidade + CNPJ
+  const matches = todos.filter(c => {
+    const blob = `${c.razao_social || ''} ${c.nome_fantasia || ''} ${c.cidade || ''} ${c.cnpj || ''}`.toLowerCase();
+    return blob.includes(termo);
+  }).slice(0, 50); // limita a 50 resultados
+
+  if (matches.length === 0) {
+    html += `<div style="padding:18px 14px;text-align:center;color:var(--neutral-500);font-size:11.5px;">Nenhum cliente encontrado pra "${termo.replace(/</g,'&lt;')}"</div>`;
+  } else {
+    html += matches.map(c => {
+      const ativo = c.cnpj === selecionado;
+      const nome = c.razao_social || c.nome_fantasia || '(sem nome)';
+      const sub = `${c.cidade || ''}${c.estado ? ' · ' + c.estado : ''}${c.cnpj ? ' · ' + c.cnpj : ''}`;
+      return `
+        <div onclick="_fatSelecionarCliente('${(c.cnpj || '').replace(/'/g, "\\'")}')"
+             style="padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--neutral-100);font-size:11.5px;line-height:1.4;${ativo ? 'background:rgba(139,198,63,0.12);font-weight:700;color:var(--brand-navy);' : ''}"
+             onmouseover="if (!${ativo}) this.style.background='var(--neutral-50,#F5F6FA)'"
+             onmouseout="if (!${ativo}) this.style.background=''">
+          <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${nome.replace(/</g,'&lt;')}</div>
+          <div style="font-size:10.5px;color:var(--neutral-500);font-family:var(--font-mono);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${sub.replace(/</g,'&lt;')}</div>
+        </div>
+      `;
+    }).join('');
+    if (matches.length === 50 && todos.length > 50) {
+      html += `<div style="padding:10px 14px;text-align:center;color:var(--neutral-400);font-size:11px;background:var(--neutral-50,#F5F6FA);">Mostrando os 50 primeiros · refine a busca pra ver outros</div>`;
+    }
+  }
+  lista.innerHTML = html;
+};
+
+window._fatSelecionarCliente = function(cnpj) {
+  _fatTrocarFiltro('cliente', cnpj);
+  const dd = document.getElementById('fatClienteDropdown');
+  if (dd) dd.style.display = 'none';
+};
+
+// Fecha dropdown de cliente ao clicar fora
+document.addEventListener('click', function(ev) {
+  const combo = document.getElementById('fatClienteCombo');
+  const dd = document.getElementById('fatClienteDropdown');
+  if (!combo || !dd || dd.style.display === 'none') return;
+  if (!combo.contains(ev.target)) dd.style.display = 'none';
+}, true);
 
 // Sincroniza os valores dos selects com o filtro atual (chamado em todo render)
 function _fatSincronizarSelects() {
@@ -27897,7 +28047,20 @@ function _fatSincronizarSelects() {
   if (selV) selV.value = f.vendedor || 'todos';
   if (selM) selM.value = f.marca || 'todos';
   if (selE) selE.value = f.estado || 'todos';
-  if (chkDev) chkDev.checked = !!f.incluirDevolucoes;
+  // Sprint 9.32.27: select Empresa simples
+  const selEmp = document.getElementById('fatEmpresa');
+  if (selEmp) selEmp.value = f.empresa || 'todos';
+  // Sprint 9.32.27: label do combobox Cliente (mostra razão social do CNPJ selecionado)
+  const labelCli = document.getElementById('fatClienteLabel');
+  if (labelCli) {
+    if (!f.cliente || f.cliente === 'todos') {
+      labelCli.textContent = 'Todos os clientes';
+    } else {
+      const cli = (FAT_DATA?.clientes_lista || []).find(c => c.cnpj === f.cliente);
+      const nome = cli ? (cli.razao_social || cli.nome_fantasia || cli.cnpj) : f.cliente;
+      labelCli.textContent = nome.length > 26 ? nome.slice(0, 26) + '…' : nome;
+    }
+  }
 }
 
 // Banner explicativo sobre o "N/D" (vendedor não identificado)
@@ -30054,7 +30217,10 @@ function _fatRender() {
   const devsPeriodo = FAT_DATA.devolucoes_mensal
     .filter(d => mensal.some(m => m.ano_mes === d.ano_mes))
     .reduce((s, d) => s + d.valor_devolucao, 0);
-  const fatLiquido = f.incluirDevolucoes ? fatTotal - devsPeriodo : fatTotal;
+  // Sprint 9.32.26: removido toggle "Abater devoluções" — faturamento é sempre bruto
+  // (devoluções têm aba dedicada com análises completas)
+  // Mantém variável fatLiquido = fatTotal pra evitar quebrar referências abaixo
+  const fatLiquido = fatTotal;
 
   // YoY (compara primeiro mês do filtro vs mesmo mês ano anterior)
   let yoyHtml = '';
@@ -30075,7 +30241,7 @@ function _fatRender() {
   if (kpisEl) {
     kpisEl.innerHTML = `
       <div style="background:linear-gradient(135deg,var(--brand-navy) 0%,#1E3A8A 100%);color:#fff;border-radius:12px;padding:14px 16px;">
-        <div style="font-size:10.5px;font-weight:700;opacity:0.85;letter-spacing:0.06em;text-transform:uppercase;">Faturamento ${f.incluirDevolucoes ? 'líquido' : 'bruto'}</div>
+        <div style="font-size:10.5px;font-weight:700;opacity:0.85;letter-spacing:0.06em;text-transform:uppercase;">Faturamento total</div>
         <div style="font-family:var(--font-display);font-size:26px;font-weight:700;line-height:1.1;margin-top:3px;">${_fmtMoeda(fatLiquido, true)}</div>
         ${yoyHtml.replace('var(--status-success)', '#A7F3D0').replace('var(--status-danger)', '#FCA5A5')}
       </div>
