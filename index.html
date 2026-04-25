@@ -4310,19 +4310,18 @@ a {
   padding: 4px;
   border-radius: 12px;
   margin-bottom: 16px;
-  /* Sprint 9.32.9: evita estouro horizontal em telas estreitas */
   overflow: hidden;
   width: 100%;
 }
 .review-tab {
   flex: 1 1 0;
-  min-width: 0; /* permite encolher e dar elipse */
+  min-width: 0;
   background: transparent;
   border: 0;
   padding: 8px 6px;
   border-radius: 9px;
   font-family: var(--font-body);
-  font-size: 11.5px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--neutral-600);
   cursor: pointer;
@@ -4331,10 +4330,9 @@ a {
   align-items: center;
   justify-content: center;
   gap: 4px;
-  /* Sprint 9.32.9: corta com elipse em vez de empurrar */
+  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
 }
 .review-tab:hover:not(.is-active) { background: var(--neutral-0); color: var(--brand-navy); }
 .review-tab.is-active {
@@ -4346,19 +4344,46 @@ a {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 16px;
-  height: 16px;
-  padding: 0 4px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
   border-radius: 999px;
   background: var(--neutral-200);
   color: var(--neutral-600);
-  font-size: 9.5px;
+  font-size: 10px;
   font-weight: 700;
   flex-shrink: 0;
 }
 .review-tab.is-active .review-tab__count {
   background: var(--brand-lime);
   color: var(--neutral-0);
+}
+
+/* Sprint 9.32.10: dentro de mobile-app, stack vertical (texto em cima, número grande embaixo) */
+.mobile-app .review-tabs {
+  gap: 3px;
+}
+.mobile-app .review-tab {
+  flex-direction: column;
+  gap: 2px;
+  padding: 7px 4px;
+  font-size: 11px;
+  line-height: 1.1;
+}
+.mobile-app .review-tab__count {
+  font-size: 13px;
+  font-weight: 700;
+  background: transparent;
+  color: var(--neutral-500);
+  padding: 0;
+  min-width: 0;
+  height: auto;
+  border-radius: 0;
+  line-height: 1;
+}
+.mobile-app .review-tab.is-active .review-tab__count {
+  background: transparent;
+  color: var(--brand-lime);
 }
 
 /* Calendário semanal da agenda admin (Sprint 7 Mini 2b) */
@@ -5628,7 +5653,7 @@ a {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.9-fix-tabs-input-hora',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.10-tabs-stack-vertical',
   APP_NAME: 'Nutricionais Visitas',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -17999,13 +18024,13 @@ function renderVisitas() {
             Todas <span class="review-tab__count" id="cntMvTodas">—</span>
           </button>
           <button class="review-tab ${window._visitasNutriFiltro === 'concluidas' ? 'is-active' : ''}" onclick="trocarFiltroMinhasVisitas('concluidas')">
-            Concluídas <span class="review-tab__count" id="cntMvConcluidas">—</span>
+            Concl. <span class="review-tab__count" id="cntMvConcluidas">—</span>
           </button>
           <button class="review-tab ${window._visitasNutriFiltro === 'em_revisao' ? 'is-active' : ''}" onclick="trocarFiltroMinhasVisitas('em_revisao')">
-            Pendências <span class="review-tab__count" id="cntMvRevisao">—</span>
+            Pend. <span class="review-tab__count" id="cntMvRevisao">—</span>
           </button>
           <button class="review-tab ${window._visitasNutriFiltro === 'canceladas' ? 'is-active' : ''}" onclick="trocarFiltroMinhasVisitas('canceladas')">
-            Canceladas <span class="review-tab__count" id="cntMvCanceladas">—</span>
+            Cancel. <span class="review-tab__count" id="cntMvCanceladas">—</span>
           </button>
         </div>
 
