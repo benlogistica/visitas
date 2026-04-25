@@ -27995,6 +27995,18 @@ window._fatFiltrarClientes = function() {
   }
 
   const todos = FAT_DATA?.clientes_lista || [];
+
+  // Se não tem clientes_lista (Python antigo), avisa pro usuário
+  if (todos.length === 0) {
+    html += `<div style="padding:18px 14px;text-align:center;color:var(--neutral-500);font-size:11.5px;line-height:1.5;">
+      <div style="color:var(--brand-navy);font-weight:600;margin-bottom:6px;">Busca de clientes não disponível</div>
+      Rode <code style="background:var(--neutral-100);padding:1px 5px;border-radius:3px;">gerar_faturamento_json.py</code><br>
+      e atualize o JSON no index.html.
+    </div>`;
+    lista.innerHTML = html;
+    return;
+  }
+
   // Procura tanto em razão social quanto em nome fantasia + cidade + CNPJ
   const matches = todos.filter(c => {
     const blob = `${c.razao_social || ''} ${c.nome_fantasia || ''} ${c.cidade || ''} ${c.cnpj || ''}`.toLowerCase();
