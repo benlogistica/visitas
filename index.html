@@ -6088,7 +6088,7 @@ a {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.44-pills-sem-autosave',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.45d-fat-mobile-overflow',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -27029,7 +27029,7 @@ function _fatRenderInner() {
   }, 0);
 
   return `
-    <div class="fat-wrapper" style="padding:14px 14px 60px;max-width:1400px;margin:0 auto;">
+    <div class="fat-wrapper" style="padding:14px 14px 60px;max-width:1400px;margin:0 auto;overflow-x:hidden;">
       <style>
         @media (max-width: 640px) {
           .fat-wrapper { padding: 12px 10px 60px !important; }
@@ -27436,9 +27436,30 @@ function _fatRenderInner() {
         gap: 10px;
         padding: 8px 0;
         border-bottom: 1px solid var(--neutral-100);
+        min-width: 0;       /* Sprint 9.32.45: evita que flex children expandam além do parent */
+        max-width: 100%;
+        overflow: hidden;
+      }
+      /* Sprint 9.32.45d: força min-width:0 + overflow hidden em TODOS os divs descendentes do .fat-row
+         (cobre 3 níveis de aninhamento). Adicionado overflow:hidden !important pra garantir que o
+         ellipsis funcione mesmo em layouts complexos com flex aninhado. */
+      .fat-row div {
+        min-width: 0 !important;
+        max-width: 100% !important;
+        overflow: hidden !important;
+      }
+      /* O conteúdo do .fat-bar (a barra verde interna) precisa overflow:visible pra preencher */
+      .fat-row .fat-bar {
+        overflow: hidden !important;
+      }
+      /* Garante que o card pai do row não cresça */
+      #fatRow3 > div, #fatRowEmpresa > div, #fatPagina1 > div {
+        max-width: 100%;
+        overflow-x: hidden;
       }
       .fat-row:last-child { border-bottom: 0; }
       .fat-bar {
+        width: 100%;        /* Sprint 9.32.45: garante que a barra não cresça com o conteúdo */
         height: 6px;
         background: var(--neutral-100);
         border-radius: 9999px;
@@ -27447,8 +27468,14 @@ function _fatRenderInner() {
       }
       .fat-bar__fill {
         height: 100%;
+        max-width: 100%;
         background: linear-gradient(90deg, var(--brand-lime) 0%, var(--brand-lime-dark, #6FA62E) 100%);
         transition: width 280ms ease-out;
+      }
+      /* Sprint 9.32.45: containers de listas no mobile não devem permitir overflow horizontal */
+      #fatTopClientes, #fatEstados, #fatTopProdutos, #fatVendedores, #fatMarcasLista {
+        max-width: 100%;
+        overflow-x: hidden;
       }
       /* Scrollbar discreta pro container de produtos */
       .fat-scrollable::-webkit-scrollbar { width: 6px; }
