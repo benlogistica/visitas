@@ -5703,7 +5703,7 @@ a {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.32-cliente-empresa-pessoa',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.33-cliente-devolucoes',
   APP_NAME: 'Nutricionais Visitas',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -29075,12 +29075,125 @@ function _fatDevMesesFiltrados() {
 // Sprint 9.30.5: quando há filtro de mês isolado, recalcula os rankings
 // a partir dos dados granulares (_mes). Quando há filtro de período (sem
 // mês isolado) E há dados mensais granulares, também agrega eles.
+// Sprint 9.32.33: respeita filtro de cliente — recompõe TUDO a partir dos
+// cruzamentos cliente_devolucao_* quando há cliente filtrado.
 function _fatDevObterDados() {
   const f = window._fatFiltro || {};
   const mesesSet = _fatDevMesesFiltrados();
   const temFiltroPeriodo = (f.periodo && f.periodo !== 'todos') ||
                            (f.mes && f.mes !== 'todos');
+  const temFiltroCliente = (f.cliente && f.cliente !== 'todos');
 
+  // ──────────────────────────────────────────────────────────
+  // BRANCH CLIENTE — recompõe tudo a partir dos cruzamentos de devolução
+  // ──────────────────────────────────────────────────────────
+  if (temFiltroCliente && FAT_DATA?.cliente_devolucao_mes) {
+    const cnpj = f.cliente;
+
+    // 1) devMensal recomposto
+    const devMensal = (FAT_DATA.cliente_devolucao_mes || [])
+      .filter(d => d['CNPJ/CPF'] === cnpj && mesesSet.has(d.ano_mes))
+      .map(d => ({ ano_mes: d.ano_mes, valor_devolucao: d.valor_devolucao, qtd: d.qtd }))
+      .sort((a, b) => a.ano_mes.localeCompare(b.ano_mes));
+
+    // 2) mensal recomposto (faturamento do cliente no recorte) — pra cálculo da taxa
+    const mensal = [];
+    if (FAT_DATA.clientes_mes) {
+      FAT_DATA.clientes_mes
+        .filter(c => c['CNPJ/CPF'] === cnpj && mesesSet.has(c.ano_mes))
+        .forEach(c => mensal.push({ ano_mes: c.ano_mes, faturamento: c.faturamento, qtd_notas: c.qtd_notas }));
+    }
+
+    const totalDev = devMensal.reduce((s, d) => s + d.valor_devolucao, 0);
+    const totalFat = mensal.reduce((s, m) => s + m.faturamento, 0);
+
+    // 3) Por empresa
+    const empresaMap = {};
+    (FAT_DATA.cliente_devolucao_empresa_mes || []).forEach(r => {
+      if (r['CNPJ/CPF'] !== cnpj || !mesesSet.has(r.ano_mes)) return;
+      if (!empresaMap[r.Empresa]) empresaMap[r.Empresa] = { Empresa: r.Empresa, valor_devolucao: 0, qtd: 0 };
+      empresaMap[r.Empresa].valor_devolucao += r.valor_devolucao;
+      empresaMap[r.Empresa].qtd += r.qtd;
+    });
+    const devEmpresa = Object.values(empresaMap)
+      .map(e => ({ ...e, valor_devolucao: Math.round(e.valor_devolucao * 100) / 100 }))
+      .sort((a, b) => b.valor_devolucao - a.valor_devolucao);
+
+    // 4) Por marca
+    const marcaMap = {};
+    (FAT_DATA.cliente_devolucao_marca_mes || []).forEach(r => {
+      if (r['CNPJ/CPF'] !== cnpj || !mesesSet.has(r.ano_mes)) return;
+      if (!marcaMap[r.Marca]) marcaMap[r.Marca] = { Marca: r.Marca, valor_devolucao: 0, qtd: 0 };
+      marcaMap[r.Marca].valor_devolucao += r.valor_devolucao;
+      marcaMap[r.Marca].qtd += r.qtd;
+    });
+    const devMarca = Object.values(marcaMap)
+      .map(m => ({ ...m, valor_devolucao: Math.round(m.valor_devolucao * 100) / 100 }))
+      .filter(m => m.valor_devolucao > 0)
+      .sort((a, b) => b.valor_devolucao - a.valor_devolucao);
+
+    // 5) Por produto
+    const produtosMap = {};
+    (FAT_DATA.cliente_devolucao_produto_mes || []).forEach(r => {
+      if (r['CNPJ/CPF'] !== cnpj || !mesesSet.has(r.ano_mes)) return;
+      const k = `${r['Código do Produto']}||${r['Descrição do Produto']}`;
+      if (!produtosMap[k]) produtosMap[k] = {
+        'Código do Produto': r['Código do Produto'],
+        'Descrição do Produto': r['Descrição do Produto'],
+        'Marca': r.Marca,
+        valor_devolucao: 0, qtd_itens: 0, qtd_notas: 0,
+      };
+      produtosMap[k].valor_devolucao += r.valor_devolucao;
+      produtosMap[k].qtd_itens += (r.qtd_itens || 0);
+      produtosMap[k].qtd_notas += r.qtd_notas;
+    });
+    const devProdutos = Object.values(produtosMap)
+      .map(p => ({ ...p, valor_devolucao: Math.round(p.valor_devolucao * 100) / 100 }))
+      .filter(p => p.valor_devolucao > 0)
+      .sort((a, b) => b.valor_devolucao - a.valor_devolucao)
+      .slice(0, 30);
+
+    // 6) Cidade — cliente tem 1 cidade fixa, busca em clientes_lista
+    let devCidades = [];
+    if (FAT_DATA.clientes_lista && totalDev > 0) {
+      const cli = FAT_DATA.clientes_lista.find(c => c.cnpj === cnpj);
+      if (cli && cli.cidade) {
+        devCidades = [{
+          Cidade: cli.cidade,
+          Estado: cli.estado || '—',
+          valor_devolucao: Math.round(totalDev * 100) / 100,
+          qtd_notas: devMensal.reduce((s, d) => s + d.qtd, 0),
+          qtd_clientes: 1,
+        }];
+      }
+    }
+
+    // 7) Top clientes — quando filtra cliente, mostra só esse cliente (1 linha)
+    let devClientes = [];
+    if (FAT_DATA.clientes_lista && totalDev > 0) {
+      const cli = FAT_DATA.clientes_lista.find(c => c.cnpj === cnpj);
+      if (cli) {
+        devClientes = [{
+          'Cliente (Nome Fantasia)': cli.nome_fantasia,
+          'CNPJ/CPF': cli.cnpj,
+          'Estado': cli.estado || '—',
+          'Cidade': cli.cidade || '—',
+          valor_devolucao: Math.round(totalDev * 100) / 100,
+          qtd: devMensal.reduce((s, d) => s + d.qtd, 0),
+        }];
+      }
+    }
+
+    return {
+      devMensal, mensal, totalDev, totalFat,
+      temFiltroPeriodo: true, // cliente sempre conta como filtro
+      devEmpresa, devMarca, devClientes, devProdutos, devCidades,
+    };
+  }
+
+  // ──────────────────────────────────────────────────────────
+  // FLUXO ORIGINAL (sem filtro de cliente)
+  // ──────────────────────────────────────────────────────────
   // Sempre filtra devoluções_mensal e mensal pelo conjunto de meses
   const devMensal = (FAT_DATA?.devolucoes_mensal || []).filter(d => mesesSet.has(d.ano_mes));
   const mensal = (FAT_DATA?.mensal || []).filter(m => mesesSet.has(m.ano_mes));
@@ -29310,10 +29423,18 @@ function _fatRenderDevolucoes() {
 
     // Recalcula devoluções pra cada mês do chart (não usa devMensal filtrado,
     // pois precisa mostrar todos os meses do período pra permitir navegação)
+    // Sprint 9.32.33: respeita filtro de cliente
     const devPorMes = {};
-    (FAT_DATA.devolucoes_mensal || []).forEach(d => {
-      devPorMes[d.ano_mes] = d.valor_devolucao;
-    });
+    const _fCliDev = window._fatFiltro.cliente;
+    if (_fCliDev && _fCliDev !== 'todos' && FAT_DATA.cliente_devolucao_mes) {
+      FAT_DATA.cliente_devolucao_mes
+        .filter(d => d['CNPJ/CPF'] === _fCliDev)
+        .forEach(d => { devPorMes[d.ano_mes] = (devPorMes[d.ano_mes] || 0) + d.valor_devolucao; });
+    } else {
+      (FAT_DATA.devolucoes_mensal || []).forEach(d => {
+        devPorMes[d.ano_mes] = d.valor_devolucao;
+      });
+    }
 
     const labels = mensalChart.map(m => _mesLabel(m.ano_mes));
     const valores = mensalChart.map(m => devPorMes[m.ano_mes] || 0);
