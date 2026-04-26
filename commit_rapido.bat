@@ -45,6 +45,16 @@ if %MUDANCAS%==0 (
     exit /b 0
 )
 
+REM ---- Confirma antes ------------------------------------------------
+echo.
+set /p CONF="Confirma o commit desses arquivos? (S/N): "
+if /i not "!CONF!"=="S" (
+    echo.
+    echo Cancelado.
+    pause
+    exit /b 0
+)
+
 REM ---- Pega mensagem do commit --------------------------------------
 echo.
 set /p MSG="Mensagem do commit (Enter pra usar 'Ajuste rapido'): "
