@@ -1,0 +1,30 @@
+# Pastas que NAO devem ir pro repo (GitHub Pages publico)
+
+# Designs em zip — pesados e nao usados em producao
+DESIGN DO PROJETO/
+
+# Dados raw do Omie — sensiveis (faturamento real de hospital)
+entrada/*.xlsx
+entrada/*.xlsm
+
+# Backups e versoes antigas
+bckps/
+
+# Logs gerados pelo atualizar_dashboard.bat
+logs/
+
+# Scripts de migracao one-shot (nao precisam ficar no repo)
+migrar_para_json_separado.py
+
+# Caches/temporarios
+*.pyc
+__pycache__/
+*.tmp
+*.bak
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
