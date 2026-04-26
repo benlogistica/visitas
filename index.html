@@ -3558,6 +3558,57 @@ a {
   box-shadow: none;
   cursor: not-allowed;
 }
+/* Sprint 9.32.44: estado "tem alterações pendentes" — pulse + cor de alerta */
+.btn-confirm--pendente {
+  animation: btnConfirmPulse 1.4s ease-in-out infinite;
+  background: linear-gradient(180deg, #F59E0B 0%, #B45309 100%) !important;
+  box-shadow: 0 10px 28px rgba(245,158,11,0.45), inset 0 1.5px 0 rgba(255,255,255,0.35) !important;
+}
+@keyframes btnConfirmPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.015); }
+}
+
+/* Badge "Não salvo" perto do título de seções com pills/toggles alterados */
+.uncommitted-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  background: #FEF3C7;
+  color: #92400E;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin-left: 8px;
+}
+.uncommitted-badge::before {
+  content: "•";
+  font-size: 14px;
+  line-height: 0;
+}
+
+/* Aviso acima do botão Salvar quando há pendências */
+.uncommitted-aviso {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 14px;
+  margin-bottom: 12px;
+  background: #FEF3C7;
+  border: 1px solid rgba(245,158,11,0.4);
+  border-radius: 10px;
+  color: #92400E;
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+.uncommitted-aviso .material-symbols-rounded {
+  font-size: 20px;
+  color: #B45309;
+  flex-shrink: 0;
+}
 
 /* Danger giant button */
 .btn-danger-giant {
@@ -6037,7 +6088,7 @@ a {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.42c-rebrand-bn-clean',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.44-pills-sem-autosave',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -13949,6 +14000,11 @@ async function finalizarRelatorio(visitaId, dados) {
 
   // Validação
   const erros = [];
+  // Sprint 9.32.43: empresa representada é obrigatória sempre (visita realizada ou não)
+  const empresasValidas = ['Haverim', 'Nutricionais-Santos', 'Nutricionais-PG'];
+  if (!dados.empresa_representada || !empresasValidas.includes(dados.empresa_representada)) {
+    erros.push('Empresa representada (Haverim, Nutricionais-Santos ou Nutricionais-PG)');
+  }
   if (!dados.horario_inicio) erros.push('Horário de início da visita');
   if (!dados.horario_termino) erros.push('Horário de término');
   if (dados.visita_realizada === null || dados.visita_realizada === undefined)
@@ -13982,6 +14038,7 @@ async function finalizarRelatorio(visitaId, dados) {
 
   // Atualização final
   const payload = {
+    empresa_representada: dados.empresa_representada,  // Sprint 9.32.43
     horario_inicio: dados.horario_inicio,
     horario_termino: dados.horario_termino,
     visita_realizada: dados.visita_realizada,
@@ -14507,6 +14564,9 @@ const ReportState = {
   objetivosSelecionados: new Set(),
   autoSaveTimer: null,
   pendingChanges: {},
+  // Sprint 9.32.44: mudanças de pills/toggles que NÃO são auto-salvas (só vão pro banco quando clica "Salvar alterações")
+  // Evita destrutividade silenciosa: clique acidental num pill não modifica o banco até o usuário confirmar.
+  uncommittedChoices: {},
   lastSavedAt: null,
   saveCounter: 0,
 };
@@ -19320,6 +19380,7 @@ function renderRelatorio() {
   ReportState.objetivosSelecionados = new Set();
   if (ReportState.autoSaveTimer) clearTimeout(ReportState.autoSaveTimer);
   ReportState.pendingChanges = {};
+  ReportState.uncommittedChoices = {};  // Sprint 9.32.44: zera escolhas pendentes ao abrir nova visita
 
   // Carrega dados async
   setTimeout(async () => {
@@ -19535,6 +19596,28 @@ function hydrateReportForm() {
       </div>
     ` : ''}
 
+    <!-- SEÇÃO 0 (Sprint 9.32.43): Empresa representada na visita -->
+    <section class="report-section">
+      <div class="report-section__title">
+        <span class="material-symbols-rounded">business</span>
+        Empresa representada
+        <span class="report-section__required">*</span>
+        <span id="badgeUncommitted_empresa_representada" class="uncommitted-badge" style="display:none;">Não salvo</span>
+      </div>
+      <div class="report-section__help">Qual empresa você representou nesta visita?</div>
+      <div class="toggle-group" style="display:grid;grid-template-columns:repeat(3, minmax(0, 1fr));gap:6px;">
+        <button type="button" class="toggle-btn ${v.empresa_representada === 'Haverim' ? 'is-selected' : ''}" id="btnEmp_haverim" ${readonly ? 'disabled' : ''} onclick="setEmpresaRepresentada('Haverim')">
+          Haverim
+        </button>
+        <button type="button" class="toggle-btn ${v.empresa_representada === 'Nutricionais-Santos' ? 'is-selected' : ''}" id="btnEmp_santos" ${readonly ? 'disabled' : ''} onclick="setEmpresaRepresentada('Nutricionais-Santos')">
+          Nutricionais-Santos
+        </button>
+        <button type="button" class="toggle-btn ${v.empresa_representada === 'Nutricionais-PG' ? 'is-selected' : ''}" id="btnEmp_pg" ${readonly ? 'disabled' : ''} onclick="setEmpresaRepresentada('Nutricionais-PG')">
+          Nutricionais-PG
+        </button>
+      </div>
+    </section>
+
     <!-- SEÇÃO 1: Horários declarados -->
     <section class="report-section">
       <div class="report-section__title">
@@ -19565,6 +19648,7 @@ function hydrateReportForm() {
         <span class="material-symbols-rounded">task_alt</span>
         A visita foi realizada?
         <span class="report-section__required">*</span>
+        <span id="badgeUncommitted_visita_realizada" class="uncommitted-badge" style="display:none;">Não salvo</span>
       </div>
       <div class="toggle-group">
         <button type="button" class="toggle-btn ${realizada === true ? 'is-selected' : ''}" ${readonly ? 'disabled' : ''} onclick="setRealizada(true)" id="btnRealizadaSim">
@@ -19649,6 +19733,11 @@ function hydrateReportForm() {
 
     ${readonly ? '' : `
       <div class="report-footer">
+        <!-- Sprint 9.32.44: aviso quando há escolhas de pills/toggles ainda não salvas -->
+        <div id="uncommittedAviso" class="uncommitted-aviso" style="display:none;">
+          <span class="material-symbols-rounded">info</span>
+          <span>Você tem <strong><span class="uncommitted-aviso__count">0</span></strong> alteração(ões) não salva(s). Clique em <strong>${v.status === 'completa' ? 'Salvar alterações' : 'Finalizar relatório'}</strong> abaixo pra confirmar.</span>
+        </div>
         <button class="btn-confirm" id="btnFinalizar" onclick="handleFinalizarRelatorio()">
           <span class="material-symbols-rounded" style="font-size:24px">${v.status === 'completa' ? 'save' : 'check_circle'}</span>
           ${v.status === 'completa' ? 'Salvar alterações' : 'Finalizar relatório'}
@@ -20079,8 +20168,36 @@ window.toggleObjetivo = function(objId) {
   scheduleSyncObjetivos();
 };
 
+// Sprint 9.32.44: pills/toggles críticos NÃO disparam auto-save.
+// Mudança fica em ReportState.uncommittedChoices até o usuário clicar "Salvar alterações".
+// Evita que toque acidental num pill modifique o banco silenciosamente.
+
+window.setEmpresaRepresentada = function(valor) {
+  if (ReportState.visita && !visitaPodeSerEditada(ReportState.visita).pode) return;
+  // Limpa is-selected dos 3 botões e marca o clicado (visual imediato)
+  ['btnEmp_haverim', 'btnEmp_santos', 'btnEmp_pg'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.remove('is-selected');
+  });
+  const map = {
+    'Haverim': 'btnEmp_haverim',
+    'Nutricionais-Santos': 'btnEmp_santos',
+    'Nutricionais-PG': 'btnEmp_pg',
+  };
+  const el = document.getElementById(map[valor]);
+  if (el) el.classList.add('is-selected');
+
+  // Compara com o valor atual no banco. Se diferente, marca como pendente. Se igual, remove a pendência.
+  const valorOriginal = ReportState.visita?.empresa_representada;
+  if (valor !== valorOriginal) {
+    ReportState.uncommittedChoices.empresa_representada = valor;
+  } else {
+    delete ReportState.uncommittedChoices.empresa_representada;
+  }
+  atualizarBadgePendencias();
+};
+
 window.setRealizada = function(valor) {
-  ReportState.pendingChanges.visita_realizada = valor;
   // Atualiza visual
   document.getElementById('btnRealizadaSim').classList.toggle('is-selected', valor === true);
   document.getElementById('btnRealizadaNao').classList.toggle('is-selected', valor === false);
@@ -20088,10 +20205,43 @@ window.setRealizada = function(valor) {
   document.getElementById('motivoNaoRealizada').style.display = valor === false ? 'block' : 'none';
   document.getElementById('realizadaSections').style.display = valor === false ? 'none' : 'block';
 
-  // Salva no estado local
-  if (ReportState.visita) ReportState.visita.visita_realizada = valor;
-  scheduleAutoSave();
+  // Marca como pendente se mudou em relação ao salvo
+  const valorOriginal = ReportState.visita?.visita_realizada;
+  if (valor !== valorOriginal) {
+    ReportState.uncommittedChoices.visita_realizada = valor;
+  } else {
+    delete ReportState.uncommittedChoices.visita_realizada;
+  }
+  atualizarBadgePendencias();
 };
+
+// Sprint 9.32.44: atualiza visual do botão Salvar e badges de pendência.
+// Mostra contador no botão e destaca pra alertar usuário sobre mudanças não salvas.
+function atualizarBadgePendencias() {
+  const total = Object.keys(ReportState.uncommittedChoices).length;
+  const btnFinalizar = document.getElementById('btnFinalizar');
+  const aviso = document.getElementById('uncommittedAviso');
+
+  if (btnFinalizar) {
+    btnFinalizar.classList.toggle('btn-confirm--pendente', total > 0);
+  }
+  if (aviso) {
+    if (total > 0) {
+      aviso.style.display = 'flex';
+      aviso.querySelector('.uncommitted-aviso__count').textContent = total;
+    } else {
+      aviso.style.display = 'none';
+    }
+  }
+
+  // Pinta badge "Não salvo" perto dos pills alterados
+  ['empresa_representada', 'visita_realizada'].forEach(campo => {
+    const badge = document.getElementById(`badgeUncommitted_${campo}`);
+    if (badge) {
+      badge.style.display = (campo in ReportState.uncommittedChoices) ? 'inline-flex' : 'none';
+    }
+  });
+}
 
 window.handleReportChange = function(campo, valor) {
   ReportState.pendingChanges[campo] = valor;
@@ -20240,10 +20390,13 @@ window.handleFinalizarRelatorio = async function() {
   btn.innerHTML = '<span class="material-symbols-rounded" style="font-size:24px">hourglass_empty</span> Finalizando...';
 
   const v = ReportState.visita;
+  // Sprint 9.32.44: pills/toggles ainda não confirmados — mescla pra o save final
+  const uc = ReportState.uncommittedChoices || {};
   const dados = {
+    empresa_representada: ('empresa_representada' in uc) ? uc.empresa_representada : v.empresa_representada,
     horario_inicio: document.getElementById('fHoraInicio')?.value || v.horario_inicio,
     horario_termino: document.getElementById('fHoraTermino')?.value || v.horario_termino,
-    visita_realizada: v.visita_realizada,
+    visita_realizada: ('visita_realizada' in uc) ? uc.visita_realizada : v.visita_realizada,
     motivo_nao_realizada: document.getElementById('fMotivo')?.value,
     resumo: document.getElementById('fResumo')?.value,
     proximos_passos: document.getElementById('fProximos')?.value,
@@ -20259,6 +20412,10 @@ window.handleFinalizarRelatorio = async function() {
 
   try {
     await finalizarRelatorio(ReportState.visitaId, dados);
+    // Sprint 9.32.44: confirma uncommittedChoices no estado da visita e limpa pendências
+    Object.assign(ReportState.visita, ReportState.uncommittedChoices);
+    ReportState.uncommittedChoices = {};
+    atualizarBadgePendencias();
     setFlash('success', eraCompleta ? 'Alterações salvas!' : 'Relatório finalizado com sucesso!');
 
     // Sprint 7 Mini 3 — sugestão automática de agendamento
@@ -24366,6 +24523,18 @@ function renderReviewDetailContent(v) {
       <div class="review-detail__section-title">
         <span class="material-symbols-rounded">description</span>
         Relatório
+      </div>
+      <div class="review-detail__row">
+        <span class="review-detail__label">Empresa representada</span>
+        <span class="review-detail__value">
+          ${v.empresa_representada
+            ? `<span style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:9999px;font-size:11.5px;font-weight:700;${
+                v.empresa_representada === 'Haverim' ? 'background:#DCFCE7;color:#166534;' :
+                v.empresa_representada === 'Nutricionais-Santos' ? 'background:#DBEAFE;color:#1E40AF;' :
+                'background:#FEF3C7;color:#92400E;'
+              }">${v.empresa_representada}</span>`
+            : '<span style="color:var(--status-warning);font-size:12px;">⚠ Não informada</span>'}
+        </span>
       </div>
       <div class="review-detail__row">
         <span class="review-detail__label">Horário declarado</span>
