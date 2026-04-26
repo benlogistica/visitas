@@ -6,9 +6,9 @@
 <meta name="theme-color" content="#0A1F5C">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Nutricionais">
+<meta name="apple-mobile-web-app-title" content="B&N Logística">
 <meta name="mobile-web-app-capable" content="yes">
-<title>Nutricionais Visitas</title>
+<title>B&N Logística — Visitas</title>
 
 <!-- PWA -->
 <link rel="manifest" href="manifest.json">
@@ -359,10 +359,19 @@ a {
 }
 
 .splash__logo {
-  width: 120px;
-  height: auto;
+  width: 140px;
+  height: 140px;
   margin-bottom: var(--space-6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
   animation: splash-pulse 2s ease-in-out infinite;
+}
+.splash__logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
 }
 
 .splash__title {
@@ -554,11 +563,11 @@ a {
 }
 
 .auth__brand-logo {
+  /* Sprint 9.32.42b: container do logo agora é inline-flex (badge + texto), não mais height fixo */
   position: relative;
   z-index: 1;
-  height: 52px;
-  width: auto;
-  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
+  display: inline-flex;
+  align-items: center;
 }
 
 .auth__brand-content {
@@ -6006,13 +6015,11 @@ a {
      SPLASH (primeira tela enquanto app carrega)
      ========================================================================== -->
 <div class="splash" id="splash">
-  <!-- Logo branco inline SVG pra carregar rápido, será trocado por PNG quando subirmos o logo -->
-  <div class="splash__logo" aria-label="Nutricionais">
-    <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;fill:#FFFFFF">
-      <path d="M100 175 C100 175, 20 125, 20 70 C20 45, 40 25, 65 25 C80 25, 92 32, 100 45 C108 32, 120 25, 135 25 C160 25, 180 45, 180 70 C180 125, 100 175, 100 175 Z"/>
-    </svg>
+  <!-- Sprint 9.32.42: rebrand B&N Logística — logo PNG real (substitui o coração SVG anterior) -->
+  <div class="splash__logo" aria-label="B&N Logística">
+    <img src="icons/logo-bn.png" alt="B&N Logística" style="width:100%;height:100%;object-fit:contain;" />
   </div>
-  <div class="splash__title">Nutricionais Visitas</div>
+  <div class="splash__title">Logística</div>
   <div class="splash__subtitle">Carregando o sistema...</div>
   <div class="splash__spinner"></div>
 </div>
@@ -6030,8 +6037,8 @@ a {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.40-inst-refresh-desktop',
-  APP_NAME: 'Nutricionais Visitas',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.42c-rebrand-bn-clean',
+  APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
 };
@@ -6051,17 +6058,17 @@ let connectionStatus = {
 
 function initSupabase() {
   if (CONFIG.SUPABASE_URL.includes('SEU-PROJETO')) {
-    console.warn('[Nutricionais] Supabase não configurado. Modo demo ativo.');
+    console.warn('[B&N] Supabase não configurado. Modo demo ativo.');
     connectionStatus.error = 'Supabase não configurado (modo demo)';
     return null;
   }
   try {
     db = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
-    console.log('[Nutricionais] Supabase inicializado.');
+    console.log('[B&N] Supabase inicializado.');
     connectionStatus.connected = true;
     return db;
   } catch (err) {
-    console.error('[Nutricionais] Erro ao conectar Supabase:', err);
+    console.error('[B&N] Erro ao conectar Supabase:', err);
     connectionStatus.error = err.message;
     return null;
   }
@@ -6102,9 +6109,9 @@ async function testConnection() {
 
     connectionStatus.tablesFound = tabelasEsperadas.length;
     connectionStatus.testPassed = true;
-    console.log('[Nutricionais] Teste de conexão OK:', connectionStatus);
+    console.log('[B&N] Teste de conexão OK:', connectionStatus);
   } catch (err) {
-    console.error('[Nutricionais] Erro no teste:', err);
+    console.error('[B&N] Erro no teste:', err);
     connectionStatus.error = err.message;
   }
 }
@@ -7401,14 +7408,12 @@ function renderReqs(pwd) {
   `;
 }
 
-// SVG Logo branco (pra fundo navy) — embed inline
+// Logo B&N — círculo direto + texto. Assume que icons/logo-bn.png é PNG transparente.
 const LOGO_WHITE_SVG = `
-<svg viewBox="0 0 280 64" xmlns="http://www.w3.org/2000/svg" style="height:100%;width:auto">
-  <g fill="#FFFFFF">
-    <path d="M32 8 C28 8 25 11 25 15 C25 10 22 8 18 8 C13 8 10 12 10 17 C10 28 32 44 32 44 C32 44 54 28 54 17 C54 12 51 8 46 8 C42 8 39 11 39 15 C39 11 36 8 32 8 Z"/>
-    <text x="70" y="40" font-family="Poppins, sans-serif" font-size="24" font-weight="700" letter-spacing="0.5">NUTRICIONAIS</text>
-  </g>
-</svg>
+  <span style="display:inline-flex;align-items:center;gap:12px;height:100%;">
+    <img src="icons/logo-bn.png" alt="B&N" style="width:52px;height:52px;object-fit:contain;display:block;flex-shrink:0;" />
+    <span style="font-family:var(--font-display);font-weight:800;font-size:22px;color:#fff;letter-spacing:0.5px;line-height:1;">LOGÍSTICA</span>
+  </span>
 `;
 
 /* ==========================================================================
@@ -9204,8 +9209,8 @@ function desktopSidebar(activeId) {
   return `
     <aside class="ds-sidebar">
       <div class="ds-sidebar__logo">
-        <img src="icons/logo-color.png" alt="Nutricionais" style="height:28px;width:28px;object-fit:contain;display:block;flex-shrink:0;" />
-        <span class="ds-sidebar__logo-text">NUTRICIONAIS</span>
+        <img src="icons/logo-bn.png" alt="B&N Logística" style="height:42px;width:42px;object-fit:contain;display:block;flex-shrink:0;" />
+        <span class="ds-sidebar__logo-text">LOGÍSTICA</span>
       </div>
       <div class="ds-sidebar__divider"></div>
       <nav class="ds-sidebar__nav">
@@ -9345,8 +9350,8 @@ function desktopSidebarNutri(activeId) {
   return `
     <aside class="ds-sidebar">
       <div class="ds-sidebar__logo">
-        <img src="icons/logo-color.png" alt="Nutricionais" style="height:28px;width:28px;object-fit:contain;display:block;flex-shrink:0;" />
-        <span class="ds-sidebar__logo-text">NUTRICIONAIS</span>
+        <img src="icons/logo-bn.png" alt="B&N Logística" style="height:42px;width:42px;object-fit:contain;display:block;flex-shrink:0;" />
+        <span class="ds-sidebar__logo-text">LOGÍSTICA</span>
       </div>
       <div class="ds-sidebar__divider"></div>
       <nav class="ds-sidebar__nav">
@@ -13749,8 +13754,8 @@ function mobileTopBar(opts = {}) {
         ${showLogo ? `
           <div style="flex:1;">
             <div style="display:inline-flex;align-items:center;gap:8px;color:#fff;">
-              <img src="icons/logo-color.png" alt="Nutricionais" style="height:28px;width:auto;display:block;" />
-              <span style="font-family:var(--font-display);font-weight:700;font-size:15px;letter-spacing:0.5px;">NUTRICIONAIS</span>
+              <img src="icons/logo-bn.png" alt="B&N Logística" style="height:42px;width:42px;object-fit:contain;display:block;flex-shrink:0;" />
+              <span style="font-family:var(--font-display);font-weight:700;font-size:15px;letter-spacing:0.5px;">LOGÍSTICA</span>
             </div>
           </div>
         ` : `<div class="mbar__title">${title || ''}</div>`}
@@ -15141,7 +15146,7 @@ function renderDiagnostico() {
               <path d="M100 175 C100 175, 20 125, 20 70 C20 45, 40 25, 65 25 C80 25, 92 32, 100 45 C108 32, 120 25, 135 25 C160 25, 180 45, 180 70 C180 125, 100 175, 100 175 Z"/>
             </svg>
           </div>
-          <h1 class="diag__title">Nutricionais Visitas</h1>
+          <h1 class="diag__title">B&N Logística</h1>
           <p class="diag__subtitle">Diagnóstico de infraestrutura · Sprint 1</p>
         </div>
 
@@ -15210,7 +15215,7 @@ function renderLogin() {
 
   // Logo branca inline
   const logoWhite = `
-    <div class="auth__brand-logo" aria-label="Nutricionais">
+    <div class="auth__brand-logo" aria-label="B&N Logística">
       ${LOGO_WHITE_SVG}
     </div>
   `;
@@ -15254,7 +15259,7 @@ function renderLogin() {
         </div>
 
         <div class="auth__brand-footer">
-          <span>© 2026 Nutricionais · v${CONFIG.APP_VERSION}</span>
+          <span>© 2026 B&N Logística · v${CONFIG.APP_VERSION}</span>
           <span class="auth__brand-footer-links">
             <span>Termos</span>
             <span>Privacidade</span>
@@ -15390,7 +15395,7 @@ function renderCadastro() {
     <div class="auth">
       <aside class="auth__brand">
         <div class="auth__brand-grid"></div>
-        <div class="auth__brand-logo" aria-label="Nutricionais">${LOGO_WHITE_SVG}</div>
+        <div class="auth__brand-logo" aria-label="B&N Logística">${LOGO_WHITE_SVG}</div>
         <div class="auth__brand-content">
           <div class="auth__brand-pill">
             <span class="auth__brand-pill-dot"></span>
@@ -15406,7 +15411,7 @@ function renderCadastro() {
           </div>
         </div>
         <div class="auth__brand-footer">
-          <span>© 2026 Nutricionais · v${CONFIG.APP_VERSION}</span>
+          <span>© 2026 B&N Logística · v${CONFIG.APP_VERSION}</span>
         </div>
       </aside>
 
@@ -17531,12 +17536,19 @@ function _perfRenderDetalhe() {
     </div>
   `;
 
-  // Mini-KPIs do hospital (4x1 desktop, 2x2 mobile)
+  // Mini-KPIs do hospital (5x1 desktop, 2x3 mobile) — Sprint 9.32.41: card de Devoluções por hospital
   let kpisDetHtml = '';
   if (r.temMatch) {
-    const cols = isDeskPerfDet ? 'repeat(4,1fr)' : '1fr 1fr';
+    const cols = isDeskPerfDet ? 'repeat(5,1fr)' : '1fr 1fr';
     const fontKpi = isDeskPerfDet ? '16px' : '14px';
     const padKpi = isDeskPerfDet ? '10px 12px' : '8px 10px';
+    // Devoluções: cor avermelhada se houver, neutra se zero
+    const temDev = (r.valor_devolucao || 0) > 0;
+    const devBg = temDev ? '#FEF2F2' : 'var(--neutral-50,#F5F6FA)';
+    const devCor = temDev ? '#B91C1C' : 'var(--brand-navy)';
+    const devLabel = (r.qtd_devolucoes || 0) > 0
+      ? `${r.qtd_devolucoes} ${r.qtd_devolucoes === 1 ? 'nota' : 'notas'}`
+      : '0 notas';
     kpisDetHtml = `
       <div style="display:grid;grid-template-columns:${cols};gap:${isDeskPerfDet ? '8px' : '6px'};margin-bottom:${isDeskPerfDet ? '18px' : '12px'};">
         <div style="background:var(--neutral-50,#F5F6FA);padding:${padKpi};border-radius:8px;">
@@ -17554,6 +17566,11 @@ function _perfRenderDetalhe() {
         <div style="background:var(--neutral-50,#F5F6FA);padding:${padKpi};border-radius:8px;">
           <div style="font-size:9.5px;color:var(--neutral-500);text-transform:uppercase;letter-spacing:0.4px;font-weight:600;">Itens</div>
           <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:${fontKpi};margin-top:2px;">${(r.produtos || []).length || '—'}</div>
+        </div>
+        <div style="background:${devBg};padding:${padKpi};border-radius:8px;">
+          <div style="font-size:9.5px;color:var(--neutral-500);text-transform:uppercase;letter-spacing:0.4px;font-weight:600;">Devoluções</div>
+          <div style="font-family:var(--font-display);font-weight:700;color:${devCor};font-size:${fontKpi};margin-top:2px;">${_perfFmtMoeda(r.valor_devolucao || 0)}</div>
+          <div style="font-size:9.5px;color:var(--neutral-500);margin-top:2px;">${devLabel}</div>
         </div>
       </div>
     `;
@@ -22500,7 +22517,7 @@ function renderAdminDashboardRelatorio() {
             </svg>
             <div>
               <div class="relatorio-header__title">Relatório de visitas</div>
-              <div class="relatorio-header__subtitle">Nutricionais · Sistema de visitas comerciais</div>
+              <div class="relatorio-header__subtitle">B&N Logística · Sistema de visitas comerciais</div>
             </div>
           </div>
           <div class="relatorio-header__meta">
@@ -22587,7 +22604,7 @@ function renderAdminDashboardRelatorio() {
         </section>
 
         <footer class="relatorio-footer">
-          Documento gerado automaticamente pelo sistema Nutricionais em ${dataGer}. Dados sujeitos a conferência.
+          Documento gerado automaticamente pelo sistema B&N Logística em ${dataGer}. Dados sujeitos a conferência.
         </footer>
       </div>
     </div>
