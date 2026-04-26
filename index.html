@@ -5703,7 +5703,7 @@ a {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.33-cliente-devolucoes',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.34-card-dev-cliente',
   APP_NAME: 'Nutricionais Visitas',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -30362,9 +30362,18 @@ function _fatRender() {
   const ticketMedio = qtdNotas > 0 ? fatTotal / qtdNotas : 0;
 
   // Calcula devoluções no mesmo período
-  const devsPeriodo = FAT_DATA.devolucoes_mensal
-    .filter(d => mensal.some(m => m.ano_mes === d.ano_mes))
-    .reduce((s, d) => s + d.valor_devolucao, 0);
+  // Sprint 9.32.34: respeita filtro de cliente — usa cliente_devolucao_mes
+  const _fCliKpi = window._fatFiltro.cliente;
+  let devsPeriodo;
+  if (_fCliKpi && _fCliKpi !== 'todos' && FAT_DATA.cliente_devolucao_mes) {
+    devsPeriodo = FAT_DATA.cliente_devolucao_mes
+      .filter(d => d['CNPJ/CPF'] === _fCliKpi && mensal.some(m => m.ano_mes === d.ano_mes))
+      .reduce((s, d) => s + d.valor_devolucao, 0);
+  } else {
+    devsPeriodo = FAT_DATA.devolucoes_mensal
+      .filter(d => mensal.some(m => m.ano_mes === d.ano_mes))
+      .reduce((s, d) => s + d.valor_devolucao, 0);
+  }
   // Sprint 9.32.26: removido toggle "Abater devoluções" — faturamento é sempre bruto
   // (devoluções têm aba dedicada com análises completas)
   // Mantém variável fatLiquido = fatTotal pra evitar quebrar referências abaixo
