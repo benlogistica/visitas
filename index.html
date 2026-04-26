@@ -6030,7 +6030,7 @@ a {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.39-perf-todos-clientes',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.40-inst-refresh-desktop',
   APP_NAME: 'Nutricionais Visitas',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -35938,6 +35938,12 @@ window.trocarInstFiltro = function(filtro) {
 
 // Sprint 9.7: carrega todas as instituições, filtra pela aba e renderiza
 async function carregarInstituicoesAdmin() {
+  // Sprint 9.32.40: também recarrega a tabela do desktop se estiver no DOM.
+  // Antes só atualizava a versão mobile (admInstList) — admin no desktop precisava de F5.
+  if (typeof carregarAdminInstituicoesDesktop === 'function' && document.getElementById('dsdInstTable')) {
+    carregarAdminInstituicoesDesktop();
+  }
+
   const listEl = document.getElementById('admInstList');
   if (!listEl) return;
   try {
