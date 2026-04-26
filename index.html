@@ -5703,7 +5703,7 @@ a {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.30-clientes-inline',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.32-cliente-empresa-pessoa',
   APP_NAME: 'Nutricionais Visitas',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -30453,14 +30453,26 @@ function _fatRender() {
   }
 
   // Top Vendedores ====
+  // Sprint 9.32.31: se há filtro de cliente, lê do cruzamento cliente_vendedor_mes
   const vendedoresPeriodo = {};
-  FAT_DATA.vendedor_mes
-    .filter(v => mensal.some(m => m.ano_mes === v.ano_mes))
-    .forEach(v => {
-      if (!vendedoresPeriodo[v.Vendedor]) vendedoresPeriodo[v.Vendedor] = { faturamento: 0, qtd_notas: 0 };
-      vendedoresPeriodo[v.Vendedor].faturamento += v.faturamento;
-      vendedoresPeriodo[v.Vendedor].qtd_notas += v.qtd_notas;
-    });
+  const _fCli = window._fatFiltro.cliente;
+  if (_fCli && _fCli !== 'todos' && FAT_DATA.cliente_vendedor_mes) {
+    FAT_DATA.cliente_vendedor_mes
+      .filter(cv => cv['CNPJ/CPF'] === _fCli && mensal.some(m => m.ano_mes === cv.ano_mes))
+      .forEach(cv => {
+        if (!vendedoresPeriodo[cv.Vendedor]) vendedoresPeriodo[cv.Vendedor] = { faturamento: 0, qtd_notas: 0 };
+        vendedoresPeriodo[cv.Vendedor].faturamento += cv.faturamento;
+        vendedoresPeriodo[cv.Vendedor].qtd_notas += cv.qtd_notas;
+      });
+  } else {
+    FAT_DATA.vendedor_mes
+      .filter(v => mensal.some(m => m.ano_mes === v.ano_mes))
+      .forEach(v => {
+        if (!vendedoresPeriodo[v.Vendedor]) vendedoresPeriodo[v.Vendedor] = { faturamento: 0, qtd_notas: 0 };
+        vendedoresPeriodo[v.Vendedor].faturamento += v.faturamento;
+        vendedoresPeriodo[v.Vendedor].qtd_notas += v.qtd_notas;
+      });
+  }
   const vendArr = Object.entries(vendedoresPeriodo)
     .map(([nome, v]) => ({ nome, ...v, ticket: v.qtd_notas > 0 ? v.faturamento / v.qtd_notas : 0 }))
     .sort((a, b) => b.faturamento - a.faturamento);
@@ -30495,7 +30507,23 @@ function _fatRender() {
   }
 
   // Marcas ====
-  const marcasArr = FAT_DATA.marcas.slice(0, 8);
+  // Sprint 9.32.31: se há filtro de cliente, lê do cruzamento cliente_marca_mes
+  let marcasArr;
+  const _fCliM = window._fatFiltro.cliente;
+  if (_fCliM && _fCliM !== 'todos' && FAT_DATA.cliente_marca_mes) {
+    const aggM = {};
+    FAT_DATA.cliente_marca_mes
+      .filter(cm => cm['CNPJ/CPF'] === _fCliM && mensal.some(m => m.ano_mes === cm.ano_mes))
+      .forEach(cm => {
+        if (!aggM[cm.Marca]) aggM[cm.Marca] = { Marca: cm.Marca, faturamento: 0, qtd_notas: 0, qtd_itens: 0 };
+        aggM[cm.Marca].faturamento += cm.faturamento;
+        aggM[cm.Marca].qtd_notas += cm.qtd_notas;
+        aggM[cm.Marca].qtd_itens += (cm.qtd_itens || 0);
+      });
+    marcasArr = Object.values(aggM).sort((a, b) => b.faturamento - a.faturamento).slice(0, 8);
+  } else {
+    marcasArr = FAT_DATA.marcas.slice(0, 8);
+  }
   const ctxM = document.getElementById('fatChartMarcas');
   if (ctxM && typeof Chart !== 'undefined') {
     if (_fatChartMarcasInst) _fatChartMarcasInst.destroy();
@@ -30542,13 +30570,25 @@ function _fatRender() {
   }
 
   // === Sprint 9.25: Faturamento por empresa (Haverim, Nutricionais Santos/PG) ===
+  // Sprint 9.32.32: agora respeita filtro de cliente também
   const empEl = document.getElementById('fatEmpresas');
   if (empEl && FAT_DATA.empresa_total) {
-    // Se tem filtro de mês, usa empresa_mes filtrado; senão, usa empresa_total
     const f2 = window._fatFiltro;
     let dadosEmp;
-    if (f2.mes && f2.mes !== 'todos' && FAT_DATA.empresa_mes) {
-      // Agrega por empresa filtrando pelo mês
+    // 1) Filtro de cliente tem prioridade — usa cliente_empresa_mes
+    if (f2.cliente && f2.cliente !== 'todos' && FAT_DATA.cliente_empresa_mes) {
+      const agg = {};
+      FAT_DATA.cliente_empresa_mes
+        .filter(ce => ce['CNPJ/CPF'] === f2.cliente && mensal.some(m => m.ano_mes === ce.ano_mes))
+        .forEach(ce => {
+          if (!agg[ce.Empresa]) agg[ce.Empresa] = { Empresa: ce.Empresa, faturamento: 0, qtd_notas: 0 };
+          agg[ce.Empresa].faturamento += ce.faturamento;
+          agg[ce.Empresa].qtd_notas += ce.qtd_notas;
+        });
+      dadosEmp = Object.values(agg).map(e => ({ ...e, ticket_medio: e.qtd_notas > 0 ? e.faturamento / e.qtd_notas : 0 }));
+    }
+    // 2) Filtro de mês isolado
+    else if (f2.mes && f2.mes !== 'todos' && FAT_DATA.empresa_mes) {
       const agg = {};
       FAT_DATA.empresa_mes
         .filter(e => e.ano_mes === f2.mes)
@@ -30603,11 +30643,27 @@ function _fatRender() {
   }
 
   // === Sprint 9.25: Tipo de pessoa (PF x PJ) pelo formato do CPF/CNPJ ===
+  // Sprint 9.32.32: respeita filtro de cliente — deduz tipo do CNPJ filtrado
   const pessoaEl = document.getElementById('fatTipoPessoa');
   if (pessoaEl && FAT_DATA.tipo_pessoa_total) {
     const f3 = window._fatFiltro;
     let dadosP;
-    if (f3.mes && f3.mes !== 'todos' && FAT_DATA.tipo_pessoa_mes) {
+    // 1) Filtro de cliente — só mostra PF ou PJ daquele cliente
+    if (f3.cliente && f3.cliente !== 'todos') {
+      const cnpjStr = String(f3.cliente).replace(/\D/g, '');
+      const tipoCli = cnpjStr.length === 14 ? 'PJ' : (cnpjStr.length === 11 ? 'PF' : 'N/D');
+      const fatCli = mensal.reduce((s, m) => s + (m.faturamento || 0), 0);
+      const notasCli = mensal.reduce((s, m) => s + (m.qtd_notas || 0), 0);
+      dadosP = [{
+        tipo_pessoa: tipoCli,
+        faturamento: fatCli,
+        qtd_notas: notasCli,
+        qtd_clientes: 1,
+        ticket_medio: notasCli > 0 ? fatCli / notasCli : 0,
+      }];
+    }
+    // 2) Filtro de mês isolado
+    else if (f3.mes && f3.mes !== 'todos' && FAT_DATA.tipo_pessoa_mes) {
       const agg = {};
       FAT_DATA.tipo_pessoa_mes
         .filter(p => p.ano_mes === f3.mes)
@@ -30693,9 +30749,22 @@ function _fatRender() {
   // Estados ====
   const teEl = document.getElementById('fatEstados');
   if (teEl) {
-    const top = FAT_DATA.estados.slice(0, 10);
-    const maxE = top[0]?.faturamento || 1;
-    teEl.innerHTML = top.map(e => {
+    // Sprint 9.32.31: se filtra cliente, mostra só o estado dele (1 linha)
+    let topEst;
+    const _fCliE = window._fatFiltro.cliente;
+    if (_fCliE && _fCliE !== 'todos' && FAT_DATA.clientes_lista) {
+      const cli = FAT_DATA.clientes_lista.find(c => c.cnpj === _fCliE);
+      if (cli && cli.estado) {
+        const fatCli = mensal.reduce((s, m) => s + (m.faturamento || 0), 0);
+        topEst = [{ Estado: cli.estado, faturamento: fatCli, qtd_clientes: 1 }];
+      } else {
+        topEst = [];
+      }
+    } else {
+      topEst = FAT_DATA.estados.slice(0, 10);
+    }
+    const maxE = topEst[0]?.faturamento || 1;
+    teEl.innerHTML = topEst.map(e => {
       const pct = (e.faturamento / maxE) * 100;
       return `
         <div class="fat-row" style="padding:8px 0;">
@@ -30720,7 +30789,30 @@ function _fatRender() {
     // Atualiza título
     const tituloEl = document.getElementById('fatProdutosTitulo');
     if (tituloEl) tituloEl.textContent = `Top ${limit} produtos por faturamento`;
-    const top = FAT_DATA.produtos_top.slice(0, limit);
+
+    // Sprint 9.32.31: se há filtro de cliente, lê do cruzamento cliente_produto_mes
+    let top;
+    const _fCliP = window._fatFiltro.cliente;
+    if (_fCliP && _fCliP !== 'todos' && FAT_DATA.cliente_produto_mes) {
+      const aggP = {};
+      FAT_DATA.cliente_produto_mes
+        .filter(cp => cp['CNPJ/CPF'] === _fCliP && mensal.some(m => m.ano_mes === cp.ano_mes))
+        .forEach(cp => {
+          const k = cp['Código do Produto'];
+          if (!aggP[k]) aggP[k] = {
+            'Código do Produto': k,
+            'Descrição do Produto': cp['Descrição do Produto'],
+            'Marca': cp.Marca,
+            faturamento: 0,
+            qtd_itens: 0,
+          };
+          aggP[k].faturamento += cp.faturamento;
+          aggP[k].qtd_itens += (cp.qtd_itens || 0);
+        });
+      top = Object.values(aggP).sort((a, b) => b.faturamento - a.faturamento).slice(0, limit);
+    } else {
+      top = FAT_DATA.produtos_top.slice(0, limit);
+    }
     const maxP = top[0]?.faturamento || 1;
     tpEl.innerHTML = top.map((p, i) => {
       const pct = (p.faturamento / maxP) * 100;
