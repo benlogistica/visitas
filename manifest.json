@@ -13,13 +13,13 @@
   "categories": ["business", "productivity", "medical", "health"],
   "icons": [
     {
-      "src": "icons/icon-pwa.png",
+      "src": "icons/icon-pwa.png?v=20260427",
       "sizes": "192x192 512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "icons/icon-pwa.png",
+      "src": "icons/icon-pwa.png?v=20260427",
       "sizes": "192x192 512x512",
       "type": "image/png",
       "purpose": "maskable"
