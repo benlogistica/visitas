@@ -1,0 +1,254 @@
+═══════════════════════════════════════════════════════════════════════
+  ATUALIZADOR DE DASHBOARD NUTRICIONAIS — LEIA PRIMEIRO
+═══════════════════════════════════════════════════════════════════════
+
+  Este pacote atualiza o dashboard automaticamente a partir de XLSXs
+  exportados do Omie. Você clica, ele faz tudo sozinho.
+
+
+═══════════════════════════════════════════════════════════════════════
+  ⚠ IMPORTANTE: ESTRATÉGIA CUMULATIVA
+═══════════════════════════════════════════════════════════════════════
+
+  Toda sincronização REESCREVE o dashboard do ZERO a partir dos XLSX
+  que estão na pasta "entrada/". Por isso, a estratégia é CUMULATIVA:
+
+    entrada/
+      ├─ faturamento_-_jan25_mar26.xlsx   ← base (NÃO apagar)
+      ├─ faturamento_-_abril2026.xlsx     ← mês 1
+      ├─ faturamento_-_maio2026.xlsx      ← mês 2 (você adiciona)
+      ├─ faturamento_-_junho2026.xlsx     ← mês 3
+      └─ ...                              ← adiciona a cada mês
+
+  ✅ CERTO: deixar a base fixa + adicionar 1 arquivo por mês
+  ❌ ERRADO: apagar os arquivos antigos após sync
+
+  Se você apagar o XLSX antigo, o dashboard PERDE o histórico na
+  próxima vez que rodar o .bat.
+
+  O script concatena TODOS os XLSX da pasta automaticamente e
+  remove duplicatas (se houver overlap de datas).
+
+
+═══════════════════════════════════════════════════════════════════════
+  COMO USAR (uso mensal, depois de configurado)
+═══════════════════════════════════════════════════════════════════════
+
+  1. Entra no Omie e exporta o relatório "Sell Out2 Faturamento por
+     Período" em formato XLSX.
+
+     FILTROS OBRIGATÓRIOS:
+     - Empresa/Filial: TODAS (Haverim + Santos + PG)
+     - Período: só o MÊS QUE VOCÊ QUER ADICIONAR
+       (ex: em maio, exporta 01/04/2026 a 30/04/2026)
+
+  2. Salva o arquivo com nome claro na pasta "entrada/":
+       entrada/faturamento_-_abril2026.xlsx
+
+     IMPORTANTE: NÃO apague os arquivos antigos da pasta!
+
+  3. Duplo clique em "atualizar_dashboard.bat".
+
+  4. Uma janela preta abre e mostra o progresso. Aguarde terminar
+     (uns 30 segundos).
+
+  5. Pronto! Dashboard atualizado em:
+     https://nutricionais.github.io/nutricionais-visitas
+
+     (Pode levar 1-2 minutos pro GitHub Pages publicar)
+
+
+═══════════════════════════════════════════════════════════════════════
+  EXEMPLO DE FLUXO AO LONGO DO ANO
+═══════════════════════════════════════════════════════════════════════
+
+  HOJE (abril/2026):
+    entrada/
+      └─ faturamento_-_jan25_mar26.xlsx
+      └─ faturamento_-_abril2026.xlsx (NOVO)
+    → .bat → Dashboard: jan/25 a abr/26
+
+  MAIO/2026 fechado (começo de junho):
+    entrada/
+      └─ faturamento_-_jan25_mar26.xlsx (mantém)
+      └─ faturamento_-_abril2026.xlsx (mantém)
+      └─ faturamento_-_maio2026.xlsx (NOVO)
+    → .bat → Dashboard: jan/25 a mai/26
+
+  JUNHO/2026 fechado (começo de julho):
+    entrada/
+      └─ faturamento_-_jan25_mar26.xlsx
+      └─ faturamento_-_abril2026.xlsx
+      └─ faturamento_-_maio2026.xlsx
+      └─ faturamento_-_junho2026.xlsx (NOVO)
+    → .bat → Dashboard: jan/25 a jun/26
+
+  E assim vai. Os arquivos NUNCA são apagados automaticamente.
+
+
+═══════════════════════════════════════════════════════════════════════
+  ATUALIZAR DADOS DO MÊS EM ANDAMENTO
+═══════════════════════════════════════════════════════════════════════
+
+  Se quer ver dados PARCIAIS do mês corrente (ex: meio de maio com
+  vendas até dia 15), use um nome "_parcial" pra poder substituir:
+
+  DURANTE O MÊS:
+    entrada/faturamento_-_maio2026_parcial.xlsx  (até dia 15)
+
+  QUANDO O MÊS FECHAR:
+    1. Exporta maio COMPLETO (01/05 a 31/05) do Omie
+    2. Salva como entrada/faturamento_-_maio2026.xlsx
+    3. APAGA o arquivo "_parcial"
+    4. Rode o .bat
+
+
+═══════════════════════════════════════════════════════════════════════
+  SETUP INICIAL (única vez, ~15 minutos)
+═══════════════════════════════════════════════════════════════════════
+
+  PRÉ-REQUISITOS NO PC:
+  ─────────────────────────────────────────────────────────────────
+
+  [1] Python 3 instalado
+      Teste: abra CMD e digite "python --version"
+      Se aparecer "Python 3.x.x" → OK
+      Se não → baixe em https://www.python.org/downloads/
+              MARQUE "Add Python to PATH" durante a instalação
+
+  [2] Git instalado
+      Teste: abra CMD e digite "git --version"
+      Se aparecer "git version x.x.x" → OK
+      Se não → baixe em https://git-scm.com/download/win
+              Use todas as opções padrão na instalação
+
+  [3] Repositório clonado
+      Abra CMD, vá pra pasta onde você quer clonar (ex: C:\Users\SeuNome\)
+      e rode:
+          git clone https://github.com/nutricionais/nutricionais-visitas.git
+
+      Isso vai criar uma pasta "nutricionais-visitas" com todo o código.
+
+  [4] Copie ESTE pacote (atualizar_dashboard.bat, gerar_faturamento_json.py,
+      atualizar_index.py e a pasta "entrada/") pra DENTRO da pasta
+      nutricionais-visitas clonada.
+
+      A estrutura final deve ficar assim:
+
+      C:\Users\SeuNome\nutricionais-visitas\
+        ├─ .git\                               (já estava)
+        ├─ index.html                          (já estava)
+        ├─ atualizar_dashboard.bat             (NOVO)
+        ├─ gerar_faturamento_json.py           (NOVO)
+        ├─ atualizar_index.py                  (NOVO)
+        ├─ entrada\                            (NOVO)
+        │   └─ faturamento_-_jan25_mar26.xlsx  (coloque aqui)
+        ├─ logs\                               (NOVO - vazio)
+        └─ LEIA-ME.txt                         (este arquivo)
+
+
+  CONFIGURAR AUTENTICAÇÃO GITHUB:
+  ─────────────────────────────────────────────────────────────────
+
+  Quando o script tenta fazer "git push" a primeira vez, o Git
+  vai pedir pra você se autenticar. Configure UMA das opções:
+
+  OPÇÃO A — Personal Access Token (mais simples):
+  -----------------------------------------------
+  1. Vá em https://github.com/settings/tokens
+  2. Clique "Generate new token" → "Generate new token (classic)"
+  3. Nome: "Sync Dashboard Nutricionais"
+  4. Validade: "No expiration" (ou o que preferir)
+  5. Marque a caixa "repo" (dá acesso aos seus repositórios)
+  6. Clique "Generate token" no final
+  7. COPIE o token gerado (vai começar com "ghp_...")
+     ATENÇÃO: você só vê esse token uma vez. Salve num lugar seguro.
+
+  8. Abra CMD na pasta do repositório e rode:
+         git config --global credential.helper manager
+
+  9. Faça um push teste:
+         git push
+
+  10. Quando aparecer a janela pedindo credenciais:
+      - Usuário: seu_usuario_github
+      - Senha: COLA O TOKEN (não a senha real do GitHub)
+
+  11. O Git vai salvar o token no Windows Credential Manager.
+      A partir daí, "git push" nunca mais pede senha.
+
+
+  OPÇÃO B — GitHub Desktop (mais visual):
+  ---------------------------------------
+  1. Baixe em https://desktop.github.com/
+  2. Instale e faça login com sua conta GitHub
+  3. Abra o GitHub Desktop → File → Clone Repository
+     → escolhe nutricionais/nutricionais-visitas
+  4. O próprio GitHub Desktop já configura credenciais no Git
+     que o .bat vai usar automaticamente
+
+
+═══════════════════════════════════════════════════════════════════════
+  ESTRUTURA DOS ARQUIVOS
+═══════════════════════════════════════════════════════════════════════
+
+  atualizar_dashboard.bat      ← Você clica aqui
+  gerar_faturamento_json.py    ← Motor: XLSX → JSON
+  atualizar_index.py           ← Atualiza o index.html
+  entrada/                     ← XLSX ficam AQUI (todos, sempre)
+  logs/                        ← Backups de cada sync (YYYY-MM-DD)
+  LEIA-ME.txt                  ← Este arquivo
+
+
+═══════════════════════════════════════════════════════════════════════
+  SE DER ERRO
+═══════════════════════════════════════════════════════════════════════
+
+  O .bat é esperto: se der erro em qualquer passo, ele PARA e
+  explica o que aconteceu e como corrigir. Leia a mensagem.
+
+  Erros mais comuns:
+
+  "Python não encontrado"       → Reinstalar Python marcando
+                                   "Add to PATH"
+
+  "Git não encontrado"          → Instalar Git for Windows
+
+  "Não encontrei index.html"    → .bat está em pasta errada. Mova
+                                   pra dentro do repo clonado.
+
+  "Esta pasta não é repo Git"   → Falta o ".git". Clonou o repo?
+
+  "Nenhum XLSX encontrado"      → Coloque o XLSX na pasta entrada/
+
+  "Push falhou"                 → Autenticação GitHub. Veja seção
+                                   "Configurar Autenticação" acima.
+
+
+═══════════════════════════════════════════════════════════════════════
+  DICAS
+═══════════════════════════════════════════════════════════════════════
+
+  - Você pode colocar QUANTOS XLSX quiser na pasta entrada/.
+    O script concatena todos e deduplica automaticamente.
+
+  - Os XLSX ficam permanentemente em entrada/ (não são apagados).
+    A pasta logs/ recebe BACKUPS (cópias) de cada sync com data.
+
+  - Se não quer regerar nada, basta não colocar XLSX novos e rodar
+    o .bat. Ele vai detectar que nada mudou e não fazer commit vazio.
+
+  - Pra rodar manualmente sem o .bat:
+      python gerar_faturamento_json.py entrada\*.xlsx
+      python atualizar_index.py
+      git add index.html
+      git commit -m "Sync faturamento"
+      git push
+
+
+═══════════════════════════════════════════════════════════════════════
+  DÚVIDAS?
+═══════════════════════════════════════════════════════════════════════
+
+  Manda pro Claude no chat. Ele fez esse script e sabe como tudo
+  funciona por dentro :)

@@ -5703,7 +5703,7 @@ a {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.35-json-separado',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.36-filtros-mobile',
   APP_NAME: 'Nutricionais Visitas',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -26348,6 +26348,30 @@ function _fatRenderInner() {
         @media (max-width: 640px) {
           .fat-wrapper { padding: 12px 10px 60px !important; }
           .fat-wrapper h1 { font-size: 20px !important; }
+
+          /* Sprint 9.32.36: filtros em grid 2x2 no mobile, todos com mesma altura/largura */
+          .fat-filtros {
+            display: grid !important;
+            grid-template-columns: 1fr 1fr !important;
+            gap: 8px !important;
+            width: 100% !important;
+            align-items: stretch !important;
+          }
+          .fat-filtros > select,
+          .fat-filtros > #fatClienteCombo,
+          .fat-filtros > #fatClienteCombo > button,
+          .fat-filtros > span#fatLimparSlot,
+          .fat-filtros > span#fatLimparSlot > button {
+            width: 100% !important;
+            max-width: 100% !important;
+            min-width: 0 !important;
+            height: 38px !important;
+            box-sizing: border-box !important;
+          }
+          /* Esconde o slot do botão Limpar quando vazio (sem filtro ativo) */
+          .fat-filtros > span#fatLimparSlot:empty {
+            display: none !important;
+          }
         }
         @keyframes _fatPulse { 0%,100% { opacity:1 } 50% { opacity:.45 } }
       </style>
@@ -26370,7 +26394,7 @@ function _fatRenderInner() {
           </div>
           <div id="fatBannerAtualizacao" style="margin-top:8px;"></div>
         </div>
-        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:11.5px;">
+        <div class="fat-filtros" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:11.5px;">
           <select id="fatPeriodo" onchange="_fatTrocarFiltro('periodo', this.value)" style="padding:6px 9px;border:1.5px solid var(--neutral-200);border-radius:7px;font-size:11.5px;font-family:inherit;background:var(--neutral-0);">
             <option value="todos">Todo o período</option>
             <option value="ano2026">2026 (YTD)</option>

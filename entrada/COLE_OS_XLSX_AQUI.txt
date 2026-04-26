@@ -1,0 +1,1 @@
+Coloque os arquivos .xlsx exportados do Omie nesta pasta, depois rode o atualizar_dashboard.bat
