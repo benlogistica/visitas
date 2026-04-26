@@ -4566,6 +4566,333 @@ a {
   .ag-cal-day { min-height: 130px; }
 }
 
+/* ═══════════════════════════════════════════════════════════════════
+   Sprint 9.32.37 — Agenda mensal (admin) com sidebar de Próximas visitas
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* Wrapper 2-col (calendário + sidebar) */
+.ag-mes-wrapper {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+@media (max-width: 1024px) {
+  .ag-mes-wrapper {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Card que envolve o calendário (igual o do design) */
+.ag-mes-card {
+  background: var(--neutral-0);
+  border: 1px solid var(--neutral-200);
+  border-radius: 12px;
+  padding: 16px;
+}
+
+/* Toolbar topo (nav + filtro pill) */
+.ag-mes-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+.ag-mes-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ag-mes-titulo {
+  font-family: var(--font-display);
+  font-weight: 700;
+  color: var(--brand-navy);
+  font-size: 15px;
+  min-width: 130px;
+  text-align: center;
+}
+.ag-mes-pills {
+  display: inline-flex;
+  background: var(--neutral-100);
+  border-radius: 9999px;
+  padding: 3px;
+  gap: 2px;
+}
+.ag-mes-pill {
+  background: transparent;
+  border: 0;
+  padding: 6px 14px;
+  border-radius: 9999px;
+  font-family: var(--font-body);
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--neutral-600);
+  cursor: pointer;
+  transition: all 140ms;
+}
+.ag-mes-pill--ativa {
+  background: var(--brand-navy);
+  color: #fff;
+  font-weight: 700;
+}
+
+/* Legenda de status */
+.ag-mes-legenda {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+  font-size: 11.5px;
+  color: var(--neutral-600);
+}
+.ag-mes-legenda__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.ag-mes-legenda__dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+/* Cores por status (usadas no dot da legenda + chip do calendário + badge sidebar) */
+.ag-st-confirmada { background: #DBEAFE; color: #1E40AF; border-left: 3px solid #2563EB; }
+.ag-st-sugerida   { background: #FEF3C7; color: #92400E; border-left: 3px solid #F59E0B; }
+.ag-st-realizada  { background: #DCFCE7; color: #166534; border-left: 3px solid #16A34A; }
+.ag-st-cancelada  { background: #F3F4F6; color: #6B7280; border-left: 3px solid #9CA3AF; text-decoration: line-through; }
+
+.ag-mes-legenda__dot.ag-st-confirmada { background: #2563EB; border: 0; }
+.ag-mes-legenda__dot.ag-st-sugerida   { background: #F59E0B; border: 0; }
+.ag-mes-legenda__dot.ag-st-realizada  { background: #16A34A; border: 0; }
+.ag-mes-legenda__dot.ag-st-cancelada  { background: #9CA3AF; border: 0; }
+
+/* Grade mensal */
+.ag-mes-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+.ag-mes-cabecalho {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  margin-bottom: 6px;
+}
+.ag-mes-cabecalho__dia {
+  font-family: var(--font-body);
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  color: var(--neutral-500);
+  text-align: left;
+  padding: 0 6px;
+}
+
+.ag-mes-cell {
+  background: var(--neutral-0);
+  border: 1px solid var(--neutral-200);
+  border-radius: 8px;
+  padding: 6px;
+  min-height: 90px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  cursor: pointer;
+  transition: background 140ms, border-color 140ms;
+}
+.ag-mes-cell:hover {
+  background: var(--neutral-50, #F9FAFB);
+  border-color: var(--neutral-300);
+}
+.ag-mes-cell--fora-mes {
+  opacity: 0.4;
+  background: var(--neutral-50, #F9FAFB);
+}
+.ag-mes-cell--passado {
+  opacity: 0.65;
+}
+.ag-mes-cell--hoje {
+  border-color: var(--brand-lime);
+  border-width: 2px;
+  background: #F9FBF5;
+}
+.ag-mes-cell__dia {
+  font-family: var(--font-display);
+  font-weight: 700;
+  color: var(--brand-navy);
+  font-size: 12.5px;
+  text-align: right;
+  padding: 0 2px;
+}
+.ag-mes-cell--hoje .ag-mes-cell__dia {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: flex-end;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--brand-navy);
+  color: #fff;
+  font-size: 11px;
+}
+
+.ag-mes-chip {
+  font-size: 10px;
+  line-height: 1.2;
+  padding: 3px 5px;
+  border-radius: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 600;
+}
+.ag-mes-chip__hora {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  margin-right: 3px;
+}
+.ag-mes-mais {
+  font-size: 10px;
+  color: var(--neutral-500);
+  padding: 0 4px;
+  font-weight: 600;
+}
+
+/* Sidebar próximas visitas */
+.ag-side {
+  background: var(--neutral-0);
+  border: 1px solid var(--neutral-200);
+  border-radius: 12px;
+  padding: 16px;
+  position: sticky;
+  top: 12px;
+  max-height: calc(100vh - 80px);
+  overflow-y: auto;
+}
+.ag-side__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+.ag-side__titulo {
+  font-family: var(--font-display);
+  font-weight: 700;
+  color: var(--brand-navy);
+  font-size: 14px;
+}
+.ag-side__ver-todas {
+  background: transparent;
+  border: 1px solid var(--neutral-200);
+  border-radius: 9999px;
+  padding: 4px 10px;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--neutral-600);
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 140ms;
+}
+.ag-side__ver-todas:hover { background: var(--neutral-100); border-color: var(--neutral-300); }
+.ag-side__contador {
+  font-size: 11px;
+  color: var(--neutral-500);
+  margin-bottom: 12px;
+}
+.ag-side__lista {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.ag-side__card {
+  background: var(--neutral-50, #F9FAFB);
+  border: 1px solid var(--neutral-200);
+  border-radius: 10px;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: all 140ms;
+}
+.ag-side__card:hover {
+  background: var(--neutral-0);
+  border-color: var(--neutral-300);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+}
+.ag-side__quando {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--neutral-500);
+  text-transform: uppercase;
+  letter-spacing: .4px;
+  margin-bottom: 3px;
+}
+.ag-side__hospital {
+  font-family: var(--font-display);
+  font-weight: 700;
+  color: var(--brand-navy);
+  font-size: 13px;
+  line-height: 1.3;
+  margin-bottom: 5px;
+}
+.ag-side__meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+.ag-side__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-size: 10px;
+  font-weight: 700;
+  border-left: 0 !important;
+  text-decoration: none !important;
+}
+.ag-side__badge::before {
+  content: "•";
+  font-size: 14px;
+  line-height: 0;
+}
+.ag-side__prof {
+  font-size: 11px;
+  color: var(--neutral-600);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.ag-side__obs {
+  font-size: 11.5px;
+  color: var(--neutral-700);
+  line-height: 1.4;
+  margin-top: 4px;
+}
+.ag-side__vazio {
+  text-align: center;
+  padding: 30px 12px;
+  color: var(--neutral-500);
+  font-size: 12px;
+}
+
+/* Responsivo: cells menores no mobile */
+@media (max-width: 640px) {
+  .ag-mes-cell { min-height: 60px; padding: 4px; }
+  .ag-mes-cell__dia { font-size: 11px; }
+  .ag-mes-chip { font-size: 9px; padding: 2px 4px; }
+  .ag-mes-cabecalho__dia { font-size: 9px; padding: 0 2px; }
+  .ag-side { position: static; max-height: none; }
+}
+
 /* Seção "por profissional" */
 .ag-prof-group {
   margin-bottom: 18px;
@@ -5703,7 +6030,7 @@ a {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.36-filtros-mobile',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.39-perf-todos-clientes',
   APP_NAME: 'Nutricionais Visitas',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -16670,26 +16997,54 @@ async function _perfCalcular({ userId, periodo }) {
     ? visitas.filter(v => new Date(v.checkin_timestamp) >= dataInicio)
     : visitas;
 
-  // 3) Indexa clientes_top por CNPJ normalizado pra matching rápido
+  // 3) Indexa clientes_top por CNPJ normalizado (top 50 — tem metadados extras como primeira_compra)
   const clientesPorCnpj = {};
   (FAT_DATA.clientes_top || []).forEach(c => {
     const cnpjNorm = _perfNormalizaCnpj(c['CNPJ/CPF']);
     if (cnpjNorm) clientesPorCnpj[cnpjNorm] = c;
   });
 
-  // Sprint 9.32.21: indexa devoluções e produtos por cliente
+  // ⭐ Sprint 9.32.39: indexa clientes_lista (TODOS os clientes) pra matching mesmo fora do top 50
+  const clientesListaPorCnpj = {};
+  (FAT_DATA.clientes_lista || []).forEach(c => {
+    const cnpjNorm = _perfNormalizaCnpj(c.cnpj);
+    if (cnpjNorm) clientesListaPorCnpj[cnpjNorm] = c;
+  });
+
+  // Indexa devoluções (top 30) — fallback caso cliente_devolucao_mes não tenha
   const devolucoesPorCnpj = {};
   (FAT_DATA.devolucoes_clientes_top || []).forEach(d => {
     const cnpjNorm = _perfNormalizaCnpj(d['CNPJ/CPF']);
     if (cnpjNorm) devolucoesPorCnpj[cnpjNorm] = d;
   });
+
+  // ⭐ Sprint 9.32.39: cliente_devolucao_mes (TODOS os clientes que têm devolução, por mês)
+  const clienteDevMesPorCnpj = {};
+  (FAT_DATA.cliente_devolucao_mes || []).forEach(d => {
+    const cnpjNorm = _perfNormalizaCnpj(d['CNPJ/CPF']);
+    if (!cnpjNorm) return;
+    if (!clienteDevMesPorCnpj[cnpjNorm]) clienteDevMesPorCnpj[cnpjNorm] = [];
+    clienteDevMesPorCnpj[cnpjNorm].push(d);
+  });
+
+  // produtos_por_cliente (top 50) — fallback
   const produtosPorCnpj = {};
   (FAT_DATA.produtos_por_cliente || []).forEach(p => {
     const cnpjNorm = _perfNormalizaCnpj(p['CNPJ/CPF']);
     if (cnpjNorm) produtosPorCnpj[cnpjNorm] = p;
   });
 
+  // ⭐ Sprint 9.32.39: cliente_produto_mes (TODOS os clientes × top 30 produtos × mês) — fonte universal
+  const clienteProdutoMesPorCnpj = {};
+  (FAT_DATA.cliente_produto_mes || []).forEach(p => {
+    const cnpjNorm = _perfNormalizaCnpj(p['CNPJ/CPF']);
+    if (!cnpjNorm) return;
+    if (!clienteProdutoMesPorCnpj[cnpjNorm]) clienteProdutoMesPorCnpj[cnpjNorm] = [];
+    clienteProdutoMesPorCnpj[cnpjNorm].push(p);
+  });
+
   // Sprint 9.32.23: indexa clientes_mes (cliente × mês) — permite filtro real por período
+  // Sprint 9.32.31: clientes_mes agora tem TODOS os clientes (não só top 50)
   const clientesMesPorCnpj = {};
   (FAT_DATA.clientes_mes || []).forEach(cm => {
     const cnpjNorm = _perfNormalizaCnpj(cm['CNPJ/CPF']);
@@ -16740,16 +17095,20 @@ async function _perfCalcular({ userId, periodo }) {
     return set;
   })();
 
-  // 5) Cruza com FAT_DATA.clientes_top + clientes_mes (filtrado) + devoluções + produtos por CNPJ
+  // 5) ⭐ Sprint 9.32.39: cruza usando clientes_lista (TODOS) em vez de só clientes_top (top 50).
+  //    Hospital Ana Costa e qualquer outro fora do top 50 agora aparecem corretamente.
   const rows = Object.values(porInst).map(p => {
-    if (p.cnpjNorm && clientesPorCnpj[p.cnpjNorm]) {
-      const cli = clientesPorCnpj[p.cnpjNorm];
+    const cliTop   = p.cnpjNorm ? clientesPorCnpj[p.cnpjNorm] : null;
+    const cliLista = p.cnpjNorm ? clientesListaPorCnpj[p.cnpjNorm] : null;
+
+    if (cliTop || cliLista) {
       p.temMatch = true;
-      p.primeira_compra = cli.primeira_compra;
-      p.ultima_compra = cli.ultima_compra;
-      p.clienteFantasia = cli['Cliente (Nome Fantasia)'];
+      p.clienteFantasia = (cliTop && cliTop['Cliente (Nome Fantasia)'])
+        || (cliLista && (cliLista.nome_fantasia || cliLista.razao_social))
+        || p.nome;
 
       // Sprint 9.32.23: faturamento e qtd_notas vêm de clientes_mes filtrado pelo período
+      // Sprint 9.32.31: clientes_mes agora tem TODOS os clientes (não só top 50)
       const clientesMesArr = clientesMesPorCnpj[p.cnpjNorm] || [];
       const arrFiltrado = mesesNoFiltro
         ? clientesMesArr.filter(cm => mesesNoFiltro.has(cm.ano_mes))
@@ -16759,28 +17118,73 @@ async function _perfCalcular({ userId, periodo }) {
       p.qtd_notas = arrFiltrado.reduce((s, cm) => s + (cm.qtd_notas || 0), 0);
       p.meses_com_compra_no_filtro = arrFiltrado.length;
 
-      // Fallback: se clientes_mes não tem dados (ex: hospital fora do top 50), usa clientes_top agregado
-      if (p.faturamento === 0 && clientesMesArr.length === 0) {
-        p.faturamento = cli.faturamento || 0;
-        p.qtd_notas = cli.qtd_notas || 0;
+      // primeira/última compra: do clientes_top se tiver; senão deriva de clientes_mes
+      if (cliTop) {
+        p.primeira_compra = cliTop.primeira_compra;
+        p.ultima_compra = cliTop.ultima_compra;
+      } else if (clientesMesArr.length > 0) {
+        const meses = clientesMesArr.map(cm => cm.ano_mes).sort();
+        p.primeira_compra = `${meses[0]}-01`;
+        p.ultima_compra = `${meses[meses.length - 1]}-28`; // aproximação (último dia certo dá trabalho)
       }
 
-      // Faturamento médio mensal: agora simples, dividido pelos meses ATIVOS no filtro
+      // Fallback: se clientes_mes não tem dados mas clientes_top tem (período fora do registrado), usa agregado top
+      if (p.faturamento === 0 && clientesMesArr.length === 0 && cliTop) {
+        p.faturamento = cliTop.faturamento || 0;
+        p.qtd_notas = cliTop.qtd_notas || 0;
+      }
+
       p.faturamento_medio_mensal = p.meses_com_compra_no_filtro > 0
         ? p.faturamento / p.meses_com_compra_no_filtro
         : 0;
     }
-    // Devoluções
-    if (p.cnpjNorm && devolucoesPorCnpj[p.cnpjNorm]) {
-      const dev = devolucoesPorCnpj[p.cnpjNorm];
-      p.valor_devolucao = dev.valor_devolucao || 0;
-      p.qtd_devolucoes = dev.qtd || 0;
+
+    // Devoluções: prefere cliente_devolucao_mes (TODOS os clientes), com filtro de período
+    if (p.cnpjNorm) {
+      const devMesArr = clienteDevMesPorCnpj[p.cnpjNorm] || [];
+      const devFiltrado = mesesNoFiltro
+        ? devMesArr.filter(d => mesesNoFiltro.has(d.ano_mes))
+        : devMesArr;
+      if (devFiltrado.length > 0) {
+        p.valor_devolucao = devFiltrado.reduce((s, d) => s + (d.valor_devolucao || 0), 0);
+        p.qtd_devolucoes = devFiltrado.reduce((s, d) => s + (d.qtd || 0), 0);
+      } else if (devolucoesPorCnpj[p.cnpjNorm] && !mesesNoFiltro) {
+        // Fallback agregado pra "Tudo" (sem filtro de período)
+        const dev = devolucoesPorCnpj[p.cnpjNorm];
+        p.valor_devolucao = dev.valor_devolucao || 0;
+        p.qtd_devolucoes = dev.qtd || 0;
+      } else {
+        p.valor_devolucao = 0;
+        p.qtd_devolucoes = 0;
+      }
     } else {
       p.valor_devolucao = 0;
       p.qtd_devolucoes = 0;
     }
-    // Lista de produtos
-    if (p.cnpjNorm && produtosPorCnpj[p.cnpjNorm]) {
+
+    // Lista de produtos: prefere cliente_produto_mes (TODOS os clientes × top 30 produtos)
+    if (p.cnpjNorm && clienteProdutoMesPorCnpj[p.cnpjNorm]) {
+      const prodMesArr = clienteProdutoMesPorCnpj[p.cnpjNorm];
+      const prodFiltrado = mesesNoFiltro
+        ? prodMesArr.filter(pr => mesesNoFiltro.has(pr.ano_mes))
+        : prodMesArr;
+      // Deduplica por código de produto (somando faturamento)
+      const porCod = {};
+      prodFiltrado.forEach(pr => {
+        const cod = pr['Código do Produto'];
+        if (!porCod[cod]) {
+          porCod[cod] = {
+            descricao: pr['Descrição do Produto'],
+            marca: pr['Marca'],
+            faturamento: 0,
+          };
+        }
+        porCod[cod].faturamento += pr.faturamento || 0;
+      });
+      p.produtos = Object.values(porCod)
+        .sort((a, b) => b.faturamento - a.faturamento);
+    } else if (p.cnpjNorm && produtosPorCnpj[p.cnpjNorm]) {
+      // Fallback pro top 50
       p.produtos = produtosPorCnpj[p.cnpjNorm].produtos || [];
     } else {
       p.produtos = [];
@@ -20458,87 +20862,183 @@ window.nutriAgendaMoverSemana = function(delta) {
 };
 
 // Vista 3 — Calendário (mês com bolinhas indicando agendamentos)
+// Sprint 9.32.37: agenda mensal do nutri (mesmo padrão do admin: DOM-SAB + sidebar)
 function renderNutriAgendaCalendario(ags) {
   const offset = window._nutriAgendaMesOffset || 0;
+
   const hoje = new Date();
   hoje.setHours(0, 0, 0, 0);
-  const mesAtual = new Date(hoje.getFullYear(), hoje.getMonth() + offset, 1);
-  const ano = mesAtual.getFullYear();
-  const mes = mesAtual.getMonth();
+  const refMes = new Date(hoje.getFullYear(), hoje.getMonth() + offset, 1);
+  const ano = refMes.getFullYear();
+  const mes = refMes.getMonth();
 
-  // Quantos dias tem o mês
-  const ultimoDiaDoMes = new Date(ano, mes + 1, 0).getDate();
+  // Primeiro dia da grade = domingo da semana que contém o dia 1 do mês
+  const inicioGrade = new Date(ano, mes, 1);
+  inicioGrade.setDate(inicioGrade.getDate() - inicioGrade.getDay());
 
-  // Dia da semana do dia 1 (0=dom, 1=seg, ..., 6=sab)
-  const primeiroDow = new Date(ano, mes, 1).getDay();
-  // Ajusta pra começar segunda (0=seg, ..., 6=dom)
-  const primeiroOffset = primeiroDow === 0 ? 6 : primeiroDow - 1;
-
-  // Mapeia datas -> agendamentos
+  // Indexa visitas por data
   const porData = {};
   ags.forEach(a => {
+    if (!a.data_visita) return;
     if (!porData[a.data_visita]) porData[a.data_visita] = [];
     porData[a.data_visita].push(a);
   });
 
-  const meses = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-  const diasSemana = ['SEG','TER','QUA','QUI','SEX','SÁB','DOM'];
   const hojeStr = ymd(hoje);
+  const mesesNome = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  const diasSemanaLabels = ['DOM','SEG','TER','QUA','QUI','SEX','SÁB'];
 
-  // Cabeçalho dos dias
-  let cabHtml = diasSemana.map(d =>
-    `<div style="text-align:center;font-family:var(--font-display);font-weight:700;font-size:10px;color:var(--neutral-500);padding:6px 0;text-transform:uppercase;letter-spacing:.5px;">${d}</div>`
-  ).join('');
-
-  // Células vazias antes do dia 1 (altura 56px pra alinhar com dias)
+  // Monta as 42 cells (6 semanas × 7 dias)
   let cellsHtml = '';
-  for (let i = 0; i < primeiroOffset; i++) {
-    cellsHtml += `<div style="min-height:56px;"></div>`;
-  }
-
-  // Dias do mês
-  for (let dia = 1; dia <= ultimoDiaDoMes; dia++) {
-    const dtStr = `${ano}-${String(mes+1).padStart(2,'0')}-${String(dia).padStart(2,'0')}`;
+  for (let i = 0; i < 42; i++) {
+    const dt = new Date(inicioGrade);
+    dt.setDate(dt.getDate() + i);
+    const dtStr = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+    const dia = dt.getDate();
+    const isForaMes = dt.getMonth() !== mes;
     const isHoje = dtStr === hojeStr;
     const isPassado = dtStr < hojeStr;
-    const agsDoDia = porData[dtStr] || [];
-    const temAgs = agsDoDia.length > 0;
 
-    let bg = 'transparent';
-    let cor = 'var(--brand-navy)';
-    let borda = '1px solid transparent';
-    if (isHoje) { bg = 'var(--brand-lime)'; cor = '#fff'; }
-    else if (temAgs) { bg = 'var(--status-info-bg, #E4ECFD)'; borda = '1px solid var(--status-info)'; }
-    if (isPassado && !isHoje && !temAgs) cor = 'var(--neutral-400)';
+    const agsDoDia = (porData[dtStr] || []).sort((a, b) =>
+      (a.horario_inicio || '99:99') < (b.horario_inicio || '99:99') ? -1 : 1
+    );
+
+    const cls = ['ag-mes-cell'];
+    if (isForaMes) cls.push('ag-mes-cell--fora-mes');
+    if (isPassado && !isHoje) cls.push('ag-mes-cell--passado');
+    if (isHoje) cls.push('ag-mes-cell--hoje');
+
+    const MAX_CHIPS = 3;
+    const visiveis = agsDoDia.slice(0, MAX_CHIPS);
+    const restantes = agsDoDia.length - visiveis.length;
+
+    const chipsHtml = visiveis.map(a => {
+      const hora = a.horario_inicio ? String(a.horario_inicio).substring(0, 5) : '';
+      const stKey = _agStatusKey(a);
+      const labelInst = (a.instituicoes?.nome || 'Visita').split(' ').slice(0, 2).join(' ');
+      return `<div class="ag-mes-chip ag-st-${stKey}" onclick="event.stopPropagation();nutriAbrirDiaCalendario('${dtStr}')" title="${(a.instituicoes?.nome || '').replace(/"/g,'&quot;')}">
+        <span class="ag-mes-chip__hora">${hora}</span>${labelInst.replace(/</g,'&lt;')}
+      </div>`;
+    }).join('');
+
+    const maisHtml = restantes > 0
+      ? `<div class="ag-mes-mais" onclick="event.stopPropagation();nutriAbrirDiaCalendario('${dtStr}')">+${restantes} mais</div>`
+      : '';
 
     cellsHtml += `
-      <button onclick="nutriAbrirDiaCalendario('${dtStr}')"
-              style="min-height:56px;aspect-ratio:auto;display:flex;flex-direction:column;align-items:center;justify-content:center;border:${borda};background:${bg};color:${cor};border-radius:8px;cursor:pointer;font-family:var(--font-display);font-weight:600;font-size:13px;padding:6px 0;position:relative;">
-        ${dia}
-        ${temAgs && !isHoje ? `<div style="position:absolute;bottom:4px;width:4px;height:4px;border-radius:50%;background:var(--status-info);"></div>` : ''}
-        ${temAgs && isHoje ? `<div style="position:absolute;bottom:4px;font-size:9px;font-weight:700;">${agsDoDia.length}</div>` : ''}
-      </button>
+      <div class="${cls.join(' ')}" onclick="nutriAbrirDiaCalendario('${dtStr}')" title="Ver dia ${dia}">
+        <div class="ag-mes-cell__dia">${dia}</div>
+        ${chipsHtml}
+        ${maisHtml}
+      </div>
     `;
   }
 
+  // Cabeçalho dos dias da semana
+  const cabecHtml = diasSemanaLabels.map(d =>
+    `<div class="ag-mes-cabecalho__dia">${d}</div>`
+  ).join('');
+
+  // Sidebar — próximas 12 visitas (não-canceladas, não-realizadas, futuras)
+  const proximas = ags
+    .filter(a => {
+      if (!a.data_visita) return false;
+      if (a.cancelado_em) return false;
+      if (a.visita_realizada === true) return false;
+      return a.data_visita >= hojeStr;
+    })
+    .sort((a, b) => {
+      if (a.data_visita !== b.data_visita) return a.data_visita < b.data_visita ? -1 : 1;
+      return (a.horario_inicio || '99:99') < (b.horario_inicio || '99:99') ? -1 : 1;
+    })
+    .slice(0, 12);
+
+  const totalProximas = ags.filter(a => {
+    if (!a.data_visita || a.cancelado_em || a.visita_realizada === true) return false;
+    return a.data_visita >= hojeStr;
+  }).length;
+
+  const sideCardsHtml = proximas.length === 0
+    ? `<div class="ag-side__vazio">Nenhuma visita próxima.<br>Toque no botão + pra agendar.</div>`
+    : proximas.map(a => {
+        const stKey = _agStatusKey(a);
+        const stLabel = _agStatusLabel(stKey);
+        const hora = a.horario_inicio ? String(a.horario_inicio).substring(0, 5) : '—';
+        const [y, m, d] = a.data_visita.split('-').map(Number);
+        const dt = new Date(y, m-1, d);
+        const diasDiff = Math.round((dt - hoje) / 86400000);
+        let quandoLabel;
+        if (diasDiff === 0) quandoLabel = 'HOJE';
+        else if (diasDiff === 1) quandoLabel = 'AMANHÃ';
+        else {
+          const dias3 = ['DOM','SEG','TER','QUA','QUI','SEX','SAB'];
+          quandoLabel = `${dias3[dt.getDay()]} ${String(dt.getDate()).padStart(2,'0')}/${String(dt.getMonth()+1).padStart(2,'0')}`;
+        }
+        const hospital = (a.instituicoes?.nome || 'Sem instituição').replace(/</g,'&lt;');
+        const obs = a.resumo
+          ? `<div class="ag-side__obs">${a.resumo.replace(/</g,'&lt;').substring(0, 110)}${a.resumo.length > 110 ? '…' : ''}</div>`
+          : '';
+        return `
+          <div class="ag-side__card" onclick="nutriAbrirDiaCalendario('${a.data_visita}')">
+            <div class="ag-side__quando">${quandoLabel} · ${hora}</div>
+            <div class="ag-side__hospital">${hospital}</div>
+            <div class="ag-side__meta">
+              <span class="ag-side__badge ag-st-${stKey}">${stLabel}</span>
+            </div>
+            ${obs}
+          </div>
+        `;
+      }).join('');
+
+  const tituloMes = `${mesesNome[mes]} ${ano}`;
+
   return `
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;padding:8px;background:var(--neutral-0);border-radius:10px;border:1px solid var(--neutral-200);">
-      <button onclick="nutriAgendaMoverMes(-1)" title="Mês anterior" style="background:transparent;border:none;cursor:pointer;padding:6px;border-radius:6px;color:var(--brand-navy);">
-        <span class="material-symbols-rounded" style="font-size:20px;">chevron_left</span>
-      </button>
-      <div style="flex:1;text-align:center;font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:14px;">${meses[mes]} ${ano}</div>
-      ${offset !== 0 ? `<button onclick="nutriAgendaMoverMes(0)" style="background:var(--brand-navy);color:#fff;border:none;cursor:pointer;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:600;">Hoje</button>` : ''}
-      <button onclick="nutriAgendaMoverMes(1)" title="Próximo mês" style="background:transparent;border:none;cursor:pointer;padding:6px;border-radius:6px;color:var(--brand-navy);">
-        <span class="material-symbols-rounded" style="font-size:20px;">chevron_right</span>
-      </button>
-    </div>
+    <div class="ag-mes-wrapper">
+      <div class="ag-mes-card">
 
-    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;background:var(--neutral-0);padding:8px;border-radius:10px;border:1px solid var(--neutral-200);">
-      ${cabHtml}
-      ${cellsHtml}
-    </div>
+        <!-- Toolbar -->
+        <div class="ag-mes-toolbar">
+          <div class="ag-mes-nav">
+            <button class="ag-cal-nav__btn" onclick="nutriAgendaMoverMes(-1)" title="Mês anterior">
+              <span class="material-symbols-rounded" style="font-size:20px;">chevron_left</span>
+            </button>
+            <div class="ag-mes-titulo">${tituloMes}</div>
+            <button class="ag-cal-nav__btn" onclick="nutriAgendaMoverMes(1)" title="Próximo mês">
+              <span class="material-symbols-rounded" style="font-size:20px;">chevron_right</span>
+            </button>
+            ${offset !== 0
+              ? `<button class="ag-cal-nav__btn ag-cal-nav__btn--today" onclick="nutriAgendaMoverMes(0)" style="margin-left:6px;">Hoje</button>`
+              : ''}
+          </div>
+        </div>
 
-    <div id="nutriCalendarioDia" style="margin-top:14px;"></div>
+        <!-- Legenda de status -->
+        <div class="ag-mes-legenda">
+          <div class="ag-mes-legenda__item"><span class="ag-mes-legenda__dot ag-st-confirmada"></span>Confirmada</div>
+          <div class="ag-mes-legenda__item"><span class="ag-mes-legenda__dot ag-st-sugerida"></span>Sugerida</div>
+          <div class="ag-mes-legenda__item"><span class="ag-mes-legenda__dot ag-st-realizada"></span>Realizada</div>
+          <div class="ag-mes-legenda__item"><span class="ag-mes-legenda__dot ag-st-cancelada"></span>Cancelada</div>
+        </div>
+
+        <!-- Cabeçalho dos dias -->
+        <div class="ag-mes-cabecalho">${cabecHtml}</div>
+
+        <!-- Grade mensal 6×7 -->
+        <div class="ag-mes-grid">${cellsHtml}</div>
+
+        <!-- Detalhes do dia clicado (preservado pra compat) -->
+        <div id="nutriCalendarioDia" style="margin-top:14px;"></div>
+      </div>
+
+      <!-- Sidebar próximas visitas -->
+      <aside class="ag-side">
+        <div class="ag-side__header">
+          <div class="ag-side__titulo">Próximas visitas</div>
+        </div>
+        <div class="ag-side__contador">${totalProximas} próxima${totalProximas === 1 ? '' : 's'}</div>
+        <div class="ag-side__lista">${sideCardsHtml}</div>
+      </aside>
+    </div>
   `;
 }
 
@@ -33624,101 +34124,232 @@ function renderAgendaPorProfissional(ags) {
 }
 
 // View 3 — Calendário semanal com navegação entre semanas
-function renderAgendaCalendario(ags) {
-  const offset = window._adminAgendaWeekOffset || 0;
+// Sprint 9.32.37: helpers de status visual pra agenda mensal
+function _agStatusKey(a) {
+  // Mapeia o status do banco pra uma das 4 chaves visuais
+  if (a.cancelado_em || a.visita_realizada === false) return 'cancelada';
+  if (a.visita_realizada === true || a.checkin_timestamp) return 'realizada';
+  if (a.status === 'sugerida') return 'sugerida';
+  return 'confirmada';
+}
+function _agStatusLabel(key) {
+  return ({
+    confirmada: 'Confirmada',
+    sugerida:   'Sugerida',
+    realizada:  'Realizada',
+    cancelada:  'Cancelada',
+  })[key] || key;
+}
 
-  // Calcula o início da semana (segunda) pro offset atual
+// Sprint 9.32.37: agenda mensal (substitui a antiga semanal)
+function renderAgendaCalendario(ags) {
+  const offset = window._adminAgendaMonthOffset || 0;
+  const filtroProprio = window._adminAgendaFiltroProprio || false;
+
+  // Pega o ID do user atual pra "Minhas visitas"
+  const userAtual = (typeof getCurrentUserReal === 'function') ? getCurrentUserReal() : null;
+  const meuId = userAtual?.id;
+
+  // Aplica filtro "Minhas visitas" (sobre os ags antes de tudo)
+  const agsBase = filtroProprio && meuId
+    ? ags.filter(a => a.nutricionista_id === meuId)
+    : ags;
+
+  // Mês de referência (offset 0 = mês atual; -1 = mês passado; +1 = próximo)
   const hoje = new Date();
   hoje.setHours(0, 0, 0, 0);
-  // Ajusta pra segunda (dow: 0=dom, 1=seg, ..., 6=sab)
-  const diaSemana = hoje.getDay();
-  const diffParaSegunda = diaSemana === 0 ? -6 : (1 - diaSemana);
-  const segundaAtual = new Date(hoje);
-  segundaAtual.setDate(segundaAtual.getDate() + diffParaSegunda);
-  // Aplica offset da navegação (em semanas)
-  const inicioSemana = new Date(segundaAtual);
-  inicioSemana.setDate(inicioSemana.getDate() + offset * 7);
-  const fimSemana = new Date(inicioSemana);
-  fimSemana.setDate(fimSemana.getDate() + 6);
+  const refMes = new Date(hoje.getFullYear(), hoje.getMonth() + offset, 1);
+  const ano = refMes.getFullYear();
+  const mes = refMes.getMonth(); // 0-11
 
-  // Agrupa agendamentos por data (YYYY-MM-DD)
+  // Primeiro dia da grade = domingo da semana que contém o dia 1 do mês
+  const inicioGrade = new Date(ano, mes, 1);
+  inicioGrade.setDate(inicioGrade.getDate() - inicioGrade.getDay()); // recua até domingo
+  // Total de cells = 6 semanas × 7 dias = 42
+
+  // Indexa visitas por data (YYYY-MM-DD)
   const porData = {};
-  ags.forEach(a => {
+  agsBase.forEach(a => {
+    if (!a.data_visita) return;
     if (!porData[a.data_visita]) porData[a.data_visita] = [];
     porData[a.data_visita].push(a);
   });
-
-  // Monta os 7 dias da semana
-  const diasSemanaLabels = ['SEG','TER','QUA','QUI','SEX','SÁB','DOM'];
-  const meses = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
 
   const hojeStr = (() => {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
   })();
 
-  let diasHtml = '';
-  for (let i = 0; i < 7; i++) {
-    const dt = new Date(inicioSemana);
+  const mesesNome = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  const diasSemanaLabels = ['DOM','SEG','TER','QUA','QUI','SEX','SÁB'];
+
+  // Monta as 42 cells
+  let cellsHtml = '';
+  for (let i = 0; i < 42; i++) {
+    const dt = new Date(inicioGrade);
     dt.setDate(dt.getDate() + i);
     const dtStr = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+    const dia = dt.getDate();
+    const isForaMes = dt.getMonth() !== mes;
     const isHoje = dtStr === hojeStr;
     const isPassado = dtStr < hojeStr;
-    const dia = dt.getDate();
+
     const agsDoDia = (porData[dtStr] || []).sort((a, b) =>
       (a.horario_inicio || '99:99') < (b.horario_inicio || '99:99') ? -1 : 1
     );
-    const cls = ['ag-cal-day'];
-    if (isHoje) cls.push('ag-cal-day--today');
-    if (isPassado && !isHoje) cls.push('ag-cal-day--passado');
 
-    diasHtml += `
-      <div class="${cls.join(' ')}">
-        <div class="ag-cal-day__header" onclick="handleAdminAgDiaDetalhes('${dtStr}')" title="Ver detalhes do dia">
-          <span class="ag-cal-day__dia-sem">${diasSemanaLabels[i]}</span>
-          <span class="ag-cal-day__dia-num">${dia}</span>
-        </div>
-        ${agsDoDia.length === 0
-          ? `<div class="ag-cal-empty" onclick="handleAdminAgDiaDetalhes('${dtStr}')" style="cursor:pointer;">—</div>`
-          : agsDoDia.map(a => {
-              const hora = a.horario_inicio ? String(a.horario_inicio).substring(0, 5) : '';
-              const prof = (a.usuarios?.nome || 'Profissional').split(' ')[0];
-              const clsEntry = a.status === 'sugerida' ? 'ag-cal-entry ag-cal-entry--sugerida' : 'ag-cal-entry';
-              return `<div class="${clsEntry}" onclick="event.stopPropagation();handleAdminAgDetalhes('${a.id}')">
-                <div class="ag-cal-entry__hora">${hora || '—'}</div>
-                <div class="ag-cal-entry__prof">${prof.replace(/"/g,'&quot;')}</div>
-              </div>`;
-            }).join('')}
+    const cls = ['ag-mes-cell'];
+    if (isForaMes) cls.push('ag-mes-cell--fora-mes');
+    if (isPassado && !isHoje) cls.push('ag-mes-cell--passado');
+    if (isHoje) cls.push('ag-mes-cell--hoje');
+
+    // Mostra até 3 chips. Se tiver mais, "+N mais"
+    const MAX_CHIPS = 3;
+    const visiveis = agsDoDia.slice(0, MAX_CHIPS);
+    const restantes = agsDoDia.length - visiveis.length;
+
+    const chipsHtml = visiveis.map(a => {
+      const hora = a.horario_inicio ? String(a.horario_inicio).substring(0, 5) : '';
+      const stKey = _agStatusKey(a);
+      const labelInst = (a.instituicoes?.nome || a.usuarios?.nome || 'Visita').split(' ').slice(0, 2).join(' ');
+      return `<div class="ag-mes-chip ag-st-${stKey}" onclick="event.stopPropagation();handleAdminAgDetalhes('${a.id}')" title="${(a.instituicoes?.nome || '').replace(/"/g,'&quot;')}">
+        <span class="ag-mes-chip__hora">${hora}</span>${labelInst.replace(/</g,'&lt;')}
+      </div>`;
+    }).join('');
+
+    const maisHtml = restantes > 0
+      ? `<div class="ag-mes-mais" onclick="event.stopPropagation();handleAdminAgDiaDetalhes('${dtStr}')">+${restantes} mais</div>`
+      : '';
+
+    cellsHtml += `
+      <div class="${cls.join(' ')}" onclick="handleAdminAgDiaDetalhes('${dtStr}')" title="Ver dia ${dia}">
+        <div class="ag-mes-cell__dia">${dia}</div>
+        ${chipsHtml}
+        ${maisHtml}
       </div>
     `;
   }
 
-  // Label da navegação
-  const labelInicio = `${String(inicioSemana.getDate()).padStart(2,'0')} ${meses[inicioSemana.getMonth()]}`;
-  const labelFim = `${String(fimSemana.getDate()).padStart(2,'0')} ${meses[fimSemana.getMonth()]} ${fimSemana.getFullYear()}`;
+  // Cabeçalho dos dias da semana
+  const cabecHtml = diasSemanaLabels.map(d =>
+    `<div class="ag-mes-cabecalho__dia">${d}</div>`
+  ).join('');
+
+  // Sidebar — próximas 12 visitas (confirmadas/sugeridas, futuras, ordenadas por data+hora)
+  const proximas = agsBase
+    .filter(a => {
+      if (!a.data_visita) return false;
+      if (a.cancelado_em) return false;
+      if (a.visita_realizada === true) return false;
+      // Aceita tudo a partir de hoje
+      return a.data_visita >= hojeStr;
+    })
+    .sort((a, b) => {
+      if (a.data_visita !== b.data_visita) return a.data_visita < b.data_visita ? -1 : 1;
+      return (a.horario_inicio || '99:99') < (b.horario_inicio || '99:99') ? -1 : 1;
+    })
+    .slice(0, 12);
+
+  const totalProximas = agsBase.filter(a => {
+    if (!a.data_visita || a.cancelado_em || a.visita_realizada === true) return false;
+    return a.data_visita >= hojeStr;
+  }).length;
+
+  // Render dos cards da sidebar
+  const sideCardsHtml = proximas.length === 0
+    ? `<div class="ag-side__vazio">Nenhuma visita próxima.<br>Use o botão + pra agendar.</div>`
+    : proximas.map(a => {
+        const stKey = _agStatusKey(a);
+        const stLabel = _agStatusLabel(stKey);
+        const hora = a.horario_inicio ? String(a.horario_inicio).substring(0, 5) : '—';
+        // Label "quando": HOJE / AMANHÃ / DDD DD/MM
+        const [y, m, d] = a.data_visita.split('-').map(Number);
+        const dt = new Date(y, m-1, d);
+        const diasDiff = Math.round((dt - hoje) / 86400000);
+        let quandoLabel;
+        if (diasDiff === 0) quandoLabel = 'HOJE';
+        else if (diasDiff === 1) quandoLabel = 'AMANHÃ';
+        else {
+          const dias3 = ['DOM','SEG','TER','QUA','QUI','SEX','SAB'];
+          quandoLabel = `${dias3[dt.getDay()]} ${String(dt.getDate()).padStart(2,'0')}/${String(dt.getMonth()+1).padStart(2,'0')}`;
+        }
+        const hospital = (a.instituicoes?.nome || 'Sem instituição').replace(/</g,'&lt;');
+        const prof = (a.usuarios?.nome || 'Profissional').replace(/</g,'&lt;');
+        const obs = a.resumo
+          ? `<div class="ag-side__obs">${a.resumo.replace(/</g,'&lt;').substring(0, 110)}${a.resumo.length > 110 ? '…' : ''}</div>`
+          : '';
+        return `
+          <div class="ag-side__card" onclick="handleAdminAgDetalhes('${a.id}')">
+            <div class="ag-side__quando">${quandoLabel} · ${hora}</div>
+            <div class="ag-side__hospital">${hospital}</div>
+            <div class="ag-side__meta">
+              <span class="ag-side__badge ag-st-${stKey}">${stLabel}</span>
+              <span class="ag-side__prof">
+                <span class="material-symbols-rounded" style="font-size:13px;">person</span>${prof.split(' ')[0]}
+              </span>
+            </div>
+            ${obs}
+          </div>
+        `;
+      }).join('');
+
+  // Toolbar topo
+  const tituloMes = `${mesesNome[mes]} ${ano}`;
 
   return `
-    <div class="ag-cal-nav">
-      <button class="ag-cal-nav__btn" onclick="adminAgendaMoverSemana(-1)" title="Semana anterior">
-        <span class="material-symbols-rounded" style="font-size:20px;">chevron_left</span>
-      </button>
-      <div class="ag-cal-nav__label">${labelInicio} – ${labelFim}</div>
-      ${offset !== 0
-        ? `<button class="ag-cal-nav__btn ag-cal-nav__btn--today" onclick="adminAgendaMoverSemana(0)">Hoje</button>`
-        : ''}
-      <button class="ag-cal-nav__btn" onclick="adminAgendaMoverSemana(1)" title="Próxima semana">
-        <span class="material-symbols-rounded" style="font-size:20px;">chevron_right</span>
-      </button>
-    </div>
-    <div class="ag-cal-grid">
-      ${diasHtml}
+    <div class="ag-mes-wrapper">
+      <div class="ag-mes-card">
+
+        <!-- Toolbar: navegação + Hoje + filtro pills -->
+        <div class="ag-mes-toolbar">
+          <div class="ag-mes-nav">
+            <button class="ag-cal-nav__btn" onclick="adminAgendaMoverMes(-1)" title="Mês anterior">
+              <span class="material-symbols-rounded" style="font-size:20px;">chevron_left</span>
+            </button>
+            <div class="ag-mes-titulo">${tituloMes}</div>
+            <button class="ag-cal-nav__btn" onclick="adminAgendaMoverMes(1)" title="Próximo mês">
+              <span class="material-symbols-rounded" style="font-size:20px;">chevron_right</span>
+            </button>
+            ${offset !== 0
+              ? `<button class="ag-cal-nav__btn ag-cal-nav__btn--today" onclick="adminAgendaMoverMes(0)" style="margin-left:6px;">Hoje</button>`
+              : ''}
+          </div>
+          <div class="ag-mes-pills">
+            <button class="ag-mes-pill ${!filtroProprio ? 'ag-mes-pill--ativa' : ''}" onclick="adminAgendaTrocarFiltroProprio(false)">Todos nutricionistas</button>
+            <button class="ag-mes-pill ${filtroProprio ? 'ag-mes-pill--ativa' : ''}" onclick="adminAgendaTrocarFiltroProprio(true)">Minhas visitas</button>
+          </div>
+        </div>
+
+        <!-- Legenda de status -->
+        <div class="ag-mes-legenda">
+          <div class="ag-mes-legenda__item"><span class="ag-mes-legenda__dot ag-st-confirmada"></span>Confirmada</div>
+          <div class="ag-mes-legenda__item"><span class="ag-mes-legenda__dot ag-st-sugerida"></span>Sugerida</div>
+          <div class="ag-mes-legenda__item"><span class="ag-mes-legenda__dot ag-st-realizada"></span>Realizada</div>
+          <div class="ag-mes-legenda__item"><span class="ag-mes-legenda__dot ag-st-cancelada"></span>Cancelada</div>
+        </div>
+
+        <!-- Cabeçalho dos dias da semana -->
+        <div class="ag-mes-cabecalho">${cabecHtml}</div>
+
+        <!-- Grade mensal 6×7 -->
+        <div class="ag-mes-grid">${cellsHtml}</div>
+      </div>
+
+      <!-- Sidebar próximas visitas -->
+      <aside class="ag-side">
+        <div class="ag-side__header">
+          <div class="ag-side__titulo">Próximas visitas</div>
+        </div>
+        <div class="ag-side__contador">${totalProximas} próxima${totalProximas === 1 ? '' : 's'}${filtroProprio ? ' (suas)' : ''}</div>
+        <div class="ag-side__lista">${sideCardsHtml}</div>
+      </aside>
     </div>
   `;
 }
 
-window.adminAgendaMoverSemana = function(delta) {
-  if (delta === 0) window._adminAgendaWeekOffset = 0;
-  else window._adminAgendaWeekOffset = (window._adminAgendaWeekOffset || 0) + delta;
+window.adminAgendaMoverMes = function(delta) {
+  if (delta === 0) window._adminAgendaMonthOffset = 0;
+  else window._adminAgendaMonthOffset = (window._adminAgendaMonthOffset || 0) + delta;
   // Recarrega no DOM que estiver ativo
   if (typeof carregarAdminAgendaDesktop === 'function' && document.getElementById('dsdAgContent')) {
     carregarAdminAgendaDesktop();
@@ -33726,6 +34357,18 @@ window.adminAgendaMoverSemana = function(delta) {
     recarregarAgendaUI();
   }
 };
+
+window.adminAgendaTrocarFiltroProprio = function(valor) {
+  window._adminAgendaFiltroProprio = !!valor;
+  if (typeof carregarAdminAgendaDesktop === 'function' && document.getElementById('dsdAgContent')) {
+    carregarAdminAgendaDesktop();
+  } else {
+    recarregarAgendaUI();
+  }
+};
+
+// Compat: mantém o nome antigo apontando pra função nova (caso outras partes ainda chamem)
+window.adminAgendaMoverSemana = window.adminAgendaMoverMes;
 
 // Card parecido com o do profissional, mas com badge do nome do profissional e origem
 function cardAdminAgendamento(ag, bucket) {
