@@ -28,8 +28,7 @@
 <!-- Supabase Client -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-<!-- Sprint 9.23: Painel de Faturamento - dados pré-agregados (~26 KB) -->
-<script src="faturamento_dados.js" defer></script>
+<!-- Sprint 9.32.35: faturamento_data_inline.json carregado via fetch sob demanda (não precisa script aqui) -->
 
 <style>
 /* ==========================================================================
@@ -6192,7 +6191,7 @@ a {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.53-benlogistica-visitas',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.55-fix-aprovar-lote-e-404',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -14904,7 +14903,10 @@ async function listarVisitasAdmin(filtro = 'com_flags') {
 
   if (filtro === 'com_flags') {
     // Apenas visitas com alguma flag ativa, status rascunho ou completa
-    query = query.or('flag_sem_checkin.eq.true,flag_sem_checkout.eq.true,flag_gps_divergente.eq.true,flag_horario_fora_margem.eq.true,checkin_manual.eq.true');
+    // Sprint 9.32.54: exclui as já aprovadas em lote (status='aprovada_pos_revisao'), senão ficam na fila pra sempre
+    query = query
+      .or('flag_sem_checkin.eq.true,flag_sem_checkout.eq.true,flag_gps_divergente.eq.true,flag_horario_fora_margem.eq.true,checkin_manual.eq.true')
+      .neq('status', 'aprovada_pos_revisao');
   } else if (filtro === 'em_revisao') {
     // Rascunhos que o admin devolveu pro profissional (aguardando correção)
     query = query.eq('status', 'rascunho').not('revisao_motivo', 'is', null).is('revisao_resolvida_em', null);
@@ -14929,8 +14931,10 @@ async function contarVisitasPorFiltro() {
 
   const promises = [
     db.from('visitas').select('*', { count: 'exact', head: true }),
+    // Sprint 9.32.54: contador "com_flags" também exclui aprovadas em lote (mesmo critério da listagem)
     db.from('visitas').select('*', { count: 'exact', head: true })
-      .or('flag_sem_checkin.eq.true,flag_sem_checkout.eq.true,flag_gps_divergente.eq.true,flag_horario_fora_margem.eq.true,checkin_manual.eq.true'),
+      .or('flag_sem_checkin.eq.true,flag_sem_checkout.eq.true,flag_gps_divergente.eq.true,flag_horario_fora_margem.eq.true,checkin_manual.eq.true')
+      .neq('status', 'aprovada_pos_revisao'),
     db.from('visitas').select('*', { count: 'exact', head: true })
       .eq('status', 'rascunho').not('revisao_motivo', 'is', null).is('revisao_resolvida_em', null),
     db.from('visitas').select('*', { count: 'exact', head: true }).eq('status', 'aprovada_pos_revisao'),
