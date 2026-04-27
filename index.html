@@ -2176,21 +2176,6 @@ a {
   flex-direction: column;
 }
 .admin-drawer.is-open .admin-drawer__panel { transform: translateX(0); }
-
-/* Sprint 9.32.51: quando o drawer abriga a ds-sidebar (navy padrão), ela vira overlay igual mobile */
-.admin-drawer .ds-sidebar {
-  position: absolute !important;
-  top: 0 !important;
-  left: -280px;
-  bottom: 0;
-  width: 260px !important;
-  height: 100vh;
-  z-index: 1;
-  transition: left 220ms cubic-bezier(.2,.8,.3,1);
-  box-shadow: 4px 0 24px rgba(0,0,0,0.18);
-  position: sticky;
-}
-.admin-drawer.is-open .ds-sidebar { left: 0; }
 .admin-drawer__header {
   display: flex;
   align-items: center;
@@ -6207,7 +6192,7 @@ a {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.51b-drawer-igual-sidebar',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.51e-dashboard-no-menu',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -15091,7 +15076,7 @@ const routes = {
   // Sprint 9.32.18: tela de Ranking & Insights (mesma rota pra admin e nutri)
   '#/itens-padronizados/ranking': { title: 'Ranking & Insights', icon: 'emoji_events', render: renderItensRankingInsights },
   '#/admin/faturamento':{ title: 'Faturamento', icon: 'paid', render: renderFaturamento },
-  '#/admin/roi-equipe':{ title: 'ROI da Equipe', icon: 'insights', render: renderAdminRoiEquipeDesktop },
+  '#/admin/roi-equipe':{ title: 'ROI da Equipe', icon: 'insights', render: renderAdminRoiEquipe },
   '#/admin/mapear-cnpjs':{ title: 'Mapear CNPJs', icon: 'link', render: renderAdminMapearCnpjsDesktop },
   '#/admin/agenda':   { title: 'Agenda da equipe', icon: 'event_note', render: renderAdminAgenda },
   // Sprint 9.10: rotas nutri (acessadas via hambúrguer no topo)
@@ -23136,21 +23121,63 @@ function renderListaVisitasRelatorio(visitas) {
   `;
 }
 
-// Sprint 9.32.51: drawer agora REUSA a mesma sidebar navy do desktop, ficando 100% padronizado
-// (admin vê desktopSidebar, nutri vê desktopSidebarNutri). Estilo idêntico em todos os lugares.
+// Drawer lateral com atalhos de admin
 function renderAdminDrawer() {
   const user = getCurrentUser();
   const perfil = user?.perfil || 'profissional';
-  const hash = window.location.hash || '#/';
 
-  const sidebarHtml = perfil === 'admin'
-    ? desktopSidebar(sidebarActiveFromHash(hash))
-    : desktopSidebarNutri(sidebarActiveFromHashNutri(hash));
+  const itemsAdmin = [
+    { href: '#/admin',                icon: 'dashboard',               titulo: 'Dashboard',       desc: 'Painel principal com KPIs da operação' },
+    { href: '#/admin/instituicoes',   icon: 'local_hospital',          titulo: 'Instituições',    desc: 'Hospitais e clínicas cadastrados' },
+    { href: '#/admin/profissionais',  icon: 'stethoscope',             titulo: 'Profissionais',   desc: 'Contatos nas instituições' },
+    { href: '#/admin/equipe',         icon: 'groups',                  titulo: 'Equipe',          desc: 'Aprovar cadastros e gerenciar acesso' },
+    { href: '#/admin/visitas',        icon: 'location_on',             titulo: 'Todas as visitas',desc: 'Histórico completo da equipe' },
+    { href: '#/admin/revisao',        icon: 'rule',                    titulo: 'Fila de Revisão', desc: 'Visitas com divergências' },
+    { href: '#/admin/pendentes',      icon: 'hourglass_top',           titulo: 'Pendências',      desc: 'Aprovar instituições e objetivos' },
+    { href: '#/admin/objetivos',      icon: 'flag',                    titulo: 'Objetivos',       desc: 'Gerenciar lista de objetivos de visita' },
+    { href: '#/admin/itens-padronizados', icon: 'inventory_2',         titulo: 'Itens padronizados', desc: 'Mapear concorrentes e converter vendas' },
+    { href: '#/admin/faturamento',     icon: 'paid',                    titulo: 'Faturamento',     desc: 'Painel financeiro completo da empresa' },
+    { href: '#/admin/roi-equipe',     icon: 'insights',                titulo: 'ROI da Equipe',   desc: 'Ranking de nutris pelo faturamento dos hospitais' },
+    { href: '#/admin/mapear-cnpjs',   icon: 'link',                    titulo: 'Mapear CNPJs',    desc: 'Vincular hospitais cadastrados ao faturamento' },
+    { href: '#/admin/agenda',          icon: 'event_note',              titulo: 'Agenda da equipe',desc: 'Ver e atribuir visitas agendadas' },
+    { href: '#/admin/configuracoes',  icon: 'settings',                titulo: 'Configurações',   desc: 'Parâmetros globais do sistema' },
+    { href: '#/logout',               icon: 'logout',                  titulo: 'Sair',            desc: 'Encerrar sessão' },
+  ];
+  const itemsNutri = [
+    { href: '#/nutri/instituicoes',   icon: 'local_hospital', titulo: 'Instituições',  desc: 'Hospitais que você visita' },
+    { href: '#/nutri/profissionais',  icon: 'stethoscope',    titulo: 'Profissionais', desc: 'Contatos nos hospitais' },
+    { href: '#/nutri/itens-padronizados', icon: 'inventory_2', titulo: 'Itens padronizados', desc: 'Concorrentes nos hospitais que você visita' },
+    { href: '#/nutri/indicadores',    icon: 'bar_chart',      titulo: 'Indicadores',   desc: 'Sua produção em números' },
+    { href: '#/nutri/performance',    icon: 'insights',       titulo: 'Performance & ROI', desc: 'Faturamento dos hospitais que você visita' },
+    { href: '#/logout',               icon: 'logout',         titulo: 'Sair',          desc: 'Encerrar sessão' },
+  ];
+  const items = perfil === 'admin' ? itemsAdmin : itemsNutri;
 
   return `
     <div class="admin-drawer" id="adminDrawer">
       <div class="admin-drawer__backdrop" onclick="closeAdminDrawer()"></div>
-      ${sidebarHtml}
+      <aside class="admin-drawer__panel">
+        <div class="admin-drawer__header">
+          <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:15px;">Menu</div>
+          <button onclick="closeAdminDrawer()" style="background:none;border:none;padding:6px;cursor:pointer;color:var(--neutral-500);">
+            <span class="material-symbols-rounded">close</span>
+          </button>
+        </div>
+        <nav class="admin-drawer__nav">
+          ${items.map(it => `
+            <a href="${it.href}" class="admin-drawer__item" onclick="closeAdminDrawer()">
+              <span class="admin-drawer__item-icon">
+                <span class="material-symbols-rounded" style="font-size:20px;">${it.icon}</span>
+              </span>
+              <div class="admin-drawer__item-body">
+                <div class="admin-drawer__item-title">${it.titulo}</div>
+                <div class="admin-drawer__item-desc">${it.desc}</div>
+              </div>
+              <span class="material-symbols-rounded" style="font-size:16px;color:var(--neutral-300);">chevron_right</span>
+            </a>
+          `).join('')}
+        </nav>
+      </aside>
     </div>
   `;
 }
@@ -28184,6 +28211,46 @@ window._roiEquipeTrocarPeriodo = async function(p) {
   window._roiEquipeState = state;
   _roiRenderEquipe();
 };
+
+// Sprint 9.32.51d: versão mobile do ROI da Equipe — usa mbar+drawer branco igual outras telas.
+// O conteúdo (filtros + KPIs + ranking + sparklines) é idêntico, só muda o "shell" externo.
+function renderAdminRoiEquipe() {
+  const user = requireAdmin();
+  if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
+
+  const periodo = window._roiEquipePeriodo || '6m';
+  window._roiEquipePeriodo = periodo;
+
+  setTimeout(async () => {
+    window._roiEquipeState = null;
+    _roiRenderEquipe();
+    const state = await _roiCalcularEquipe({ periodo });
+    window._roiEquipeState = state;
+    _roiRenderEquipe();
+  }, 0);
+
+  return `
+    <div class="mobile-app">
+      ${mobileTopBar({ title: 'ROI da Equipe', showBack: true })}
+      <main class="mcontent" style="padding:14px 14px 80px;">
+        <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:14px;padding:14px;margin-bottom:14px;">
+          <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:15px;display:flex;align-items:center;gap:8px;">
+            <span class="material-symbols-rounded" style="font-size:20px;color:#1D4ED8;">insights</span>
+            ROI da Equipe
+          </div>
+          <div style="font-size:12px;color:var(--neutral-600);margin-top:2px;line-height:1.4;">Ranking de nutris pelo faturamento dos hospitais que cada um visita.</div>
+          <div class="review-tabs" style="margin-top:12px;">
+            <button class="review-tab ${periodo === '3m' ? 'is-active' : ''}" id="roiEquipeBtn-3m" onclick="_roiEquipeTrocarPeriodo('3m')">3m</button>
+            <button class="review-tab ${periodo === '6m' ? 'is-active' : ''}" id="roiEquipeBtn-6m" onclick="_roiEquipeTrocarPeriodo('6m')">6m</button>
+            <button class="review-tab ${periodo === '12m' ? 'is-active' : ''}" id="roiEquipeBtn-12m" onclick="_roiEquipeTrocarPeriodo('12m')">12m</button>
+            <button class="review-tab ${periodo === 'tudo' ? 'is-active' : ''}" id="roiEquipeBtn-tudo" onclick="_roiEquipeTrocarPeriodo('tudo')">Tudo</button>
+          </div>
+        </div>
+        <div id="roiEquipeContent"></div>
+      </main>
+    </div>
+  `;
+}
 
 function renderAdminRoiEquipeDesktop() {
   const user = requireAdmin();
