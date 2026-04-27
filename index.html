@@ -6197,7 +6197,7 @@ a {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.82-fat-cliente-vendedor-filtrado',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.83-aba-consignado',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -27735,7 +27735,7 @@ window.rejeitarObjetivoPendente = async function(id) {
 let FAT_DATA = null;
 let _fatDataPromise = null;
 // __FAT_VERSION_START__ — substituído pelo atualizar_index.py com hash do JSON
-const FAT_DATA_VERSION = '80322a21f6a7';
+const FAT_DATA_VERSION = 'd2a7cf1f1074';
 // __FAT_VERSION_END__
 const FAT_DATA_URL = 'faturamento_data_inline.json?v=' + FAT_DATA_VERSION;
 
@@ -27931,6 +27931,11 @@ function _fatRenderInner() {
         <button id="fatTabDevolucoes" onclick="_fatTrocarAba('devolucoes')" style="padding:10px 18px;background:transparent;border:0;border-bottom:3px solid transparent;color:var(--neutral-500);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px;margin-bottom:-1.5px;transition:color 140ms;">
           <span class="material-symbols-rounded" style="font-size:17px;">undo</span>
           Devoluções
+        </button>
+        <button id="fatTabConsignado" onclick="_fatTrocarAba('consignado')" style="padding:10px 18px;background:transparent;border:0;border-bottom:3px solid transparent;color:var(--neutral-500);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px;margin-bottom:-1.5px;transition:color 140ms;">
+          <span class="material-symbols-rounded" style="font-size:17px;">inventory</span>
+          Consignado
+          <span style="font-size:9px;background:#F59E0B;color:#fff;padding:2px 6px;border-radius:9999px;font-weight:700;letter-spacing:0.05em;">NEW</span>
         </button>
         <button id="fatTabInsights" onclick="_fatTrocarAba('insights')" style="padding:10px 18px;background:transparent;border:0;border-bottom:3px solid transparent;color:var(--neutral-500);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px;margin-bottom:-1.5px;transition:color 140ms;">
           <span class="material-symbols-rounded" style="font-size:17px;">auto_awesome</span>
@@ -28204,6 +28209,43 @@ function _fatRenderInner() {
         </div>
 
       </div><!-- /fatPagina4 -->
+
+      <!-- PÁGINA 5: Consignado (Sprint 9.32.83) -->
+      <div id="fatPagina5" style="display:none;">
+        <!-- Header explicativo -->
+        <div style="background:linear-gradient(135deg,#FFF8EE 0%,#FFEDC2 100%);border-left:4px solid #F59E0B;border-radius:10px;padding:12px 16px;margin-bottom:18px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px;">
+            <span class="material-symbols-rounded" style="font-size:22px;color:#92400E;">inventory</span>
+            <div style="font-family:var(--font-display);font-weight:700;color:#92400E;font-size:14px;">Consignado (Remessa de Produto)</div>
+          </div>
+          <div style="font-size:12px;color:#7C2D12;line-height:1.4;">
+            Mercadoria enviada em <strong>regime de consignação</strong> — não conta como receita realizada.
+            <strong>Os totais de Faturamento das outras abas já excluem esses valores.</strong>
+            Aqui você acompanha o estoque consignado, evolução mensal e principais parceiros.
+          </div>
+        </div>
+
+        <!-- KPIs -->
+        <div id="fatConsKpis" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-bottom:18px;"></div>
+
+        <!-- Evolução mensal -->
+        <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:12px;padding:16px;margin-bottom:14px;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+            <span class="material-symbols-rounded" style="font-size:18px;color:#F59E0B;">show_chart</span>
+            <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:14px;">Evolução mensal — valor consignado</div>
+          </div>
+          <canvas id="fatConsChartMensal" style="max-height:280px;"></canvas>
+        </div>
+
+        <!-- Top clientes em consignação -->
+        <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:12px;padding:16px;margin-bottom:14px;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
+            <span class="material-symbols-rounded" style="font-size:18px;color:#F59E0B;">groups</span>
+            <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:14px;">Top clientes em consignação</div>
+          </div>
+          <div id="fatConsTopClientes"></div>
+        </div>
+      </div><!-- /fatPagina5 -->
 
       <!-- Footer: meta info -->
       <div style="text-align:center;color:var(--neutral-500);font-size:11px;margin-top:24px;font-style:italic;">
@@ -30110,26 +30152,29 @@ let _fatAbaAtiva = 'visao'; // 'visao' | 'analises' | 'insights'
 let _fatChartAbcInst = null;
 let _fatChartEvolSegInst = null;
 
-// Troca entre abas "Visão geral", "Análises avançadas" e "Insights"
+// Troca entre abas "Visão geral", "Análises avançadas", "Devoluções", "Consignado" e "Insights"
 window._fatTrocarAba = function(aba) {
   _fatAbaAtiva = aba;
   const p1 = document.getElementById('fatPagina1');
   const p2 = document.getElementById('fatPagina2');
   const p3 = document.getElementById('fatPagina3');
+  const p4 = document.getElementById('fatPagina4');
+  const p5 = document.getElementById('fatPagina5');
   const tabV = document.getElementById('fatTabVisao');
   const tabA = document.getElementById('fatTabAnalises');
   const tabI = document.getElementById('fatTabInsights');
   const tabD = document.getElementById('fatTabDevolucoes');
+  const tabC = document.getElementById('fatTabConsignado');
 
   // Oculta todas as páginas primeiro
   if (p1) p1.style.display = 'none';
   if (p2) p2.style.display = 'none';
   if (p3) p3.style.display = 'none';
-  const p4 = document.getElementById('fatPagina4');
   if (p4) p4.style.display = 'none';
+  if (p5) p5.style.display = 'none';
 
   // Reset visual dos tabs
-  [tabV, tabA, tabI, tabD].forEach(t => {
+  [tabV, tabA, tabI, tabD, tabC].forEach(t => {
     if (!t) return;
     t.style.borderBottomColor = 'transparent';
     t.style.color = 'var(--neutral-500)';
@@ -30142,20 +30187,148 @@ window._fatTrocarAba = function(aba) {
   } else if (aba === 'analises') {
     if (p2) p2.style.display = '';
     if (tabA) { tabA.style.borderBottomColor = 'var(--brand-lime)'; tabA.style.color = 'var(--brand-navy)'; tabA.style.fontWeight = '700'; }
-    // Renderiza página 2 lazy
     _fatRenderPagina2();
   } else if (aba === 'devolucoes') {
     if (p4) p4.style.display = '';
     if (tabD) { tabD.style.borderBottomColor = '#E24B4A'; tabD.style.color = '#A32D2D'; tabD.style.fontWeight = '700'; }
-    // Renderiza página 4 lazy
     _fatRenderDevolucoes();
+  } else if (aba === 'consignado') {
+    if (p5) p5.style.display = '';
+    if (tabC) { tabC.style.borderBottomColor = '#F59E0B'; tabC.style.color = '#92400E'; tabC.style.fontWeight = '700'; }
+    _fatRenderConsignado();
   } else if (aba === 'insights') {
     if (p3) p3.style.display = '';
     if (tabI) { tabI.style.borderBottomColor = 'var(--brand-lime)'; tabI.style.color = 'var(--brand-navy)'; tabI.style.fontWeight = '700'; }
-    // Renderiza página 3 lazy
     _fatRenderInsights();
   }
 };
+
+// Sprint 9.32.83: render da aba Consignado (KPIs + evolução mensal + top clientes)
+function _fatRenderConsignado() {
+  if (!FAT_DATA) return;
+  const consMensal = FAT_DATA.consignado_mensal || [];
+  const consTop = FAT_DATA.consignado_clientes_top || [];
+  const totalCons = (FAT_DATA.meta?.total_consignado) ?? consMensal.reduce((s, m) => s + (m.valor_consignado || 0), 0);
+  const totalNotas = consMensal.reduce((s, m) => s + (m.qtd || 0), 0);
+  const ticketMedio = totalNotas > 0 ? totalCons / totalNotas : 0;
+
+  // Compara últimos 3 meses vs 3 anteriores (se houver)
+  let tendenciaHtml = '';
+  if (consMensal.length >= 6) {
+    const u3 = consMensal.slice(-3).reduce((s, m) => s + m.valor_consignado, 0) / 3;
+    const a3 = consMensal.slice(-6, -3).reduce((s, m) => s + m.valor_consignado, 0) / 3;
+    if (a3 > 0) {
+      const delta = ((u3 / a3) - 1) * 100;
+      const cor = delta >= 0 ? 'var(--status-success)' : 'var(--status-danger)';
+      const seta = delta >= 0 ? '↑' : '↓';
+      tendenciaHtml = `<span style="font-size:11px;color:${cor};font-weight:700;">${seta} ${Math.abs(delta).toFixed(1)}% (3 meses)</span>`;
+    }
+  }
+
+  // KPIs
+  const kpisEl = document.getElementById('fatConsKpis');
+  if (kpisEl) {
+    kpisEl.innerHTML = `
+      <div style="background:linear-gradient(135deg,#F59E0B 0%,#92400E 100%);color:#fff;border-radius:12px;padding:14px 16px;">
+        <div style="font-size:10.5px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;opacity:0.9;">Total consignado</div>
+        <div style="font-family:var(--font-display);font-size:24px;font-weight:700;margin-top:3px;">${_fmtMoeda(totalCons, true)}</div>
+        ${tendenciaHtml ? `<div style="margin-top:4px;">${tendenciaHtml}</div>` : ''}
+      </div>
+      <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:12px;padding:14px 16px;">
+        <div style="font-size:10.5px;color:var(--neutral-500);font-weight:700;letter-spacing:0.06em;text-transform:uppercase;">Notas de remessa</div>
+        <div style="font-family:var(--font-display);font-size:24px;font-weight:700;color:var(--brand-navy);margin-top:3px;">${_fmtNum(totalNotas)}</div>
+        <div style="font-size:11px;color:var(--neutral-500);margin-top:3px;">total no período</div>
+      </div>
+      <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:12px;padding:14px 16px;">
+        <div style="font-size:10.5px;color:var(--neutral-500);font-weight:700;letter-spacing:0.06em;text-transform:uppercase;">Valor médio por remessa</div>
+        <div style="font-family:var(--font-display);font-size:24px;font-weight:700;color:var(--brand-navy);margin-top:3px;">${_fmtMoeda(ticketMedio)}</div>
+      </div>
+      <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:12px;padding:14px 16px;">
+        <div style="font-size:10.5px;color:var(--neutral-500);font-weight:700;letter-spacing:0.06em;text-transform:uppercase;">Clientes com remessa</div>
+        <div style="font-family:var(--font-display);font-size:24px;font-weight:700;color:var(--brand-navy);margin-top:3px;">${_fmtNum(consTop.length)}</div>
+        <div style="font-size:11px;color:var(--neutral-500);margin-top:3px;">parceiros ativos</div>
+      </div>
+    `;
+  }
+
+  // Gráfico mensal
+  const canvas = document.getElementById('fatConsChartMensal');
+  if (canvas && typeof Chart !== 'undefined' && consMensal.length > 0) {
+    if (window._fatConsChart) try { window._fatConsChart.destroy(); } catch {}
+    const ctx = canvas.getContext('2d');
+    window._fatConsChart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: consMensal.map(m => _mesLabel(m.ano_mes)),
+        datasets: [{
+          label: 'Consignado (R$)',
+          data: consMensal.map(m => m.valor_consignado),
+          backgroundColor: 'rgba(245,158,11,0.6)',
+          borderColor: '#F59E0B',
+          borderWidth: 1.5,
+          borderRadius: 4,
+        }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => `Consignado: ${_fmtMoeda(ctx.raw)}`,
+              afterLabel: (ctx) => {
+                const item = consMensal[ctx.dataIndex];
+                return item ? `${item.qtd} ${item.qtd === 1 ? 'nota' : 'notas'} de remessa` : '';
+              },
+            },
+          },
+        },
+        scales: {
+          y: { beginAtZero: true, ticks: { callback: (v) => _fmtMoeda(v, true) } },
+          x: { ticks: { maxRotation: 45, minRotation: 0 } },
+        },
+      },
+    });
+  } else if (canvas && consMensal.length === 0) {
+    const parent = canvas.parentElement;
+    if (parent) parent.innerHTML = '<div style="text-align:center;padding:30px;color:var(--neutral-500);font-size:13px;">Nenhuma remessa de produto encontrada no período.</div>';
+  }
+
+  // Top clientes
+  const topEl = document.getElementById('fatConsTopClientes');
+  if (topEl) {
+    if (consTop.length === 0) {
+      topEl.innerHTML = '<div style="text-align:center;padding:20px;color:var(--neutral-500);font-size:12px;">Nenhum cliente com remessa de produto.</div>';
+    } else {
+      const max = consTop[0].valor_consignado || 1;
+      topEl.innerHTML = consTop.slice(0, 15).map((c, i) => {
+        const pct = (c.valor_consignado / max) * 100;
+        const ultR = c.ultima_remessa
+          ? new Date(c.ultima_remessa + 'T00:00').toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'2-digit' })
+          : '—';
+        return `
+          <div class="fat-row">
+            <span style="width:22px;flex-shrink:0;text-align:center;font-size:11.5px;color:var(--neutral-500);font-weight:700;">${i+1}º</span>
+            <div style="flex:1;min-width:0;">
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:3px;">
+                <div style="font-size:12.5px;color:var(--brand-navy);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;">${(c['Cliente (Nome Fantasia)'] || '—').replace(/</g,'&lt;')}</div>
+                <div style="font-family:var(--font-display);font-size:13px;font-weight:700;color:#92400E;flex-shrink:0;">${_fmtMoeda(c.valor_consignado, true)}</div>
+              </div>
+              <div style="height:6px;background:var(--neutral-100);border-radius:9999px;overflow:hidden;margin-bottom:4px;">
+                <div style="height:100%;width:${pct}%;background:linear-gradient(90deg,#F59E0B,#92400E);transition:width 280ms ease-out;"></div>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:10.5px;color:var(--neutral-500);">
+                <span>${(c.Cidade || '—')}/${(c.Estado || '—')} · ${_fmtNum(c.qtd_notas)} notas</span>
+                <span>Última: ${ultR}</span>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+  }
+}
 
 // Renderiza todas as seções da página 2 (sem insights — agora é página 3)
 function _fatRenderPagina2() {
@@ -32384,7 +32557,10 @@ function _fatRender() {
   if (kpisEl) {
     kpisEl.innerHTML = `
       <div style="background:linear-gradient(135deg,var(--brand-navy) 0%,#1E3A8A 100%);color:#fff;border-radius:12px;padding:14px 16px;">
-        <div style="font-size:10.5px;font-weight:700;opacity:0.85;letter-spacing:0.06em;text-transform:uppercase;">Faturamento total</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;">
+          <div style="font-size:10.5px;font-weight:700;opacity:0.85;letter-spacing:0.06em;text-transform:uppercase;">Faturamento total</div>
+          <span title="Valores de Remessa de Produto (consignado) ficam na aba Consignado e não entram aqui." style="font-size:9px;font-weight:700;background:rgba(245,158,11,0.85);color:#fff;padding:2px 6px;border-radius:9999px;cursor:help;">VENDAS</span>
+        </div>
         <div style="font-family:var(--font-display);font-size:26px;font-weight:700;line-height:1.1;margin-top:3px;">${_fmtMoeda(fatLiquido, true)}</div>
         ${yoyHtml.replace('var(--status-success)', '#A7F3D0').replace('var(--status-danger)', '#FCA5A5')}
       </div>
