@@ -6192,7 +6192,7 @@ a {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.51e-dashboard-no-menu',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.51f-mapear-cnpjs-mobile',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -15077,7 +15077,7 @@ const routes = {
   '#/itens-padronizados/ranking': { title: 'Ranking & Insights', icon: 'emoji_events', render: renderItensRankingInsights },
   '#/admin/faturamento':{ title: 'Faturamento', icon: 'paid', render: renderFaturamento },
   '#/admin/roi-equipe':{ title: 'ROI da Equipe', icon: 'insights', render: renderAdminRoiEquipe },
-  '#/admin/mapear-cnpjs':{ title: 'Mapear CNPJs', icon: 'link', render: renderAdminMapearCnpjsDesktop },
+  '#/admin/mapear-cnpjs':{ title: 'Mapear CNPJs', icon: 'link', render: renderAdminMapearCnpjs },
   '#/admin/agenda':   { title: 'Agenda da equipe', icon: 'event_note', render: renderAdminAgenda },
   // Sprint 9.10: rotas nutri (acessadas via hambúrguer no topo)
   '#/nutri/instituicoes':   { title: 'Instituições',  icon: 'local_hospital', render: renderNutriInstituicoes },
@@ -28385,6 +28385,19 @@ async function _mapCarregar() {
 }
 
 function _mapRender() {
+  // Sprint 9.32.51f: injeta CSS responsivo pra .map-row uma vez (idempotente)
+  if (!document.getElementById('mapCnpjResponsivoStyle')) {
+    const styleEl = document.createElement('style');
+    styleEl.id = 'mapCnpjResponsivoStyle';
+    styleEl.textContent = `
+      @media (max-width: 720px) {
+        .map-row { grid-template-columns: 1fr !important; }
+        .map-row > * { min-width: 0; max-width: 100%; }
+      }
+    `;
+    document.head.appendChild(styleEl);
+  }
+
   const el = document.getElementById('mapCnpjContent');
   if (!el) return;
   const state = window._mapState;
@@ -28411,9 +28424,9 @@ function _mapRender() {
   else if (filtro === 'com_match')   filtRows = rows.filter(r => !r.temCnpj && r.sugestoes.length > 0);
   if (busca) filtRows = filtRows.filter(r => (r.nome || '').toLowerCase().includes(busca) || (r.cidade || '').toLowerCase().includes(busca));
 
-  // KPIs
+  // KPIs (responsivo: 4 colunas desktop, 2x2 em mobile)
   const kpisHtml = `
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px;">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(150px, 1fr));gap:12px;margin-bottom:18px;">
       <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:14px;padding:16px 18px;">
         <div style="font-size:11px;color:var(--neutral-500);text-transform:uppercase;letter-spacing:0.5px;font-weight:600;margin-bottom:6px;">Total</div>
         <span style="font-family:var(--font-display);font-weight:700;font-size:28px;color:var(--brand-navy);">${totalInst}</span>
@@ -28461,7 +28474,7 @@ function _mapRender() {
       const sugeridaTopo = r.sugestoes[0];
       const cnpjExibido = r.cnpj || '';
       return `
-        <div style="padding:14px;border-bottom:1px solid var(--neutral-100);display:grid;grid-template-columns:1fr 220px;gap:16px;align-items:start;" id="mapRow-${r.id}">
+        <div class="map-row" style="padding:14px;border-bottom:1px solid var(--neutral-100);display:grid;grid-template-columns:1fr 240px;gap:16px;align-items:start;" id="mapRow-${r.id}">
           <div style="min-width:0;">
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
               <span style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:13.5px;">${(r.nome || '').replace(/</g,'&lt;')}</span>
@@ -28586,6 +28599,40 @@ window._mapAceitarSugestao = async function(instId, cnpjSugerido) {
   if (inp) inp.value = cnpjSugerido;
   await window._mapSalvarCnpj(instId);
 };
+
+// Sprint 9.32.51f: versão mobile do Mapear CNPJs — usa mbar+drawer branco igual outras telas.
+function renderAdminMapearCnpjs() {
+  const user = requireAdmin();
+  if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
+
+  if (!window._mapFiltro) window._mapFiltro = 'sem_cnpj';
+  if (window._mapBusca === undefined) window._mapBusca = '';
+
+  setTimeout(async () => {
+    window._mapState = null;
+    _mapRender();
+    const state = await _mapCarregar();
+    window._mapState = state;
+    _mapRender();
+  }, 0);
+
+  return `
+    <div class="mobile-app">
+      ${mobileTopBar({ title: 'Mapear CNPJs', showBack: true })}
+      <main class="mcontent" style="padding:14px 14px 80px;">
+        <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:14px;padding:14px;margin-bottom:14px;">
+          <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:15px;display:flex;align-items:center;gap:8px;">
+            <span class="material-symbols-rounded" style="font-size:20px;color:#7C3AED;">link</span>
+            Mapear CNPJs das Instituições
+          </div>
+          <div style="font-size:12px;color:var(--neutral-600);margin-top:4px;line-height:1.4;">Ligue cada instituição ao CNPJ do cliente no faturamento. Sugestões aparecem automaticamente por nome.</div>
+          <a href="#/admin/roi-equipe" style="font-size:12px;color:var(--brand-lime);text-decoration:none;font-weight:600;display:inline-block;margin-top:10px;">← Ver ROI da Equipe</a>
+        </div>
+        <div id="mapCnpjContent"></div>
+      </main>
+    </div>
+  `;
+}
 
 function renderAdminMapearCnpjsDesktop() {
   const user = requireAdmin();
