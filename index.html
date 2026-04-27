@@ -6197,7 +6197,7 @@ a {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.90-modal-marca-filtrado',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.91-cons-grafico-clicavel',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -27735,7 +27735,7 @@ window.rejeitarObjetivoPendente = async function(id) {
 let FAT_DATA = null;
 let _fatDataPromise = null;
 // __FAT_VERSION_START__ — substituído pelo atualizar_index.py com hash do JSON
-const FAT_DATA_VERSION = '344c033875e4';
+const FAT_DATA_VERSION = '227b76debd36';
 // __FAT_VERSION_END__
 const FAT_DATA_URL = 'faturamento_data_inline.json?v=' + FAT_DATA_VERSION;
 
@@ -30406,6 +30406,11 @@ function _fatRenderConsignado() {
   if (canvas && typeof Chart !== 'undefined' && consMensal.length > 0) {
     if (window._fatConsChart) try { window._fatConsChart.destroy(); } catch {}
     const ctx = canvas.getContext('2d');
+    // Sprint 9.32.91: destaca mês ativo (se filtro de mês isolado coincide)
+    const mesAtivoCons = window._fatFiltro?.mes;
+    const corDestaqueCons = '#92400E';
+    const corNormalCons = 'rgba(245,158,11,0.6)';
+    const corBorda = '#F59E0B';
     window._fatConsChart = new Chart(ctx, {
       type: 'bar',
       data: {
@@ -30413,8 +30418,8 @@ function _fatRenderConsignado() {
         datasets: [{
           label: 'Consignado (R$)',
           data: consMensal.map(m => m.valor_consignado),
-          backgroundColor: 'rgba(245,158,11,0.6)',
-          borderColor: '#F59E0B',
+          backgroundColor: consMensal.map(m => (mesAtivoCons && mesAtivoCons === m.ano_mes) ? corDestaqueCons : corNormalCons),
+          borderColor: consMensal.map(m => (mesAtivoCons && mesAtivoCons === m.ano_mes) ? corDestaqueCons : corBorda),
           borderWidth: 1.5,
           borderRadius: 4,
         }],
@@ -30422,6 +30427,21 @@ function _fatRenderConsignado() {
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        // Sprint 9.32.91: clique pra filtrar mês isolado (igual Faturamento e Devoluções)
+        onClick: (evt, elements) => {
+          if (elements.length > 0) {
+            const idx = elements[0].index;
+            const ymClicado = consMensal[idx]?.ano_mes;
+            if (ymClicado) {
+              // Toggle: se já filtrado nesse mês, desmarca
+              const novoFiltro = (window._fatFiltro.mes === ymClicado) ? 'todos' : ymClicado;
+              window._fatTrocarFiltro('mes', novoFiltro);
+            }
+          }
+        },
+        onHover: (evt, elements) => {
+          evt.native.target.style.cursor = elements.length > 0 ? 'pointer' : 'default';
+        },
         plugins: {
           legend: { display: false },
           tooltip: {
@@ -30429,7 +30449,10 @@ function _fatRenderConsignado() {
               label: (ctx) => `Consignado: ${_fmtMoeda(ctx.raw)}`,
               afterLabel: (ctx) => {
                 const item = consMensal[ctx.dataIndex];
-                return item ? `${item.qtd} ${item.qtd === 1 ? 'nota' : 'notas'} de remessa` : '';
+                const linhas = [item ? `${item.qtd} ${item.qtd === 1 ? 'nota' : 'notas'} de remessa` : ''];
+                if (item && window._fatFiltro?.mes === item.ano_mes) linhas.push('✓ Mês selecionado · clique pra desmarcar');
+                else linhas.push('Clique pra filtrar este mês');
+                return linhas.filter(Boolean);
               },
             },
           },
