@@ -6197,7 +6197,7 @@ a {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.84-consignado-produtos',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.90-modal-marca-filtrado',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -27735,7 +27735,7 @@ window.rejeitarObjetivoPendente = async function(id) {
 let FAT_DATA = null;
 let _fatDataPromise = null;
 // __FAT_VERSION_START__ — substituído pelo atualizar_index.py com hash do JSON
-const FAT_DATA_VERSION = 'd62765b144e2';
+const FAT_DATA_VERSION = '344c033875e4';
 // __FAT_VERSION_END__
 const FAT_DATA_URL = 'faturamento_data_inline.json?v=' + FAT_DATA_VERSION;
 
@@ -29753,21 +29753,82 @@ window._fatAbrirCliente = function(nomeFantasia) {
 // Drill-down: abre modal com detalhes da marca + top produtos da marca
 window._fatAbrirMarca = function(nomeMarca) {
   if (!FAT_DATA?.marcas) return;
-  const marca = FAT_DATA.marcas.find(m => m.Marca === nomeMarca);
-  if (!marca) return;
 
-  const totalGeral = FAT_DATA.marcas.reduce((s, m) => s + m.faturamento, 0);
-  const pctMarca = (marca.faturamento / totalGeral) * 100;
+  // Sprint 9.32.90: respeita filtros de período/cliente
+  const f = window._fatFiltro || {};
+  const temFiltroPeriodo = (f.periodo && f.periodo !== 'todos') || (f.mes && f.mes !== 'todos');
+  const temFiltroCliente = (f.cliente && f.cliente !== 'todos');
+  const filtroAtivo = temFiltroPeriodo || temFiltroCliente;
+  const mesesSet = _fatDevMesesFiltrados();
 
-  // Posição no ranking
-  const ranking = FAT_DATA.marcas.slice().sort((a, b) => b.faturamento - a.faturamento);
+  // Recalcula stats da marca no recorte
+  let marca, totalGeral, ranking;
+
+  if (temFiltroCliente && FAT_DATA.cliente_marca_mes) {
+    const aggMarcas = {};
+    FAT_DATA.cliente_marca_mes.forEach(cm => {
+      if (cm['CNPJ/CPF'] !== f.cliente || !mesesSet.has(cm.ano_mes)) return;
+      if (!aggMarcas[cm.Marca]) aggMarcas[cm.Marca] = { Marca: cm.Marca, faturamento: 0, qtd_notas: 0, qtd_itens: 0 };
+      aggMarcas[cm.Marca].faturamento += cm.faturamento;
+      aggMarcas[cm.Marca].qtd_notas += cm.qtd_notas;
+      aggMarcas[cm.Marca].qtd_itens += (cm.qtd_itens || 0);
+    });
+    ranking = Object.values(aggMarcas).sort((a, b) => b.faturamento - a.faturamento);
+    marca = ranking.find(m => m.Marca === nomeMarca);
+    totalGeral = ranking.reduce((s, m) => s + m.faturamento, 0);
+  } else if (temFiltroPeriodo && FAT_DATA.marcas_mes) {
+    const aggMarcas = {};
+    FAT_DATA.marcas_mes.forEach(m => {
+      if (!mesesSet.has(m.ano_mes)) return;
+      if (!aggMarcas[m.Marca]) aggMarcas[m.Marca] = { Marca: m.Marca, faturamento: 0, qtd_notas: 0, qtd_itens: 0 };
+      aggMarcas[m.Marca].faturamento += m.faturamento;
+      aggMarcas[m.Marca].qtd_notas += m.qtd_notas;
+      aggMarcas[m.Marca].qtd_itens += (m.qtd_itens || 0);
+    });
+    ranking = Object.values(aggMarcas).sort((a, b) => b.faturamento - a.faturamento);
+    marca = ranking.find(m => m.Marca === nomeMarca);
+    totalGeral = ranking.reduce((s, m) => s + m.faturamento, 0);
+  } else {
+    ranking = FAT_DATA.marcas.slice().sort((a, b) => b.faturamento - a.faturamento);
+    marca = FAT_DATA.marcas.find(m => m.Marca === nomeMarca);
+    totalGeral = FAT_DATA.marcas.reduce((s, m) => s + m.faturamento, 0);
+  }
+
+  if (!marca) {
+    setFlash && setFlash('warning', `Sem dados de "${nomeMarca}" no recorte atual.`);
+    return;
+  }
+
+  const pctMarca = totalGeral > 0 ? (marca.faturamento / totalGeral) * 100 : 0;
   const posicao = ranking.findIndex(m => m.Marca === nomeMarca) + 1;
 
-  // Top produtos dessa marca
-  const produtosDaMarca = (FAT_DATA.produtos_top || [])
-    .filter(p => p.Marca === nomeMarca)
-    .sort((a, b) => b.faturamento - a.faturamento)
-    .slice(0, 10);
+  // Top produtos da marca — recalcula se filtro de período (de produtos_mes), senão lifetime
+  let produtosDaMarca;
+  if (temFiltroPeriodo && FAT_DATA.produtos_mes) {
+    const aggProd = {};
+    FAT_DATA.produtos_mes.forEach(p => {
+      if (p.Marca !== nomeMarca || !mesesSet.has(p.ano_mes)) return;
+      const k = p['Código do Produto'];
+      if (!aggProd[k]) aggProd[k] = {
+        'Código do Produto': k,
+        'Descrição do Produto': p['Descrição do Produto'],
+        Marca: p.Marca,
+        faturamento: 0,
+        qtd_itens: 0,
+      };
+      aggProd[k].faturamento += p.faturamento;
+      aggProd[k].qtd_itens += (p.qtd_itens || 0);
+    });
+    produtosDaMarca = Object.values(aggProd)
+      .filter(p => p.faturamento > 0)
+      .sort((a, b) => b.faturamento - a.faturamento)
+      .slice(0, 10);
+  } else {
+    produtosDaMarca = (FAT_DATA.produtos_top || [])
+      .filter(p => p.Marca === nomeMarca)
+      .sort((a, b) => b.faturamento - a.faturamento)
+      .slice(0, 10);
+  }
   const maxProd = produtosDaMarca[0]?.faturamento || 1;
 
   const backdrop = document.createElement('div');
@@ -29775,16 +29836,37 @@ window._fatAbrirMarca = function(nomeMarca) {
   backdrop.style.cssText = 'position:fixed;inset:0;background:rgba(10,31,92,0.55);backdrop-filter:blur(4px);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;';
   backdrop.onclick = (e) => { if (e.target === backdrop) backdrop.remove(); };
 
+  // Sprint 9.32.90: badge contexto filtrado
+  let contextoBadge = '';
+  if (filtroAtivo) {
+    const partes = [];
+    if (temFiltroPeriodo) {
+      const labelPer = f.mes && f.mes !== 'todos'
+        ? `mês: ${_mesLabel(f.mes)}`
+        : `período: ${({ano2026:'2026',ano2025:'2025',ult12m:'últ. 12m',ult6m:'últ. 6m',ult3m:'últ. 3m',mes_atual:'mês atual'})[f.periodo] || f.periodo}`;
+      partes.push(labelPer);
+    }
+    if (temFiltroCliente) {
+      const cli = (FAT_DATA.clientes_lista || []).find(c => c.cnpj === f.cliente);
+      partes.push(`cliente: ${cli?.nome || 'filtrado'}`);
+    }
+    contextoBadge = `<div style="background:#E4ECFD;color:var(--status-info);padding:8px 22px;border-bottom:1px solid var(--neutral-200);font-size:11.5px;display:flex;align-items:center;gap:6px;">
+      <span class="material-symbols-rounded" style="font-size:15px;">filter_alt</span>
+      <span>Filtrado por <strong>${partes.join(' · ')}</strong></span>
+    </div>`;
+  }
+
   backdrop.innerHTML = `
     <div style="background:var(--neutral-0);border-radius:16px;max-width:760px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 24px 60px rgba(0,0,0,0.25);">
       <!-- Header -->
       <div style="padding:18px 22px;border-bottom:1px solid var(--neutral-200);display:flex;align-items:center;justify-content:space-between;gap:12px;">
         <div style="flex:1;min-width:0;">
-          <div style="font-size:11px;color:var(--neutral-500);font-weight:700;letter-spacing:0.06em;text-transform:uppercase;">🏷️ Marca · #${posicao} no ranking</div>
+          <div style="font-size:11px;color:var(--neutral-500);font-weight:700;letter-spacing:0.06em;text-transform:uppercase;">🏷️ Marca · #${posicao} no ranking${filtroAtivo ? ' (no recorte)' : ''}</div>
           <div style="font-family:var(--font-display);font-size:20px;font-weight:700;color:var(--brand-navy);margin-top:2px;line-height:1.2;">${nomeMarca.replace(/</g,'&lt;')}</div>
         </div>
         <button onclick="document.getElementById('fatMarcaModal').remove();" style="background:transparent;border:0;color:var(--neutral-500);cursor:pointer;font-size:24px;line-height:0;padding:8px;border-radius:50%;" title="Fechar">×</button>
       </div>
+      ${contextoBadge}
 
       <!-- KPIs -->
       <div style="padding:18px 22px;display:grid;grid-template-columns:repeat(4,1fr);gap:12px;border-bottom:1px solid var(--neutral-200);">
@@ -30220,11 +30302,58 @@ window._fatTrocarAba = function(aba) {
 };
 
 // Sprint 9.32.83: render da aba Consignado (KPIs + evolução mensal + top clientes)
+// Sprint 9.32.88: respeita filtros de período/mês/cliente
 function _fatRenderConsignado() {
   if (!FAT_DATA) return;
-  const consMensal = FAT_DATA.consignado_mensal || [];
-  const consTop = FAT_DATA.consignado_clientes_top || [];
-  const totalCons = (FAT_DATA.meta?.total_consignado) ?? consMensal.reduce((s, m) => s + (m.valor_consignado || 0), 0);
+
+  // Aplica filtro de período/mês — reusa _fatDevMesesFiltrados (mesmo critério)
+  const mesesSet = _fatDevMesesFiltrados();
+  const f = window._fatFiltro || {};
+  const temFiltroCliente = (f.cliente && f.cliente !== 'todos');
+
+  // 1) Mensal filtrado
+  const consMensal = (FAT_DATA.consignado_mensal || [])
+    .filter(m => mesesSet.has(m.ano_mes))
+    .sort((a, b) => a.ano_mes.localeCompare(b.ano_mes));
+
+  // 2) Top clientes — recalcula no recorte usando cliente_consignado_mes
+  let consTop = [];
+  if (FAT_DATA.cliente_consignado_mes) {
+    const aggCli = {};
+    FAT_DATA.cliente_consignado_mes.forEach(r => {
+      if (!mesesSet.has(r.ano_mes)) return;
+      if (temFiltroCliente && r['CNPJ/CPF'] !== f.cliente) return;
+      const cnpj = r['CNPJ/CPF'];
+      if (!aggCli[cnpj]) aggCli[cnpj] = { 'CNPJ/CPF': cnpj, valor_consignado: 0, qtd_notas: 0, ultima_remessa: null };
+      aggCli[cnpj].valor_consignado += r.valor_consignado;
+      aggCli[cnpj].qtd_notas += r.qtd_notas;
+    });
+    // Mescla com info estática do consignado_clientes_top (nome, cidade, estado, última remessa)
+    const meta = {};
+    (FAT_DATA.consignado_clientes_top || []).forEach(c => { meta[c['CNPJ/CPF']] = c; });
+    consTop = Object.values(aggCli)
+      .filter(c => c.valor_consignado > 0)
+      .map(c => {
+        const m = meta[c['CNPJ/CPF']] || {};
+        return {
+          'CNPJ/CPF': c['CNPJ/CPF'],
+          'Cliente (Nome Fantasia)': m['Cliente (Nome Fantasia)'] || '—',
+          Cidade: m.Cidade || '—',
+          Estado: m.Estado || '—',
+          valor_consignado: Math.round(c.valor_consignado * 100) / 100,
+          qtd_notas: c.qtd_notas,
+          ultima_remessa: m.ultima_remessa,
+        };
+      })
+      .sort((a, b) => b.valor_consignado - a.valor_consignado)
+      .slice(0, 30);
+  } else {
+    // Fallback: sem cruzamento, usa o estático lifetime (sem filtro)
+    consTop = (FAT_DATA.consignado_clientes_top || []).slice();
+  }
+
+  // 3) Totais (do recorte)
+  const totalCons = consMensal.reduce((s, m) => s + (m.valor_consignado || 0), 0);
   const totalNotas = consMensal.reduce((s, m) => s + (m.qtd || 0), 0);
   const ticketMedio = totalNotas > 0 ? totalCons / totalNotas : 0;
 
@@ -30262,10 +30391,15 @@ function _fatRenderConsignado() {
       <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:12px;padding:14px 16px;">
         <div style="font-size:10.5px;color:var(--neutral-500);font-weight:700;letter-spacing:0.06em;text-transform:uppercase;">Clientes com remessa</div>
         <div style="font-family:var(--font-display);font-size:24px;font-weight:700;color:var(--brand-navy);margin-top:3px;">${_fmtNum(consTop.length)}</div>
-        <div style="font-size:11px;color:var(--neutral-500);margin-top:3px;">parceiros ativos</div>
+        <div style="font-size:11px;color:var(--neutral-500);margin-top:3px;">no período</div>
       </div>
     `;
   }
+
+  // Top produtos — filtra por período (se houver registro mensal granular)
+  // Por enquanto, top produtos é lifetime (sem cruzamento mensal). Mostra aviso se filtro ativo.
+  const consProd = (FAT_DATA.consignado_produtos_top || []).slice();
+  const filtroAtivo = (f.periodo && f.periodo !== 'todos') || (f.mes && f.mes !== 'todos') || temFiltroCliente;
 
   // Gráfico mensal
   const canvas = document.getElementById('fatConsChartMensal');
@@ -30346,14 +30480,17 @@ function _fatRenderConsignado() {
   }
 
   // Sprint 9.32.84: Top produtos em consignação
-  const consProd = FAT_DATA.consignado_produtos_top || [];
+  // NOTA: top produtos é lifetime (sem cruzamento mensal). Quando filtro ativo, mostra aviso.
   const prodEl = document.getElementById('fatConsTopProdutos');
   if (prodEl) {
     if (consProd.length === 0) {
       prodEl.innerHTML = '<div style="text-align:center;padding:20px;color:var(--neutral-500);font-size:12px;">Nenhum produto em consignação.</div>';
     } else {
+      const avisoLifetime = filtroAtivo
+        ? `<div style="background:#FFF8EE;border:1px solid #FCD9A0;color:#854F0B;font-size:10.5px;padding:6px 10px;border-radius:6px;margin-bottom:10px;line-height:1.4;">⚠️ Top produtos sempre mostra <strong>lifetime</strong> (não filtra por período). Pra ver detalhe granular, use os totais e o gráfico mensal acima.</div>`
+        : '';
       const maxP = consProd[0].valor_consignado || 1;
-      prodEl.innerHTML = consProd.slice(0, 15).map((p, i) => {
+      prodEl.innerHTML = avisoLifetime + consProd.slice(0, 15).map((p, i) => {
         const pct = (p.valor_consignado / maxP) * 100;
         const desc = (p['Descrição do Produto'] || '—').replace(/</g,'&lt;');
         const marca = (p['Marca'] || '').replace(/</g,'&lt;');
@@ -30389,13 +30526,15 @@ function _fatRenderPagina2() {
 }
 
 // === Seção 1: Comparação últ. 3 meses vs 3 meses anteriores ===
+// Sprint 9.32.88: respeita filtro de período
 function _fatRenderComparacao() {
   const el = document.getElementById('fatComparacao');
   if (!el || !FAT_DATA?.mensal) return;
 
-  const mensal = FAT_DATA.mensal.slice();
+  const mesesSet = _fatDevMesesFiltrados();
+  const mensal = (FAT_DATA.mensal || []).filter(m => mesesSet.has(m.ano_mes)).slice();
   if (mensal.length < 6) {
-    el.innerHTML = '<div style="grid-column:1/-1;padding:20px;text-align:center;color:var(--neutral-500);font-size:12px;">Dados insuficientes para comparação (mínimo 6 meses).</div>';
+    el.innerHTML = `<div style="grid-column:1/-1;padding:20px;text-align:center;color:var(--neutral-500);font-size:12px;">Dados insuficientes para comparação (mínimo 6 meses no recorte atual). ${mensal.length === 0 ? 'Nenhum mês selecionado.' : `Apenas ${mensal.length} meses disponíveis.`}</div>`;
     return;
   }
 
@@ -30448,8 +30587,45 @@ function _fatRenderAbc() {
   const ctx = document.getElementById('fatChartAbc');
   if (!elResumo || !elCards || !ctx || !FAT_DATA?.clientes_top) return;
 
-  // Clientes_top já vem ordenado desc por faturamento
-  const clientes = FAT_DATA.clientes_top.slice();
+  // Sprint 9.32.88: respeita filtro de período — recalcula clientes do recorte
+  const f = window._fatFiltro || {};
+  const temFiltro = (f.periodo && f.periodo !== 'todos') || (f.mes && f.mes !== 'todos');
+  let clientes;
+  if (temFiltro && FAT_DATA.clientes_mes) {
+    const mesesSet = _fatDevMesesFiltrados();
+    const meta = {};
+    (FAT_DATA.clientes_top || []).forEach(c => { meta[c['CNPJ/CPF']] = c; });
+    const aggMap = {};
+    FAT_DATA.clientes_mes.forEach(r => {
+      if (!mesesSet.has(r.ano_mes)) return;
+      const cnpj = r['CNPJ/CPF'];
+      if (!aggMap[cnpj]) {
+        const m = meta[cnpj] || {};
+        aggMap[cnpj] = {
+          'CNPJ/CPF': cnpj,
+          'Cliente (Nome Fantasia)': r['Cliente (Nome Fantasia)'] || m['Cliente (Nome Fantasia)'] || '—',
+          Cidade: m.Cidade || '—',
+          Estado: m.Estado || '—',
+          faturamento: 0,
+          qtd_notas: 0,
+        };
+      }
+      aggMap[cnpj].faturamento += r.faturamento;
+      aggMap[cnpj].qtd_notas += r.qtd_notas || 0;
+    });
+    clientes = Object.values(aggMap)
+      .filter(c => c.faturamento > 0)
+      .sort((a, b) => b.faturamento - a.faturamento);
+  } else {
+    clientes = FAT_DATA.clientes_top.slice();
+  }
+
+  if (clientes.length === 0) {
+    elResumo.innerHTML = '<div style="padding:20px;text-align:center;color:var(--neutral-500);font-size:12px;">Nenhum cliente no recorte atual.</div>';
+    elCards.innerHTML = '';
+    return;
+  }
+
   const totalGeral = clientes.reduce((s, c) => s + c.faturamento, 0);
 
   // Calcula classificação ABC
@@ -30569,7 +30745,9 @@ function _fatRenderEvolSeg() {
   if (!ctx || !FAT_DATA) return;
 
   const f = window._fatFiltro || {};
-  const meses = FAT_DATA.mensal.map(m => m.ano_mes);
+  // Sprint 9.32.88: respeita filtro de período
+  const mesesSet = _fatDevMesesFiltrados();
+  const meses = (FAT_DATA.mensal || []).map(m => m.ano_mes).filter(ym => mesesSet.has(ym));
 
   // Estratégia: se tem filtro de vendedor, marca ou estado, mostra só ele;
   // senão, mostra Top 5 vendedores empilhados
@@ -32561,6 +32739,10 @@ function _fatRender() {
   if (_fatAbaAtiva === 'devolucoes') {
     _fatRenderDevolucoes();
   }
+  // Sprint 9.32.88: se estiver na aba Consignado, re-renderiza ao mudar filtro
+  if (_fatAbaAtiva === 'consignado') {
+    _fatRenderConsignado();
+  }
 
   const mensal = _fatFiltrarMensal();
 
@@ -32849,18 +33031,32 @@ function _fatRender() {
   }
 
   // Marcas ====
-  // Sprint 9.32.31: se há filtro de cliente, lê do cruzamento cliente_marca_mes
+  // Sprint 9.32.89: respeita filtro de cliente E de período
   let marcasArr;
-  const _fCliM = window._fatFiltro.cliente;
+  const _fM = window._fatFiltro;
+  const _fCliM = _fM.cliente;
+  const _fPerM = (_fM.periodo && _fM.periodo !== 'todos') || (_fM.mes && _fM.mes !== 'todos');
+  const mesesSetM = _fatDevMesesFiltrados();
   if (_fCliM && _fCliM !== 'todos' && FAT_DATA.cliente_marca_mes) {
     const aggM = {};
     FAT_DATA.cliente_marca_mes
-      .filter(cm => cm['CNPJ/CPF'] === _fCliM && mensal.some(m => m.ano_mes === cm.ano_mes))
+      .filter(cm => cm['CNPJ/CPF'] === _fCliM && mesesSetM.has(cm.ano_mes))
       .forEach(cm => {
         if (!aggM[cm.Marca]) aggM[cm.Marca] = { Marca: cm.Marca, faturamento: 0, qtd_notas: 0, qtd_itens: 0 };
         aggM[cm.Marca].faturamento += cm.faturamento;
         aggM[cm.Marca].qtd_notas += cm.qtd_notas;
         aggM[cm.Marca].qtd_itens += (cm.qtd_itens || 0);
+      });
+    marcasArr = Object.values(aggM).sort((a, b) => b.faturamento - a.faturamento).slice(0, 8);
+  } else if (_fPerM && FAT_DATA.marcas_mes) {
+    const aggM = {};
+    FAT_DATA.marcas_mes
+      .filter(m => mesesSetM.has(m.ano_mes))
+      .forEach(m => {
+        if (!aggM[m.Marca]) aggM[m.Marca] = { Marca: m.Marca, faturamento: 0, qtd_notas: 0, qtd_itens: 0 };
+        aggM[m.Marca].faturamento += m.faturamento;
+        aggM[m.Marca].qtd_notas += m.qtd_notas;
+        aggM[m.Marca].qtd_itens += (m.qtd_itens || 0);
       });
     marcasArr = Object.values(aggM).sort((a, b) => b.faturamento - a.faturamento).slice(0, 8);
   } else {
@@ -32912,16 +33108,18 @@ function _fatRender() {
   }
 
   // === Sprint 9.25: Faturamento por empresa (Haverim, Nutricionais Santos/PG) ===
-  // Sprint 9.32.32: agora respeita filtro de cliente também
+  // Sprint 9.32.89: respeita TODOS os filtros (período, mês, cliente)
   const empEl = document.getElementById('fatEmpresas');
   if (empEl && FAT_DATA.empresa_total) {
     const f2 = window._fatFiltro;
+    const mesesSetEmp = _fatDevMesesFiltrados();
+    const temFiltroPeriodoEmp = (f2.periodo && f2.periodo !== 'todos') || (f2.mes && f2.mes !== 'todos');
     let dadosEmp;
     // 1) Filtro de cliente tem prioridade — usa cliente_empresa_mes
     if (f2.cliente && f2.cliente !== 'todos' && FAT_DATA.cliente_empresa_mes) {
       const agg = {};
       FAT_DATA.cliente_empresa_mes
-        .filter(ce => ce['CNPJ/CPF'] === f2.cliente && mensal.some(m => m.ano_mes === ce.ano_mes))
+        .filter(ce => ce['CNPJ/CPF'] === f2.cliente && mesesSetEmp.has(ce.ano_mes))
         .forEach(ce => {
           if (!agg[ce.Empresa]) agg[ce.Empresa] = { Empresa: ce.Empresa, faturamento: 0, qtd_notas: 0 };
           agg[ce.Empresa].faturamento += ce.faturamento;
@@ -32929,11 +33127,11 @@ function _fatRender() {
         });
       dadosEmp = Object.values(agg).map(e => ({ ...e, ticket_medio: e.qtd_notas > 0 ? e.faturamento / e.qtd_notas : 0 }));
     }
-    // 2) Filtro de mês isolado
-    else if (f2.mes && f2.mes !== 'todos' && FAT_DATA.empresa_mes) {
+    // 2) Filtro de período/mês — agrega empresa_mes pelo recorte
+    else if (temFiltroPeriodoEmp && FAT_DATA.empresa_mes) {
       const agg = {};
       FAT_DATA.empresa_mes
-        .filter(e => e.ano_mes === f2.mes)
+        .filter(e => mesesSetEmp.has(e.ano_mes))
         .forEach(e => {
           if (!agg[e.Empresa]) agg[e.Empresa] = { Empresa: e.Empresa, faturamento: 0, qtd_notas: 0 };
           agg[e.Empresa].faturamento += e.faturamento;
@@ -33004,11 +33202,12 @@ function _fatRender() {
         ticket_medio: notasCli > 0 ? fatCli / notasCli : 0,
       }];
     }
-    // 2) Filtro de mês isolado
-    else if (f3.mes && f3.mes !== 'todos' && FAT_DATA.tipo_pessoa_mes) {
+    // 2) Filtro de período/mês — agrega tipo_pessoa_mes pelo recorte
+    else if (((f3.periodo && f3.periodo !== 'todos') || (f3.mes && f3.mes !== 'todos')) && FAT_DATA.tipo_pessoa_mes) {
+      const mesesSetP = _fatDevMesesFiltrados();
       const agg = {};
       FAT_DATA.tipo_pessoa_mes
-        .filter(p => p.ano_mes === f3.mes)
+        .filter(p => mesesSetP.has(p.ano_mes))
         .forEach(p => {
           if (!agg[p.tipo]) agg[p.tipo] = { tipo_pessoa: p.tipo, faturamento: 0, qtd_notas: 0, qtd_clientes: 0 };
           agg[p.tipo].faturamento += p.faturamento;
@@ -33093,7 +33292,38 @@ function _fatRender() {
         posicaoLabel = `<div style="font-size:11.5px;color:var(--neutral-500);font-style:italic;padding:8px;">Cliente filtrado não encontrado no período.</div>`;
       }
     } else {
-      top = FAT_DATA.clientes_top.slice(0, 15);
+      // Sprint 9.32.89: aplica filtro de período recalculando de clientes_mes
+      const _fTC = window._fatFiltro;
+      const temPerTC = (_fTC.periodo && _fTC.periodo !== 'todos') || (_fTC.mes && _fTC.mes !== 'todos');
+      if (temPerTC && FAT_DATA.clientes_mes) {
+        const mesesSetTC = _fatDevMesesFiltrados();
+        const meta = {};
+        (FAT_DATA.clientes_top || []).forEach(c => { meta[c['CNPJ/CPF']] = c; });
+        const aggMap = {};
+        FAT_DATA.clientes_mes.forEach(r => {
+          if (!mesesSetTC.has(r.ano_mes)) return;
+          const cnpj = r['CNPJ/CPF'];
+          if (!aggMap[cnpj]) {
+            const m = meta[cnpj] || {};
+            aggMap[cnpj] = {
+              'Cliente (Nome Fantasia)': r['Cliente (Nome Fantasia)'] || m['Cliente (Nome Fantasia)'] || '—',
+              'CNPJ/CPF': cnpj,
+              Cidade: m.Cidade || '—',
+              Estado: m.Estado || '—',
+              faturamento: 0,
+              qtd_notas: 0,
+            };
+          }
+          aggMap[cnpj].faturamento += r.faturamento;
+          aggMap[cnpj].qtd_notas += r.qtd_notas || 0;
+        });
+        top = Object.values(aggMap)
+          .filter(c => c.faturamento > 0)
+          .sort((a, b) => b.faturamento - a.faturamento)
+          .slice(0, 15);
+      } else {
+        top = FAT_DATA.clientes_top.slice(0, 15);
+      }
     }
 
     const maxC = top[0]?.faturamento || 1;
@@ -33135,7 +33365,22 @@ function _fatRender() {
         topEst = [];
       }
     } else {
-      topEst = FAT_DATA.estados.slice(0, 10);
+      // Sprint 9.32.89: filtro de período recalcula de estados_mes
+      const _fE = window._fatFiltro;
+      const temPerE = (_fE.periodo && _fE.periodo !== 'todos') || (_fE.mes && _fE.mes !== 'todos');
+      if (temPerE && FAT_DATA.estados_mes) {
+        const mesesSetE = _fatDevMesesFiltrados();
+        const aggE = {};
+        FAT_DATA.estados_mes.forEach(r => {
+          if (!mesesSetE.has(r.ano_mes)) return;
+          if (!aggE[r.Estado]) aggE[r.Estado] = { Estado: r.Estado, faturamento: 0, qtd_clientes: 0 };
+          aggE[r.Estado].faturamento += r.faturamento;
+          aggE[r.Estado].qtd_clientes = Math.max(aggE[r.Estado].qtd_clientes, r.qtd_clientes);
+        });
+        topEst = Object.values(aggE).filter(e => e.faturamento > 0).sort((a, b) => b.faturamento - a.faturamento).slice(0, 10);
+      } else {
+        topEst = FAT_DATA.estados.slice(0, 10);
+      }
     }
     const maxE = topEst[0]?.faturamento || 1;
     teEl.innerHTML = topEst.map(e => {
@@ -33185,7 +33430,29 @@ function _fatRender() {
         });
       top = Object.values(aggP).sort((a, b) => b.faturamento - a.faturamento).slice(0, limit);
     } else {
-      top = FAT_DATA.produtos_top.slice(0, limit);
+      // Sprint 9.32.89: filtro de período recalcula de produtos_mes
+      const _fP = window._fatFiltro;
+      const temPerP = (_fP.periodo && _fP.periodo !== 'todos') || (_fP.mes && _fP.mes !== 'todos');
+      if (temPerP && FAT_DATA.produtos_mes) {
+        const mesesSetP = _fatDevMesesFiltrados();
+        const aggP = {};
+        FAT_DATA.produtos_mes.forEach(r => {
+          if (!mesesSetP.has(r.ano_mes)) return;
+          const k = r['Código do Produto'];
+          if (!aggP[k]) aggP[k] = {
+            'Código do Produto': k,
+            'Descrição do Produto': r['Descrição do Produto'],
+            'Marca': r.Marca,
+            faturamento: 0,
+            qtd_itens: 0,
+          };
+          aggP[k].faturamento += r.faturamento;
+          aggP[k].qtd_itens += (r.qtd_itens || 0);
+        });
+        top = Object.values(aggP).filter(p => p.faturamento > 0).sort((a, b) => b.faturamento - a.faturamento).slice(0, limit);
+      } else {
+        top = FAT_DATA.produtos_top.slice(0, limit);
+      }
     }
     const maxP = top[0]?.faturamento || 1;
     tpEl.innerHTML = top.map((p, i) => {
@@ -35731,11 +35998,20 @@ function renderItensPadronizadosCarrossel() {
   if (!window._ipFiltro) {
     window._ipFiltro = { categoria: 'todas', status: 'todos', instituicao: 'todas', busca: '', esconderPadronizado: false, esconderEmNeg: false, esconderConvertido: false };
   }
+  // Sprint 9.32.86: chip de filtro rápido + auto-foco no hospital da visita ativa
+  if (window._ipCarChip === undefined) window._ipCarChip = 'todos';
+  // Marca pra resetar idx APENAS na primeira renderização após carregar visita ativa
+  window._ipCarPrimeiraRender = true;
 
   setTimeout(async () => {
     window._reloadItensPadronizados = async () => {
-      const itens = await listarItensPadronizados({ apenasMeus: false });
+      // Carrega itens + visita ativa em paralelo
+      const [itens, visitaAtiva] = await Promise.all([
+        listarItensPadronizados({ apenasMeus: false }),
+        getVisitaAtiva().catch(() => null),
+      ]);
       window._ipItens = itens;
+      window._ipCarVisitaAtiva = visitaAtiva;
       window._ipRanking = calcularRankingConversoes(itens);
       _ipCarRender();
     };
@@ -35760,6 +36036,9 @@ function renderItensPadronizadosCarrossel() {
           </button>
         </div>
 
+        <!-- Sprint 9.32.86: chips de filtro rápido (ação > navegação) -->
+        <div id="ipCarChips" style="display:flex;gap:5px;padding:8px 10px;overflow-x:auto;background:var(--neutral-50,#FAFBFD);border-bottom:1px solid var(--neutral-200);scrollbar-width:none;"></div>
+
         <!-- Atalhos: Ranking + Histórico -->
         <div style="display:flex;gap:6px;padding:8px 12px;background:var(--neutral-50,#FAFBFD);border-bottom:1px solid var(--neutral-200);">
           <button onclick="window.location.hash='#/itens-padronizados/ranking'" style="flex:1;background:linear-gradient(135deg,#FBBF24 0%,#F59E0B 100%);color:#fff;border:0;padding:7px 10px;border-radius:8px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:4px;">
@@ -35771,6 +36050,9 @@ function renderItensPadronizadosCarrossel() {
             </button>
           ` : ''}
         </div>
+
+        <!-- Sprint 9.32.86: banner "Em visita aqui" (aparece se há visita ativa) -->
+        <div id="ipCarVisitaBanner"></div>
 
         <!-- Carrossel: header com seletor de hospital -->
         <div id="ipCarHospHeader" style="background:var(--neutral-0);padding:10px 8px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--neutral-200);"></div>
@@ -35830,8 +36112,75 @@ function renderItensPadronizadosCarrossel() {
       }
       .ipc-add {
         background: transparent; border: 1px dashed var(--neutral-300);
-        border-radius: 6px; padding: 6px; font-size: 11.5px; color: var(--neutral-500);
+        border-radius: 6px; padding: 8px; font-size: 11.5px; color: var(--neutral-500);
         text-align: center; cursor: pointer; font-family: inherit; width: 100%;
+        font-weight: 600; margin-top: 4px;
+      }
+      .ipc-add:active { background: rgba(139,198,63,0.06); }
+      .ipc-add--neg {
+        border-color: #F59E0B; color: #92400E;
+      }
+      .ipc-add--neg:active { background: rgba(245,158,11,0.10); }
+      .ipc-add--conv {
+        border-color: var(--status-success); color: var(--status-success);
+      }
+      .ipc-add--conv:active { background: rgba(46,154,99,0.10); }
+      .ipc-add--disabled {
+        color: var(--neutral-400); border-color: var(--neutral-200);
+        cursor: not-allowed; opacity: 0.7;
+      }
+
+      /* Sprint 9.32.86: chips horizontais sem scrollbar visível */
+      #ipCarChips::-webkit-scrollbar { display: none; }
+
+      /* Sprint 9.32.87: card expansível inline */
+      .ipc-card { transition: background 120ms; }
+      .ipc-card.is-expanded { border-radius: 6px 6px 0 0; background: var(--neutral-50, #FAFBFD); }
+      .ipc-chevron { font-size: 12px; color: var(--neutral-400); padding-left: 4px; align-self: center; flex-shrink: 0; }
+      .ipc-expanded {
+        border: 1px solid var(--neutral-200);
+        border-top: 0;
+        border-radius: 0 0 6px 6px;
+        background: var(--neutral-50, #FAFBFD);
+        padding: 8px 10px;
+        margin-bottom: 5px;
+        margin-top: -5px;
+      }
+      .ipc-expanded.col-em_negociacao { background: #FFFBF0; border-color: #FCD9A0; }
+      .ipc-expanded.col-convertido { background: #F0F8F2; border-color: #C0DD97; }
+      .ipc-details {
+        font-size: 10.5px; color: var(--neutral-700); line-height: 1.6;
+        padding-bottom: 6px; margin-bottom: 6px;
+        border-bottom: 1px dashed var(--neutral-200);
+      }
+      .ipc-row { display: flex; gap: 6px; align-items: flex-start; }
+      .ipc-row .lbl { font-weight: 600; color: var(--brand-navy); min-width: 88px; flex-shrink: 0; }
+      .ipc-actions { display: flex; gap: 4px; }
+      .ipc-btn-act {
+        flex: 1; padding: 6px 8px; border: 0; border-radius: 5px;
+        font-size: 10.5px; font-weight: 600; cursor: pointer; font-family: inherit;
+      }
+      .ipc-btn-conv { background: var(--status-success); color: #fff; }
+      .ipc-btn-neg { background: #F59E0B; color: #fff; }
+      .ipc-btn-edit { background: var(--neutral-0); color: var(--neutral-700); border: 1px solid var(--neutral-200) !important; }
+      .ipc-btn-cancel { background: var(--neutral-0); color: var(--status-danger); border: 1px solid var(--neutral-200) !important; flex: 0 0 auto; padding: 6px 9px; }
+
+      /* Sprint 9.32.87: card de insight */
+      .ipc-insight {
+        background: linear-gradient(135deg,#FAEEDA 0%,#FAC775 100%);
+        border: 1px solid #BA7517; border-radius: 10px;
+        padding: 10px 12px; margin-bottom: 10px;
+        display: flex; gap: 8px; align-items: flex-start;
+      }
+      .ipc-insight-icon { font-size: 18px; flex-shrink: 0; }
+      .ipc-insight-body { flex: 1; }
+      .ipc-insight-title { font-weight: 700; font-size: 11px; color: #854F0B; }
+      .ipc-insight-text { font-size: 11px; color: #412402; line-height: 1.4; margin-top: 2px; }
+      .ipc-insight-text strong { color: #854F0B; }
+      .ipc-insight-btn {
+        margin-top: 6px; background: #BA7517; color: #fff; border: 0;
+        padding: 5px 10px; border-radius: 5px; font-size: 10.5px;
+        font-weight: 600; cursor: pointer; font-family: inherit;
       }
       .ipc-nav-btn {
         background: var(--neutral-0); border: 1px solid var(--neutral-200);
@@ -35859,6 +36208,13 @@ function renderItensPadronizadosCarrossel() {
 function _ipCarRender() {
   const itens = window._ipItens || [];
   const filtro = window._ipFiltro;
+  const chip = window._ipCarChip || 'todos';
+  const visitaAtiva = window._ipCarVisitaAtiva || null;
+
+  // Sprint 9.32.86: helpers de chip
+  const HOJE = new Date();
+  const inicioMes = new Date(HOJE.getFullYear(), HOJE.getMonth(), 1).getTime();
+  const sessentaDiasMs = 60 * 86400000;
 
   // Aplica busca + categoria globais
   let filtrados = itens.filter(it => {
@@ -35872,23 +36228,103 @@ function _ipCarRender() {
     return true;
   });
 
-  // Agrupa por hospital
-  const grupos = {};
+  // Agrupa por hospital (todos, sem chip ainda — pra calcular contadores corretos)
+  const gruposTodos = {};
   filtrados.forEach(it => {
     const instId = it.instituicao_id || 'sem_inst';
     const instNome = it.instituicoes?.nome || '— Sem instituição —';
-    if (!grupos[instId]) grupos[instId] = { id: instId, nome: instNome, padronizado: [], em_negociacao: [], convertido: [] };
+    if (!gruposTodos[instId]) gruposTodos[instId] = { id: instId, nome: instNome, padronizado: [], em_negociacao: [], convertido: [], _itensRaw: [] };
     const col = colunaVisualItem(it);
-    if (col) grupos[instId][col].push(it);
+    if (col) gruposTodos[instId][col].push(it);
+    gruposTodos[instId]._itensRaw.push(it);
   });
 
-  // Ordena hospitais: por ação (mais negoc + conv primeiro), depois alfabético
-  const hospitais = Object.values(grupos).sort((a, b) => {
-    const aScore = a.em_negociacao.length * 2 + a.convertido.length;
-    const bScore = b.em_negociacao.length * 2 + b.convertido.length;
-    if (bScore !== aScore) return bScore - aScore;
-    return a.nome.localeCompare(b.nome, 'pt-BR');
-  });
+  // Calcula matchers por chip — devolve true se hospital "casa" com o chip
+  const hospChip = (g, c) => {
+    if (c === 'todos') return true;
+    if (c === 'parados60') {
+      // Tem padronizado com último update há mais de 60 dias E sem em_negociação ativa
+      return g.padronizado.some(it => {
+        const ts = it.atualizado_em ? new Date(it.atualizado_em).getTime() : (it.criado_em ? new Date(it.criado_em).getTime() : 0);
+        return ts > 0 && (Date.now() - ts) > sessentaDiasMs;
+      });
+    }
+    if (c === 'negociando') return g.em_negociacao.length > 0;
+    if (c === 'conv_mes') {
+      return g._itensRaw.some(it =>
+        it.status === 'convertido' && it.convertido_em && new Date(it.convertido_em).getTime() >= inicioMes
+      );
+    }
+    return true;
+  };
+
+  // Conta hospitais por chip (usa todos os grupos, não filtrados)
+  const totaisChip = {
+    todos:      Object.values(gruposTodos).length,
+    parados60:  Object.values(gruposTodos).filter(g => hospChip(g, 'parados60')).length,
+    negociando: Object.values(gruposTodos).filter(g => hospChip(g, 'negociando')).length,
+    conv_mes:   Object.values(gruposTodos).filter(g => hospChip(g, 'conv_mes')).length,
+  };
+
+  // Filtra grupos pelo chip ativo
+  const hospitais = Object.values(gruposTodos)
+    .filter(g => hospChip(g, chip))
+    .sort((a, b) => {
+      const aScore = a.em_negociacao.length * 2 + a.convertido.length;
+      const bScore = b.em_negociacao.length * 2 + b.convertido.length;
+      if (bScore !== aScore) return bScore - aScore;
+      return a.nome.localeCompare(b.nome, 'pt-BR');
+    });
+
+  // Sprint 9.32.86: render dos chips
+  const chipsEl = document.getElementById('ipCarChips');
+  if (chipsEl) {
+    const def = (id, label, count, cor) => {
+      const ativo = chip === id;
+      const bg = ativo ? 'var(--brand-navy)' : 'var(--neutral-0)';
+      const fg = ativo ? '#fff' : (cor || 'var(--neutral-600)');
+      const bd = ativo ? 'var(--brand-navy)' : (cor || 'var(--neutral-200)');
+      return `<button onclick="window.ipCarTrocarChip('${id}')" style="background:${bg};color:${fg};border:0.5px solid ${bd};padding:5px 10px;border-radius:9999px;font-size:10.5px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0;">${label}${count !== null ? ` · ${count}` : ''}</button>`;
+    };
+    chipsEl.innerHTML = `
+      ${def('todos',      'Todos',          totaisChip.todos,      null)}
+      ${def('parados60',  '⏰ Parados +60d', totaisChip.parados60,  '#BA7517')}
+      ${def('negociando', '🤝 Negoc',       totaisChip.negociando, '#BA7517')}
+      ${def('conv_mes',   '🏆 Conv mês',    totaisChip.conv_mes,   '#1D9E75')}
+    `;
+  }
+
+  // Sprint 9.32.86: banner "Em visita aqui" se há check-in ativo do nutri
+  const bannerEl = document.getElementById('ipCarVisitaBanner');
+  if (bannerEl) {
+    if (visitaAtiva && visitaAtiva.instituicao_id) {
+      const minDecorridos = visitaAtiva.checkin_timestamp
+        ? Math.max(0, Math.floor((Date.now() - new Date(visitaAtiva.checkin_timestamp).getTime()) / 60000))
+        : null;
+      const tempoTxt = minDecorridos === null
+        ? ''
+        : (minDecorridos < 60 ? `há ${minDecorridos} min` : `há ${Math.floor(minDecorridos/60)}h ${minDecorridos%60}min`);
+      const instNome = (visitaAtiva.instituicoes?.nome || 'Hospital').replace(/</g,'&lt;');
+      bannerEl.innerHTML = `
+        <div style="background:#EAF5EE;padding:9px 12px;border-bottom:1px solid #97C459;display:flex;align-items:center;gap:8px;">
+          <span style="background:#3B6D11;color:#fff;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;">📍</span>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:11px;color:#27500A;font-weight:600;">Em visita agora${tempoTxt ? ' · ' + tempoTxt : ''}</div>
+            <div style="font-size:12.5px;color:var(--brand-navy);font-weight:600;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${instNome}</div>
+          </div>
+        </div>
+      `;
+      // Auto-foco no hospital da visita ativa (somente na primeira render)
+      if (window._ipCarPrimeiraRender) {
+        const idxAlvo = hospitais.findIndex(g => g.id === visitaAtiva.instituicao_id);
+        if (idxAlvo >= 0) window._ipCarIdx = idxAlvo;
+        window._ipCarPrimeiraRender = false;
+      }
+    } else {
+      bannerEl.innerHTML = '';
+      window._ipCarPrimeiraRender = false;
+    }
+  }
 
   // KPIs stripe
   const totalAtivos = itens.filter(i => i.status !== 'perdido').length;
@@ -35912,9 +36348,18 @@ function _ipCarRender() {
   if (!headerEl) return;
   if (hospitais.length === 0) {
     headerEl.innerHTML = '';
+    let msgVazio;
+    if (itens.length === 0) {
+      msgVazio = 'Nenhum item cadastrado ainda.<br>Clique no <strong>+</strong> pra começar! 🎯';
+    } else if (chip !== 'todos') {
+      const labelChip = { parados60: '⏰ Parados +60d', negociando: '🤝 Negoc', conv_mes: '🏆 Conv mês' }[chip] || chip;
+      msgVazio = `Nenhum hospital bate com o filtro <strong>${labelChip}</strong>.<br><button onclick="window.ipCarTrocarChip('todos')" style="margin-top:10px;background:var(--brand-navy);color:#fff;border:0;padding:8px 14px;border-radius:8px;font-size:11.5px;font-weight:600;cursor:pointer;font-family:inherit;">↺ Mostrar todos</button>`;
+    } else {
+      msgVazio = 'Nenhum item bate com a busca.';
+    }
     document.getElementById('ipCarContent').innerHTML = `
       <div style="background:var(--neutral-0);border:1px dashed var(--neutral-200);border-radius:12px;padding:30px;text-align:center;color:var(--neutral-500);font-size:12.5px;">
-        ${itens.length === 0 ? 'Nenhum item cadastrado ainda.<br>Clique no <strong>+</strong> pra começar! 🎯' : 'Nenhum item bate com a busca.'}
+        ${msgVazio}
       </div>
     `;
     return;
@@ -35942,36 +36387,127 @@ function _ipCarRender() {
   `;
 
   // Conteúdo: 3 boxes empilhados
+  // Sprint 9.32.85: botões contextuais por coluna (igual desktop)
+  const podeIniciarMobile = h.padronizado.length > 0;
+  const podeMarcarMobile = h.em_negociacao.length > 0;
+  const btnNegMobile = podeIniciarMobile
+    ? `<button class="ipc-add ipc-add--neg" onclick="_ipSwimAbrirSeletor('${h.id}','padronizado')">↪ Iniciar negociação</button>`
+    : `<button class="ipc-add ipc-add--disabled" disabled>↪ Cadastre um padronizado</button>`;
+  const btnConvMobile = podeMarcarMobile
+    ? `<button class="ipc-add ipc-add--conv" onclick="_ipSwimAbrirSeletor('${h.id}','em_negociacao')">🏆 Marcar conversão</button>`
+    : `<button class="ipc-add ipc-add--disabled" disabled>🏆 Inicie uma negociação</button>`;
+
+  // Sprint 9.32.87: insight automático do hospital atual (se aplicável)
+  const insightHtml = _ipCarInsightHospital(h);
+
   const contentEl = document.getElementById('ipCarContent');
   contentEl.innerHTML = `
+    ${insightHtml}
     <div class="ipc-statusbox">
       <div class="ipc-statusbox__head">
         📋 Padronizados <span>${h.padronizado.length}</span>
       </div>
-      ${h.padronizado.length === 0
-        ? `<button class="ipc-add" onclick="handleNovoItemPadronizado()">+ adicionar item</button>`
-        : h.padronizado.map(it => _ipCarCardHtml(it, 'padronizado')).join('')}
+      ${h.padronizado.map(it => _ipCarCardHtml(it, 'padronizado')).join('')}
+      <button class="ipc-add" onclick="handleNovoItemPadronizado('${h.id}')">+ adicionar item</button>
     </div>
     <div class="ipc-statusbox is-neg">
       <div class="ipc-statusbox__head">
         🤝 Em negociação <span>${h.em_negociacao.length}</span>
       </div>
-      ${h.em_negociacao.length === 0
-        ? `<div class="ipc-empty">Nenhum item em negociação</div>`
-        : h.em_negociacao.map(it => _ipCarCardHtml(it, 'em_negociacao')).join('')}
+      ${h.em_negociacao.map(it => _ipCarCardHtml(it, 'em_negociacao')).join('')}
+      ${btnNegMobile}
     </div>
     <div class="ipc-statusbox is-conv">
       <div class="ipc-statusbox__head">
         🏆 Convertidos · 7d <span>${h.convertido.length}</span>
       </div>
-      ${h.convertido.length === 0
-        ? `<div class="ipc-empty">Nenhuma conversão recente</div>`
-        : h.convertido.map(it => _ipCarCardHtml(it, 'convertido')).join('')}
+      ${h.convertido.map(it => _ipCarCardHtml(it, 'convertido')).join('')}
+      ${btnConvMobile}
     </div>
   `;
 
   // Setup swipe gestures (só uma vez)
   _ipCarSetupSwipe();
+}
+
+// Sprint 9.32.87: gera card de insight contextual pro hospital atual
+// Retorna HTML do banner ou string vazia se nada digno de destaque
+function _ipCarInsightHospital(g) {
+  const sessentaDiasMs = 60 * 86400000;
+  const trintaDiasMs = 30 * 86400000;
+  const agora = Date.now();
+
+  // 1) Padronizados parados há +60 dias (e sem em_negociacao ativa pro mesmo hospital)
+  const padraoParados = g.padronizado.filter(it => {
+    const ts = it.atualizado_em ? new Date(it.atualizado_em).getTime() : (it.criado_em ? new Date(it.criado_em).getTime() : 0);
+    return ts > 0 && (agora - ts) > sessentaDiasMs;
+  });
+
+  if (padraoParados.length > 0 && g.em_negociacao.length === 0) {
+    return `
+      <div class="ipc-insight">
+        <span class="ipc-insight-icon">💡</span>
+        <div class="ipc-insight-body">
+          <div class="ipc-insight-title">Oportunidade detectada</div>
+          <div class="ipc-insight-text">${padraoParados.length === 1 ? '1 padronizado aqui está' : padraoParados.length + ' padronizados aqui estão'} <strong>há +60 dias parados</strong>. Boa hora pra iniciar negociação.</div>
+          <button class="ipc-insight-btn" onclick="_ipSwimAbrirSeletor('${g.id}','padronizado')">↪ Negociar agora</button>
+        </div>
+      </div>
+    `;
+  }
+
+  // 2) Negociações longas (>30 dias) — pressione pra fechar
+  const negLongas = g.em_negociacao.filter(it => {
+    const ts = it.conversao_iniciada_em ? new Date(it.conversao_iniciada_em).getTime() : 0;
+    return ts > 0 && (agora - ts) > trintaDiasMs;
+  });
+
+  if (negLongas.length > 0) {
+    return `
+      <div class="ipc-insight">
+        <span class="ipc-insight-icon">⏳</span>
+        <div class="ipc-insight-body">
+          <div class="ipc-insight-title">Negociação esfriando</div>
+          <div class="ipc-insight-text">${negLongas.length === 1 ? '1 item está' : negLongas.length + ' itens estão'} <strong>em negociação há +30 dias</strong>. Hora de mover pra conversão ou cancelar.</div>
+        </div>
+      </div>
+    `;
+  }
+
+  // 3) Hospital quente — converteu nos últimos 30 dias
+  const trintaAtras = agora - trintaDiasMs;
+  const convRecentes = g.convertido.filter(it => {
+    const ts = it.convertido_em ? new Date(it.convertido_em).getTime() : 0;
+    return ts > 0 && ts > trintaAtras;
+  });
+
+  if (convRecentes.length >= 2) {
+    return `
+      <div class="ipc-insight" style="background:linear-gradient(135deg,#EAF5EE 0%,#C0DD97 100%);border-color:#1D9E75;">
+        <span class="ipc-insight-icon">🔥</span>
+        <div class="ipc-insight-body">
+          <div class="ipc-insight-title" style="color:#0F6E56;">Hospital aquecendo</div>
+          <div class="ipc-insight-text" style="color:#085041;"><strong>${convRecentes.length} conversões</strong> nos últimos 30 dias. Aproveite pra empurrar mais ofertas!</div>
+        </div>
+      </div>
+    `;
+  }
+
+  // 4) Sem catálogo (vazio total)
+  if (g.padronizado.length === 0 && g.em_negociacao.length === 0 && g.convertido.length === 0) {
+    return `
+      <div class="ipc-insight" style="background:linear-gradient(135deg,#E6F1FB 0%,#B5D4F4 100%);border-color:#185FA5;">
+        <span class="ipc-insight-icon">📋</span>
+        <div class="ipc-insight-body">
+          <div class="ipc-insight-title" style="color:#0C447C;">Hospital sem catálogo</div>
+          <div class="ipc-insight-text" style="color:#042C53;">Cadastre os produtos padronizados desse hospital pra começar a mapear oportunidades.</div>
+          <button class="ipc-insight-btn" style="background:#185FA5;" onclick="handleNovoItemPadronizado('${g.id}')">+ Cadastrar primeiro item</button>
+        </div>
+      </div>
+    `;
+  }
+
+  return '';
 }
 
 function _ipCarCardHtml(it, colVisual) {
@@ -35985,37 +36521,128 @@ function _ipCarCardHtml(it, colVisual) {
   const targetHtml = (colVisual === 'em_negociacao' && it.convertido_em_descricao)
     ? `<div class="target">🎯 ${(it.convertido_em_descricao || '').replace(/</g,'&lt;').slice(0,30)}${(it.convertido_em_descricao || '').length > 30 ? '…' : ''}</div>`
     : '';
+
+  // Sprint 9.32.87: estado expandido por item
+  if (!window._ipCarExpanded) window._ipCarExpanded = new Set();
+  const expandido = window._ipCarExpanded.has(it.id);
+
+  // Datas calculadas
+  const _diasAtras = (iso) => {
+    if (!iso) return null;
+    const d = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
+    return d;
+  };
+  const _fmtDias = (d) => {
+    if (d === null) return '—';
+    if (d === 0) return 'hoje';
+    if (d === 1) return 'ontem';
+    if (d < 30) return `há ${d} dias`;
+    if (d < 365) return `há ${Math.floor(d/30)} mês${Math.floor(d/30) > 1 ? 'es' : ''}`;
+    return `há ${Math.floor(d/365)} ano${Math.floor(d/365) > 1 ? 's' : ''}`;
+  };
+
+  const cadDias = _diasAtras(it.criado_em);
+  const negDias = _diasAtras(it.conversao_iniciada_em);
+  const convDias = _diasAtras(it.convertido_em);
+
+  // Detalhes expandidos
+  let detalhes = `<div class="ipc-row"><span class="lbl">📅 Cadastro</span><span>${_fmtDias(cadDias)}</span></div>`;
+  if (it.status === 'em_negociacao' && negDias !== null) {
+    detalhes += `<div class="ipc-row"><span class="lbl">🤝 Em negoc.</span><span>${_fmtDias(negDias)}</span></div>`;
+  }
+  if (it.convertido_em_descricao) {
+    detalhes += `<div class="ipc-row"><span class="lbl">🎯 Oferecendo</span><span>${(it.convertido_em_descricao || '').replace(/</g,'&lt;')}</span></div>`;
+  }
+  if (it.status === 'convertido' && convDias !== null) {
+    detalhes += `<div class="ipc-row"><span class="lbl">🏆 Convertido</span><span>${_fmtDias(convDias)}</span></div>`;
+  }
+  if (it.observacao) {
+    detalhes += `<div class="ipc-row"><span class="lbl">💬 Obs</span><span style="font-style:italic;">${it.observacao.replace(/</g,'&lt;')}</span></div>`;
+  }
+
+  // Ações inline (depende do status atual)
+  let acoesInline = '';
+  if (it.status === 'padronizado') {
+    acoesInline = `
+      <button class="ipc-btn-act ipc-btn-neg" onclick="event.stopPropagation();handleAssumirConversao('${it.id}')">↪ Negociar</button>
+      <button class="ipc-btn-act ipc-btn-edit" onclick="event.stopPropagation();handleEditarItemPadronizado('${it.id}')">✏️ Editar</button>
+    `;
+  } else if (it.status === 'em_negociacao') {
+    acoesInline = `
+      <button class="ipc-btn-act ipc-btn-conv" onclick="event.stopPropagation();handleMudarStatusItem('${it.id}','convertido')">🏆 Converteu</button>
+      <button class="ipc-btn-act ipc-btn-edit" onclick="event.stopPropagation();handleEditarItemPadronizado('${it.id}')">✏️ Editar</button>
+      <button class="ipc-btn-act ipc-btn-cancel" onclick="event.stopPropagation();handleCancelarNegociacao('${it.id}')" title="Cancelar negociação">✕</button>
+    `;
+  } else if (it.status === 'convertido') {
+    acoesInline = `
+      <button class="ipc-btn-act ipc-btn-edit" onclick="event.stopPropagation();handleEditarItemPadronizado('${it.id}')">✏️ Editar</button>
+      <button class="ipc-btn-act ipc-btn-cancel" onclick="event.stopPropagation();reverterConversaoItem('${it.id}')" title="Reverter conversão">↶ Reverter</button>
+    `;
+  }
+
   return `
-    <div class="ipc-card" onclick="handleEditarItemPadronizado('${it.id}')">
+    <div class="ipc-card${expandido ? ' is-expanded' : ''}" onclick="window.ipCarToggleExpand('${it.id}')">
       <div style="flex:1;min-width:0;">
         <div>${prod.length > 40 ? prod.slice(0, 40) + '…' : prod}</div>
         ${marca || cad ? `<div class="meta">${marca}${marca && cad ? ' · ' : ''}${cad}</div>` : ''}
         ${targetHtml}
         ${seloHtml}
       </div>
-      <button onclick="event.stopPropagation();window.ipCarAcoes('${it.id}','${colVisual}')" style="background:transparent;border:0;font-size:18px;color:var(--neutral-500);padding:0 4px;cursor:pointer;flex-shrink:0;align-self:center;" aria-label="Mais ações">⋯</button>
+      <span class="ipc-chevron">${expandido ? '▴' : '▾'}</span>
     </div>
+    ${expandido ? `
+      <div class="ipc-expanded col-${colVisual}">
+        <div class="ipc-details">
+          ${detalhes}
+        </div>
+        <div class="ipc-actions">
+          ${acoesInline}
+        </div>
+      </div>
+    ` : ''}
   `;
 }
+
+window.ipCarToggleExpand = function(itemId) {
+  if (!window._ipCarExpanded) window._ipCarExpanded = new Set();
+  if (window._ipCarExpanded.has(itemId)) {
+    window._ipCarExpanded.delete(itemId);
+  } else {
+    window._ipCarExpanded.add(itemId);
+  }
+  _ipCarRender();
+};
+
+// Sprint 9.32.86: troca chip de filtro rápido
+window.ipCarTrocarChip = function(chip) {
+  window._ipCarChip = chip;
+  window._ipCarIdx = 0;
+  _ipCarRender();
+};
 
 window.ipCarPrev = function() {
   if (window._ipCarIdx > 0) { window._ipCarIdx--; _ipCarRender(); }
 };
 window.ipCarNext = function() {
-  const total = (() => {
-    const f = window._ipFiltro || {};
-    const itens = (window._ipItens || []).filter(it => {
-      if (it.status === 'perdido') return false;
-      if (f.categoria && f.categoria !== 'todas' && it.categoria !== f.categoria) return false;
-      if (f.busca) {
-        const q = f.busca.toLowerCase();
-        const hay = [it.descricao_produto || '', it.marca || '', it.instituicoes?.nome || ''].join(' ').toLowerCase();
-        if (!hay.includes(q)) return false;
-      }
-      return true;
-    });
-    return new Set(itens.map(i => i.instituicao_id || 'sem_inst')).size;
-  })();
+  // Sprint 9.32.86: usa quantos hospitais o usuário REALMENTE vê (depois do chip)
+  const totalVisivel = document.querySelectorAll('#ipCarHospHeader .ipc-dots span').length;
+  // Fallback: se não achou dots, usa contador alternativo
+  const total = totalVisivel > 0
+    ? totalVisivel
+    : (() => {
+        const f = window._ipFiltro || {};
+        const itens = (window._ipItens || []).filter(it => {
+          if (it.status === 'perdido') return false;
+          if (f.categoria && f.categoria !== 'todas' && it.categoria !== f.categoria) return false;
+          if (f.busca) {
+            const q = f.busca.toLowerCase();
+            const hay = [it.descricao_produto || '', it.marca || '', it.instituicoes?.nome || ''].join(' ').toLowerCase();
+            if (!hay.includes(q)) return false;
+          }
+          return true;
+        });
+        return new Set(itens.map(i => i.instituicao_id || 'sem_inst')).size;
+      })();
   if (window._ipCarIdx < total - 1) { window._ipCarIdx++; _ipCarRender(); }
 };
 
