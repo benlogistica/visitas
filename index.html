@@ -6191,7 +6191,7 @@ a {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.55-fix-aprovar-lote-e-404',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.60-excluir-agendamentos',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -9576,9 +9576,10 @@ async function atualizarBadgesSidebarDesktop() {
       listarObjetivosPendentes().catch(() => []),
       contarUsuariosPorStatus().catch(() => ({ pendentes: 0 })),
       listarSolicitacoesReaberturaPendentes().catch(() => []),
-      // Fila de revisão: conta visitas em_revisao (admin devolveu pro nutri) OU em_flag
+      // Sprint 9.32.60: badge sidebar igual fila — exclui aprovadas, agendamentos e sugestões
       db.from('visitas').select('id', { count: 'exact', head: true })
-        .or('status.eq.em_revisao,flag_gps_divergente.eq.true')
+        .or('flag_sem_checkin.eq.true,flag_sem_checkout.eq.true,flag_gps_divergente.eq.true,flag_horario_fora_margem.eq.true,checkin_manual.eq.true')
+        .not('status', 'in', '(aprovada_pos_revisao,agendada,sugerida)')
         .then(r => r.count || 0)
         .catch(() => 0),
     ]);
@@ -10130,10 +10131,12 @@ async function carregarAdminDashboardDesktop() {
     const instsAtivas = instsRes.count || 0;
     const instsNovas = instsNovasRes.count || 0;
 
-    // Conta em revisão (admin devolveu OU flag crítico)
+    // Sprint 9.32.60: card "Em revisão" do dashboard, mesmo critério da fila
+    // Exclui aprovadas, agendamentos puros e sugestões — só visitas que de fato aconteceram
     const { count: emRevisao } = await db.from('visitas')
       .select('id', { count: 'exact', head: true })
-      .or('status.eq.em_revisao,flag_gps_divergente.eq.true');
+      .or('flag_sem_checkin.eq.true,flag_sem_checkout.eq.true,flag_gps_divergente.eq.true,flag_horario_fora_margem.eq.true,checkin_manual.eq.true')
+      .not('status', 'in', '(aprovada_pos_revisao,agendada,sugerida)');
 
     // Sprint 9.20: cálculos extras pra KPIs 5 e 6 (tempo médio + qualidade GPS)
     const duracoes = visitas
@@ -11107,8 +11110,10 @@ async function renderDsdAcoesPendentes() {
       listarObjetivosPendentes().catch(() => []),
       contarUsuariosPorStatus().catch(() => ({ pendentes: 0 })),
       listarSolicitacoesReaberturaPendentes().catch(() => []),
+      // Sprint 9.32.60: 4ª query — exclui agendamentos puros e sugestões além das aprovadas
       db.from('visitas').select('id', { count: 'exact', head: true })
-        .or('status.eq.em_revisao,flag_gps_divergente.eq.true'),
+        .or('flag_sem_checkin.eq.true,flag_sem_checkout.eq.true,flag_gps_divergente.eq.true,flag_horario_fora_margem.eq.true,checkin_manual.eq.true')
+        .not('status', 'in', '(aprovada_pos_revisao,agendada,sugerida)'),
     ]);
 
     const revisaoCount = revRes?.count || 0;
@@ -11132,7 +11137,7 @@ async function renderDsdAcoesPendentes() {
       cards.push({
         tint: 'var(--status-warning)', tintBg: 'var(--status-warning-bg,#FEF4E1)', icon: 'rule',
         title: `${revisaoCount} visita${revisaoCount === 1 ? '' : 's'} ${revisaoCount === 1 ? 'aguardando' : 'aguardando'} revisão`,
-        sub: 'Check-in com flags ou em_revisao',
+        sub: 'Visitas com flags pendentes de revisão',
         cta: 'Ver fila',
         href: '#/admin/revisao',
       });
@@ -11398,6 +11403,10 @@ async function carregarAdminRevisaoDesktop() {
     }
 
     // Para cada visita, calcula flags e mapeia pro nosso esquema de chips
+    // Sprint 9.32.59: detecta "em andamento" (rascunho dentro da janela de 72h) — não permite aprovar
+    const HORAS_JANELA = 72;
+    const limiteMs = HORAS_JANELA * 60 * 60 * 1000;
+    const agora = Date.now();
     filtradas.forEach(v => {
       v._flags = getFlagsAtivas(v);
       v._nivel = getNivelCritico(v._flags);
@@ -11410,6 +11419,16 @@ async function carregarAdminRevisaoDesktop() {
       if (v.flag_gps_divergente) v._chipKeys.add('gps');
       if (v.flag_horario_fora_margem) v._chipKeys.add('time');
       if (v.checkin_manual) v._chipKeys.add('manual');
+
+      // Em andamento = rascunho com checkin recente (<72h) e SEM motivo de revisão (não foi devolvida)
+      const checkinTs = v.checkin_timestamp ? new Date(v.checkin_timestamp).getTime() : null;
+      v._emAndamento = (
+        v.status === 'rascunho' &&
+        checkinTs &&
+        (agora - checkinTs) < limiteMs &&
+        !v.revisao_motivo
+      );
+      v._janelaExpira = checkinTs ? new Date(checkinTs + limiteMs) : null;
     });
 
     // Conta visitas por chip (antes do filtro de chip) — pra mostrar nos badges dos chips
@@ -11595,6 +11614,16 @@ function renderVisitCardDesktop(v) {
       <!-- Flags -->
       ${flagsHtml ? `<div style="display:flex;gap:6px;flex-wrap:wrap;">${flagsHtml}</div>` : ''}
 
+      <!-- Sprint 9.32.59: badge "Em andamento" pra rascunhos dentro da janela de 72h (sem permitir aprovar) -->
+      ${v._emAndamento ? `
+        <div style="background:#FEF3C7;border:1px solid rgba(245,158,11,0.4);border-radius:10px;padding:10px 12px;display:flex;align-items:center;gap:10px;">
+          <span class="material-symbols-rounded" style="font-size:20px;color:#B45309;flex-shrink:0;">edit_note</span>
+          <div style="flex:1;font-size:12.5px;color:#92400E;line-height:1.4;">
+            <strong>Em andamento</strong> — profissional ainda pode editar até <strong>${v._janelaExpira ? v._janelaExpira.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'}</strong>. Aguarde finalização ou expiração da janela pra aprovar.
+          </div>
+        </div>
+      ` : ''}
+
       <!-- Conteúdo: resumo + mini-map -->
       <div style="display:grid;grid-template-columns:${mapHtml ? '1fr 320px' : '1fr'};gap:16px;">
         ${resumoHtml}
@@ -11610,9 +11639,15 @@ function renderVisitCardDesktop(v) {
         <button onclick="manterEmRevisaoDesktop('${v.id}')" style="height:38px;padding:0 16px;border-radius:9999px;font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:6px;cursor:pointer;background:var(--brand-navy);color:#fff;border:0;font-family:inherit;">
           <span class="material-symbols-rounded" style="font-size:16px;">pause</span>Manter em revisão
         </button>
-        <button onclick="aprovarVisitaRapidaDesktop('${v.id}')" style="height:38px;padding:0 16px;border-radius:9999px;font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:6px;cursor:pointer;background:var(--brand-lime);color:#fff;border:0;font-family:inherit;">
-          <span class="material-symbols-rounded" style="font-size:16px;">check</span>${v._nivel === 'critical' ? 'Aprovar mesmo assim' : 'Aprovar'}
-        </button>
+        ${v._emAndamento ? `
+          <button disabled title="Aguarde o profissional finalizar ou a janela de 72h expirar" style="height:38px;padding:0 16px;border-radius:9999px;font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:6px;background:var(--neutral-200);color:var(--neutral-500);border:0;font-family:inherit;cursor:not-allowed;">
+            <span class="material-symbols-rounded" style="font-size:16px;">lock</span>Aguardando profissional
+          </button>
+        ` : `
+          <button onclick="aprovarVisitaRapidaDesktop('${v.id}')" style="height:38px;padding:0 16px;border-radius:9999px;font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:6px;cursor:pointer;background:var(--brand-lime);color:#fff;border:0;font-family:inherit;">
+            <span class="material-symbols-rounded" style="font-size:16px;">check</span>${v._nivel === 'critical' ? 'Aprovar mesmo assim' : 'Aprovar'}
+          </button>
+        `}
       </div>
     </div>
   `;
@@ -11845,8 +11880,10 @@ window.manterEmRevisaoDesktop = async function(visitaId) {
 window.aprovarLoteSemCriticasDesktop = async function() {
   if (await bloqueioSimulacao('aprovar lote')) return;
   const todas = window._reviewDesktopCurrent || [];
-  const naoCriticas = todas.filter(v => v._nivel !== 'critical');
+  // Sprint 9.32.59: pula visitas em rascunho ativo (profissional ainda pode editar)
+  const naoCriticas = todas.filter(v => v._nivel !== 'critical' && !v._emAndamento);
   const criticas = todas.filter(v => v._nivel === 'critical');
+  const emAndamento = todas.filter(v => v._emAndamento);
 
   if (todas.length === 0) {
     setFlash('info', 'Nenhuma visita carregada.');
@@ -11858,10 +11895,17 @@ window.aprovarLoteSemCriticasDesktop = async function() {
     return;
   }
 
-  // Subtítulo mais informativo se há ambos
-  let subtitulo = 'Ação irreversível.';
+  // Subtítulo mais informativo se há críticas e/ou em andamento
+  const partes = [];
   if (criticas.length > 0) {
-    subtitulo = `${criticas.length} visita${criticas.length === 1 ? '' : 's'} com flag crítica ${criticas.length === 1 ? 'será ignorada' : 'serão ignoradas'} — ${criticas.length === 1 ? 'precisa' : 'precisam'} revisão manual. Ação irreversível.`;
+    partes.push(`${criticas.length} com flag crítica`);
+  }
+  if (emAndamento.length > 0) {
+    partes.push(`${emAndamento.length} em andamento (profissional ainda editando)`);
+  }
+  let subtitulo = 'Ação irreversível.';
+  if (partes.length > 0) {
+    subtitulo = `${partes.join(' e ')} ${partes.length === 1 ? 'será ignorada' : 'serão ignoradas'}. Ação irreversível.`;
   }
 
   const ok = await showModalConfirmacao({
@@ -14903,10 +14947,11 @@ async function listarVisitasAdmin(filtro = 'com_flags') {
 
   if (filtro === 'com_flags') {
     // Apenas visitas com alguma flag ativa, status rascunho ou completa
-    // Sprint 9.32.54: exclui as já aprovadas em lote (status='aprovada_pos_revisao'), senão ficam na fila pra sempre
+    // Sprint 9.32.54: exclui as já aprovadas em lote (status='aprovada_pos_revisao')
+    // Sprint 9.32.60: exclui agendamentos puros (sugerida/agendada) — ainda não foram visitas de fato
     query = query
       .or('flag_sem_checkin.eq.true,flag_sem_checkout.eq.true,flag_gps_divergente.eq.true,flag_horario_fora_margem.eq.true,checkin_manual.eq.true')
-      .neq('status', 'aprovada_pos_revisao');
+      .not('status', 'in', '(aprovada_pos_revisao,agendada,sugerida)');
   } else if (filtro === 'em_revisao') {
     // Rascunhos que o admin devolveu pro profissional (aguardando correção)
     query = query.eq('status', 'rascunho').not('revisao_motivo', 'is', null).is('revisao_resolvida_em', null);
@@ -14931,10 +14976,10 @@ async function contarVisitasPorFiltro() {
 
   const promises = [
     db.from('visitas').select('*', { count: 'exact', head: true }),
-    // Sprint 9.32.54: contador "com_flags" também exclui aprovadas em lote (mesmo critério da listagem)
+    // Sprint 9.32.60: mesmo critério da listagem — exclui aprovadas, agendamentos e sugestões
     db.from('visitas').select('*', { count: 'exact', head: true })
       .or('flag_sem_checkin.eq.true,flag_sem_checkout.eq.true,flag_gps_divergente.eq.true,flag_horario_fora_margem.eq.true,checkin_manual.eq.true')
-      .neq('status', 'aprovada_pos_revisao'),
+      .not('status', 'in', '(aprovada_pos_revisao,agendada,sugerida)'),
     db.from('visitas').select('*', { count: 'exact', head: true })
       .eq('status', 'rascunho').not('revisao_motivo', 'is', null).is('revisao_resolvida_em', null),
     db.from('visitas').select('*', { count: 'exact', head: true }).eq('status', 'aprovada_pos_revisao'),
