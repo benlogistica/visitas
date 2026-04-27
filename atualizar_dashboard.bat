@@ -64,7 +64,7 @@ if not exist "index.html" (
     echo [ERRO] Nao encontrei index.html nesta pasta!
     echo.
     echo Certifique-se que voce esta rodando este .bat de DENTRO
-    echo da pasta onde voce clonou o repo benlogistica.
+    echo da pasta onde voce clonou o repo benlogistica/visitas.
     echo.
     echo Pasta atual: %CD%
     echo.
@@ -180,7 +180,7 @@ echo.
 echo   Periodo: %PERIODO%
 echo.
 echo   Acesse o dashboard em:
-echo   https://nutricionais.github.io/benlogistica
+echo   https://benlogistica.github.io/visitas
 echo.
 echo   ^(Aguarde 1-2 minutos pro GitHub Pages publicar^)
 echo.

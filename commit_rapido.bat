@@ -90,7 +90,7 @@ echo ======================================================================
 echo   SUCESSO! Mudancas no ar.
 echo ======================================================================
 echo.
-echo   https://nutricionais.github.io/benlogistica
+echo   https://benlogistica.github.io/visitas
 echo   (aguarde 1-2 min pro GitHub Pages publicar)
 echo.
 pause
