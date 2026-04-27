@@ -2143,6 +2143,12 @@ a {
   gap: 12px;
   margin-bottom: 12px;
 }
+/* Sprint 9.32.80: em mobile (< 600px), pies ficam empilhados pra labels caberem inteiros */
+@media (max-width: 600px) {
+  .dash-pies-grid {
+    grid-template-columns: 1fr;
+  }
+}
 
 /* Drawer lateral do admin */
 .admin-drawer {
@@ -6191,7 +6197,7 @@ a {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.60-excluir-agendamentos',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.82-fat-cliente-vendedor-filtrado',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -6475,6 +6481,79 @@ function popFlash() {
   sessionStorage.removeItem(AUTH_FLASH);
   try { return JSON.parse(raw); } catch { return null; }
 }
+
+// Sprint 9.32.67: modal customizado de confirmação (substitui confirm() nativo).
+// Retorna Promise<boolean>. Uso:
+//   if (!await confirmarAcao({ titulo, mensagem, confirmLabel: 'Reverter', perigo: true })) return;
+// Opções:
+//   - titulo (string)
+//   - mensagem (string ou HTML curto)
+//   - confirmLabel (default 'Confirmar')
+//   - cancelLabel (default 'Cancelar')
+//   - perigo (boolean): usa cor vermelha no botão confirmar (ações destrutivas)
+//   - icone (string): nome do material symbol (default: 'help' ou 'warning' se perigo)
+function confirmarAcao(opts = {}) {
+  return new Promise((resolve) => {
+    const titulo = opts.titulo || 'Confirmar';
+    const mensagem = opts.mensagem || '';
+    const confirmLabel = opts.confirmLabel || 'Confirmar';
+    const cancelLabel = opts.cancelLabel || 'Cancelar';
+    const perigo = !!opts.perigo;
+    const icone = opts.icone || (perigo ? 'warning' : 'help');
+    const corBtn = perigo ? 'var(--status-danger,#D33)' : 'var(--brand-lime)';
+    const corIconeBg = perigo ? '#FCE8E8' : 'var(--neutral-100)';
+    const corIcone = perigo ? 'var(--status-danger,#D33)' : 'var(--brand-navy)';
+
+    const id = 'confirmModalEdge_' + Date.now();
+    const html = `
+      <div id="${id}" style="position:fixed;inset:0;background:rgba(10,31,92,0.5);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;animation:fadeIn 140ms;" onclick="if(event.target===this) window._confirmModalClose_${id}(false)">
+        <div style="background:var(--neutral-0);border-radius:14px;padding:22px;max-width:420px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.3);font-family:inherit;">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+            <div style="width:42px;height:42px;border-radius:50%;background:${corIconeBg};color:${corIcone};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+              <span class="material-symbols-rounded" style="font-size:22px;">${icone}</span>
+            </div>
+            <div style="font-family:var(--font-display);font-size:17px;font-weight:700;color:var(--brand-navy);line-height:1.25;">${titulo.replace(/</g,'&lt;')}</div>
+          </div>
+          <div style="font-size:13.5px;color:var(--neutral-700);line-height:1.5;margin-bottom:18px;">
+            ${mensagem}
+          </div>
+          <div style="display:flex;gap:8px;justify-content:flex-end;">
+            <button id="${id}_btnCancel" style="background:transparent;color:var(--neutral-600);border:1.5px solid var(--neutral-200);padding:9px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">${cancelLabel}</button>
+            <button id="${id}_btnOk" style="background:${corBtn};color:#fff;border:0;padding:9px 18px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">${confirmLabel}</button>
+          </div>
+        </div>
+      </div>
+      <style>
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+      </style>
+    `;
+    document.body.insertAdjacentHTML('beforeend', html);
+
+    window['_confirmModalClose_' + id] = (resultado) => {
+      const el = document.getElementById(id);
+      if (el) el.remove();
+      delete window['_confirmModalClose_' + id];
+      // Remove listeners de tecla
+      document.removeEventListener('keydown', escListener);
+      resolve(resultado);
+    };
+
+    // Listeners
+    document.getElementById(id + '_btnOk').addEventListener('click', () => window['_confirmModalClose_' + id](true));
+    document.getElementById(id + '_btnCancel').addEventListener('click', () => window['_confirmModalClose_' + id](false));
+
+    // ESC = cancelar, Enter = confirmar
+    const escListener = (e) => {
+      if (e.key === 'Escape') window['_confirmModalClose_' + id](false);
+      else if (e.key === 'Enter') window['_confirmModalClose_' + id](true);
+    };
+    document.addEventListener('keydown', escListener);
+
+    // Foca no botão OK pra Enter funcionar
+    setTimeout(() => document.getElementById(id + '_btnOk')?.focus(), 50);
+  });
+}
+window.confirmarAcao = confirmarAcao;
 
 // Login
 async function login(cpf, senha) {
@@ -13912,7 +13991,7 @@ window.trocarFiltroProfAgendaDesktop = function(pid) {
    ========================================================================== */
 
 function mobileTopBar(opts = {}) {
-  const { title, showLogo, showNotification, showAvatar, showBack, liveIndicator, showMenu } = opts;
+  const { title, showLogo, showNotification, showAvatar, showBack, liveIndicator, showMenu, backTo } = opts;
   const user = getCurrentUser();
   // Lupa aparece em TODAS as telas do user logado — escopo da busca varia por perfil
   const botaoBusca = user ? `
@@ -13949,11 +14028,15 @@ function mobileTopBar(opts = {}) {
 
   if (showBack) {
     // Sprint 9.32.50 (Protótipo 2): ordem padronizada hambúrguer → voltar → título → ações
+    // Sprint 9.32.78: backTo opcional força destino fixo (em vez de history.back)
+    const backOnclick = backTo
+      ? `window.location.hash='${backTo}'`
+      : `voltarSeguro()`;
     return `
       <header class="mbar">
         <div class="mbar__row">
           ${botaoMenu}
-          <button class="mbar__back" onclick="voltarSeguro()">
+          <button class="mbar__back" onclick="${backOnclick}">
             <span class="material-symbols-rounded" style="font-size:18px">arrow_back_ios_new</span>
           </button>
           <div class="mbar__title">${title || ''}</div>
@@ -15121,7 +15204,8 @@ const routes = {
   '#/admin/configuracoes':{ title: 'Configurações', icon: 'settings', render: renderAdminConfig },
   '#/admin/pendentes':{ title: 'Pendências de aprovação', icon: 'hourglass_top', render: renderAdminPendentes },
   '#/admin/objetivos':{ title: 'Objetivos de visita', icon: 'flag', render: renderAdminObjetivos },
-  '#/admin/itens-padronizados':{ title: 'Itens padronizados', icon: 'inventory_2', render: renderItensPadronizados },
+  '#/admin/itens-padronizados':{ title: 'Itens padronizados', icon: 'inventory_2', render: renderItensPadronizadosCarrossel },
+  '#/admin/itens-padronizados/historico':{ title: 'Histórico de conversões', icon: 'history', render: renderItensHistoricoConversoes },
   // Sprint 9.32.18: tela de Ranking & Insights (mesma rota pra admin e nutri)
   '#/itens-padronizados/ranking': { title: 'Ranking & Insights', icon: 'emoji_events', render: renderItensRankingInsights },
   '#/admin/faturamento':{ title: 'Faturamento', icon: 'paid', render: renderFaturamento },
@@ -15132,7 +15216,7 @@ const routes = {
   '#/nutri/instituicoes':   { title: 'Instituições',  icon: 'local_hospital', render: renderNutriInstituicoes },
   '#/nutri/profissionais':  { title: 'Profissionais', icon: 'stethoscope',    render: renderNutriProfissionais },
   '#/nutri/indicadores':    { title: 'Indicadores',   icon: 'bar_chart',      render: renderNutriIndicadores },
-  '#/nutri/itens-padronizados':{ title: 'Itens padronizados', icon: 'inventory_2', render: renderItensPadronizados },
+  '#/nutri/itens-padronizados':{ title: 'Itens padronizados', icon: 'inventory_2', render: renderItensPadronizadosCarrossel },
   // Sprint 9.26 Fase 4: Performance só tem versão desktop. No mobile, redireciona pra indicadores.
   '#/nutri/performance':    { title: 'Performance',   icon: 'insights',       render: renderNutriPerformanceFallback },
 };
@@ -15152,9 +15236,12 @@ const DESKTOP_RENDERERS = {
   '#/admin/agenda': renderAdminAgendaDesktop,
   '#/admin/configuracoes': renderAdminConfigDesktop,
   '#/admin/itens-padronizados': renderItensPadronizadosDesktop,
+  '#/admin/itens-padronizados/historico': renderItensHistoricoConversoesDesktop,
   '#/admin/faturamento': renderFaturamentoDesktop,
   '#/admin/roi-equipe': renderAdminRoiEquipeDesktop,
   '#/admin/mapear-cnpjs': renderAdminMapearCnpjsDesktop,
+  '#/notificacoes': renderNotificacoesDesktop,
+  '#/visitas/relatorio': renderRelatorioDesktop,
   // 🎉 Desktop completo!
 };
 
@@ -15171,6 +15258,7 @@ const DESKTOP_RENDERERS_NUTRI = {
   '#/nutri/indicadores':        renderNutriIndicadoresDesktop,
   '#/nutri/itens-padronizados': renderItensPadronizadosDesktopNutri,
   '#/nutri/performance':        renderNutriPerformanceDesktop,
+  '#/notificacoes':             renderNotificacoesDesktop,
 };
 
 function getRendererForRoute(hash, route) {
@@ -16822,6 +16910,112 @@ function renderRelatorioDesktopNutri() {
   return desktopShellNutri({
     title: 'Relatório',
     breadcrumb: ['Nutri', 'Minhas visitas', 'Relatório'],
+    titleExtra,
+    content,
+    activeId: 'visits',
+  });
+}
+
+// Sprint 9.32.62: Relatório no desktop ADMIN.
+// Mesma lógica do renderRelatorioDesktopNutri, mas embrulhado no desktopShell (sidebar admin).
+// Reusa hydrateReportForm + ReportState + getVisitaCompleta — qualquer mudança no
+// formulário do relatório aparece automaticamente nas 3 telas (mobile, desktop nutri, desktop admin).
+function renderRelatorioDesktop() {
+  const user = requireAuth();
+  if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
+
+  const visitaId = window._routeParams?.id;
+  if (!visitaId) {
+    setTimeout(() => { window.location.hash = '#/admin/visitas'; }, 0);
+    return '<div class="splash"><div class="splash__spinner"></div></div>';
+  }
+
+  // Mesma inicialização do mobile renderRelatorio
+  ReportState.visitaId = visitaId;
+  ReportState.visita = null;
+  ReportState.profissionaisInstituicao = [];
+  ReportState.profissionaisSelecionados = [];
+  ReportState.objetivos = [];
+  ReportState.objetivosSelecionados = new Set();
+  if (ReportState.autoSaveTimer) clearTimeout(ReportState.autoSaveTimer);
+  ReportState.pendingChanges = {};
+  ReportState.uncommittedChoices = {};
+
+  setTimeout(async () => {
+    try {
+      const [visita, objetivos] = await Promise.all([
+        getVisitaCompleta(visitaId),
+        listarObjetivos(),
+      ]);
+      ReportState.visita = visita;
+      ReportState.objetivos = objetivos;
+      ReportState.objetivosSelecionados = new Set(visita.objetivos_selecionados || []);
+      ReportState.profissionaisSelecionados = visita.profissionais_selecionados || [];
+      const profs = await listarProfissionaisDaInstituicao(visita.instituicao_id);
+      ReportState.profissionaisInstituicao = profs;
+      hydrateReportForm();
+    } catch (err) {
+      const body = document.getElementById('reportBody');
+      if (err.cancelada) {
+        try {
+          const { data: vCanc } = await db
+            .from('visitas')
+            .select('id, cancelamento_motivo, cancelado_em, instituicoes(nome)')
+            .eq('id', visitaId)
+            .maybeSingle();
+          const inst = vCanc?.instituicoes?.nome || 'Instituição';
+          const dtCanc = vCanc?.cancelado_em ? new Date(vCanc.cancelado_em).toLocaleString('pt-BR') : '—';
+          const motivo = vCanc?.cancelamento_motivo || 'Sem motivo registrado.';
+          if (body) body.innerHTML = `
+            <div style="max-width:620px;margin:0 auto;background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:14px;padding:24px;">
+              <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+                <div style="width:44px;height:44px;border-radius:50%;background:#FCE8E8;color:#D33;display:flex;align-items:center;justify-content:center;">
+                  <span class="material-symbols-rounded" style="font-size:24px;">cancel</span>
+                </div>
+                <div>
+                  <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:18px;">Visita cancelada</div>
+                  <div style="color:var(--neutral-600);font-size:13px;">${inst.replace(/</g,'&lt;')}</div>
+                </div>
+              </div>
+              <div style="background:#FCE8E8;border-radius:10px;padding:12px 14px;margin-bottom:12px;">
+                <div style="font-size:10.5px;font-weight:700;color:#D33;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">Motivo</div>
+                <div style="font-size:14px;color:var(--brand-navy);">${motivo.replace(/</g,'&lt;')}</div>
+              </div>
+              <div style="font-size:12px;color:var(--neutral-500);">Cancelado em ${dtCanc}. Registro preservado no histórico.</div>
+            </div>
+          `;
+        } catch {}
+        return;
+      }
+      if (body) body.innerHTML = `
+        <div style="padding:40px 20px;text-align:center;color:var(--neutral-500);">
+          <span class="material-symbols-rounded" style="font-size:44px;color:var(--neutral-300);">error_outline</span>
+          <div style="margin-top:10px;font-family:var(--font-display);font-weight:700;color:var(--brand-navy);">Erro ao carregar visita</div>
+          <div style="font-size:12.5px;margin-top:4px;">${(err.message || 'Tente novamente').replace(/</g,'&lt;')}</div>
+          <a href="#/admin/visitas" style="display:inline-block;margin-top:14px;color:var(--brand-lime);font-weight:600;text-decoration:none;">← Voltar pra lista</a>
+        </div>
+      `;
+    }
+  }, 0);
+
+  const titleExtra = `
+    <span class="save-indicator" id="saveIndicator" style="margin-left:6px;">
+      <span class="material-symbols-rounded">cloud_done</span>
+      <span id="saveIndicatorText">Pronto</span>
+    </span>
+  `;
+  const content = `
+    <div style="max-width:880px;margin:0 auto;" id="reportBody">
+      <div style="padding:40px 20px;text-align:center;color:var(--neutral-500);">
+        <span class="material-symbols-rounded" style="font-size:36px;color:var(--neutral-400);">hourglass_empty</span>
+        <div style="margin-top:8px;">Carregando relatório...</div>
+      </div>
+    </div>
+  `;
+
+  return desktopShell({
+    title: 'Relatório da visita',
+    breadcrumb: ['Admin', 'Visitas', 'Relatório'],
     titleExtra,
     content,
     activeId: 'visits',
@@ -20700,6 +20894,406 @@ window.handleExcluirVisita = async function() {
 };
 
 
+// Sprint 9.32.61: versão desktop das notificações — layout 2 colunas com agrupamento por data.
+// Esquerda: lista compacta agrupada (Hoje / Ontem / Esta semana / Mais antigas).
+// Direita: painel detalhe da notificação selecionada (estilo cliente de email).
+function renderNotificacoesDesktop() {
+  const user = requireAuth();
+  if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
+
+  const filtroInicial = window._routeParams?.filtro || 'todas';
+  window._notifFilterDesktop = filtroInicial;
+  window._notifSelectedId = null;
+
+  setTimeout(async () => {
+    await carregarNotificacoesDesktop();
+  }, 0);
+
+  const content = `
+    <div style="max-width:1280px;margin:0 auto;">
+      <div style="background:#fff;border:1px solid var(--neutral-200);border-radius:14px;overflow:hidden;display:grid;grid-template-columns:340px 1fr;height:calc(100vh - 140px);min-height:500px;">
+
+        <aside style="border-right:1px solid var(--neutral-200);display:flex;flex-direction:column;min-width:0;">
+          <div style="padding:14px 16px;border-bottom:1px solid var(--neutral-200);">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;">
+              <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:15px;">Notificações</div>
+              <div style="display:flex;gap:4px;">
+                <button onclick="marcarTodasNotifDesktop()" id="dskMarcarTodasNotif" title="Marcar todas como lidas" style="background:transparent;border:1px solid var(--neutral-200);border-radius:8px;width:32px;height:32px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;color:var(--neutral-600);">
+                  <span class="material-symbols-rounded" style="font-size:16px;">done_all</span>
+                </button>
+                <button onclick="limparLidasNotifDesktop()" id="dskLimparLidasNotif" title="Excluir todas as lidas" style="background:transparent;border:1px solid var(--neutral-200);border-radius:8px;width:32px;height:32px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;color:var(--neutral-600);">
+                  <span class="material-symbols-rounded" style="font-size:16px;">delete_sweep</span>
+                </button>
+              </div>
+            </div>
+            <div style="display:flex;gap:4px;background:var(--neutral-100);border-radius:9999px;padding:3px;">
+              <button class="dsk-notif-tab ${filtroInicial === 'todas' ? 'is-active' : ''}" data-filtro="todas" onclick="trocarFiltroNotifDesktop('todas')">Todas <span class="dsk-notif-tab__cnt" id="dskCntTodas">—</span></button>
+              <button class="dsk-notif-tab ${filtroInicial === 'nao_lidas' ? 'is-active' : ''}" data-filtro="nao_lidas" onclick="trocarFiltroNotifDesktop('nao_lidas')">Não lidas <span class="dsk-notif-tab__cnt" id="dskCntNaoLidas">—</span></button>
+              <button class="dsk-notif-tab ${filtroInicial === 'lidas' ? 'is-active' : ''}" data-filtro="lidas" onclick="trocarFiltroNotifDesktop('lidas')">Lidas <span class="dsk-notif-tab__cnt" id="dskCntLidas">—</span></button>
+            </div>
+          </div>
+          <div id="dskNotifList" style="flex:1;overflow-y:auto;padding:6px 0;">
+            <div style="padding:30px;text-align:center;color:var(--neutral-400);font-size:13px;">Carregando...</div>
+          </div>
+        </aside>
+
+        <section id="dskNotifDetail" style="padding:30px;overflow-y:auto;">
+          <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;text-align:center;color:var(--neutral-400);">
+            <span class="material-symbols-rounded" style="font-size:54px;color:var(--neutral-300);margin-bottom:12px;">notifications</span>
+            <div style="font-size:14px;color:var(--neutral-500);font-weight:500;">Selecione uma notificação à esquerda</div>
+            <div style="font-size:12px;color:var(--neutral-400);margin-top:4px;">O conteúdo completo aparece aqui.</div>
+          </div>
+        </section>
+
+      </div>
+    </div>
+
+    <style>
+      .dsk-notif-tab {
+        flex: 1;
+        background: transparent;
+        border: 0;
+        padding: 6px 8px;
+        border-radius: 9999px;
+        font-size: 11.5px;
+        font-weight: 600;
+        color: var(--neutral-600);
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
+        font-family: inherit;
+        transition: all 140ms;
+      }
+      .dsk-notif-tab.is-active { background: var(--brand-navy); color: #fff; }
+      .dsk-notif-tab__cnt {
+        font-family: var(--font-mono);
+        font-size: 10px;
+        background: rgba(0,0,0,0.08);
+        padding: 1px 6px;
+        border-radius: 9999px;
+        min-width: 18px;
+      }
+      .dsk-notif-tab.is-active .dsk-notif-tab__cnt { background: rgba(255,255,255,0.18); }
+
+      .dsk-notif-grupo {
+        font-size: 10px;
+        font-weight: 700;
+        color: var(--neutral-500);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        padding: 12px 16px 4px;
+      }
+      .dsk-notif-item {
+        display: flex;
+        gap: 10px;
+        padding: 10px 16px;
+        cursor: pointer;
+        border-left: 3px solid transparent;
+        transition: background 120ms;
+        align-items: flex-start;
+      }
+      .dsk-notif-item:hover { background: var(--neutral-50, #F9FAFB); }
+      .dsk-notif-item.is-selected {
+        background: var(--neutral-50, #F9FAFB);
+        border-left-color: var(--brand-lime);
+      }
+      .dsk-notif-item.is-unread .dsk-notif-item__title { font-weight: 700; color: var(--brand-navy); }
+      .dsk-notif-item__dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        margin-top: 5px;
+        flex-shrink: 0;
+      }
+      .dsk-notif-item__body { flex: 1; min-width: 0; }
+      .dsk-notif-item__title {
+        font-size: 12.5px;
+        color: var(--neutral-700);
+        font-weight: 500;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .dsk-notif-item__msg {
+        font-size: 11px;
+        color: var(--neutral-500);
+        margin-top: 2px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .dsk-notif-item__time {
+        font-size: 10px;
+        color: var(--neutral-400);
+        font-family: var(--font-mono);
+        flex-shrink: 0;
+        align-self: flex-start;
+        margin-top: 2px;
+      }
+
+      /* Mobile: vira coluna única */
+      @media (max-width: 900px) {
+        #dskNotifDetail { display: none; }
+      }
+    </style>
+  `;
+
+  return desktopShell({
+    title: 'Notificações',
+    breadcrumb: [getCurrentUser()?.perfil === 'admin' ? 'Admin' : 'Nutri', 'Notificações'],
+    content,
+    activeId: '',
+  });
+}
+
+// Sprint 9.32.61: cores dos dots por tipo de notificação
+function _notifCorPorTipo(tipo) {
+  const t = (tipo || '').toLowerCase();
+  if (t.includes('aprov')) return '#16A34A';      // verde - aprovado
+  if (t.includes('pend') || t.includes('flag')) return '#B45309';  // laranja - pendência
+  if (t.includes('corrig') || t.includes('reenv')) return '#2563EB'; // azul - corrigida
+  if (t.includes('rejei') || t.includes('cancel')) return '#DC2626'; // vermelho - rejeição
+  return '#9CA3AF'; // cinza - default
+}
+
+// Carrega TODAS as notificações de uma vez (sem paginação) e monta lista agrupada
+async function carregarNotificacoesDesktop() {
+  const listEl = document.getElementById('dskNotifList');
+  if (!listEl) return;
+
+  const user = getCurrentUser();
+  if (!user) { listEl.innerHTML = ''; return; }
+
+  // Atualiza contadores das tabs
+  const cnts = await contarNotificacoesPorStatus();
+  const setCnt = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  setCnt('dskCntTodas', cnts.todas);
+  setCnt('dskCntNaoLidas', cnts.nao_lidas);
+  setCnt('dskCntLidas', cnts.lidas);
+
+  // Esconde botões irrelevantes
+  const btnMarcar = document.getElementById('dskMarcarTodasNotif');
+  if (btnMarcar) btnMarcar.style.display = cnts.nao_lidas > 0 ? '' : 'none';
+  const btnLimpar = document.getElementById('dskLimparLidasNotif');
+  if (btnLimpar) btnLimpar.style.display = (cnts.lidas > 0 && !estaSimulando()) ? '' : 'none';
+
+  const filtro = window._notifFilterDesktop || 'todas';
+  let query = db.from('notificacoes')
+    .select('id, tipo, titulo, mensagem, link, objeto_id, lida, criado_em, lida_em, actor_user_id, actor:actor_user_id(id, nome, foto_url)')
+    .eq('user_id', user.id);
+  if (filtro === 'nao_lidas') query = query.eq('lida', false);
+  else if (filtro === 'lidas') query = query.eq('lida', true);
+  query = query.order('criado_em', { ascending: false }).limit(200);
+
+  const { data, error } = await query;
+  if (error) {
+    listEl.innerHTML = `<div style="padding:20px;color:var(--status-danger);font-size:12px;">Erro: ${error.message}</div>`;
+    return;
+  }
+  const items = data || [];
+  window._notifItemsCache = items;
+
+  if (items.length === 0) {
+    const emptyMsg = filtro === 'nao_lidas'
+      ? { icon: 'check_circle', titulo: 'Nenhuma não lida', desc: 'Tudo em dia.' }
+      : filtro === 'lidas'
+      ? { icon: 'inbox', titulo: 'Nenhuma lida ainda', desc: 'Notificações lidas aparecerão aqui.' }
+      : { icon: 'notifications_none', titulo: 'Sem notificações', desc: 'Quando chegarem, aparecem aqui.' };
+    listEl.innerHTML = `
+      <div style="padding:40px 20px;text-align:center;color:var(--neutral-500);">
+        <span class="material-symbols-rounded" style="font-size:36px;color:var(--neutral-300);">${emptyMsg.icon}</span>
+        <div style="font-size:13px;font-weight:600;color:var(--neutral-700);margin-top:8px;">${emptyMsg.titulo}</div>
+        <div style="font-size:11.5px;color:var(--neutral-500);margin-top:2px;">${emptyMsg.desc}</div>
+      </div>
+    `;
+    return;
+  }
+
+  // Agrupa por dia: Hoje / Ontem / Esta semana / Mais antigas
+  const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+  const ontem = new Date(hoje); ontem.setDate(ontem.getDate() - 1);
+  const semanaAtras = new Date(hoje); semanaAtras.setDate(semanaAtras.getDate() - 7);
+  const grupos = { hoje: [], ontem: [], semana: [], antigas: [] };
+  items.forEach(n => {
+    const dt = new Date(n.criado_em);
+    const dtDia = new Date(dt); dtDia.setHours(0, 0, 0, 0);
+    if (dtDia.getTime() === hoje.getTime()) grupos.hoje.push(n);
+    else if (dtDia.getTime() === ontem.getTime()) grupos.ontem.push(n);
+    else if (dt >= semanaAtras) grupos.semana.push(n);
+    else grupos.antigas.push(n);
+  });
+
+  const renderGrupo = (label, arr) => {
+    if (arr.length === 0) return '';
+    return `
+      <div class="dsk-notif-grupo">${label} · ${arr.length}</div>
+      ${arr.map(n => {
+        const cor = _notifCorPorTipo(n.tipo);
+        const cls = ['dsk-notif-item'];
+        if (!n.lida) cls.push('is-unread');
+        if (window._notifSelectedId === n.id) cls.push('is-selected');
+        return `
+          <div class="${cls.join(' ')}" data-id="${n.id}" onclick="selecionarNotifDesktop('${n.id}')">
+            <div class="dsk-notif-item__dot" style="background:${cor};"></div>
+            <div class="dsk-notif-item__body">
+              <div class="dsk-notif-item__title">${(n.titulo || '').replace(/</g,'&lt;')}</div>
+              ${n.mensagem ? `<div class="dsk-notif-item__msg">${n.mensagem.replace(/</g,'&lt;')}</div>` : ''}
+            </div>
+            <div class="dsk-notif-item__time">${formatarTempoCurto(n.criado_em)}</div>
+          </div>
+        `;
+      }).join('')}
+    `;
+  };
+
+  listEl.innerHTML = `
+    ${renderGrupo('Hoje', grupos.hoje)}
+    ${renderGrupo('Ontem', grupos.ontem)}
+    ${renderGrupo('Esta semana', grupos.semana)}
+    ${renderGrupo('Mais antigas', grupos.antigas)}
+  `;
+
+  // Se nada selecionado, abre a primeira automaticamente
+  if (!window._notifSelectedId && items[0]) {
+    selecionarNotifDesktop(items[0].id);
+  } else if (window._notifSelectedId) {
+    // Re-renderiza o detalhe (caso tenha mudado de filtro mas o item ainda existe)
+    renderDetalheNotifDesktop(window._notifSelectedId);
+  }
+}
+
+window.selecionarNotifDesktop = function(id) {
+  window._notifSelectedId = id;
+  // Atualiza visual da seleção
+  document.querySelectorAll('.dsk-notif-item').forEach(el => el.classList.remove('is-selected'));
+  const sel = document.querySelector(`.dsk-notif-item[data-id="${id}"]`);
+  if (sel) sel.classList.add('is-selected');
+  renderDetalheNotifDesktop(id);
+};
+
+function renderDetalheNotifDesktop(id) {
+  const detEl = document.getElementById('dskNotifDetail');
+  if (!detEl) return;
+  const items = window._notifItemsCache || [];
+  const n = items.find(x => x.id === id);
+  if (!n) return;
+
+  const cor = _notifCorPorTipo(n.tipo);
+  const dataCompleta = n.criado_em ? new Date(n.criado_em).toLocaleString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+  const lidaInfo = n.lida_em ? new Date(n.lida_em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : null;
+
+  detEl.innerHTML = `
+    <div style="max-width:680px;margin:0 auto;">
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px;">
+        <div style="width:48px;height:48px;border-radius:50%;background:${cor}22;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <span style="display:block;width:14px;height:14px;border-radius:50%;background:${cor};"></span>
+        </div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:18px;line-height:1.3;">${(n.titulo || '').replace(/</g,'&lt;')}</div>
+          <div style="font-size:11.5px;color:var(--neutral-500);margin-top:2px;font-family:var(--font-mono);">${dataCompleta} · ${formatarTempoCurto(n.criado_em)} atrás${lidaInfo ? ` · lida em ${lidaInfo}` : ''}</div>
+        </div>
+      </div>
+
+      ${n.mensagem ? `
+        <div style="background:var(--neutral-50,#F9FAFB);border:1px solid var(--neutral-200);border-radius:10px;padding:14px 16px;margin-bottom:18px;font-size:13.5px;color:var(--neutral-700);line-height:1.6;">
+          ${n.mensagem.replace(/</g,'&lt;')}
+        </div>
+      ` : ''}
+
+      ${n.actor ? `
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;font-size:12px;color:var(--neutral-600);">
+          <div style="width:28px;height:28px;border-radius:50%;background:${n.actor.foto_url ? `url('${n.actor.foto_url}') center/cover` : 'var(--brand-navy)'};color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;">${n.actor.foto_url ? '' : iniciais(n.actor.nome || 'U')}</div>
+          <span>De <strong style="color:var(--brand-navy);">${(n.actor.nome || '—').replace(/</g,'&lt;')}</strong></span>
+        </div>
+      ` : ''}
+
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        ${n.link ? `
+          <button onclick="abrirNotifDesktop('${n.id}', '${(n.link || '').replace(/'/g,"\\'")}')" style="background:var(--brand-lime);color:#fff;border:0;padding:9px 16px;border-radius:9999px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px;">
+            <span class="material-symbols-rounded" style="font-size:16px;">arrow_forward</span>Abrir
+          </button>
+        ` : ''}
+        ${n.lida
+          ? `<button onclick="marcarNotifNaoLidaDesktop('${n.id}')" style="background:transparent;border:1px solid var(--neutral-200);color:var(--neutral-700);padding:9px 16px;border-radius:9999px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px;">
+              <span class="material-symbols-rounded" style="font-size:16px;">mark_email_unread</span>Marcar não lida
+            </button>`
+          : `<button onclick="marcarNotifLidaDesktop('${n.id}')" style="background:transparent;border:1px solid var(--neutral-200);color:var(--neutral-700);padding:9px 16px;border-radius:9999px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px;">
+              <span class="material-symbols-rounded" style="font-size:16px;">mark_email_read</span>Marcar lida
+            </button>`}
+        <button onclick="excluirNotifDesktop('${n.id}')" style="background:transparent;border:1px solid var(--status-danger);color:var(--status-danger);padding:9px 16px;border-radius:9999px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px;">
+          <span class="material-symbols-rounded" style="font-size:16px;">delete</span>Excluir
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+window.trocarFiltroNotifDesktop = function(filtro) {
+  window._notifFilterDesktop = filtro;
+  window._notifSelectedId = null;
+  document.querySelectorAll('.dsk-notif-tab').forEach(t => t.classList.toggle('is-active', t.dataset.filtro === filtro));
+  carregarNotificacoesDesktop();
+};
+
+window.abrirNotifDesktop = async function(id, link) {
+  await marcarNotificacaoLida(id);
+  atualizarBadgeNotificacoes();
+  if (link && link.startsWith('#/')) window.location.hash = link;
+};
+
+window.marcarNotifLidaDesktop = async function(id) {
+  await marcarNotificacaoLida(id);
+  atualizarBadgeNotificacoes();
+  await carregarNotificacoesDesktop();
+};
+
+window.marcarNotifNaoLidaDesktop = async function(id) {
+  if (!db) return;
+  await db.from('notificacoes').update({ lida: false, lida_em: null }).eq('id', id);
+  atualizarBadgeNotificacoes();
+  await carregarNotificacoesDesktop();
+};
+
+window.excluirNotifDesktop = async function(id) {
+  if (!db) return;
+  const ok = await showModalConfirmacao({
+    icone: 'delete', iconeCor: 'danger',
+    titulo: 'Excluir notificação?',
+    subtitulo: 'A notificação será removida em definitivo.',
+    btnConfirmar: 'Excluir', btnCancelar: 'Cancelar',
+  });
+  if (!ok) return;
+  await db.from('notificacoes').delete().eq('id', id);
+  window._notifSelectedId = null;
+  atualizarBadgeNotificacoes();
+  await carregarNotificacoesDesktop();
+};
+
+window.marcarTodasNotifDesktop = async function() {
+  await marcarTodasNotificacoesLidas();
+  atualizarBadgeNotificacoes();
+  await carregarNotificacoesDesktop();
+};
+
+window.limparLidasNotifDesktop = async function() {
+  if (estaSimulando()) return;
+  const ok = await showModalConfirmacao({
+    icone: 'delete_sweep', iconeCor: 'danger',
+    titulo: 'Limpar todas as notificações lidas?',
+    subtitulo: 'Esta ação não pode ser desfeita.',
+    btnConfirmar: 'Limpar', btnCancelar: 'Cancelar',
+  });
+  if (!ok) return;
+  const user = getCurrentUser();
+  if (!user) return;
+  await db.from('notificacoes').delete().eq('user_id', user.id).eq('lida', true);
+  window._notifSelectedId = null;
+  atualizarBadgeNotificacoes();
+  await carregarNotificacoesDesktop();
+};
+
 function renderNotificacoes() {
   const user = requireAuth();
   if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
@@ -23175,22 +23769,23 @@ function renderAdminDrawer() {
   const user = getCurrentUser();
   const perfil = user?.perfil || 'profissional';
 
+  // Sprint 9.32.81: ordem alinhada com a sidebar desktop pra consistência visual
   const itemsAdmin = [
-    { href: '#/admin',                icon: 'dashboard',               titulo: 'Dashboard',       desc: 'Painel principal com KPIs da operação' },
-    { href: '#/admin/instituicoes',   icon: 'local_hospital',          titulo: 'Instituições',    desc: 'Hospitais e clínicas cadastrados' },
-    { href: '#/admin/profissionais',  icon: 'stethoscope',             titulo: 'Profissionais',   desc: 'Contatos nas instituições' },
-    { href: '#/admin/equipe',         icon: 'groups',                  titulo: 'Equipe',          desc: 'Aprovar cadastros e gerenciar acesso' },
-    { href: '#/admin/visitas',        icon: 'location_on',             titulo: 'Todas as visitas',desc: 'Histórico completo da equipe' },
-    { href: '#/admin/revisao',        icon: 'rule',                    titulo: 'Fila de Revisão', desc: 'Visitas com divergências' },
-    { href: '#/admin/pendentes',      icon: 'hourglass_top',           titulo: 'Pendências',      desc: 'Aprovar instituições e objetivos' },
-    { href: '#/admin/objetivos',      icon: 'flag',                    titulo: 'Objetivos',       desc: 'Gerenciar lista de objetivos de visita' },
-    { href: '#/admin/itens-padronizados', icon: 'inventory_2',         titulo: 'Itens padronizados', desc: 'Mapear concorrentes e converter vendas' },
-    { href: '#/admin/faturamento',     icon: 'paid',                    titulo: 'Faturamento',     desc: 'Painel financeiro completo da empresa' },
-    { href: '#/admin/roi-equipe',     icon: 'insights',                titulo: 'ROI da Equipe',   desc: 'Ranking de nutris pelo faturamento dos hospitais' },
-    { href: '#/admin/mapear-cnpjs',   icon: 'link',                    titulo: 'Mapear CNPJs',    desc: 'Vincular hospitais cadastrados ao faturamento' },
-    { href: '#/admin/agenda',          icon: 'event_note',              titulo: 'Agenda da equipe',desc: 'Ver e atribuir visitas agendadas' },
-    { href: '#/admin/configuracoes',  icon: 'settings',                titulo: 'Configurações',   desc: 'Parâmetros globais do sistema' },
-    { href: '#/logout',               icon: 'logout',                  titulo: 'Sair',            desc: 'Encerrar sessão' },
+    { href: '#/admin',                    icon: 'dashboard',      titulo: 'Dashboard',          desc: 'Painel principal com KPIs da operação' },
+    { href: '#/admin/revisao',            icon: 'rule',           titulo: 'Fila de Revisão',    desc: 'Visitas com divergências' },
+    { href: '#/admin/pendentes',          icon: 'hourglass_top',  titulo: 'Pendências',         desc: 'Aprovar instituições e objetivos' },
+    { href: '#/admin/equipe',             icon: 'groups',         titulo: 'Equipe',             desc: 'Aprovar cadastros e gerenciar acesso' },
+    { href: '#/admin/instituicoes',       icon: 'local_hospital', titulo: 'Instituições',       desc: 'Hospitais e clínicas cadastrados' },
+    { href: '#/admin/profissionais',      icon: 'stethoscope',    titulo: 'Profissionais',      desc: 'Contatos nas instituições' },
+    { href: '#/admin/visitas',            icon: 'location_on',    titulo: 'Todas as visitas',   desc: 'Histórico completo da equipe' },
+    { href: '#/admin/agenda',             icon: 'event_note',     titulo: 'Agenda da equipe',   desc: 'Ver e atribuir visitas agendadas' },
+    { href: '#/admin/objetivos',          icon: 'flag',           titulo: 'Objetivos',          desc: 'Gerenciar lista de objetivos de visita' },
+    { href: '#/admin/itens-padronizados', icon: 'inventory_2',    titulo: 'Itens padronizados', desc: 'Mapear concorrentes e converter vendas' },
+    { href: '#/admin/faturamento',        icon: 'paid',           titulo: 'Faturamento',        desc: 'Painel financeiro completo da empresa' },
+    { href: '#/admin/roi-equipe',         icon: 'insights',       titulo: 'ROI da Equipe',      desc: 'Ranking de nutris pelo faturamento dos hospitais' },
+    { href: '#/admin/mapear-cnpjs',       icon: 'link',           titulo: 'Mapear CNPJs',       desc: 'Vincular hospitais cadastrados ao faturamento' },
+    { href: '#/admin/configuracoes',      icon: 'settings',       titulo: 'Configurações',      desc: 'Parâmetros globais do sistema' },
+    { href: '#/logout',                   icon: 'logout',         titulo: 'Sair',               desc: 'Encerrar sessão' },
   ];
   const itemsNutri = [
     { href: '#/nutri/instituicoes',   icon: 'local_hospital', titulo: 'Instituições',  desc: 'Hospitais que você visita' },
@@ -23585,16 +24180,8 @@ function renderAdminRevisao() {
 
   return `
     <div class="mobile-app">
-      ${mobileTopBar({ title: 'Fila de Revisão', showBack: true })}
+      ${mobileTopBar({ title: 'Fila de Revisão', showBack: true, backTo: '#/admin' })}
       <main class="mcontent">
-        <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
-          <button onclick="seedVisitasTeste()" style="flex:1;min-width:140px;padding:8px 12px;border:1.5px dashed var(--status-info);background:#E4ECFD;color:var(--status-info);border-radius:10px;font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;">
-            <span class="material-symbols-rounded" style="font-size:15px;">science</span>Gerar visitas teste
-          </button>
-          <button onclick="limparVisitasTeste()" style="padding:8px 12px;border:1.5px dashed var(--status-danger);background:var(--status-danger-bg);color:var(--status-danger);border-radius:10px;font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;">
-            <span class="material-symbols-rounded" style="font-size:15px;">delete_sweep</span>Limpar todas
-          </button>
-        </div>
 
         <div class="review-tabs" id="reviewTabs">
           <button class="review-tab ${filtroInicial === 'com_flags' ? 'is-active' : ''}" data-filtro="com_flags" onclick="trocarFiltroRevisao('com_flags')">
@@ -23668,20 +24255,35 @@ async function carregarFilaRevisao() {
       return;
     }
 
-    // Ordena: mais flags críticas primeiro
+    // Sprint 9.32.78: detecta "em andamento" (rascunho com janela ativa de 72h) — igual desktop
+    const HORAS_JANELA = 72;
+    const limiteMs = HORAS_JANELA * 60 * 60 * 1000;
+    const agora = Date.now();
     visitas.forEach(v => {
       v._flags = getFlagsAtivas(v);
       v._nivel = getNivelCritico(v._flags);
       v._peso = (v._flags.filter(f => f.nivel === 'critical').length * 100)
               + (v._flags.filter(f => f.nivel === 'warning').length * 10)
               + v._flags.length;
+      // Em andamento = rascunho com checkin recente (<72h) e SEM motivo de revisão
+      const checkinTs = v.checkin_timestamp ? new Date(v.checkin_timestamp).getTime() : null;
+      v._emAndamento = (
+        v.status === 'rascunho' &&
+        checkinTs &&
+        (agora - checkinTs) < limiteMs &&
+        !v.revisao_motivo
+      );
+      v._janelaExpira = checkinTs ? new Date(checkinTs + limiteMs) : null;
     });
     visitas.sort((a, b) => b._peso - a._peso);
 
     listEl.innerHTML = visitas.map(v => {
       const nivel = v._nivel || 'info';
-      // Classe especial pra visitas em revisão (devolvidas pro profissional)
-      const cardClass = estaEmRevisao(v) ? 'review-card--in-review' : `review-card--${nivel}`;
+      // Classe especial pra visitas em revisão (devolvidas pro profissional) ou em andamento (janela ativa)
+      let cardClass;
+      if (v._emAndamento) cardClass = 'review-card--in-progress';
+      else if (estaEmRevisao(v)) cardClass = 'review-card--in-review';
+      else cardClass = `review-card--${nivel}`;
       const dataFmt = v.checkin_timestamp ? formatarTempoRelativo(v.checkin_timestamp) : (v.data_visita || '—');
       const nutriNome = v.usuarios?.nome || v.nutricionista?.nome || '—';
       const flagsHtml = v._flags.slice(0, 3).map(f => `
@@ -23693,11 +24295,23 @@ async function carregarFilaRevisao() {
       const maisFlags = v._flags.length > 3 ? `<span class="review-flag review-flag--info">+${v._flags.length - 3}</span>` : '';
       const flagCountClass = nivel === 'critical' ? 'review-card__flag-count--critical' : 'review-card__flag-count--warning';
 
+      // Banner de "Em andamento" no topo (idem desktop)
+      const expiraFmt = v._janelaExpira
+        ? v._janelaExpira.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
+        : '—';
+      const emAndamentoBanner = v._emAndamento ? `
+        <div style="background:#FEF4E1;border:1px solid #F4B73B;border-radius:8px;padding:8px 10px;margin-bottom:8px;font-size:11.5px;color:#92400E;line-height:1.4;display:flex;gap:6px;align-items:flex-start;">
+          <span class="material-symbols-rounded" style="font-size:16px;flex-shrink:0;margin-top:1px;">hourglass_top</span>
+          <div><strong>Em andamento</strong> — profissional ainda pode editar até <strong>${expiraFmt}</strong>. Aguarde finalização ou expiração da janela pra aprovar.</div>
+        </div>
+      ` : '';
+
       return `
-        <a href="#/admin/revisao/detalhe?id=${v.id}" class="review-card ${cardClass}">
+        <a href="#/admin/revisao/detalhe?id=${v.id}" class="review-card ${cardClass}" style="${v._emAndamento ? 'opacity:0.85;' : ''}">
+          ${emAndamentoBanner}
           <div class="review-card__header">
             <div class="review-card__icon">
-              <span class="material-symbols-rounded">local_hospital</span>
+              <span class="material-symbols-rounded">${v._emAndamento ? 'schedule' : 'local_hospital'}</span>
             </div>
             <div class="review-card__info">
               <div class="review-card__inst">${(v.instituicoes?.nome || 'Instituição').replace(/"/g,'&quot;')}</div>
@@ -28637,7 +29251,14 @@ window._mapSalvarCnpj = async function(instId) {
 };
 
 window._mapLimparCnpj = async function(instId) {
-  if (!confirm('Remover CNPJ desta instituição?')) return;
+  const ok = await confirmarAcao({
+    titulo: 'Remover CNPJ?',
+    mensagem: 'O CNPJ vinculado a essa instituição vai ser apagado. Você pode adicionar outro depois.',
+    confirmLabel: 'Remover',
+    perigo: true,
+    icone: 'link_off',
+  });
+  if (!ok) return;
   const inp = document.getElementById('mapCnpjInput-' + instId);
   if (inp) inp.value = '';
   await window._mapSalvarCnpj(instId);
@@ -28819,19 +29440,51 @@ function _fatRenderLimparBtn() {
 // Drill-down: abre modal com detalhes do vendedor (evolução mensal + ticket + ranking)
 window._fatAbrirVendedor = function(nome) {
   if (!FAT_DATA?.vendedor_mes) return;
-  const dados = FAT_DATA.vendedor_mes
-    .filter(v => v.Vendedor === nome)
-    .sort((a, b) => a.ano_mes.localeCompare(b.ano_mes));
-  if (dados.length === 0) return;
+
+  // Sprint 9.32.82: respeita filtro de cliente — se ativo, agrega de cliente_vendedor_mes filtrado
+  const _fCliVend = window._fatFiltro?.cliente;
+  const filtroAtivo = _fCliVend && _fCliVend !== 'todos' && FAT_DATA.cliente_vendedor_mes;
+  const nomeCliente = filtroAtivo
+    ? (FAT_DATA.clientes_lista?.find(c => c.cnpj === _fCliVend)?.nome || 'Cliente filtrado')
+    : null;
+
+  let dados;
+  if (filtroAtivo) {
+    // Agrega cliente_vendedor_mes pelo vendedor (mantém estrutura compatível com vendedor_mes)
+    const aggMes = {};
+    FAT_DATA.cliente_vendedor_mes
+      .filter(cv => cv['CNPJ/CPF'] === _fCliVend && cv.Vendedor === nome)
+      .forEach(cv => {
+        if (!aggMes[cv.ano_mes]) aggMes[cv.ano_mes] = { ano_mes: cv.ano_mes, Vendedor: nome, faturamento: 0, qtd_notas: 0 };
+        aggMes[cv.ano_mes].faturamento += cv.faturamento;
+        aggMes[cv.ano_mes].qtd_notas += cv.qtd_notas;
+      });
+    dados = Object.values(aggMes).sort((a, b) => a.ano_mes.localeCompare(b.ano_mes));
+  } else {
+    dados = FAT_DATA.vendedor_mes
+      .filter(v => v.Vendedor === nome)
+      .sort((a, b) => a.ano_mes.localeCompare(b.ano_mes));
+  }
+
+  if (dados.length === 0) {
+    setFlash && setFlash('warning', `Sem dados de "${nome}" para o cliente filtrado.`);
+    return;
+  }
 
   const total = dados.reduce((s, d) => s + d.faturamento, 0);
   const totalNotas = dados.reduce((s, d) => s + d.qtd_notas, 0);
   const ticket = totalNotas > 0 ? total / totalNotas : 0;
   const max = Math.max(...dados.map(d => d.faturamento), 1);
 
-  // Pega ranking geral (posição do vendedor)
+  // Pega ranking geral (posição do vendedor) — sempre no contexto FILTRADO se houver
   const totVend = {};
-  FAT_DATA.vendedor_mes.forEach(v => { totVend[v.Vendedor] = (totVend[v.Vendedor] || 0) + v.faturamento; });
+  if (filtroAtivo) {
+    FAT_DATA.cliente_vendedor_mes
+      .filter(cv => cv['CNPJ/CPF'] === _fCliVend)
+      .forEach(cv => { totVend[cv.Vendedor] = (totVend[cv.Vendedor] || 0) + cv.faturamento; });
+  } else {
+    FAT_DATA.vendedor_mes.forEach(v => { totVend[v.Vendedor] = (totVend[v.Vendedor] || 0) + v.faturamento; });
+  }
   const ranking = Object.entries(totVend).sort((a, b) => b[1] - a[1]);
   const posicao = ranking.findIndex(([n]) => n === nome) + 1;
 
@@ -28859,16 +29512,25 @@ window._fatAbrirVendedor = function(nome) {
   const isND = nome === 'N/D';
   const tipo = isMarketplace ? '🛒 Marketplace' : isPDV ? '🏪 PDV interno' : isND ? '📋 Sem vendedor identificado' : '👤 Vendedor';
 
+  // Sprint 9.32.82: badge mostrando contexto filtrado (cliente)
+  const contextoBadge = filtroAtivo
+    ? `<div style="background:#E4ECFD;color:var(--status-info);padding:8px 22px;border-bottom:1px solid var(--neutral-200);font-size:12px;display:flex;align-items:center;gap:6px;">
+        <span class="material-symbols-rounded" style="font-size:16px;">filter_alt</span>
+        Filtrado por cliente: <strong>${nomeCliente.replace(/</g,'&lt;')}</strong>
+      </div>`
+    : '';
+
   backdrop.innerHTML = `
     <div style="background:var(--neutral-0);border-radius:16px;max-width:760px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 24px 60px rgba(0,0,0,0.25);">
       <!-- Header -->
       <div style="padding:18px 22px;border-bottom:1px solid var(--neutral-200);display:flex;align-items:center;justify-content:space-between;gap:12px;">
         <div style="flex:1;min-width:0;">
-          <div style="font-size:11px;color:var(--neutral-500);font-weight:700;letter-spacing:0.06em;text-transform:uppercase;">${tipo} · #${posicao} no ranking</div>
+          <div style="font-size:11px;color:var(--neutral-500);font-weight:700;letter-spacing:0.06em;text-transform:uppercase;">${tipo} · #${posicao} no ranking${filtroAtivo ? ' (no cliente)' : ''}</div>
           <div style="font-family:var(--font-display);font-size:20px;font-weight:700;color:var(--brand-navy);margin-top:2px;line-height:1.2;">${nome.replace(/</g,'&lt;')}</div>
         </div>
         <button onclick="document.getElementById('fatVendedorModal').remove();" style="background:transparent;border:0;color:var(--neutral-500);cursor:pointer;font-size:24px;line-height:0;padding:8px;border-radius:50%;" title="Fechar">×</button>
       </div>
+      ${contextoBadge}
 
       <!-- KPIs -->
       <div style="padding:18px 22px;display:grid;grid-template-columns:repeat(3,1fr);gap:12px;border-bottom:1px solid var(--neutral-200);">
@@ -31394,8 +32056,15 @@ window._fatSalvarRegrasDoModal = function() {
   _fatRenderInsights();
 };
 
-window._fatResetarRegrasInsights = function() {
-  if (!confirm('Resetar todas as regras para o padrão?')) return;
+window._fatResetarRegrasInsights = async function() {
+  const ok = await confirmarAcao({
+    titulo: 'Resetar regras?',
+    mensagem: 'Todas as regras de insights vão voltar pro padrão de fábrica. Mudanças que você fez vão ser perdidas.',
+    confirmLabel: 'Resetar',
+    perigo: true,
+    icone: 'restart_alt',
+  });
+  if (!ok) return;
   try { localStorage.removeItem(_FAT_REGRAS_KEY); } catch (e) {}
   document.querySelector('.modal-backdrop')?.remove();
   if (typeof setFlash === 'function') setFlash('success', 'Regras resetadas para o padrão.');
@@ -32167,16 +32836,48 @@ function _fatRender() {
   }
 
   // Top clientes ====
+  // Sprint 9.32.82: se há filtro de cliente, mostra SÓ ele com posição no ranking geral
   const tcEl = document.getElementById('fatTopClientes');
   if (tcEl) {
-    const top = FAT_DATA.clientes_top.slice(0, 15);
+    const _fCliTC = window._fatFiltro.cliente;
+    let top, posicaoLabel = '';
+
+    if (_fCliTC && _fCliTC !== 'todos' && FAT_DATA.clientes_lista) {
+      // Calcula ranking total (todos os clientes ordenados por faturamento)
+      const rankingTotal = [...FAT_DATA.clientes_lista]
+        .sort((a, b) => (b.faturamento || 0) - (a.faturamento || 0));
+      const idx = rankingTotal.findIndex(c => c.cnpj === _fCliTC);
+      const cliente = idx >= 0 ? rankingTotal[idx] : null;
+      if (cliente) {
+        top = [{
+          'Cliente (Nome Fantasia)': cliente.nome,
+          Cidade: cliente.cidade,
+          Estado: cliente.estado,
+          faturamento: cliente.faturamento,
+          qtd_notas: cliente.qtd_notas,
+          _posicao: idx + 1,
+          _totalRanking: rankingTotal.length,
+        }];
+        posicaoLabel = `<div style="font-size:11.5px;color:var(--brand-navy);background:#E4ECFD;border:1px solid var(--status-info);border-radius:6px;padding:6px 10px;margin-bottom:10px;display:flex;align-items:center;gap:6px;">
+          <span class="material-symbols-rounded" style="font-size:15px;color:var(--status-info);">leaderboard</span>
+          <span><strong>Posição ${idx + 1}º</strong> de ${rankingTotal.length} clientes no ranking geral</span>
+        </div>`;
+      } else {
+        top = [];
+        posicaoLabel = `<div style="font-size:11.5px;color:var(--neutral-500);font-style:italic;padding:8px;">Cliente filtrado não encontrado no período.</div>`;
+      }
+    } else {
+      top = FAT_DATA.clientes_top.slice(0, 15);
+    }
+
     const maxC = top[0]?.faturamento || 1;
-    tcEl.innerHTML = top.map((c, i) => {
+    tcEl.innerHTML = posicaoLabel + top.map((c, i) => {
       const pct = (c.faturamento / maxC) * 100;
       const nomeEsc = (c['Cliente (Nome Fantasia)'] || '—').replace(/'/g, "\\'").replace(/</g,'&lt;');
+      const numDisplay = c._posicao || (i + 1);
       return `
         <div class="fat-row" onclick="_fatAbrirCliente('${nomeEsc}')" style="cursor:pointer;border-radius:8px;padding:8px 6px;transition:background 140ms;" onmouseover="this.style.background='var(--neutral-100)'" onmouseout="this.style.background='transparent'">
-          <span style="width:22px;flex-shrink:0;text-align:center;font-size:11.5px;color:var(--neutral-500);font-weight:700;">${i+1}</span>
+          <span style="width:32px;flex-shrink:0;text-align:center;font-size:11.5px;color:var(--neutral-500);font-weight:700;">${numDisplay}º</span>
           <div style="flex:1;min-width:0;">
             <div style="display:flex;align-items:center;gap:5px;margin-bottom:3px;">
               <div style="font-size:12.5px;color:var(--brand-navy);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;">${(c['Cliente (Nome Fantasia)'] || '—').replace(/</g,'&lt;')}</div>
@@ -32427,7 +33128,7 @@ function calcularRankingConversoes(itens) {
 // - Sem mais "marca atual" vs "marca alvo" — é UM item da instituição
 // ====================================================================
 
-async function showModalItemPadronizado({ modo = 'cadastro', itemExistente = null } = {}) {
+async function showModalItemPadronizado({ modo = 'cadastro', itemExistente = null, instituicaoPreSelecionada = null } = {}) {
   return new Promise(async (resolve) => {
     const ehEdicao = modo === 'edicao' && itemExistente;
     let insts = [];
@@ -32471,12 +33172,16 @@ async function showModalItemPadronizado({ modo = 'cadastro', itemExistente = nul
       }
     } catch (err) { console.warn('erro categorias:', err); }
 
-    const valInst = ehEdicao ? itemExistente.instituicao_id : '';
+    const valInst = ehEdicao ? itemExistente.instituicao_id : (instituicaoPreSelecionada || '');
     const valDesc = ehEdicao ? (itemExistente.descricao_produto || '') : '';
     const valMarca = ehEdicao ? (itemExistente.marca || '') : '';
     const valCat = ehEdicao ? (itemExistente.categoria || '') : '';
     const valObs = ehEdicao ? (itemExistente.observacao || '') : '';
     const valStatus = ehEdicao ? itemExistente.status : 'padronizado';
+    // Sprint 9.32.76: produto NHSC oferecido (só aparece em edição quando status é em_negociacao/convertido)
+    const valNhscDesc = ehEdicao ? (itemExistente.convertido_em_descricao || '') : '';
+    const valNhscMarca = ehEdicao ? (itemExistente.convertido_em_marca || '') : '';
+    const mostrarSecaoNhsc = ehEdicao && (valStatus === 'em_negociacao' || valStatus === 'convertido');
 
     const titulo = ehEdicao ? 'Editar item padronizado' : 'Novo item padronizado';
     const subtitulo = ehEdicao
@@ -32546,6 +33251,23 @@ async function showModalItemPadronizado({ modo = 'cadastro', itemExistente = nul
                   <span>${s.emoji}</span> ${s.label}
                 </label>
               `).join('')}
+            </div>
+          </div>
+
+          <div id="mipSecaoNhsc" style="display:${mostrarSecaoNhsc ? 'flex' : 'none'};background:#FFF8EE;border:1.5px solid #F59E0B;border-radius:10px;padding:12px;flex-direction:column;gap:10px;">
+            <div style="font-family:var(--font-display);font-weight:700;color:#92400E;font-size:13px;display:flex;align-items:center;gap:6px;">
+              🎯 Produto NHSC oferecido
+            </div>
+            <div style="font-size:11.5px;color:#92400E;line-height:1.4;margin-top:-4px;">
+              Qual produto da nossa linha você está oferecendo no lugar do item original? Pode trocar a qualquer momento.
+            </div>
+            <div class="report-field">
+              <label for="mipNhscDesc" style="font-size:12px;">Descrição</label>
+              <input type="text" id="mipNhscDesc" autocomplete="off" placeholder="Ex: Nutren Senior 200ml Chocolate" value="${escAttr(valNhscDesc)}" style="width:100%;padding:9px 12px;border:1.5px solid #FCD9A0;border-radius:8px;font-size:13px;font-family:inherit;background:var(--neutral-0);" />
+            </div>
+            <div class="report-field">
+              <label for="mipNhscMarca" style="font-size:12px;">Marca</label>
+              <input type="text" id="mipNhscMarca" autocomplete="off" placeholder="Ex: Nestlé NHSC" value="${escAttr(valNhscMarca)}" style="width:100%;padding:9px 12px;border:1.5px solid #FCD9A0;border-radius:8px;font-size:13px;font-family:inherit;background:var(--neutral-0);" />
             </div>
           </div>
         </div>
@@ -32660,6 +33382,12 @@ async function showModalItemPadronizado({ modo = 'cadastro', itemExistente = nul
       const obs = backdrop.querySelector('#mipObs').value.trim();
       const statusRadio = backdrop.querySelector('input[name="mipStatus"]:checked');
       const status = statusRadio ? statusRadio.value : 'padronizado';
+      // Sprint 9.32.76: campos NHSC (só preenchidos quando status é em_negociacao/convertido)
+      const nhscDescEl = backdrop.querySelector('#mipNhscDesc');
+      const nhscMarcaEl = backdrop.querySelector('#mipNhscMarca');
+      const nhscDesc = nhscDescEl ? nhscDescEl.value.trim() : '';
+      const nhscMarca = nhscMarcaEl ? nhscMarcaEl.value.trim() : '';
+      const incluirNhsc = (status === 'em_negociacao' || status === 'convertido');
       if (!instId) { setFlash('warning', 'Selecione a instituição.'); return; }
       if (!desc) { setFlash('warning', 'Informe a descrição do produto.'); return; }
       if (!marca) { setFlash('warning', 'Informe a marca.'); return; }
@@ -32672,12 +33400,15 @@ async function showModalItemPadronizado({ modo = 'cadastro', itemExistente = nul
         observacao: obs || null,
         status,
         origem: origemSelecionada,
+        // Só passa NHSC se o status faz sentido (evita lixo no banco)
+        convertido_em_descricao: incluirNhsc ? (nhscDesc || null) : null,
+        convertido_em_marca: incluirNhsc ? (nhscMarca || null) : null,
       });
     };
     backdrop.querySelector('#mipCancel').onclick = () => { cleanup(); resolve(null); };
     backdrop.onclick = (e) => { if (e.target === backdrop) { cleanup(); resolve(null); } };
 
-    // Visual ao selecionar status (re-render)
+    // Visual ao selecionar status (re-render) + mostra/esconde seção NHSC
     backdrop.querySelectorAll('input[name="mipStatus"]').forEach(r => {
       r.addEventListener('change', () => {
         backdrop.querySelectorAll('label').forEach(l => {
@@ -32690,17 +33421,23 @@ async function showModalItemPadronizado({ modo = 'cadastro', itemExistente = nul
             l.style.cssText = `display:inline-flex;align-items:center;gap:5px;padding:7px 12px;border:1.5px solid var(--neutral-200);border-radius:8px;cursor:pointer;font-size:12.5px;flex:1;justify-content:center;`;
           }
         });
+        // Sprint 9.32.76: mostra seção NHSC quando status é em_negociacao/convertido
+        const novoStatus = backdrop.querySelector('input[name="mipStatus"]:checked')?.value;
+        const sec = backdrop.querySelector('#mipSecaoNhsc');
+        if (sec) {
+          sec.style.display = (novoStatus === 'em_negociacao' || novoStatus === 'convertido') ? 'flex' : 'none';
+        }
       });
     });
   });
 }
 
 // Handlers
-window.handleNovoItemPadronizado = async function() {
+window.handleNovoItemPadronizado = async function(instituicaoPreSelecionada) {
   if (await bloqueioSimulacao('cadastrar item padronizado')) return;
   const user = getCurrentUserReal();
   if (!user) { console.warn('[itemPad] abortado: getCurrentUserReal() retornou null'); return; }
-  const dados = await showModalItemPadronizado({ modo: 'cadastro' });
+  const dados = await showModalItemPadronizado({ modo: 'cadastro', instituicaoPreSelecionada });
   if (!dados) { console.log('[itemPad] modal cancelado pelo user'); return; }
   // Sprint 9.26.2: debug completo pra investigar cadastro que não salva
   const payload = { ...dados, registrado_por: user.id };
@@ -32751,6 +33488,9 @@ window.handleEditarItemPadronizado = async function(id) {
       observacao: novos.observacao,
       status: novos.status,
       origem: novos.origem,
+      // Sprint 9.32.76: salva troca do produto NHSC (em negociação/convertido)
+      convertido_em_descricao: novos.convertido_em_descricao,
+      convertido_em_marca: novos.convertido_em_marca,
     };
     const { data: atualizado, error: upErr } = await db
       .from('itens_padronizados')
@@ -33996,7 +34736,11 @@ function renderItensPadronizados(opts = {}) {
   `;
 }
 
-// Wrapper desktop: envolve com desktopShell pra ter sidebar + topbar
+// Sprint 9.32.63: Swimlane (hospital × status) — admin desktop only.
+// Mobile e nutri continuam com accordion (renderItensPadronizados).
+// Reusa todos os handlers existentes (handleAssumirConversao, handleMudarStatusItem,
+// handleNovoItemPadronizado, handleEditarItemPadronizado, handleExcluirItemPadronizado).
+// Lógica de "convertido por 7 dias" é puramente visual: usa convertido_em do banco.
 function renderItensPadronizadosDesktop() {
   const user = requireAdmin();
   if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
@@ -34004,8 +34748,1566 @@ function renderItensPadronizadosDesktop() {
   return desktopShell({
     title: 'Itens padronizados',
     breadcrumb: ['Admin', 'Itens padronizados'],
-    content: renderItensPadronizados({ embed: true }),
+    content: renderItensPadronizadosSwimlane(),
     activeId: 'standardized',
+  });
+}
+
+// Janela em dias que um item convertido permanece visível na coluna verde
+// antes de "voltar" pra coluna padronizado com selo "Conquistado".
+const IP_JANELA_CONVERSAO_DIAS = 7;
+
+// Calcula em qual coluna o card deve aparecer (lógica visual, não toca status do banco):
+// - status='convertido' E (now - convertido_em) < 7d → coluna 'convertido' (verde, recente)
+// - status='convertido' E (now - convertido_em) >= 7d → coluna 'padronizado' (cinza, com selo)
+// - status='em_negociacao' → coluna 'em_negociacao' (âmbar)
+// - status='padronizado' → coluna 'padronizado' (cinza, sem selo)
+// - status='perdido' → não aparece (oculto por padrão)
+function colunaVisualItem(it) {
+  if (it.status === 'perdido') return null;
+  if (it.status === 'em_negociacao') return 'em_negociacao';
+  if (it.status === 'convertido') {
+    const dt = it.convertido_em ? new Date(it.convertido_em) : null;
+    if (!dt) return 'convertido';
+    const diasDesde = (Date.now() - dt.getTime()) / 86400000;
+    return diasDesde < IP_JANELA_CONVERSAO_DIAS ? 'convertido' : 'padronizado';
+  }
+  return 'padronizado';
+}
+
+// True se o card deve mostrar selo "Conquistado" (já foi convertido alguma vez)
+function jaFoiConvertido(it) {
+  return it.status === 'convertido' && it.convertido_em;
+}
+
+// Formata data de conversão pro selo (ex: "Dez/25")
+function formatarMesAnoConv(it) {
+  if (!it.convertido_em) return '';
+  const dt = new Date(it.convertido_em);
+  const meses = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  return `${meses[dt.getMonth()]}/${String(dt.getFullYear()).slice(-2)}`;
+}
+
+function renderItensPadronizadosSwimlane() {
+  // State local (compartilhado com o accordion via window._ipFiltro pra não duplicar)
+  if (!window._ipFiltro) {
+    window._ipFiltro = { categoria: 'todas', status: 'todos', instituicao: 'todas', busca: '', esconderPadronizado: false, esconderEmNeg: false, esconderConvertido: false };
+  }
+  if (window._ipFiltro.soOportunidades === undefined) window._ipFiltro.soOportunidades = false;
+
+  setTimeout(async () => {
+    window._reloadItensPadronizados = async () => {
+      const itens = await listarItensPadronizados({ apenasMeus: false });
+      window._ipItens = itens;
+      window._ipRanking = calcularRankingConversoes(itens);
+      _ipSwimRender();
+    };
+    await window._reloadItensPadronizados();
+  }, 0);
+
+  return `
+    <div style="padding:18px 20px 60px;max-width:1400px;margin:0 auto;">
+      <!-- Header -->
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:14px;">
+        <div>
+          <h1 style="font-family:var(--font-display);font-size:22px;font-weight:700;color:var(--brand-navy);margin:0;line-height:1.15;">Itens padronizados</h1>
+          <div style="font-size:13px;color:var(--neutral-600);margin-top:4px;line-height:1.4;">
+            Pipeline visual por hospital — arraste cards entre colunas pra mudar status.
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;flex-shrink:0;">
+          <button onclick="window.location.hash='#/admin/itens-padronizados/historico'" style="background:var(--neutral-0);color:var(--brand-navy);border:1.5px solid var(--neutral-200);padding:9px 16px;border-radius:9999px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-family:inherit;" title="Histórico de conversões">
+            <span class="material-symbols-rounded" style="font-size:17px;">history</span>
+            Histórico
+          </button>
+          <button onclick="window.location.hash='#/itens-padronizados/ranking'" style="background:linear-gradient(135deg,#FBBF24 0%,#F59E0B 100%);color:#fff;border:0;padding:10px 18px;border-radius:9999px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-family:inherit;box-shadow:0 4px 12px rgba(245,158,11,0.25);">
+            <span style="font-size:16px;">🏆</span>
+            Ranking & Insights
+          </button>
+          <button onclick="handleNovoItemPadronizado()" style="background:var(--brand-lime);color:#fff;border:0;padding:10px 18px;border-radius:9999px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-family:inherit;">
+            <span class="material-symbols-rounded" style="font-size:18px;">add</span>
+            Novo item
+          </button>
+        </div>
+      </div>
+
+      <!-- KPIs -->
+      <div id="ipKpis" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:14px;"></div>
+
+      <!-- Filtros -->
+      <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:12px;padding:10px 12px;margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        <input type="text" id="ipBusca" placeholder="🔍 Buscar produto, marca, hospital..." value="${(window._ipFiltro.busca || '').replace(/"/g,'&quot;')}" style="flex:1;min-width:200px;padding:8px 12px;border:1.5px solid var(--neutral-200);border-radius:8px;font-size:13px;font-family:inherit;" />
+        <select id="ipFCat" style="padding:8px 12px;border:1.5px solid var(--neutral-200);border-radius:8px;font-size:12.5px;font-family:inherit;background:var(--neutral-0);">
+          <option value="todas">Todas categorias</option>
+          ${(() => {
+            const cats = [...new Set((window._ipItens || []).map(i => i.categoria).filter(Boolean))].sort();
+            return cats.map(c => `<option value="${c.replace(/"/g,'&quot;')}"${window._ipFiltro.categoria === c ? ' selected' : ''}>${c.replace(/</g,'&lt;')}</option>`).join('');
+          })()}
+        </select>
+      </div>
+
+      <!-- Main grid: swimlane + sidebar -->
+      <div style="display:grid;grid-template-columns:1fr 280px;gap:14px;align-items:start;" id="ipSwimGrid">
+        <div id="ipSwimContent">
+          <div style="text-align:center;padding:40px;color:var(--neutral-500);font-size:13px;">Carregando swimlane...</div>
+        </div>
+
+        <!-- Sidebar -->
+        <aside style="display:flex;flex-direction:column;gap:12px;position:sticky;top:14px;">
+          <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:12px;padding:12px 14px;">
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;">
+              <span class="material-symbols-rounded" style="font-size:18px;color:var(--brand-lime);">emoji_events</span>
+              <div style="font-family:var(--font-display);font-size:13px;font-weight:700;color:var(--brand-navy);">Top conversões</div>
+            </div>
+            <div id="ipRanking" style="font-size:12px;color:var(--neutral-500);">Carregando...</div>
+          </div>
+
+          <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:12px;padding:12px 14px;">
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;">
+              <span class="material-symbols-rounded" style="font-size:18px;color:var(--status-info);">insights</span>
+              <div style="font-family:var(--font-display);font-size:13px;font-weight:700;color:var(--brand-navy);">Visão rápida</div>
+            </div>
+            <div id="ipVisaoRapida" style="font-size:12px;color:var(--neutral-600);"></div>
+            <button onclick="window.toggleSoOportunidadesIp()" id="ipBtnOport" style="margin-top:10px;width:100%;background:linear-gradient(135deg,#FBBF24 0%,#F59E0B 100%);color:#fff;border:0;padding:8px 12px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px;">
+              <span style="font-size:14px;">🎯</span>
+              <span id="ipBtnOportTxt">Ver oportunidades</span>
+            </button>
+          </div>
+        </aside>
+      </div>
+    </div>
+
+    <style>
+      @media (max-width: 1100px) {
+        #ipSwimGrid { grid-template-columns: 1fr !important; }
+      }
+      .ip-swim-head {
+        display:grid; grid-template-columns: 200px 1fr 1fr 1fr; gap:8px;
+        padding: 6px 12px; font-size:11px; font-weight:700; color:var(--neutral-500);
+        text-transform:uppercase; letter-spacing:0.04em;
+      }
+      .ip-swim-row {
+        display:grid; grid-template-columns: 200px 1fr; gap:10px;
+        background:var(--neutral-0); border:1px solid var(--neutral-200); border-radius:12px;
+        padding: 10px; margin-bottom:8px; align-items:stretch;
+      }
+      .ip-swim-hosp {
+        display:flex; flex-direction:column; padding-right:10px;
+        border-right:1px solid var(--neutral-100);
+        grid-row: span 2;
+      }
+      .ip-swim-grid {
+        display:grid; grid-template-columns: 1fr 1fr 1fr; gap:6px;
+        align-items:start; align-content:start;
+        min-height: 60px;
+      }
+      .ip-grid-cell {
+        background: var(--neutral-50, #FAFBFD);
+        border-radius:8px; padding:5px;
+      }
+      .ip-grid-pair {
+        display:grid; grid-template-columns: 1fr 22px 1fr; align-items:center; gap:4px;
+        background: linear-gradient(90deg, var(--neutral-50,#FAFBFD) 0%, #FFF8EE 100%);
+      }
+      .ip-pair-origem, .ip-pair-oferta { display:flex; flex-direction:column; }
+      .ip-pair-arrow {
+        display:flex; align-items:center; justify-content:center;
+        font-size:16px; color:#F59E0B;
+      }
+      .ip-swim-actions {
+        display:grid; grid-template-columns: 1fr 1fr 1fr; gap:6px;
+        margin-top: 4px;
+      }
+      .ip-swim-lane {
+        background: var(--neutral-50, #FAFBFD);
+        border-radius:8px; padding:6px;
+        display:flex; flex-direction:column; gap:6px;
+        min-height: 70px;
+      }
+      .ip-swim-lane.is-empty { justify-content:center; align-items:center; color:var(--neutral-400); font-size:11.5px; font-style:italic; }
+      .ip-swim-card {
+        background: var(--neutral-0);
+        border-radius: 6px;
+        padding: 7px 9px;
+        border: 1px solid var(--neutral-200);
+        border-left-width: 3px;
+        cursor: grab;
+        transition: box-shadow 120ms;
+        font-size: 12px;
+      }
+      .ip-swim-card:hover { box-shadow: 0 2px 8px rgba(10,31,92,0.08); }
+      .ip-swim-card:active { cursor: grabbing; }
+      .ip-swim-card.col-padronizado { border-left-color: var(--neutral-400); }
+      .ip-swim-card.col-em_negociacao { border-left-color: #F59E0B; background:#FFF8EE; }
+      .ip-swim-card.col-convertido { border-left-color: var(--status-success); background:#EAF5EE; }
+      .ip-swim-card--origem {
+        border: 1px dashed #F59E0B;
+        background: #FFFBF0;
+        cursor: pointer;
+      }
+      .ip-swim-card--origem:hover { background: #FFF4D6; }
+      .ip-swim-card .prod { font-weight:600; color:var(--brand-navy); line-height:1.25; }
+      .ip-swim-card .meta { font-size:10.5px; color:var(--neutral-500); margin-top:3px; }
+      .ip-swim-card .selo {
+        display:inline-flex; align-items:center; gap:3px;
+        background:#EAF5EE; color:var(--status-success);
+        padding:2px 6px; border-radius:9999px; font-size:9.5px; font-weight:700;
+        margin-top:4px;
+      }
+      .ip-swim-add {
+        background:transparent; border:1px dashed var(--neutral-300);
+        border-radius:6px; padding:6px 8px; font-size:11px; color:var(--neutral-500);
+        text-align:center; cursor:pointer; font-family:inherit; font-weight:600;
+        margin-top: 4px;
+      }
+      .ip-swim-add:hover { border-color:var(--brand-lime); color:var(--brand-lime); background: rgba(139,198,63,0.06); }
+      .ip-swim-add--neg { border-color:#F59E0B; color:#92400E; }
+      .ip-swim-add--neg:hover { background:rgba(245,158,11,0.10); border-color:#F59E0B; color:#92400E; }
+      .ip-swim-add--conv { border-color:var(--status-success); color:var(--status-success); }
+      .ip-swim-add--conv:hover { background:rgba(46,154,99,0.10); color:var(--status-success); }
+      .ip-swim-add--disabled { color:var(--neutral-400); border-color:var(--neutral-200); cursor:not-allowed; opacity:0.7; }
+      .ip-swim-add--disabled:hover { background:transparent; border-color:var(--neutral-200); color:var(--neutral-400); }
+      .ip-swim-lane.drag-over {
+        background: #EAF5EE !important;
+        outline: 2px dashed var(--brand-lime);
+        outline-offset: -4px;
+      }
+    </style>
+  `;
+}
+
+// Render dinâmico da swimlane (chamado depois de carregar dados ou aplicar filtro)
+function _ipSwimRender() {
+  const itens = window._ipItens || [];
+  const filtro = window._ipFiltro;
+
+  // Aplica filtros gerais
+  let filtrados = itens.filter(it => {
+    if (it.status === 'perdido') return false;
+    if (filtro.categoria !== 'todas' && it.categoria !== filtro.categoria) return false;
+    if (filtro.busca) {
+      const q = filtro.busca.toLowerCase();
+      const hay = [
+        it.descricao_produto || '',
+        it.marca || '',
+        it.categoria || '',
+        it.instituicoes?.nome || '',
+        it.observacao || '',
+      ].join(' ').toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+
+  // KPIs (em cima da swimlane completa, sem filtros aplicados)
+  const totalAtivos = itens.filter(i => i.status !== 'perdido').length;
+  const conv = itens.filter(i => i.status === 'convertido').length;
+  const negoc = itens.filter(i => i.status === 'em_negociacao').length;
+  const taxaConv = totalAtivos > 0 ? Math.round((conv / totalAtivos) * 100) : 0;
+
+  const kpisEl = document.getElementById('ipKpis');
+  if (kpisEl) {
+    kpisEl.innerHTML = `
+      <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:10px;padding:10px 12px;">
+        <div style="font-size:10px;color:var(--neutral-500);font-weight:700;letter-spacing:0.04em;text-transform:uppercase;">Total ativos</div>
+        <div style="font-family:var(--font-display);font-size:22px;font-weight:700;color:var(--brand-navy);line-height:1.1;">${totalAtivos}</div>
+      </div>
+      <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:10px;padding:10px 12px;">
+        <div style="font-size:10px;color:var(--neutral-500);font-weight:700;letter-spacing:0.04em;text-transform:uppercase;">Em negociação</div>
+        <div style="font-family:var(--font-display);font-size:22px;font-weight:700;color:#F59E0B;line-height:1.1;">${negoc}</div>
+      </div>
+      <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:10px;padding:10px 12px;">
+        <div style="font-size:10px;color:var(--neutral-500);font-weight:700;letter-spacing:0.04em;text-transform:uppercase;">Convertidos</div>
+        <div style="font-family:var(--font-display);font-size:22px;font-weight:700;color:var(--status-success);line-height:1.1;">${conv}</div>
+      </div>
+      <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:10px;padding:10px 12px;">
+        <div style="font-size:10px;color:var(--neutral-500);font-weight:700;letter-spacing:0.04em;text-transform:uppercase;">Taxa conversão</div>
+        <div style="font-family:var(--font-display);font-size:22px;font-weight:700;color:var(--brand-lime-dark,#6FA62E);line-height:1.1;">${taxaConv}%</div>
+      </div>
+    `;
+  }
+
+  // Agrupa por hospital + decide coluna visual de cada card
+  const grupos = {};
+  filtrados.forEach(it => {
+    const instId = it.instituicao_id || 'sem_inst';
+    const instNome = it.instituicoes?.nome || '— Sem instituição —';
+    if (!grupos[instId]) grupos[instId] = { nome: instNome, padronizado: [], em_negociacao: [], convertido: [] };
+    const col = colunaVisualItem(it);
+    if (col) grupos[instId][col].push(it);
+  });
+
+  // Aplica filtro "Ver oportunidades": esconde hospitais que JÁ TÊM convertido (recente)
+  let instOrdenadas = Object.entries(grupos);
+  if (filtro.soOportunidades) {
+    instOrdenadas = instOrdenadas.filter(([_, g]) => g.convertido.length === 0);
+  }
+
+  // Ordena: hospitais com mais ação (negoc + convertido) primeiro, depois por nome
+  instOrdenadas.sort((a, b) => {
+    const aScore = a[1].em_negociacao.length * 2 + a[1].convertido.length;
+    const bScore = b[1].em_negociacao.length * 2 + b[1].convertido.length;
+    if (bScore !== aScore) return bScore - aScore;
+    return a[1].nome.localeCompare(b[1].nome, 'pt-BR');
+  });
+
+  // Sidebar: visão rápida
+  const visaoEl = document.getElementById('ipVisaoRapida');
+  if (visaoEl) {
+    const totalHosp = Object.keys(grupos).length;
+    const semNegoc = Object.values(grupos).filter(g => g.em_negociacao.length === 0).length;
+    const semConv = Object.values(grupos).filter(g => g.convertido.length === 0).length;
+    visaoEl.innerHTML = `
+      <div style="display:flex;justify-content:space-between;padding:4px 0;">
+        <span>Hospitais ativos</span>
+        <strong style="color:var(--brand-navy);">${totalHosp}</strong>
+      </div>
+      <div style="display:flex;justify-content:space-between;padding:4px 0;border-top:1px solid var(--neutral-100);">
+        <span>Sem negociação</span>
+        <strong style="color:#F59E0B;">${semNegoc}</strong>
+      </div>
+      <div style="display:flex;justify-content:space-between;padding:4px 0;border-top:1px solid var(--neutral-100);">
+        <span>Sem conversão</span>
+        <strong style="color:var(--status-danger);">${semConv}</strong>
+      </div>
+    `;
+  }
+
+  // Botão "Ver oportunidades" — atualiza estado visual
+  const btnTxt = document.getElementById('ipBtnOportTxt');
+  if (btnTxt) btnTxt.textContent = filtro.soOportunidades ? `✓ Mostrando ${instOrdenadas.length} oportunidades` : 'Ver oportunidades';
+
+  // Render swimlane
+  const contentEl = document.getElementById('ipSwimContent');
+  if (!contentEl) return;
+  if (instOrdenadas.length === 0) {
+    contentEl.innerHTML = `
+      <div style="background:var(--neutral-0);border:1px dashed var(--neutral-200);border-radius:12px;padding:40px;text-align:center;color:var(--neutral-500);font-size:13px;">
+        ${filtro.soOportunidades
+          ? '🎉 Todos os hospitais visíveis já têm conversões!<br><span style="font-size:11.5px;">Clique em "Ver oportunidades" pra desativar o filtro.</span>'
+          : (itens.length === 0 ? 'Nenhum item cadastrado ainda. Clique em "Novo item" pra começar! 🎯' : 'Nenhum item bate com os filtros aplicados.')}
+      </div>
+    `;
+    return;
+  }
+
+  // Setup drag-drop (idempotente)
+  setTimeout(() => _ipSwimSetupDragDrop(), 0);
+
+  contentEl.innerHTML = `
+    <div class="ip-swim-head">
+      <span></span>
+      <span>📋 Padronizados</span>
+      <span style="color:#F59E0B;">🤝 Em negociação</span>
+      <span style="color:var(--status-success);">🏆 Convertidos · 7d</span>
+    </div>
+    ${instOrdenadas.map(([instId, g]) => {
+      const totalItens = g.padronizado.length + g.em_negociacao.length + g.convertido.length;
+
+      // Botões de ação (sempre na última linha)
+      const podeIniciar = g.padronizado.length > 0;
+      const podeMarcar = g.em_negociacao.length > 0;
+
+      const btnAdd = `<button class="ip-swim-add" onclick="handleNovoItemPadronizado('${instId}')" title="Cadastrar novo produto no catálogo deste hospital">+ adicionar item</button>`;
+      const btnNeg = podeIniciar
+        ? `<button class="ip-swim-add ip-swim-add--neg" onclick="_ipSwimAbrirSeletor('${instId}','padronizado')" title="Escolher um padronizado pra começar a negociar">↪ Iniciar negociação</button>`
+        : `<button class="ip-swim-add ip-swim-add--disabled" disabled title="Cadastre um padronizado primeiro">↪ Cadastre um padronizado</button>`;
+      const btnConv = podeMarcar
+        ? `<button class="ip-swim-add ip-swim-add--conv" onclick="_ipSwimAbrirSeletor('${instId}','em_negociacao')" title="Escolher um item em negociação pra marcar como convertido">🏆 Marcar conversão</button>`
+        : `<button class="ip-swim-add ip-swim-add--disabled" disabled title="Inicie uma negociação primeiro">🏆 Inicie uma negociação</button>`;
+
+      return `
+      <div class="ip-swim-row" data-inst-id="${instId}">
+        <div class="ip-swim-hosp">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+            <span style="font-size:18px;">🏥</span>
+            <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:13.5px;line-height:1.2;">${g.nome.replace(/</g,'&lt;')}</div>
+          </div>
+          <div style="font-size:11px;color:var(--neutral-500);margin-top:2px;">
+            ${totalItens} ${totalItens === 1 ? 'item' : 'itens'}
+          </div>
+        </div>
+        <div class="ip-swim-grid">
+          ${g.padronizado.map(it => `<div class="ip-grid-cell" style="grid-column:1;">${_ipSwimCard(it, 'padronizado')}</div>`).join('')}
+          ${g.em_negociacao.map(it => `
+            <div class="ip-grid-cell ip-grid-pair" style="grid-column: 1 / 3;">
+              <div class="ip-pair-origem">${_ipSwimCardOrigem(it)}</div>
+              <div class="ip-pair-arrow"><span class="material-symbols-rounded" style="font-size:18px;color:#F59E0B;">east</span></div>
+              <div class="ip-pair-oferta">${_ipSwimCard(it, 'em_negociacao')}</div>
+            </div>
+          `).join('')}
+          ${g.convertido.map(it => `<div class="ip-grid-cell" style="grid-column:3;">${_ipSwimCard(it, 'convertido')}</div>`).join('')}
+        </div>
+        <div class="ip-swim-actions">
+          ${btnAdd}
+          ${btnNeg}
+          ${btnConv}
+        </div>
+      </div>
+    `;
+    }).join('')}
+  `;
+
+  // Ranking sidebar (reusa lógica do _ipRender)
+  const rankEl = document.getElementById('ipRanking');
+  if (rankEl) {
+    const ranking = window._ipRanking || [];
+    if (ranking.length === 0) {
+      rankEl.innerHTML = '<div style="color:var(--neutral-400);font-size:11.5px;text-align:center;padding:10px 0;">Nenhuma conversão ainda.</div>';
+    } else {
+      rankEl.innerHTML = ranking.slice(0, 6).map((r, idx) => {
+        const med = getMedalhaPorConversoes(r.conversoes);
+        const inits = (r.user.nome || '?').split(' ').filter(Boolean).slice(0,2).map(s => s[0].toUpperCase()).join('');
+        const podio = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `<span style="color:var(--neutral-400);font-size:11px;width:16px;display:inline-block;text-align:center;">${idx+1}</span>`;
+        return `
+          <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--neutral-100);">
+            <span style="width:16px;text-align:center;font-size:13px;">${podio}</span>
+            <div style="width:26px;height:26px;border-radius:50%;background:${r.user.foto_url ? `url('${r.user.foto_url}') center/cover` : 'var(--brand-navy)'};display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:700;flex-shrink:0;">${r.user.foto_url ? '' : inits}</div>
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:11.5px;font-weight:600;color:var(--brand-navy);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${(r.user.nome || '—').replace(/</g,'&lt;')}</div>
+              ${med ? `<div style="font-size:10px;color:${med.cor};font-weight:600;">${med.icon} ${med.label}</div>` : ''}
+            </div>
+            <div style="font-family:var(--font-display);font-size:14px;font-weight:700;color:var(--brand-lime-dark,#6FA62E);">${r.conversoes}</div>
+          </div>
+        `;
+      }).join('');
+    }
+  }
+}
+
+// Card "origem" — versão visual do item padronizado mostrada DENTRO do par em negociação
+// (lado esquerdo do par, mostrando o produto original do hospital que originou a negociação).
+// Diferencia visualmente do card padronizado puro: borda âmbar tracejada + label "EM NEGOC".
+function _ipSwimCardOrigem(it) {
+  const prod = (it.descricao_produto || '—').replace(/</g,'&lt;');
+  const marca = (it.marca || '').replace(/</g,'&lt;');
+  return `
+    <div class="ip-swim-card ip-swim-card--origem" data-item-id="${it.id}" onclick="handleVerDetalheItemSwim('${it.id}')" title="Item padronizado de origem (em negociação)">
+      <div style="font-size:9px;font-weight:700;color:#92400E;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:3px;">📋 Origem · em negoc</div>
+      <div class="prod">${prod.length > 36 ? prod.slice(0,36) + '…' : prod}</div>
+      ${marca ? `<div class="meta">${marca}</div>` : ''}
+    </div>
+  `;
+}
+
+// Renderiza 1 card dentro de uma lane da swimlane
+function _ipSwimCard(it, colVisual) {
+  const prod = (it.descricao_produto || '—').replace(/</g,'&lt;');
+  const marca = (it.marca || '').replace(/</g,'&lt;');
+  const cad = (it.cadastrador?.nome || it.usuarios?.nome || '').split(' ')[0] || '';
+  const mostrarSelo = colVisual === 'padronizado' && jaFoiConvertido(it);
+  const seloHtml = mostrarSelo
+    ? `<div class="selo" title="Já converteu pelo menos uma vez · ${formatarMesAnoConv(it)}">🏆 Conquistado · ${formatarMesAnoConv(it)}</div>`
+    : '';
+  const targetHtml = (colVisual === 'em_negociacao' && it.convertido_em_descricao)
+    ? (() => {
+        const desc = (it.convertido_em_descricao || '').replace(/</g,'&lt;');
+        const marcaNhsc = (it.convertido_em_marca || '').replace(/</g,'&lt;');
+        return `<div style="background:#FFE9B8;color:#92400E;padding:4px 8px;border-radius:4px;margin-top:4px;font-size:10.5px;line-height:1.3;">
+          <div style="font-weight:600;">🎯 ${desc}</div>
+          ${marcaNhsc ? `<div style="font-size:10px;opacity:0.8;margin-top:1px;">${marcaNhsc}</div>` : ''}
+        </div>`;
+      })()
+    : '';
+
+  // Sprint 9.32.75: card convertido equilibrado — nome completo (pode quebrar) + marca por baixo
+  if (colVisual === 'convertido' && it.convertido_em_descricao) {
+    const destino = (it.convertido_em_descricao || '—').replace(/</g,'&lt;');
+    const destinoMarca = (it.convertido_em_marca || '').replace(/</g,'&lt;');
+    return `
+      <div class="ip-swim-card col-convertido ip-swim-card--converted-pair" data-item-id="${it.id}" data-col-atual="convertido" draggable="true" onclick="handleVerDetalheItemSwim('${it.id}')" title="Clique pra editar${cad ? ' · por ' + cad : ''}">
+        <div style="display:flex;gap:6px;align-items:flex-start;line-height:1.25;">
+          <span style="font-size:11px;flex-shrink:0;opacity:0.7;padding-top:1px;">📋</span>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:11px;color:var(--neutral-600);font-weight:500;">${prod}</div>
+            ${marca ? `<div style="font-size:10px;color:var(--neutral-500);">${marca}</div>` : ''}
+          </div>
+        </div>
+        <div style="display:flex;gap:6px;align-items:flex-start;line-height:1.25;margin-top:5px;padding-top:5px;border-top:1px dashed rgba(46,154,99,0.3);">
+          <span style="font-size:11px;flex-shrink:0;color:var(--status-success);padding-top:1px;">🏆</span>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:11.5px;color:var(--status-success);font-weight:700;">${destino}</div>
+            ${destinoMarca ? `<div style="font-size:10px;color:var(--neutral-500);">${destinoMarca}</div>` : ''}
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  return `
+    <div class="ip-swim-card col-${colVisual}" data-item-id="${it.id}" data-col-atual="${colVisual}" draggable="true" onclick="handleVerDetalheItemSwim('${it.id}')" title="Clique pra editar · Arraste pra mudar status">
+      <div class="prod">${prod.length > 36 ? prod.slice(0,36) + '…' : prod}</div>
+      ${marca || cad ? `<div class="meta">${marca}${marca && cad ? ' · ' : ''}${cad ? cad : ''}</div>` : ''}
+      ${targetHtml}
+      ${seloHtml}
+    </div>
+  `;
+}
+
+// ── Drag-and-drop com confirmação ────────────────────────────────────
+// O card carrega data-item-id + data-col-atual. A lane carrega data-col-destino.
+// Ao soltar, abre modal de confirmação e só dispara mudança de status no Supabase
+// se o usuário confirmar.
+function _ipSwimSetupDragDrop() {
+  const grid = document.getElementById('ipSwimContent');
+  if (!grid || grid._ddSetup) return;
+  grid._ddSetup = true;
+
+  let dragItemId = null;
+  let dragColAtual = null;
+
+  grid.addEventListener('dragstart', (e) => {
+    const card = e.target.closest('.ip-swim-card');
+    if (!card) return;
+    dragItemId = card.getAttribute('data-item-id');
+    dragColAtual = card.getAttribute('data-col-atual');
+    e.dataTransfer.effectAllowed = 'move';
+    card.style.opacity = '0.5';
+  });
+
+  grid.addEventListener('dragend', (e) => {
+    const card = e.target.closest('.ip-swim-card');
+    if (card) card.style.opacity = '1';
+    document.querySelectorAll('.ip-swim-lane.drag-over').forEach(l => l.classList.remove('drag-over'));
+  });
+
+  grid.addEventListener('dragover', (e) => {
+    const lane = e.target.closest('.ip-swim-lane');
+    if (!lane) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    lane.classList.add('drag-over');
+  });
+
+  grid.addEventListener('dragleave', (e) => {
+    const lane = e.target.closest('.ip-swim-lane');
+    if (lane && !lane.contains(e.relatedTarget)) lane.classList.remove('drag-over');
+  });
+
+  grid.addEventListener('drop', (e) => {
+    const lane = e.target.closest('.ip-swim-lane');
+    if (!lane || !dragItemId) return;
+    e.preventDefault();
+    lane.classList.remove('drag-over');
+
+    // Descobre coluna destino pela posição da lane na row (3 lanes por row, ordem fixa)
+    const row = lane.closest('.ip-swim-row');
+    if (!row) return;
+    const lanes = row.querySelectorAll('.ip-swim-lane');
+    const idx = Array.from(lanes).indexOf(lane);
+    const cols = ['padronizado', 'em_negociacao', 'convertido'];
+    const colDestino = cols[idx];
+    if (!colDestino || colDestino === dragColAtual) {
+      dragItemId = null; dragColAtual = null;
+      return;
+    }
+
+    // Confirmação modal
+    _ipSwimAbrirConfirmMover(dragItemId, dragColAtual, colDestino);
+    dragItemId = null; dragColAtual = null;
+  });
+}
+
+// Modal de confirmação antes de mudar status
+function _ipSwimAbrirConfirmMover(itemId, colAtual, colDestino) {
+  const item = (window._ipItens || []).find(i => i.id === itemId);
+  if (!item) return;
+  const labels = {
+    padronizado: 'Padronizado',
+    em_negociacao: 'Em negociação',
+    convertido: 'Convertido',
+  };
+  const cores = {
+    padronizado: 'var(--neutral-500)',
+    em_negociacao: '#F59E0B',
+    convertido: 'var(--status-success)',
+  };
+  const prod = (item.descricao_produto || '—').replace(/</g,'&lt;');
+  const inst = (item.instituicoes?.nome || '—').replace(/</g,'&lt;');
+
+  // Aviso especial pra "convertido" (vai pedir info de produto convertido)
+  const avisoConv = colDestino === 'convertido'
+    ? `<div style="margin-top:10px;padding:10px;background:#FEF4E1;border-radius:6px;font-size:12px;color:#92400E;">
+         ⚠️ Marcar como convertido vai abrir um formulário pra registrar pra qual produto NHSC.
+       </div>`
+    : '';
+
+  const html = `
+    <div id="ipSwimConfirmOverlay" style="position:fixed;inset:0;background:rgba(10,31,92,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;" onclick="if(event.target===this) _ipSwimFecharConfirm()">
+      <div style="background:var(--neutral-0);border-radius:14px;padding:22px;max-width:440px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+        <div style="font-family:var(--font-display);font-size:17px;font-weight:700;color:var(--brand-navy);margin-bottom:8px;">Mover item?</div>
+        <div style="font-size:13.5px;color:var(--neutral-700);line-height:1.5;margin-bottom:12px;">
+          <strong>${prod}</strong><br>
+          <span style="color:var(--neutral-500);font-size:12px;">no ${inst}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;background:var(--neutral-50,#FAFBFD);padding:10px 12px;border-radius:8px;font-size:13px;">
+          <span style="color:${cores[colAtual]};font-weight:600;">${labels[colAtual]}</span>
+          <span class="material-symbols-rounded" style="font-size:18px;color:var(--neutral-400);">arrow_forward</span>
+          <span style="color:${cores[colDestino]};font-weight:700;">${labels[colDestino]}</span>
+        </div>
+        ${avisoConv}
+        <div style="display:flex;gap:8px;margin-top:18px;justify-content:flex-end;">
+          <button onclick="_ipSwimFecharConfirm()" style="background:transparent;color:var(--neutral-600);border:1.5px solid var(--neutral-200);padding:9px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">Cancelar</button>
+          <button onclick="_ipSwimExecutarMover('${itemId}','${colDestino}')" style="background:var(--brand-lime);color:#fff;border:0;padding:9px 18px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">Confirmar</button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+window._ipSwimFecharConfirm = function() {
+  const ov = document.getElementById('ipSwimConfirmOverlay');
+  if (ov) ov.remove();
+};
+
+window._ipSwimExecutarMover = async function(itemId, colDestino) {
+  _ipSwimFecharConfirm();
+  // Reusa handlers existentes que já fazem o trabalho certo:
+  // - 'em_negociacao' → handleAssumirConversao (pede produto NHSC alvo)
+  // - 'convertido' → handleMudarStatusItem(id, 'convertido') (pede produto convertido)
+  // - 'padronizado' (vindo de em_negociacao) → handleCancelarNegociacao
+  // - 'padronizado' (vindo de convertido) → não suportado (precisaria reverter conversão; usar histórico)
+  if (colDestino === 'em_negociacao') {
+    if (typeof handleAssumirConversao === 'function') await handleAssumirConversao(itemId);
+  } else if (colDestino === 'convertido') {
+    if (typeof handleMudarStatusItem === 'function') await handleMudarStatusItem(itemId, 'convertido');
+  } else if (colDestino === 'padronizado') {
+    const item = (window._ipItens || []).find(i => i.id === itemId);
+    if (item?.status === 'em_negociacao' && typeof handleCancelarNegociacao === 'function') {
+      await handleCancelarNegociacao(itemId);
+    } else {
+      setFlash && setFlash('warning', 'Pra reverter uma conversão, use a aba Histórico.');
+    }
+  }
+  // Recarrega itens depois de qualquer mudança
+  if (typeof window._reloadItensPadronizados === 'function') {
+    setTimeout(() => window._reloadItensPadronizados(), 600);
+  }
+};
+
+// Toggle do filtro "Só oportunidades" (hospitais sem nada na coluna convertidos)
+window.toggleSoOportunidadesIp = function() {
+  if (!window._ipFiltro) return;
+  window._ipFiltro.soOportunidades = !window._ipFiltro.soOportunidades;
+  _ipSwimRender();
+};
+
+// Placeholder do detalhe — abre modal de edição existente.
+window.handleVerDetalheItemSwim = function(itemId) {
+  if (typeof handleEditarItemPadronizado === 'function') handleEditarItemPadronizado(itemId);
+};
+
+// Abre seletor de itens (modal lista) pra escolher um item daquele hospital + status.
+// Usado por:
+//   - "Iniciar negociação" → escolhe um padronizado, dispara handleAssumirConversao
+//   - "Marcar conversão" → escolhe um em_negociacao, dispara handleMudarStatusItem
+window._ipSwimAbrirSeletor = function(hospitalId, statusOrigem) {
+  const itens = (window._ipItens || []).filter(it =>
+    it.instituicao_id === hospitalId &&
+    it.status === statusOrigem
+  );
+  if (itens.length === 0) {
+    setFlash && setFlash('warning', 'Nenhum item disponível.');
+    return;
+  }
+
+  const ehParaNegociar = statusOrigem === 'padronizado';
+  const titulo = ehParaNegociar ? 'Iniciar negociação' : 'Marcar conversão';
+  const subtitulo = ehParaNegociar
+    ? 'Escolha qual item padronizado você quer começar a negociar.'
+    : 'Escolha qual item em negociação foi convertido.';
+  const cor = ehParaNegociar ? '#F59E0B' : 'var(--status-success)';
+  const corBg = ehParaNegociar ? '#FFF8EE' : '#EAF5EE';
+
+  const id = 'ipSwimSeletor_' + Date.now();
+  const html = `
+    <div id="${id}" style="position:fixed;inset:0;background:rgba(10,31,92,0.5);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;" onclick="if(event.target===this) document.getElementById('${id}').remove()">
+      <div style="background:var(--neutral-0);border-radius:14px;padding:0;max-width:480px;width:100%;max-height:80vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.3);font-family:inherit;">
+        <div style="padding:18px 20px 12px;border-bottom:1px solid var(--neutral-200);">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+            <div style="width:36px;height:36px;border-radius:50%;background:${corBg};color:${cor};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+              <span class="material-symbols-rounded" style="font-size:20px;">${ehParaNegociar ? 'handshake' : 'emoji_events'}</span>
+            </div>
+            <div style="font-family:var(--font-display);font-size:16px;font-weight:700;color:var(--brand-navy);">${titulo}</div>
+          </div>
+          <div style="font-size:12.5px;color:var(--neutral-600);">${subtitulo}</div>
+        </div>
+        <div style="overflow-y:auto;padding:8px;flex:1;">
+          ${itens.map(it => {
+            const prod = (it.descricao_produto || '—').replace(/</g,'&lt;');
+            const marca = (it.marca || '').replace(/</g,'&lt;');
+            return `
+              <button onclick="_ipSwimSelecionarItem('${id}','${it.id}','${statusOrigem}')" style="width:100%;background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:10px;padding:10px 12px;margin-bottom:6px;text-align:left;cursor:pointer;font-family:inherit;display:flex;justify-content:space-between;align-items:center;gap:8px;transition:all 120ms;">
+                <div style="flex:1;min-width:0;">
+                  <div style="font-weight:600;color:var(--brand-navy);font-size:13px;line-height:1.3;">${prod}</div>
+                  ${marca ? `<div style="font-size:11px;color:var(--neutral-500);margin-top:2px;">${marca}</div>` : ''}
+                </div>
+                <span class="material-symbols-rounded" style="font-size:18px;color:${cor};">arrow_forward</span>
+              </button>
+            `;
+          }).join('')}
+        </div>
+        <div style="padding:12px 20px;border-top:1px solid var(--neutral-200);display:flex;justify-content:flex-end;">
+          <button onclick="document.getElementById('${id}').remove()" style="background:transparent;color:var(--neutral-600);border:1.5px solid var(--neutral-200);padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">Cancelar</button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.insertAdjacentHTML('beforeend', html);
+};
+
+// Dispara o handler correspondente ao item selecionado
+window._ipSwimSelecionarItem = async function(modalId, itemId, statusOrigem) {
+  const m = document.getElementById(modalId);
+  if (m) m.remove();
+  if (statusOrigem === 'padronizado') {
+    if (typeof handleAssumirConversao === 'function') await handleAssumirConversao(itemId);
+  } else if (statusOrigem === 'em_negociacao') {
+    if (typeof handleMudarStatusItem === 'function') await handleMudarStatusItem(itemId, 'convertido');
+  }
+  setTimeout(() => {
+    if (typeof window._reloadItensPadronizados === 'function') window._reloadItensPadronizados();
+  }, 600);
+};
+
+// Listeners delegados pra busca/filtro (registra só uma vez)
+if (!window._ipSwimListenersRegistered) {
+  window._ipSwimListenersRegistered = true;
+  document.addEventListener('input', (e) => {
+    if (e.target?.id === 'ipBusca' && document.getElementById('ipSwimContent')) {
+      window._ipFiltro.busca = e.target.value;
+      _ipSwimRender();
+    }
+  });
+  document.addEventListener('change', (e) => {
+    if (e.target?.id === 'ipFCat' && document.getElementById('ipSwimContent')) {
+      window._ipFiltro.categoria = e.target.value;
+      _ipSwimRender();
+    }
+  });
+}
+
+// ============================================================
+// CARROSSEL MOBILE — Sprint 9.32.64
+// 1 hospital por tela, swipe horizontal pra navegar.
+// Cada hospital mostra os 3 status empilhados verticalmente.
+// Reusa toda a lógica do desktop (colunaVisualItem, listarItensPadronizados, etc).
+// ============================================================
+function renderItensPadronizadosCarrossel() {
+  const user = requireAuth();
+  if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
+
+  const ehAdmin = user.perfil === 'admin';
+  const ehNutriRoute = (window.location.hash || '').startsWith('#/nutri/');
+
+  if (window._ipCarIdx === undefined) window._ipCarIdx = 0;
+  if (!window._ipFiltro) {
+    window._ipFiltro = { categoria: 'todas', status: 'todos', instituicao: 'todas', busca: '', esconderPadronizado: false, esconderEmNeg: false, esconderConvertido: false };
+  }
+
+  setTimeout(async () => {
+    window._reloadItensPadronizados = async () => {
+      const itens = await listarItensPadronizados({ apenasMeus: false });
+      window._ipItens = itens;
+      window._ipRanking = calcularRankingConversoes(itens);
+      _ipCarRender();
+    };
+    await window._reloadItensPadronizados();
+  }, 0);
+
+  const mostrarBottomNav = !ehAdmin || ehNutriRoute;
+
+  return `
+    <div class="mobile-app">
+      ${mobileTopBar({ title: 'Itens padronizados', showBack: true })}
+      <main class="mcontent" style="padding:0 0 ${mostrarBottomNav ? '70px' : '20px'} 0;">
+
+        <!-- KPIs stripe enxuto -->
+        <div id="ipCarKpis" style="background:var(--neutral-0);padding:8px 14px;border-bottom:1px solid var(--neutral-200);font-size:11.5px;color:var(--neutral-600);display:flex;align-items:center;gap:8px;flex-wrap:wrap;"></div>
+
+        <!-- Busca + Categoria -->
+        <div style="background:var(--neutral-0);padding:10px 12px;border-bottom:1px solid var(--neutral-200);display:flex;gap:6px;">
+          <input type="text" id="ipCarBusca" placeholder="🔍 Buscar..." value="${(window._ipFiltro.busca || '').replace(/"/g,'&quot;')}" style="flex:1;padding:8px 10px;border:1.5px solid var(--neutral-200);border-radius:8px;font-size:12.5px;font-family:inherit;" />
+          <button onclick="handleNovoItemPadronizado()" style="background:var(--brand-lime);color:#fff;border:0;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:4px;">
+            <span class="material-symbols-rounded" style="font-size:16px;">add</span>
+          </button>
+        </div>
+
+        <!-- Atalhos: Ranking + Histórico -->
+        <div style="display:flex;gap:6px;padding:8px 12px;background:var(--neutral-50,#FAFBFD);border-bottom:1px solid var(--neutral-200);">
+          <button onclick="window.location.hash='#/itens-padronizados/ranking'" style="flex:1;background:linear-gradient(135deg,#FBBF24 0%,#F59E0B 100%);color:#fff;border:0;padding:7px 10px;border-radius:8px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:4px;">
+            🏆 Ranking
+          </button>
+          ${ehAdmin && !ehNutriRoute ? `
+            <button onclick="window.location.hash='#/admin/itens-padronizados/historico'" style="flex:1;background:var(--neutral-0);color:var(--brand-navy);border:1.5px solid var(--neutral-200);padding:6px 10px;border-radius:8px;font-size:11.5px;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:4px;">
+              📜 Histórico
+            </button>
+          ` : ''}
+        </div>
+
+        <!-- Carrossel: header com seletor de hospital -->
+        <div id="ipCarHospHeader" style="background:var(--neutral-0);padding:10px 8px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--neutral-200);"></div>
+
+        <!-- Conteúdo do hospital atual -->
+        <div id="ipCarContent" style="padding:10px 12px;">
+          <div style="text-align:center;padding:30px;color:var(--neutral-500);font-size:12.5px;">Carregando...</div>
+        </div>
+
+      </main>
+      ${mostrarBottomNav ? bottomNav('') : ''}
+    </div>
+
+    <style>
+      .ipc-statusbox {
+        background: var(--neutral-50, #FAFBFD);
+        border-radius: 10px;
+        padding: 8px 10px;
+        margin-bottom: 8px;
+      }
+      .ipc-statusbox.is-neg { background: #FFF8EE; }
+      .ipc-statusbox.is-conv { background: #EAF5EE; }
+      .ipc-statusbox__head {
+        font-size: 10.5px; font-weight: 700; text-transform: uppercase;
+        letter-spacing: 0.04em; color: var(--neutral-500);
+        margin-bottom: 6px; display: flex; justify-content: space-between; align-items:center;
+      }
+      .ipc-statusbox.is-neg .ipc-statusbox__head { color: #92400E; }
+      .ipc-statusbox.is-conv .ipc-statusbox__head { color: var(--status-success); }
+      .ipc-card {
+        background: var(--neutral-0);
+        border-radius: 6px;
+        padding: 8px 10px;
+        margin-bottom: 5px;
+        font-size: 12px;
+        color: var(--brand-navy);
+        font-weight: 500;
+        display: flex; justify-content: space-between; align-items: flex-start; gap: 6px;
+        cursor: pointer;
+        border: 1px solid var(--neutral-200);
+      }
+      .ipc-card:active { background: var(--neutral-50); }
+      .ipc-card .meta { font-size: 10.5px; color: var(--neutral-500); margin-top: 2px; font-weight: 400; }
+      .ipc-card .selo {
+        display:inline-flex; align-items:center; gap:3px;
+        background:#EAF5EE; color:var(--status-success);
+        padding:2px 6px; border-radius:9999px; font-size:9.5px; font-weight:700;
+        margin-top:4px;
+      }
+      .ipc-card .target {
+        background:#FFE9B8; color:#92400E;
+        padding:2px 6px; border-radius:4px; font-size:10px; margin-top:3px; display:inline-block;
+      }
+      .ipc-empty {
+        font-size: 11px; color: var(--neutral-400); font-style: italic;
+        text-align: center; padding: 8px;
+      }
+      .ipc-add {
+        background: transparent; border: 1px dashed var(--neutral-300);
+        border-radius: 6px; padding: 6px; font-size: 11.5px; color: var(--neutral-500);
+        text-align: center; cursor: pointer; font-family: inherit; width: 100%;
+      }
+      .ipc-nav-btn {
+        background: var(--neutral-0); border: 1px solid var(--neutral-200);
+        border-radius: 50%; width: 34px; height: 34px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 18px; color: var(--brand-navy); cursor: pointer;
+        flex-shrink: 0;
+      }
+      .ipc-nav-btn:disabled { color: var(--neutral-300); cursor: not-allowed; }
+      .ipc-dots {
+        display: flex; gap: 3px; justify-content: center; margin-top: 4px;
+      }
+      .ipc-dots span {
+        width: 5px; height: 5px; border-radius: 50%;
+        background: var(--neutral-300);
+      }
+      .ipc-dots span.active {
+        background: var(--brand-navy); width: 14px; border-radius: 9999px;
+      }
+    </style>
+  `;
+}
+
+// Render do carrossel mobile (chamado depois de carregar dados ou trocar de hospital)
+function _ipCarRender() {
+  const itens = window._ipItens || [];
+  const filtro = window._ipFiltro;
+
+  // Aplica busca + categoria globais
+  let filtrados = itens.filter(it => {
+    if (it.status === 'perdido') return false;
+    if (filtro.categoria !== 'todas' && it.categoria !== filtro.categoria) return false;
+    if (filtro.busca) {
+      const q = filtro.busca.toLowerCase();
+      const hay = [it.descricao_produto || '', it.marca || '', it.categoria || '', it.instituicoes?.nome || '', it.observacao || ''].join(' ').toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+
+  // Agrupa por hospital
+  const grupos = {};
+  filtrados.forEach(it => {
+    const instId = it.instituicao_id || 'sem_inst';
+    const instNome = it.instituicoes?.nome || '— Sem instituição —';
+    if (!grupos[instId]) grupos[instId] = { id: instId, nome: instNome, padronizado: [], em_negociacao: [], convertido: [] };
+    const col = colunaVisualItem(it);
+    if (col) grupos[instId][col].push(it);
+  });
+
+  // Ordena hospitais: por ação (mais negoc + conv primeiro), depois alfabético
+  const hospitais = Object.values(grupos).sort((a, b) => {
+    const aScore = a.em_negociacao.length * 2 + a.convertido.length;
+    const bScore = b.em_negociacao.length * 2 + b.convertido.length;
+    if (bScore !== aScore) return bScore - aScore;
+    return a.nome.localeCompare(b.nome, 'pt-BR');
+  });
+
+  // KPIs stripe
+  const totalAtivos = itens.filter(i => i.status !== 'perdido').length;
+  const negoc = itens.filter(i => i.status === 'em_negociacao').length;
+  const conv = itens.filter(i => i.status === 'convertido').length;
+  const taxa = totalAtivos > 0 ? Math.round((conv / totalAtivos) * 100) : 0;
+  const kpisEl = document.getElementById('ipCarKpis');
+  if (kpisEl) {
+    kpisEl.innerHTML = `
+      <span><strong style="color:var(--brand-navy);">${totalAtivos}</strong> ativos</span>
+      <span style="color:var(--neutral-300);">·</span>
+      <span><strong style="color:#F59E0B;">${negoc}</strong> negoc</span>
+      <span style="color:var(--neutral-300);">·</span>
+      <span><strong style="color:var(--status-success);">${conv}</strong> conv</span>
+      <span style="margin-left:auto;color:var(--brand-lime-dark,#6FA62E);font-weight:700;">${taxa}%</span>
+    `;
+  }
+
+  // Header com seletor
+  const headerEl = document.getElementById('ipCarHospHeader');
+  if (!headerEl) return;
+  if (hospitais.length === 0) {
+    headerEl.innerHTML = '';
+    document.getElementById('ipCarContent').innerHTML = `
+      <div style="background:var(--neutral-0);border:1px dashed var(--neutral-200);border-radius:12px;padding:30px;text-align:center;color:var(--neutral-500);font-size:12.5px;">
+        ${itens.length === 0 ? 'Nenhum item cadastrado ainda.<br>Clique no <strong>+</strong> pra começar! 🎯' : 'Nenhum item bate com a busca.'}
+      </div>
+    `;
+    return;
+  }
+
+  // Garante idx válido
+  if (window._ipCarIdx >= hospitais.length) window._ipCarIdx = 0;
+  if (window._ipCarIdx < 0) window._ipCarIdx = 0;
+  const idx = window._ipCarIdx;
+  const h = hospitais[idx];
+
+  // Dots compactos (até 8 dots; se >8, mostra "X de N")
+  const showDots = hospitais.length <= 8;
+  const dotsHtml = showDots
+    ? `<div class="ipc-dots">${hospitais.map((_, i) => `<span class="${i === idx ? 'active' : ''}"></span>`).join('')}</div>`
+    : `<div style="font-size:9.5px;color:var(--neutral-500);text-align:center;margin-top:2px;">${idx + 1} de ${hospitais.length}</div>`;
+
+  headerEl.innerHTML = `
+    <button class="ipc-nav-btn" onclick="window.ipCarPrev()" ${idx === 0 ? 'disabled' : ''} aria-label="Hospital anterior">‹</button>
+    <div style="flex:1;text-align:center;min-width:0;padding:0 8px;">
+      <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:14px;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">🏥 ${h.nome.replace(/</g,'&lt;')}</div>
+      ${dotsHtml}
+    </div>
+    <button class="ipc-nav-btn" onclick="window.ipCarNext()" ${idx === hospitais.length - 1 ? 'disabled' : ''} aria-label="Próximo hospital">›</button>
+  `;
+
+  // Conteúdo: 3 boxes empilhados
+  const contentEl = document.getElementById('ipCarContent');
+  contentEl.innerHTML = `
+    <div class="ipc-statusbox">
+      <div class="ipc-statusbox__head">
+        📋 Padronizados <span>${h.padronizado.length}</span>
+      </div>
+      ${h.padronizado.length === 0
+        ? `<button class="ipc-add" onclick="handleNovoItemPadronizado()">+ adicionar item</button>`
+        : h.padronizado.map(it => _ipCarCardHtml(it, 'padronizado')).join('')}
+    </div>
+    <div class="ipc-statusbox is-neg">
+      <div class="ipc-statusbox__head">
+        🤝 Em negociação <span>${h.em_negociacao.length}</span>
+      </div>
+      ${h.em_negociacao.length === 0
+        ? `<div class="ipc-empty">Nenhum item em negociação</div>`
+        : h.em_negociacao.map(it => _ipCarCardHtml(it, 'em_negociacao')).join('')}
+    </div>
+    <div class="ipc-statusbox is-conv">
+      <div class="ipc-statusbox__head">
+        🏆 Convertidos · 7d <span>${h.convertido.length}</span>
+      </div>
+      ${h.convertido.length === 0
+        ? `<div class="ipc-empty">Nenhuma conversão recente</div>`
+        : h.convertido.map(it => _ipCarCardHtml(it, 'convertido')).join('')}
+    </div>
+  `;
+
+  // Setup swipe gestures (só uma vez)
+  _ipCarSetupSwipe();
+}
+
+function _ipCarCardHtml(it, colVisual) {
+  const prod = (it.descricao_produto || '—').replace(/</g,'&lt;');
+  const marca = (it.marca || '').replace(/</g,'&lt;');
+  const cad = ((it.cadastrador?.nome || it.usuarios?.nome) || '').split(' ')[0];
+  const mostrarSelo = colVisual === 'padronizado' && jaFoiConvertido(it);
+  const seloHtml = mostrarSelo
+    ? `<div class="selo">🏆 Conquistado · ${formatarMesAnoConv(it)}</div>`
+    : '';
+  const targetHtml = (colVisual === 'em_negociacao' && it.convertido_em_descricao)
+    ? `<div class="target">🎯 ${(it.convertido_em_descricao || '').replace(/</g,'&lt;').slice(0,30)}${(it.convertido_em_descricao || '').length > 30 ? '…' : ''}</div>`
+    : '';
+  return `
+    <div class="ipc-card" onclick="handleEditarItemPadronizado('${it.id}')">
+      <div style="flex:1;min-width:0;">
+        <div>${prod.length > 40 ? prod.slice(0, 40) + '…' : prod}</div>
+        ${marca || cad ? `<div class="meta">${marca}${marca && cad ? ' · ' : ''}${cad}</div>` : ''}
+        ${targetHtml}
+        ${seloHtml}
+      </div>
+      <button onclick="event.stopPropagation();window.ipCarAcoes('${it.id}','${colVisual}')" style="background:transparent;border:0;font-size:18px;color:var(--neutral-500);padding:0 4px;cursor:pointer;flex-shrink:0;align-self:center;" aria-label="Mais ações">⋯</button>
+    </div>
+  `;
+}
+
+window.ipCarPrev = function() {
+  if (window._ipCarIdx > 0) { window._ipCarIdx--; _ipCarRender(); }
+};
+window.ipCarNext = function() {
+  const total = (() => {
+    const f = window._ipFiltro || {};
+    const itens = (window._ipItens || []).filter(it => {
+      if (it.status === 'perdido') return false;
+      if (f.categoria && f.categoria !== 'todas' && it.categoria !== f.categoria) return false;
+      if (f.busca) {
+        const q = f.busca.toLowerCase();
+        const hay = [it.descricao_produto || '', it.marca || '', it.instituicoes?.nome || ''].join(' ').toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+    return new Set(itens.map(i => i.instituicao_id || 'sem_inst')).size;
+  })();
+  if (window._ipCarIdx < total - 1) { window._ipCarIdx++; _ipCarRender(); }
+};
+
+// Action sheet pra mudar status (toque em "⋯" no card)
+window.ipCarAcoes = function(itemId, colAtual) {
+  const item = (window._ipItens || []).find(i => i.id === itemId);
+  if (!item) return;
+  const prod = (item.descricao_produto || '—').replace(/</g,'&lt;');
+
+  const opcoes = [];
+  if (colAtual !== 'em_negociacao' && item.status !== 'convertido') {
+    opcoes.push({ id: 'negociar', label: '🤝 Iniciar negociação', cor: '#F59E0B', acao: () => handleAssumirConversao(itemId) });
+  }
+  if (colAtual === 'em_negociacao') {
+    opcoes.push({ id: 'cancelar', label: '✕ Cancelar negociação', cor: 'var(--status-danger)', acao: () => handleCancelarNegociacao(itemId) });
+  }
+  if (item.status !== 'convertido') {
+    opcoes.push({ id: 'converter', label: '🏆 Marcar como convertido', cor: 'var(--status-success)', acao: () => handleMudarStatusItem(itemId, 'convertido') });
+  }
+  opcoes.push({ id: 'editar', label: '✏️ Editar item', cor: 'var(--brand-navy)', acao: () => handleEditarItemPadronizado(itemId) });
+
+  // Salva referência das ações pra dispatch
+  window._ipCarAcoesMap = {};
+  opcoes.forEach(o => { window._ipCarAcoesMap[o.id] = o.acao; });
+
+  const html = `
+    <div id="ipCarSheetOverlay" style="position:fixed;inset:0;background:rgba(10,31,92,0.5);z-index:9999;display:flex;align-items:flex-end;" onclick="if(event.target===this) window.ipCarFecharSheet()">
+      <div style="background:var(--neutral-0);border-radius:16px 16px 0 0;width:100%;padding:14px 12px 24px;animation:slideUp 180ms ease-out;">
+        <div style="width:36px;height:4px;background:var(--neutral-300);border-radius:2px;margin:0 auto 12px;"></div>
+        <div style="font-family:var(--font-display);font-size:14px;font-weight:700;color:var(--brand-navy);text-align:center;margin-bottom:4px;">${prod}</div>
+        <div style="font-size:11.5px;color:var(--neutral-500);text-align:center;margin-bottom:14px;">O que você quer fazer?</div>
+        ${opcoes.map(o => `
+          <button onclick="window.ipCarExecAcao('${o.id}')" style="width:100%;background:var(--neutral-50,#FAFBFD);color:${o.cor};border:1px solid var(--neutral-200);padding:13px 14px;border-radius:10px;font-size:13.5px;font-weight:600;cursor:pointer;font-family:inherit;text-align:left;margin-bottom:6px;display:block;">
+            ${o.label}
+          </button>
+        `).join('')}
+        <button onclick="window.ipCarFecharSheet()" style="width:100%;background:transparent;color:var(--neutral-500);border:0;padding:10px;font-size:13px;cursor:pointer;font-family:inherit;margin-top:6px;">Cancelar</button>
+      </div>
+    </div>
+    <style>
+      @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+    </style>
+  `;
+  document.body.insertAdjacentHTML('beforeend', html);
+};
+window.ipCarFecharSheet = function() {
+  const ov = document.getElementById('ipCarSheetOverlay');
+  if (ov) ov.remove();
+};
+window.ipCarExecAcao = async function(acaoId) {
+  const acao = window._ipCarAcoesMap?.[acaoId];
+  window.ipCarFecharSheet();
+  if (acao) await acao();
+  // Recarrega depois de aplicar
+  setTimeout(() => {
+    if (typeof window._reloadItensPadronizados === 'function') window._reloadItensPadronizados();
+  }, 600);
+};
+
+// Swipe horizontal pra trocar hospital
+function _ipCarSetupSwipe() {
+  const content = document.getElementById('ipCarContent');
+  if (!content || content._swipeSetup) return;
+  content._swipeSetup = true;
+
+  let startX = null, startY = null;
+  content.addEventListener('touchstart', (e) => {
+    if (e.touches.length !== 1) return;
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+  }, { passive: true });
+  content.addEventListener('touchend', (e) => {
+    if (startX === null) return;
+    const endX = e.changedTouches[0].clientX;
+    const endY = e.changedTouches[0].clientY;
+    const dx = endX - startX;
+    const dy = endY - startY;
+    // Swipe horizontal só se for claramente lateral (não vertical scroll)
+    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+      if (dx < 0) window.ipCarNext();
+      else window.ipCarPrev();
+    }
+    startX = null; startY = null;
+  }, { passive: true });
+}
+
+// Listeners de busca (só uma vez)
+if (!window._ipCarListenersRegistered) {
+  window._ipCarListenersRegistered = true;
+  document.addEventListener('input', (e) => {
+    if (e.target?.id === 'ipCarBusca' && document.getElementById('ipCarContent')) {
+      window._ipFiltro.busca = e.target.value;
+      window._ipCarIdx = 0;
+      _ipCarRender();
+    }
+  });
+}
+
+// ============================================================
+// Histórico de conversões — tabela com tempo até conversão
+// Rota: #/admin/itens-padronizados/historico
+// ============================================================
+function renderItensHistoricoConversoesDesktop() {
+  const user = requireAdmin();
+  if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
+  setTimeout(() => atualizarBadgesSidebarDesktop(), 0);
+  return desktopShell({
+    title: 'Histórico de conversões',
+    breadcrumb: ['Admin', 'Itens padronizados', 'Histórico'],
+    content: renderItensHistoricoConversoes({ embed: true }),
+    activeId: 'standardized',
+  });
+}
+
+function renderItensHistoricoConversoes(opts = {}) {
+  const embed = opts.embed === true;
+  const user = requireAuth();
+  if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
+
+  if (!window._ipHistFiltro) {
+    window._ipHistFiltro = { mes: 'todos', nutricionista: 'todos', hospital: 'todos' };
+  }
+
+  setTimeout(async () => {
+    const itens = await listarItensPadronizados({ apenasMeus: false });
+    window._ipItens = itens;
+    _ipHistRender();
+  }, 0);
+
+  const content = `
+    <div style="padding:18px 20px 60px;max-width:1200px;margin:0 auto;">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:14px;">
+        <div>
+          <h1 style="font-family:var(--font-display);font-size:22px;font-weight:700;color:var(--brand-navy);margin:0;line-height:1.15;">Histórico de conversões</h1>
+          <div style="font-size:13px;color:var(--neutral-600);margin-top:4px;line-height:1.4;">
+            Todas as conversões registradas — com tempo de negociação até virar pedido.
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;flex-shrink:0;">
+          <button onclick="window.location.hash='#/admin/itens-padronizados'" style="background:var(--neutral-0);color:var(--brand-navy);border:1.5px solid var(--neutral-200);padding:9px 16px;border-radius:9999px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-family:inherit;">
+            <span class="material-symbols-rounded" style="font-size:17px;">arrow_back</span>
+            Voltar
+          </button>
+          <button onclick="exportarHistoricoConversoesCSV()" style="background:var(--brand-lime);color:#fff;border:0;padding:9px 16px;border-radius:9999px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-family:inherit;">
+            <span class="material-symbols-rounded" style="font-size:17px;">download</span>
+            CSV
+          </button>
+        </div>
+      </div>
+
+      <!-- Stats -->
+      <div id="ipHistStats" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:14px;"></div>
+
+      <!-- Filtros -->
+      <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:12px;padding:12px;margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        <select id="ipHistFMes" style="padding:8px 12px;border:1.5px solid var(--neutral-200);border-radius:8px;font-size:12.5px;font-family:inherit;background:var(--neutral-0);">
+          <option value="todos">Todos os meses</option>
+        </select>
+        <select id="ipHistFNutri" style="padding:8px 12px;border:1.5px solid var(--neutral-200);border-radius:8px;font-size:12.5px;font-family:inherit;background:var(--neutral-0);">
+          <option value="todos">Todos os nutricionistas</option>
+        </select>
+        <select id="ipHistFHosp" style="padding:8px 12px;border:1.5px solid var(--neutral-200);border-radius:8px;font-size:12.5px;font-family:inherit;background:var(--neutral-0);">
+          <option value="todos">Todos os hospitais</option>
+        </select>
+      </div>
+
+      <!-- Tabela -->
+      <div id="ipHistTabela" style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:12px;overflow:hidden;">
+        <div style="text-align:center;padding:40px;color:var(--neutral-500);font-size:13px;">Carregando...</div>
+      </div>
+    </div>
+
+    <style>
+      .hist-row {
+        display:grid; grid-template-columns: 75px 1.5fr 1.5fr 1fr 0.7fr 75px 75px;
+        gap: 10px; padding: 12px 14px; align-items:center; font-size:12.5px;
+        border-bottom: 1px solid var(--neutral-100);
+      }
+      .hist-row.head {
+        background: var(--neutral-50, #FAFBFD);
+        font-weight: 700; font-size: 11px; color: var(--neutral-500);
+        text-transform: uppercase; letter-spacing: 0.04em;
+      }
+      .hist-row:last-child { border-bottom: 0; }
+      .hist-row .prod { font-weight:600; color:var(--brand-navy); line-height:1.3; }
+      .hist-row .meta { font-size:11px; color:var(--neutral-500); margin-top:2px; }
+      .hist-cell-de, .hist-cell-para {
+        display: flex; align-items: flex-start; gap: 6px; min-width: 0;
+      }
+      .hist-cell-de .marker {
+        flex-shrink: 0; width:18px; height:18px; border-radius:4px;
+        display:flex; align-items:center; justify-content:center;
+        background: var(--neutral-100); color: var(--neutral-600); font-size:11px;
+      }
+      .hist-cell-para .marker {
+        flex-shrink: 0; width:18px; height:18px; border-radius:4px;
+        display:flex; align-items:center; justify-content:center;
+        background: #EAF5EE; color: var(--status-success); font-size:11px;
+      }
+      .hist-cell-de .text, .hist-cell-para .text {
+        flex: 1; min-width: 0; line-height: 1.3;
+      }
+      .hist-cell-de .nome { font-weight: 500; color: var(--neutral-700); font-size: 12.5px; }
+      .hist-cell-para .nome { font-weight: 600; color: var(--brand-navy); font-size: 12.5px; }
+      .hist-cell-de .marca, .hist-cell-para .marca { font-size: 10.5px; color: var(--neutral-500); margin-top: 2px; }
+      .hist-tempo {
+        display:inline-block; padding:2px 8px; border-radius:9999px;
+        font-size:11.5px; font-weight:600; background:#EAF5EE; color:var(--status-success);
+      }
+      .hist-tempo.lento { background:#FFF8EE; color:#92400E; }
+      .hist-tempo.muito_lento { background:#FCE8E8; color:var(--status-danger); }
+      .btn-rev { background:transparent;color:var(--status-danger);border:1px solid var(--neutral-200);padding:4px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit; }
+      .btn-rev:hover { background:#FCE8E8; border-color:var(--status-danger); }
+
+      /* Mobile: tabela vira cards verticais (7 colunas não cabem em 380px) */
+      @media (max-width: 900px) {
+        .hist-row {
+          grid-template-columns: 1fr !important;
+          gap: 6px !important;
+          padding: 12px 14px !important;
+          background: var(--neutral-0);
+          border-radius: 8px;
+          margin-bottom: 6px;
+          border: 1px solid var(--neutral-200);
+          border-bottom: 1px solid var(--neutral-200) !important;
+        }
+        .hist-row.head { display: none !important; }
+        .hist-row > span:nth-child(1)::before { content: '📅 '; }
+        .hist-row > span:nth-child(4)::before { content: '🏥 '; }
+        .hist-row > span:nth-child(5)::before { content: '👤 '; }
+        .hist-row > span:nth-child(6) { text-align: left !important; }
+        .hist-row > span:nth-child(7) { text-align: left !important; padding-top: 4px; }
+        .hist-row > span:nth-child(6)::before { content: '⏱️ '; color: var(--neutral-500); }
+        .hist-cell-de, .hist-cell-para {
+          padding: 6px 0;
+          border-top: 1px solid var(--neutral-100);
+        }
+        .hist-cell-para { border-bottom: 1px solid var(--neutral-100); }
+      }
+    </style>
+  `;
+
+  // Embed: sem wrapper (chamado pelo desktopShell)
+  if (embed) return content;
+
+  // Mobile/standalone: wrap com mbar
+  return `
+    <div class="mobile-app">
+      ${mobileTopBar({ title: 'Histórico de conversões', showBack: true })}
+      <main class="mcontent" style="padding:0;">
+        ${content}
+      </main>
+    </div>
+  `;
+}
+
+function _ipHistRender() {
+  const itens = window._ipItens || [];
+  const filtro = window._ipHistFiltro;
+
+  // Só itens convertidos com data
+  const convertidos = itens.filter(it => it.status === 'convertido' && it.convertido_em);
+
+  // Calcula tempo até conversão (em dias)
+  convertidos.forEach(it => {
+    if (it.conversao_iniciada_em) {
+      const inicio = new Date(it.conversao_iniciada_em).getTime();
+      const fim = new Date(it.convertido_em).getTime();
+      it._tempoConv = Math.max(0, Math.floor((fim - inicio) / 86400000));
+    } else {
+      it._tempoConv = null;
+    }
+  });
+
+  // Popula filtros (uma vez)
+  const meses = [...new Set(convertidos.map(it => {
+    const dt = new Date(it.convertido_em);
+    return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}`;
+  }))].sort().reverse();
+  const nutris = [...new Set(convertidos.map(it => it.convertedor?.nome || it.cadastrador?.nome).filter(Boolean))].sort();
+  const hospitais = [...new Set(convertidos.map(it => it.instituicoes?.nome).filter(Boolean))].sort();
+
+  const fMes = document.getElementById('ipHistFMes');
+  if (fMes && fMes.options.length === 1) {
+    meses.forEach(m => {
+      const [y, mn] = m.split('-');
+      const nomes = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+      const opt = document.createElement('option');
+      opt.value = m;
+      opt.textContent = `${nomes[parseInt(mn,10)-1]}/${y.slice(-2)}`;
+      fMes.appendChild(opt);
+    });
+  }
+  const fNutri = document.getElementById('ipHistFNutri');
+  if (fNutri && fNutri.options.length === 1) {
+    nutris.forEach(n => {
+      const opt = document.createElement('option');
+      opt.value = n; opt.textContent = n; fNutri.appendChild(opt);
+    });
+  }
+  const fHosp = document.getElementById('ipHistFHosp');
+  if (fHosp && fHosp.options.length === 1) {
+    hospitais.forEach(h => {
+      const opt = document.createElement('option');
+      opt.value = h; opt.textContent = h; fHosp.appendChild(opt);
+    });
+  }
+
+  // Aplica filtros
+  let filtrados = convertidos.filter(it => {
+    if (filtro.mes !== 'todos') {
+      const dt = new Date(it.convertido_em);
+      const k = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}`;
+      if (k !== filtro.mes) return false;
+    }
+    if (filtro.nutricionista !== 'todos') {
+      const n = it.convertedor?.nome || it.cadastrador?.nome;
+      if (n !== filtro.nutricionista) return false;
+    }
+    if (filtro.hospital !== 'todos' && it.instituicoes?.nome !== filtro.hospital) return false;
+    return true;
+  });
+
+  // Ordena por data desc
+  filtrados.sort((a,b) => new Date(b.convertido_em).getTime() - new Date(a.convertido_em).getTime());
+
+  // Stats
+  const total = filtrados.length;
+  const tempos = filtrados.map(it => it._tempoConv).filter(t => t !== null && t !== undefined);
+  const tempoMedio = tempos.length > 0 ? Math.round(tempos.reduce((a,b)=>a+b,0) / tempos.length) : null;
+  const statsEl = document.getElementById('ipHistStats');
+  if (statsEl) {
+    statsEl.innerHTML = `
+      <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:10px;padding:11px 13px;">
+        <div style="font-size:10.5px;color:var(--neutral-500);font-weight:700;letter-spacing:0.04em;text-transform:uppercase;">Conversões filtradas</div>
+        <div style="font-family:var(--font-display);font-size:22px;font-weight:700;color:var(--status-success);line-height:1.1;">${total}</div>
+      </div>
+      <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:10px;padding:11px 13px;">
+        <div style="font-size:10.5px;color:var(--neutral-500);font-weight:700;letter-spacing:0.04em;text-transform:uppercase;">Tempo médio até converter</div>
+        <div style="font-family:var(--font-display);font-size:22px;font-weight:700;color:var(--brand-navy);line-height:1.1;">${tempoMedio !== null ? tempoMedio + ' dias' : '—'}</div>
+      </div>
+      <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:10px;padding:11px 13px;">
+        <div style="font-size:10.5px;color:var(--neutral-500);font-weight:700;letter-spacing:0.04em;text-transform:uppercase;">Mais rápida</div>
+        <div style="font-family:var(--font-display);font-size:22px;font-weight:700;color:var(--brand-lime);line-height:1.1;">${tempos.length > 0 ? Math.min(...tempos) + ' dias' : '—'}</div>
+      </div>
+    `;
+  }
+
+  // Tabela
+  const tabEl = document.getElementById('ipHistTabela');
+  if (!tabEl) return;
+  if (filtrados.length === 0) {
+    tabEl.innerHTML = `
+      <div style="padding:40px;text-align:center;color:var(--neutral-500);font-size:13px;">
+        Nenhuma conversão bate com os filtros.
+      </div>
+    `;
+    return;
+  }
+
+  const formatDt = (iso) => {
+    const dt = new Date(iso);
+    return `${String(dt.getDate()).padStart(2,'0')}/${String(dt.getMonth()+1).padStart(2,'0')}/${String(dt.getFullYear()).slice(-2)}`;
+  };
+  const tempoClasse = (t) => t === null ? '' : (t > 60 ? 'muito_lento' : (t > 30 ? 'lento' : ''));
+
+  tabEl.innerHTML = `
+    <div class="hist-row head">
+      <span>DATA</span>
+      <span>📋 DE</span>
+      <span style="color:var(--status-success);">🏆 PARA</span>
+      <span>HOSPITAL</span>
+      <span>POR</span>
+      <span style="text-align:right;">TEMPO</span>
+      <span></span>
+    </div>
+    ${filtrados.map(it => {
+      const prod = (it.descricao_produto || '—').replace(/</g,'&lt;');
+      const marca = (it.marca || '').replace(/</g,'&lt;');
+      const destino = (it.convertido_em_descricao || '').replace(/</g,'&lt;');
+      const destinoMarca = (it.convertido_em_marca || '').replace(/</g,'&lt;');
+      const inst = (it.instituicoes?.nome || '—').replace(/</g,'&lt;');
+      const por = ((it.convertedor?.nome || it.cadastrador?.nome) || '—').replace(/</g,'&lt;');
+      const dataConv = formatDt(it.convertido_em);
+      const t = it._tempoConv;
+
+      const cellDe = `
+        <div class="hist-cell-de">
+          <div class="marker">📋</div>
+          <div class="text">
+            <div class="nome">${prod}</div>
+            ${marca ? `<div class="marca">${marca}</div>` : ''}
+          </div>
+        </div>
+      `;
+      const cellPara = destino
+        ? `
+          <div class="hist-cell-para">
+            <div class="marker">🏆</div>
+            <div class="text">
+              <div class="nome">${destino}</div>
+              ${destinoMarca ? `<div class="marca">${destinoMarca}</div>` : ''}
+            </div>
+          </div>
+        `
+        : `
+          <div class="hist-cell-para">
+            <div class="text">
+              <div style="color:var(--neutral-400);font-style:italic;font-size:11.5px;">— não informado —</div>
+            </div>
+          </div>
+        `;
+
+      return `
+        <div class="hist-row">
+          <span style="color:var(--neutral-600);">${dataConv}</span>
+          ${cellDe}
+          ${cellPara}
+          <span style="color:var(--brand-navy);">${inst}</span>
+          <span style="color:var(--neutral-700);">${por.split(' ')[0]}</span>
+          <span style="text-align:right;">${t !== null ? `<span class="hist-tempo ${tempoClasse(t)}">${t} ${t === 1 ? 'dia' : 'dias'}</span>` : '<span style="color:var(--neutral-400);font-size:11px;">—</span>'}</span>
+          <span style="text-align:right;"><button class="btn-rev" onclick="reverterConversaoItem('${it.id}')" title="Marcar como erro · volta pra Em negociação">↶ Reverter</button></span>
+        </div>
+      `;
+    }).join('')}
+  `;
+}
+
+// Reverter conversão (volta pra em_negociacao). Mostra confirm antes.
+window.reverterConversaoItem = async function(itemId) {
+  const ok = await confirmarAcao({
+    titulo: 'Reverter conversão?',
+    mensagem: 'O item vai voltar pra coluna <strong>"Em negociação"</strong> e sair do histórico.',
+    confirmLabel: 'Reverter',
+    perigo: true,
+    icone: 'undo',
+  });
+  if (!ok) return;
+  try {
+    const { error } = await db
+      .from('itens_padronizados')
+      .update({ status: 'em_negociacao', convertido_em: null })
+      .eq('id', itemId);
+    if (error) throw error;
+    await registrarLogItem({ itemId, instituicaoId: null, acao: 'conversao_revertida' });
+    setFlash && setFlash('success', 'Conversão revertida.');
+    if (typeof _ipHistRender === 'function') {
+      const itens = await listarItensPadronizados({ apenasMeus: false });
+      window._ipItens = itens;
+      _ipHistRender();
+    }
+  } catch (err) {
+    setFlash && setFlash('error', 'Erro ao reverter: ' + (err.message || err));
+  }
+};
+
+// Exporta histórico filtrado em CSV
+window.exportarHistoricoConversoesCSV = function() {
+  const itens = window._ipItens || [];
+  const filtro = window._ipHistFiltro || {};
+  const convertidos = itens.filter(it => it.status === 'convertido' && it.convertido_em);
+  const filtrados = convertidos.filter(it => {
+    if (filtro.mes && filtro.mes !== 'todos') {
+      const dt = new Date(it.convertido_em);
+      const k = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}`;
+      if (k !== filtro.mes) return false;
+    }
+    if (filtro.nutricionista && filtro.nutricionista !== 'todos') {
+      const n = it.convertedor?.nome || it.cadastrador?.nome;
+      if (n !== filtro.nutricionista) return false;
+    }
+    if (filtro.hospital && filtro.hospital !== 'todos' && it.instituicoes?.nome !== filtro.hospital) return false;
+    return true;
+  });
+  const linhas = [['Data', 'Produto original (era)', 'Marca original', 'Produto NHSC (virou)', 'Marca NHSC', 'Hospital', 'Convertido por', 'Tempo (dias)']];
+  filtrados.forEach(it => {
+    const dt = new Date(it.convertido_em);
+    const data = `${String(dt.getDate()).padStart(2,'0')}/${String(dt.getMonth()+1).padStart(2,'0')}/${dt.getFullYear()}`;
+    let tempo = '';
+    if (it.conversao_iniciada_em) {
+      tempo = String(Math.max(0, Math.floor((dt.getTime() - new Date(it.conversao_iniciada_em).getTime()) / 86400000)));
+    }
+    linhas.push([
+      data,
+      it.descricao_produto || '',
+      it.marca || '',
+      it.convertido_em_descricao || '',
+      it.convertido_em_marca || '',
+      it.instituicoes?.nome || '',
+      it.convertedor?.nome || it.cadastrador?.nome || '',
+      tempo,
+    ]);
+  });
+  // Sprint 9.32.68: usa ; como separador (padrão Excel BR) + hint sep=; na 1ª linha
+  // pra Excel reconhecer mesmo se a config local for diferente.
+  // Campos com ; ou " ou \n são quoteados; aspas internas viram "".
+  const escaparCampo = (c) => {
+    const s = String(c == null ? '' : c);
+    return /[;"\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  const csv = 'sep=;\n' + linhas.map(row => row.map(escaparCampo).join(';')).join('\r\n');
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = `historico-conversoes-${new Date().toISOString().slice(0,10)}.csv`;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+};
+
+// Listeners de filtro do histórico
+if (!window._ipHistListenersRegistered) {
+  window._ipHistListenersRegistered = true;
+  document.addEventListener('change', (e) => {
+    if (!document.getElementById('ipHistTabela')) return;
+    if (!window._ipHistFiltro) window._ipHistFiltro = { mes: 'todos', nutricionista: 'todos', hospital: 'todos' };
+    if (e.target?.id === 'ipHistFMes') { window._ipHistFiltro.mes = e.target.value; _ipHistRender(); }
+    if (e.target?.id === 'ipHistFNutri') { window._ipHistFiltro.nutricionista = e.target.value; _ipHistRender(); }
+    if (e.target?.id === 'ipHistFHosp') { window._ipHistFiltro.hospital = e.target.value; _ipHistRender(); }
   });
 }
 
@@ -37068,7 +39370,13 @@ window.filtrarInstLocal = function(termo) {
 };
 
 window.seedInstituicoesTeste = async function() {
-  if (!confirm('Cadastrar 5 hospitais de teste em São Paulo?')) return;
+  const ok = await confirmarAcao({
+    titulo: 'Cadastrar dados de teste?',
+    mensagem: '5 hospitais de teste em São Paulo serão criados no banco. Use só em ambiente de desenvolvimento.',
+    confirmLabel: 'Cadastrar',
+    icone: 'science',
+  });
+  if (!ok) return;
 
   const supervisorTeste = {
     supervisor_nome: 'Supervisor Teste',
@@ -37657,7 +39965,13 @@ window.excluirProfissionalExterno = async function(id, nome) {
 
 // Seed de profissionais de teste — distribui ~15 profissionais pelos 5 hospitais
 window.seedProfissionaisTeste = async function() {
-  if (!confirm('Cadastrar ~15 profissionais de teste distribuídos pelos hospitais?')) return;
+  const ok = await confirmarAcao({
+    titulo: 'Cadastrar dados de teste?',
+    mensagem: 'Cerca de 15 profissionais de teste serão criados e distribuídos pelos hospitais. Use só em ambiente de desenvolvimento.',
+    confirmLabel: 'Cadastrar',
+    icone: 'science',
+  });
+  if (!ok) return;
 
   try {
     // Busca as instituições cadastradas
