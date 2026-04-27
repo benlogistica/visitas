@@ -2176,6 +2176,21 @@ a {
   flex-direction: column;
 }
 .admin-drawer.is-open .admin-drawer__panel { transform: translateX(0); }
+
+/* Sprint 9.32.51: quando o drawer abriga a ds-sidebar (navy padrão), ela vira overlay igual mobile */
+.admin-drawer .ds-sidebar {
+  position: absolute !important;
+  top: 0 !important;
+  left: -280px;
+  bottom: 0;
+  width: 260px !important;
+  height: 100vh;
+  z-index: 1;
+  transition: left 220ms cubic-bezier(.2,.8,.3,1);
+  box-shadow: 4px 0 24px rgba(0,0,0,0.18);
+  position: sticky;
+}
+.admin-drawer.is-open .ds-sidebar { left: 0; }
 .admin-drawer__header {
   display: flex;
   align-items: center;
@@ -5679,6 +5694,110 @@ a {
   min-height: 100vh;
   background: var(--neutral-50, #FAFBFC);
   font-family: 'Inter', sans-serif;
+  position: relative;
+}
+
+/* Sprint 9.32.48: botões mobile da topbar (menu + voltar) — escondidos em desktop */
+.ds-topbar__mobile-btn {
+  display: none;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  color: var(--brand-navy);
+  border-radius: 50%;
+  flex-shrink: 0;
+  transition: background 140ms;
+}
+
+/* Backdrop escuro quando sidebar mobile aberta */
+.ds-shell__backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 31, 92, 0.45);
+  z-index: 998;
+  animation: dsBackdropFade 160ms ease-out;
+}
+@keyframes dsBackdropFade { from { opacity: 0; } to { opacity: 1; } }
+
+/* Sprint 9.32.49 (Protótipo 2): topbar mobile fica navy escuro com botões circulares + avatar */
+@media (max-width: 1023px) {
+  .ds-sidebar {
+    position: fixed !important;
+    top: 0 !important;
+    left: -280px;
+    width: 260px !important;
+    height: 100vh;
+    z-index: 999;
+    transition: left 220ms cubic-bezier(.2,.8,.3,1);
+    box-shadow: 4px 0 24px rgba(0,0,0,0.18);
+  }
+  .ds-shell.sidebar-open .ds-sidebar { left: 0; }
+  .ds-shell.sidebar-open .ds-shell__backdrop { display: block; }
+  .ds-main { width: 100%; min-width: 0; }
+  .ds-content { padding: 16px !important; }
+
+  /* Topbar fica navy em mobile, com texto branco */
+  .ds-topbar {
+    background: var(--brand-navy) !important;
+    border-bottom: 0 !important;
+    padding: 0 12px !important;
+    gap: 10px !important;
+    height: 60px !important;
+  }
+
+  /* Hambúrguer (transparente, ícone branco) */
+  .ds-topbar__menu-btn {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    color: #fff !important;
+    background: transparent !important;
+  }
+  .ds-topbar__menu-btn:hover { background: rgba(255,255,255,0.08) !important; }
+
+  /* Voltar circular com fundo levemente claro */
+  .ds-topbar__back-btn {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    color: #fff !important;
+    background: rgba(255,255,255,0.12) !important;
+  }
+  .ds-topbar__back-btn:hover { background: rgba(255,255,255,0.2) !important; }
+
+  /* Título em branco */
+  .ds-topbar__title { font-size: 16px !important; color: #fff !important; }
+  /* Esconde o breadcrumb em mobile — redundante com o título */
+  .ds-topbar__breadcrumb { display: none !important; }
+
+  /* Esconde busca, sino, divider e info do avatar — só fica o avatar */
+  .ds-topbar__search { display: none !important; }
+  .ds-topbar__divider { display: none !important; }
+  .ds-topbar__icon-btn { display: none !important; }
+  .ds-topbar__avatar-info { display: none !important; }
+
+  /* Avatar continua visível (só a bolinha) */
+  .ds-topbar__avatar-btn {
+    background: transparent !important;
+    border: 0 !important;
+    padding: 0 !important;
+    margin-left: auto;
+  }
+  .ds-topbar__avatar-btn .material-symbols-rounded { display: none !important; }
+  .ds-topbar__avatar {
+    width: 36px !important;
+    height: 36px !important;
+    background-color: var(--brand-lime) !important;
+    color: #fff !important;
+    font-size: 13px !important;
+    font-weight: 700 !important;
+  }
 }
 
 /* Sidebar */
@@ -6088,7 +6207,7 @@ a {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.45d-fat-mobile-overflow',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.51b-drawer-igual-sidebar',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -9307,6 +9426,12 @@ function desktopTopbar({ title, breadcrumb = [], titleExtra = '' } = {}) {
 
   return `
     <header class="ds-topbar">
+      <button class="ds-topbar__mobile-btn ds-topbar__menu-btn" onclick="toggleSidebarMobile()" title="Menu" aria-label="Abrir menu">
+        <span class="material-symbols-rounded" style="font-size:24px;">menu</span>
+      </button>
+      <button class="ds-topbar__mobile-btn ds-topbar__back-btn" onclick="history.back()" title="Voltar" aria-label="Voltar">
+        <span class="material-symbols-rounded" style="font-size:18px;">arrow_back</span>
+      </button>
       <div class="ds-topbar__title-wrap">
         <div style="display:flex;align-items:baseline;gap:10px;">
           <div class="ds-topbar__title">${title || ''}</div>
@@ -9348,8 +9473,9 @@ function desktopTopbar({ title, breadcrumb = [], titleExtra = '' } = {}) {
 // Uso: `return desktopShell({ title, breadcrumb, content, activeId })`
 function desktopShell({ title, breadcrumb, titleExtra, content, activeId }) {
   return `
-    <div class="ds-shell">
+    <div class="ds-shell" id="dsShell">
       ${desktopSidebar(activeId || sidebarActiveFromHash(window.location.hash || '#/'))}
+      <div class="ds-shell__backdrop" onclick="closeSidebarMobile()"></div>
       <div class="ds-main">
         ${desktopTopbar({ title, breadcrumb, titleExtra })}
         <main class="ds-content">
@@ -9359,6 +9485,17 @@ function desktopShell({ title, breadcrumb, titleExtra, content, activeId }) {
     </div>
   `;
 }
+
+// Sprint 9.32.48: toggle da sidebar em mobile (admin/nutri desktop em viewport pequeno)
+window.toggleSidebarMobile = function() {
+  const shell = document.getElementById('dsShell');
+  if (!shell) return;
+  shell.classList.toggle('sidebar-open');
+};
+window.closeSidebarMobile = function() {
+  const shell = document.getElementById('dsShell');
+  if (shell) shell.classList.remove('sidebar-open');
+};
 
 /* ==========================================================================
    DESKTOP NUTRI — Sidebar + shell específicos do perfil nutri (Sprint 9.26)
@@ -9433,8 +9570,9 @@ function desktopSidebarNutri(activeId) {
 // Shell desktop do nutri: reusa desktopTopbar mas troca a sidebar
 function desktopShellNutri({ title, breadcrumb, titleExtra, content, activeId }) {
   return `
-    <div class="ds-shell">
+    <div class="ds-shell" id="dsShell">
       ${desktopSidebarNutri(activeId || sidebarActiveFromHashNutri(window.location.hash || '#/'))}
+      <div class="ds-shell__backdrop" onclick="closeSidebarMobile()"></div>
       <div class="ds-main">
         ${desktopTopbar({ title, breadcrumb, titleExtra })}
         <main class="ds-content">
@@ -13757,9 +13895,8 @@ function mobileTopBar(opts = {}) {
 
   // Sprint 9.10: hambúrguer aparece automaticamente pro nutri (acesso a Institui\u00e7\u00f5es/Profissionais/Indicadores)
   // Admin continua com showMenu expl\u00edcito (comportamento antigo)
-  const ehNutri = user && user.perfil !== 'admin';
-  const mostrarMenu = showMenu || ehNutri;
-  const botaoMenu = mostrarMenu ? `
+  // Sprint 9.32.50: hambúrguer aparece em TODAS as telas mobile (admin + nutri)
+  const botaoMenu = user ? `
     <button class="mbar__icon-btn" onclick="openAdminDrawer()" title="Menu" style="background:transparent;border:none;color:#fff;padding:6px;cursor:pointer;">
       <span class="material-symbols-rounded" style="font-size:26px">menu</span>
     </button>
@@ -13783,15 +13920,16 @@ function mobileTopBar(opts = {}) {
   }
 
   if (showBack) {
+    // Sprint 9.32.50 (Protótipo 2): ordem padronizada hambúrguer → voltar → título → ações
     return `
       <header class="mbar">
         <div class="mbar__row">
+          ${botaoMenu}
           <button class="mbar__back" onclick="voltarSeguro()">
             <span class="material-symbols-rounded" style="font-size:18px">arrow_back_ios_new</span>
           </button>
           <div class="mbar__title">${title || ''}</div>
           ${botaoBusca}
-          ${botaoMenu}
         </div>
       </header>
     `;
@@ -22998,62 +23136,21 @@ function renderListaVisitasRelatorio(visitas) {
   `;
 }
 
-// Drawer lateral com atalhos de admin
+// Sprint 9.32.51: drawer agora REUSA a mesma sidebar navy do desktop, ficando 100% padronizado
+// (admin vê desktopSidebar, nutri vê desktopSidebarNutri). Estilo idêntico em todos os lugares.
 function renderAdminDrawer() {
   const user = getCurrentUser();
   const perfil = user?.perfil || 'profissional';
+  const hash = window.location.hash || '#/';
 
-  // Sprint 9.10: items por perfil
-  // Admin vê as telas admin; nutri vê suas telas pessoais
-  const itemsAdmin = [
-    { href: '#/admin/instituicoes',   icon: 'local_hospital',          titulo: 'Instituições',    desc: 'Hospitais e clínicas cadastrados' },
-    { href: '#/admin/profissionais',  icon: 'stethoscope',             titulo: 'Profissionais',   desc: 'Contatos nas instituições' },
-    { href: '#/admin/equipe',         icon: 'groups',                  titulo: 'Equipe',          desc: 'Aprovar cadastros e gerenciar acesso' },
-    { href: '#/admin/revisao',        icon: 'rule',                    titulo: 'Fila de Revisão', desc: 'Visitas com divergências' },
-    { href: '#/admin/pendentes',      icon: 'hourglass_top',           titulo: 'Pendências',      desc: 'Aprovar instituições e objetivos' },
-    { href: '#/admin/objetivos',      icon: 'flag',                    titulo: 'Objetivos',       desc: 'Gerenciar lista de objetivos de visita' },
-    { href: '#/admin/itens-padronizados', icon: 'inventory_2',         titulo: 'Itens padronizados', desc: 'Mapear concorrentes e converter vendas' },
-    { href: '#/admin/faturamento',     icon: 'paid',                    titulo: 'Faturamento',     desc: 'Painel financeiro completo da empresa' },
-    { href: '#/admin/agenda',          icon: 'event_note',              titulo: 'Agenda da equipe',desc: 'Ver e atribuir visitas agendadas' },
-    { href: '#/admin/configuracoes',  icon: 'settings',                titulo: 'Configurações',   desc: 'Parâmetros globais do sistema' },
-    { href: '#/logout',               icon: 'logout',                  titulo: 'Sair',            desc: 'Encerrar sessão' },
-  ];
-  const itemsNutri = [
-    { href: '#/nutri/instituicoes',   icon: 'local_hospital', titulo: 'Instituições',  desc: 'Hospitais que você visita' },
-    { href: '#/nutri/profissionais',  icon: 'stethoscope',    titulo: 'Profissionais', desc: 'Contatos nos hospitais' },
-    { href: '#/nutri/itens-padronizados', icon: 'inventory_2', titulo: 'Itens padronizados', desc: 'Concorrentes nos hospitais que você visita' },
-    { href: '#/nutri/indicadores',    icon: 'bar_chart',      titulo: 'Indicadores',   desc: 'Sua produção em números' },
-    // Sprint 9.32.25: Performance & ROI agora também no drawer
-    { href: '#/nutri/performance',    icon: 'insights',       titulo: 'Performance & ROI', desc: 'Faturamento dos hospitais que você visita' },
-    { href: '#/logout',               icon: 'logout',         titulo: 'Sair',          desc: 'Encerrar sessão' },
-  ];
-  const items = perfil === 'admin' ? itemsAdmin : itemsNutri;
+  const sidebarHtml = perfil === 'admin'
+    ? desktopSidebar(sidebarActiveFromHash(hash))
+    : desktopSidebarNutri(sidebarActiveFromHashNutri(hash));
 
   return `
     <div class="admin-drawer" id="adminDrawer">
       <div class="admin-drawer__backdrop" onclick="closeAdminDrawer()"></div>
-      <aside class="admin-drawer__panel">
-        <div class="admin-drawer__header">
-          <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:15px;">Menu</div>
-          <button onclick="closeAdminDrawer()" style="background:none;border:none;padding:6px;cursor:pointer;color:var(--neutral-500);">
-            <span class="material-symbols-rounded">close</span>
-          </button>
-        </div>
-        <nav class="admin-drawer__nav">
-          ${items.map(it => `
-            <a href="${it.href}" class="admin-drawer__item" onclick="closeAdminDrawer()">
-              <span class="admin-drawer__item-icon">
-                <span class="material-symbols-rounded" style="font-size:20px;">${it.icon}</span>
-              </span>
-              <div class="admin-drawer__item-body">
-                <div class="admin-drawer__item-title">${it.titulo}</div>
-                <div class="admin-drawer__item-desc">${it.desc}</div>
-              </div>
-              <span class="material-symbols-rounded" style="font-size:16px;color:var(--neutral-300);">chevron_right</span>
-            </a>
-          `).join('')}
-        </nav>
-      </aside>
+      ${sidebarHtml}
     </div>
   `;
 }
@@ -27532,6 +27629,9 @@ function renderFaturamentoDesktop() {
    Reusa _perfNormalizaCnpj + _perfFmtMoeda da Fase 4.
    ========================================================================== */
 
+// Sprint 9.32.46: ROI da Equipe enriquecido — KPIs com delta vs período anterior,
+// ranking com tendência e última visita, oportunidades (hospitais não cobertos),
+// visitados sem retorno, e alerta de hospitais esfriando.
 async function _roiCalcularEquipe({ periodo = '6m' }) {
   if (!FAT_DATA) {
     try { await _fatCarregarDados(); }
@@ -27556,16 +27656,24 @@ async function _roiCalcularEquipe({ periodo = '6m' }) {
     v.checkin_timestamp && !v.cancelado_em && v.visita_realizada !== false
   );
 
-  // 3) Filtro de período
+  // 3) Calcula janelas de tempo: período atual + período anterior equivalente (pra delta)
   const agora = new Date();
-  let dataInicio = null;
-  if (periodo === '3m')  dataInicio = new Date(agora.getFullYear(), agora.getMonth() - 2, 1);
-  if (periodo === '6m')  dataInicio = new Date(agora.getFullYear(), agora.getMonth() - 5, 1);
-  if (periodo === '12m') dataInicio = new Date(agora.getFullYear(), agora.getMonth() - 11, 1);
+  const subMesesData = (n) => new Date(agora.getFullYear(), agora.getMonth() - n + 1, 1);
+  let dataInicio = null, dataInicioAnterior = null;
+  if (periodo === '3m')  { dataInicio = subMesesData(3);  dataInicioAnterior = subMesesData(6); }
+  if (periodo === '6m')  { dataInicio = subMesesData(6);  dataInicioAnterior = subMesesData(12); }
+  if (periodo === '12m') { dataInicio = subMesesData(12); dataInicioAnterior = subMesesData(24); }
+  // 'tudo' → sem comparativo
 
-  const visitasFilt = dataInicio
+  const visitasAtual = dataInicio
     ? visitas.filter(v => new Date(v.checkin_timestamp) >= dataInicio)
     : visitas;
+  const visitasAnt = dataInicioAnterior
+    ? visitas.filter(v => {
+        const dt = new Date(v.checkin_timestamp);
+        return dt >= dataInicioAnterior && dt < dataInicio;
+      })
+    : [];
 
   // 4) Indexa clientes_top por CNPJ
   const clientesPorCnpj = {};
@@ -27574,89 +27682,192 @@ async function _roiCalcularEquipe({ periodo = '6m' }) {
     if (cn) clientesPorCnpj[cn] = c;
   });
 
-  // 5) Agrupa visitas por (nutri × instituição) pra evitar contar faturamento em duplicidade
-  const instVisitadasPorNutri = {};  // nutriId → Set<cnpj>
-  const visitasPorNutri = {};        // nutriId → nº visitas
-  const instPorNutri = {};           // nutriId → Set<inst_id>
-  const cnpjParaFat = {};            // cnpj → faturamento (pra agregação global)
-  const cnpjParaInfo = {};           // cnpj → {nome, cidade, estado, qtd_notas}
+  // 5a) Sparkline: série de visitas mensais por nutri (últimos N meses)
+  //     N segue o período: 3m=3 buckets, 6m=6, 12m=12, 'tudo'=12 (último ano)
+  const bucketsSerie = (periodo === '3m') ? 3 : (periodo === '6m') ? 6 : 12;
+  const labelsBuckets = []; // array de "YYYY-MM" do mais antigo pro mais novo
+  for (let i = bucketsSerie - 1; i >= 0; i--) {
+    const dt = new Date(agora.getFullYear(), agora.getMonth() - i, 1);
+    labelsBuckets.push(`${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}`);
+  }
+  function calcularSerie(nutriId) {
+    const buckets = labelsBuckets.map(() => 0);
+    visitas.forEach(v => {
+      if (v.nutricionista_id !== nutriId) return;
+      if (!v.checkin_timestamp) return;
+      const dt = new Date(v.checkin_timestamp);
+      const ym = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}`;
+      const idx = labelsBuckets.indexOf(ym);
+      if (idx >= 0) buckets[idx]++;
+    });
+    return buckets;
+  }
 
-  visitasFilt.forEach(v => {
-    const nId = v.nutricionista_id;
-    if (!nId) return;
-    visitasPorNutri[nId] = (visitasPorNutri[nId] || 0) + 1;
-    if (!instPorNutri[nId]) instPorNutri[nId] = new Set();
-    if (v.instituicao_id) instPorNutri[nId].add(v.instituicao_id);
+  // 5) Helper: dado um array de visitas, calcula métricas agregadas
+  function calcularMetricas(visitasArr) {
+    const cnpjsPorNutri = {}, visitasPorNutri = {}, instPorNutri = {};
+    const cnpjParaFat = {}, cnpjParaInfo = {};
+    const ultimaVisitaPorNutri = {}, ultimaVisitaPorCnpj = {};
 
-    const inst = v.instituicoes;
-    if (!inst) return;
-    const cnpjNorm = _perfNormalizaCnpj(inst.cnpj);
-    if (!cnpjNorm) return;
-    if (!instVisitadasPorNutri[nId]) instVisitadasPorNutri[nId] = new Set();
-    instVisitadasPorNutri[nId].add(cnpjNorm);
+    visitasArr.forEach(v => {
+      const nId = v.nutricionista_id;
+      if (!nId) return;
+      visitasPorNutri[nId] = (visitasPorNutri[nId] || 0) + 1;
+      if (!instPorNutri[nId]) instPorNutri[nId] = new Set();
+      if (v.instituicao_id) instPorNutri[nId].add(v.instituicao_id);
 
-    const cli = clientesPorCnpj[cnpjNorm];
-    if (cli && !cnpjParaFat[cnpjNorm]) {
-      cnpjParaFat[cnpjNorm] = cli.faturamento || 0;
-      cnpjParaInfo[cnpjNorm] = {
-        nome: cli['Cliente (Nome Fantasia)'] || inst.nome,
-        instNome: inst.nome,
-        cidade: cli.Cidade || inst.cidade,
-        estado: cli.Estado || inst.estado,
-        qtd_notas: cli.qtd_notas || 0,
-      };
-    }
-  });
+      const dt = new Date(v.checkin_timestamp);
+      if (!ultimaVisitaPorNutri[nId] || dt > ultimaVisitaPorNutri[nId]) ultimaVisitaPorNutri[nId] = dt;
 
-  // 6) Ranking por nutri
+      const inst = v.instituicoes;
+      if (!inst) return;
+      const cnpjNorm = _perfNormalizaCnpj(inst.cnpj);
+      if (!cnpjNorm) return;
+      if (!cnpjsPorNutri[nId]) cnpjsPorNutri[nId] = new Set();
+      cnpjsPorNutri[nId].add(cnpjNorm);
+
+      if (!ultimaVisitaPorCnpj[cnpjNorm] || dt > ultimaVisitaPorCnpj[cnpjNorm]) ultimaVisitaPorCnpj[cnpjNorm] = dt;
+
+      const cli = clientesPorCnpj[cnpjNorm];
+      if (cli && !cnpjParaFat[cnpjNorm]) {
+        cnpjParaFat[cnpjNorm] = cli.faturamento || 0;
+        cnpjParaInfo[cnpjNorm] = {
+          nome: cli['Cliente (Nome Fantasia)'] || inst.nome,
+          cidade: cli.Cidade || inst.cidade,
+          estado: cli.Estado || inst.estado,
+          qtd_notas: cli.qtd_notas || 0,
+        };
+      }
+    });
+
+    return {
+      cnpjsPorNutri, visitasPorNutri, instPorNutri,
+      cnpjParaFat, cnpjParaInfo,
+      ultimaVisitaPorNutri, ultimaVisitaPorCnpj,
+      totalVisitas: Object.values(visitasPorNutri).reduce((s, v) => s + v, 0),
+      totalFat: Object.values(cnpjParaFat).reduce((s, v) => s + v, 0),
+      totalHospCobertos: Object.keys(cnpjParaFat).length,
+    };
+  }
+
+  const atual = calcularMetricas(visitasAtual);
+  const anterior = calcularMetricas(visitasAnt);
+
+  // 6) Ranking por nutri (com deltas vs período anterior)
   const ranking = (nutris || []).map(n => {
     const nId = n.id;
-    const cnpjSet = instVisitadasPorNutri[nId] || new Set();
-    let fat = 0;
-    cnpjSet.forEach(cn => { fat += (cnpjParaFat[cn] || 0); });
-    const nVisitas = visitasPorNutri[nId] || 0;
-    const nInst = (instPorNutri[nId] || new Set()).size;
+    const cnpjSet = atual.cnpjsPorNutri[nId] || new Set();
+    let fatAtual = 0;
+    cnpjSet.forEach(cn => { fatAtual += (atual.cnpjParaFat[cn] || 0); });
+
+    const cnpjSetAnt = anterior.cnpjsPorNutri[nId] || new Set();
+    let fatAnt = 0;
+    cnpjSetAnt.forEach(cn => { fatAnt += (anterior.cnpjParaFat[cn] || 0); });
+
+    const visitas_n = atual.visitasPorNutri[nId] || 0;
+    const visitasAnt_n = anterior.visitasPorNutri[nId] || 0;
+    const nInst = (atual.instPorNutri[nId] || new Set()).size;
+
     return {
       id: nId,
       nome: n.nome,
       foto_url: n.foto_url,
-      visitas: nVisitas,
+      visitas: visitas_n,
+      visitasAnt: visitasAnt_n,
       instituicoes: nInst,
       inst_com_match: cnpjSet.size,
-      faturamento: fat,
-      roi: nVisitas > 0 ? fat / nVisitas : 0,
+      faturamento: fatAtual,
+      faturamentoAnt: fatAnt,
+      ultimaVisita: atual.ultimaVisitaPorNutri[nId] || null,
+      deltaVisitasPct: visitasAnt_n > 0 ? ((visitas_n - visitasAnt_n) / visitasAnt_n) * 100 : null,
+      deltaFatPct: fatAnt > 0 ? ((fatAtual - fatAnt) / fatAnt) * 100 : null,
+      serieMensal: calcularSerie(nId),  // Sprint 9.32.46b: visitas mês a mês pra sparkline
     };
   });
 
-  // Remove nutris sem visitas no período
   const rankingAtivo = ranking.filter(r => r.visitas > 0);
   rankingAtivo.sort((a, b) => (b.faturamento - a.faturamento) || (b.visitas - a.visitas));
 
-  // 7) Top hospitais agregados (só os que têm visita de alguém)
-  const topHospitais = Object.keys(cnpjParaFat).map(cn => ({
+  // 7) Top hospitais cobertos (com última visita)
+  const topHospitais = Object.keys(atual.cnpjParaFat).map(cn => ({
     cnpj: cn,
-    faturamento: cnpjParaFat[cn],
-    ...cnpjParaInfo[cn],
+    faturamento: atual.cnpjParaFat[cn],
+    ultimaVisita: atual.ultimaVisitaPorCnpj[cn] || null,
+    ...atual.cnpjParaInfo[cn],
   }));
   topHospitais.sort((a, b) => b.faturamento - a.faturamento);
 
-  // 8) KPIs globais
-  const totalVisitas = rankingAtivo.reduce((s, r) => s + r.visitas, 0);
-  const totalFaturamento = Object.values(cnpjParaFat).reduce((s, v) => s + v, 0);
-  const totalHospitaisCobertos = Object.keys(cnpjParaFat).length;
-  const nutrisAtivos = rankingAtivo.length;
+  // 8) OPORTUNIDADES: clientes_top do FAT_DATA que NÃO foram visitados pela equipe
+  const cnpjsCobertos = new Set(Object.keys(atual.cnpjParaFat));
+  const oportunidades = (FAT_DATA.clientes_top || [])
+    .map(c => ({
+      cnpj: _perfNormalizaCnpj(c['CNPJ/CPF']),
+      nome: c['Cliente (Nome Fantasia)'] || '—',
+      cidade: c.Cidade || '—',
+      estado: c.Estado || '—',
+      faturamento: c.faturamento || 0,
+    }))
+    .filter(c => c.cnpj && !cnpjsCobertos.has(c.cnpj))
+    .slice(0, 8);
+
+  // 9) VISITADOS SEM RETORNO: instituições que receberam visita mas o CNPJ não bate com nenhum cliente
+  const instSemMatchSet = new Set();
+  const visitadosSemRetorno = [];
+  visitasAtual.forEach(v => {
+    const inst = v.instituicoes;
+    if (!inst) return;
+    const cnpjNorm = _perfNormalizaCnpj(inst.cnpj);
+    if (cnpjNorm && clientesPorCnpj[cnpjNorm]) return; // tem match, ok
+    if (instSemMatchSet.has(inst.id)) return;
+    instSemMatchSet.add(inst.id);
+    visitadosSemRetorno.push({
+      id: inst.id,
+      nome: inst.nome,
+      cidade: inst.cidade,
+      estado: inst.estado,
+      semCnpj: !cnpjNorm,
+    });
+  });
+
+  // 10) ESFRIANDO: hospitais cobertos com última visita > 30 dias
+  const limiteEsfriarMs = 30 * 24 * 60 * 60 * 1000;
+  const esfriando = topHospitais.filter(h => {
+    if (!h.ultimaVisita) return false;
+    return (agora - h.ultimaVisita) > limiteEsfriarMs;
+  }).slice(0, 10);
+
+  // 11) Faturamento total geral (pra calcular % de cobertura sobre o universo conhecido)
+  const totalFatGeral = (FAT_DATA.clientes_top || []).reduce((s, c) => s + (c.faturamento || 0), 0);
+  const totalFatNaoCoberto = Math.max(0, totalFatGeral - atual.totalFat);
+  const pctCobertura = totalFatGeral > 0 ? (atual.totalFat / totalFatGeral) * 100 : 0;
+  const pctCoberturaAnt = totalFatGeral > 0 ? (anterior.totalFat / totalFatGeral) * 100 : 0;
+
+  // Helper de delta % (null se não dá pra calcular)
+  const delta = (atualV, antV) => antV > 0 ? ((atualV - antV) / antV) * 100 : null;
 
   return {
     periodo,
-    nutrisAtivos,
-    totalVisitas,
-    totalFaturamento,
-    totalHospitaisCobertos,
+    deltasDisponivel: !!dataInicioAnterior,
+    nutrisAtivos: rankingAtivo.length,
+    totalVisitas: atual.totalVisitas,
+    totalFaturamento: atual.totalFat,
+    totalHospitaisCobertos: atual.totalHospCobertos,
+    totalFatNaoCoberto,
+    pctCobertura,
+    deltaVisitas: delta(atual.totalVisitas, anterior.totalVisitas),
+    deltaFat: delta(atual.totalFat, anterior.totalFat),
+    deltaHosp: delta(atual.totalHospCobertos, anterior.totalHospCobertos),
+    deltaCobertura: dataInicioAnterior ? (pctCobertura - pctCoberturaAnt) : null,
     ranking: rankingAtivo,
     topHospitais: topHospitais.slice(0, 15),
+    oportunidades,
+    visitadosSemRetorno: visitadosSemRetorno.slice(0, 8),
+    esfriando,
   };
 }
 
+// Sprint 9.32.46: render do ROI da Equipe com KPIs comparativos, ranking enriquecido,
+// oportunidades, gaps e alerta de hospitais esfriando.
 function _roiRenderEquipe() {
   const el = document.getElementById('roiEquipeContent');
   if (!el) return;
@@ -27673,56 +27884,137 @@ function _roiRenderEquipe() {
     return;
   }
 
-  const { nutrisAtivos, totalVisitas, totalFaturamento, totalHospitaisCobertos, ranking, topHospitais } = state;
+  const {
+    nutrisAtivos, totalVisitas, totalFaturamento, totalHospitaisCobertos,
+    totalFatNaoCoberto, pctCobertura, deltasDisponivel,
+    deltaVisitas, deltaFat, deltaHosp, deltaCobertura,
+    ranking, topHospitais, oportunidades, visitadosSemRetorno, esfriando,
+  } = state;
 
-  // KPIs
+  // Helper: badge de delta % com seta
+  const deltaBadge = (delta, isPct) => {
+    if (delta == null || !deltasDisponivel) return '';
+    const isPositivo = delta > 0;
+    const isZero = Math.abs(delta) < 0.5;
+    const cor = isZero ? '#6B7280' : isPositivo ? '#16A34A' : '#B45309';
+    const seta = isZero ? '–' : isPositivo ? '↑' : '↓';
+    const valor = isPct
+      ? `${Math.abs(delta).toFixed(1)}pp`
+      : `${Math.abs(delta).toFixed(0)}%`;
+    return `<span style="font-size:11px;color:${cor};font-weight:700;margin-left:6px;">${seta} ${valor}</span>`;
+  };
+
+  // Helper: formato relativo de data ("há 3 dias", "há 1 mês")
+  const fmtRelativo = (data) => {
+    if (!data) return '—';
+    const dias = Math.floor((new Date() - data) / (24 * 60 * 60 * 1000));
+    if (dias === 0) return 'hoje';
+    if (dias === 1) return 'ontem';
+    if (dias < 30) return `há ${dias} dias`;
+    if (dias < 60) return 'há 1 mês';
+    const meses = Math.floor(dias / 30);
+    return `há ${meses} meses`;
+  };
+  const corDataRelativa = (data) => {
+    if (!data) return '#9CA3AF';
+    const dias = Math.floor((new Date() - data) / (24 * 60 * 60 * 1000));
+    if (dias <= 7) return '#16A34A';   // verde - recente
+    if (dias <= 30) return '#B45309';  // laranja - mediano
+    return '#B91C1C';                  // vermelho - frio
+  };
+
+  // Sprint 9.32.46b: gera SVG sparkline de uma série de números (visitas mês a mês)
+  // Cor: verde se a tendência subiu (último > primeiro com sinal), laranja se desceu, cinza se flat.
+  const gerarSparkline = (serie) => {
+    if (!serie || serie.length === 0) return '<span style="color:#9CA3AF;font-size:11px;">—</span>';
+    const W = 80, H = 22, pad = 2;
+    const max = Math.max(...serie, 1);  // evita /0
+    const min = Math.min(...serie);
+    const span = max - min || 1;
+    const stepX = (W - pad * 2) / Math.max(serie.length - 1, 1);
+    const pts = serie.map((v, i) => {
+      const x = pad + i * stepX;
+      const y = H - pad - ((v - min) / span) * (H - pad * 2);
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    });
+    const ultimo = serie[serie.length - 1];
+    const primeiro = serie[0];
+    const cor = ultimo > primeiro ? '#16A34A' : ultimo < primeiro ? '#B45309' : '#9CA3AF';
+    const ptsArr = pts[pts.length - 1].split(',');
+    return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="display:inline-block;vertical-align:middle;">
+      <polyline points="${pts.join(' ')}" fill="none" stroke="${cor}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="${ptsArr[0]}" cy="${ptsArr[1]}" r="2" fill="${cor}"/>
+    </svg>`;
+  };
+
+  // KPIs com deltas (responsivo: 4 colunas desktop, 2 em mobile)
   const kpisHtml = `
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px;">
-      <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:14px;padding:18px 20px;">
-        <div style="font-size:11px;color:var(--neutral-500);text-transform:uppercase;letter-spacing:0.5px;font-weight:600;margin-bottom:8px;">Nutris ativos</div>
-        <span style="font-family:var(--font-display);font-weight:700;font-size:32px;color:var(--brand-navy);line-height:1;">${nutrisAtivos}</span>
-      </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));gap:14px;margin-bottom:20px;">
       <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:14px;padding:18px 20px;">
         <div style="font-size:11px;color:var(--neutral-500);text-transform:uppercase;letter-spacing:0.5px;font-weight:600;margin-bottom:8px;">Total de visitas</div>
-        <span style="font-family:var(--font-display);font-weight:700;font-size:32px;color:var(--brand-navy);line-height:1;">${totalVisitas}</span>
+        <div style="display:flex;align-items:baseline;gap:6px;flex-wrap:wrap;">
+          <span style="font-family:var(--font-display);font-weight:700;font-size:30px;color:var(--brand-navy);line-height:1;">${totalVisitas}</span>
+          ${deltaBadge(deltaVisitas)}
+        </div>
+        <div style="font-size:10.5px;color:var(--neutral-500);margin-top:4px;">${nutrisAtivos} nutri${nutrisAtivos === 1 ? '' : 's'} ativo${nutrisAtivos === 1 ? '' : 's'}</div>
       </div>
       <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:14px;padding:18px 20px;">
         <div style="font-size:11px;color:var(--neutral-500);text-transform:uppercase;letter-spacing:0.5px;font-weight:600;margin-bottom:8px;">Hospitais cobertos</div>
-        <div style="display:flex;align-items:baseline;gap:6px;">
-          <span style="font-family:var(--font-display);font-weight:700;font-size:32px;color:var(--brand-navy);line-height:1;">${totalHospitaisCobertos}</span>
-          <span style="font-size:10.5px;color:var(--neutral-500);">c/ CNPJ mapeado</span>
+        <div style="display:flex;align-items:baseline;gap:6px;flex-wrap:wrap;">
+          <span style="font-family:var(--font-display);font-weight:700;font-size:30px;color:var(--brand-navy);line-height:1;">${totalHospitaisCobertos}</span>
+          ${deltaBadge(deltaHosp)}
         </div>
+        <div style="font-size:10.5px;color:var(--neutral-500);margin-top:4px;">com CNPJ mapeado</div>
       </div>
-      <div style="background:linear-gradient(135deg,#F0F5F0 0%,#E8F2E8 100%);border:1px solid rgba(139,198,63,0.3);border-radius:14px;padding:18px 20px;">
-        <div style="font-size:11px;color:var(--neutral-600);text-transform:uppercase;letter-spacing:0.5px;font-weight:600;margin-bottom:8px;">Faturamento coberto</div>
-        <span style="font-family:var(--font-display);font-weight:700;font-size:32px;color:var(--brand-navy);line-height:1;">${_perfFmtMoeda(totalFaturamento)}</span>
+      <div style="background:linear-gradient(135deg,#F0F5F0 0%,#E8F2E8 100%);border:1px solid rgba(139,198,63,0.3);border-radius:14px;padding:18px 20px;" title="Soma do faturamento dos hospitais que algum nutri da equipe visitou no período (apenas hospitais com CNPJ mapeado no Faturamento da Haverim). Conforme a equipe visita mais hospitais top, esse valor cresce e o 'Faturamento não coberto' ao lado diminui.">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">
+          <div style="font-size:11px;color:var(--neutral-600);text-transform:uppercase;letter-spacing:0.5px;font-weight:600;">Faturamento coberto</div>
+          <span class="material-symbols-rounded" style="font-size:14px;color:var(--neutral-500);cursor:help;" title="Soma do faturamento dos hospitais que algum nutri da equipe visitou no período (apenas hospitais com CNPJ mapeado no Faturamento da Haverim). Conforme a equipe visita mais hospitais top, esse valor cresce e o 'Faturamento não coberto' ao lado diminui.">info</span>
+        </div>
+        <div style="display:flex;align-items:baseline;gap:6px;flex-wrap:wrap;">
+          <span style="font-family:var(--font-display);font-weight:700;font-size:26px;color:var(--brand-navy);line-height:1;">${_perfFmtMoeda(totalFaturamento)}</span>
+          ${deltaBadge(deltaFat)}
+        </div>
+        <div style="font-size:10.5px;color:var(--neutral-600);margin-top:4px;">${pctCobertura.toFixed(1)}% do universo conhecido</div>
+      </div>
+      <div style="background:#FEF3C7;border:1px solid #FCD34D;border-radius:14px;padding:18px 20px;position:relative;" title="Soma do faturamento dos top hospitais da Haverim que a equipe ainda não visitou no período. Cada hospital visitado por algum nutri (com CNPJ mapeado) sai daqui e vai pro card 'Faturamento coberto'. A meta é diminuir esse número conforme a equipe cresce a cobertura.">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">
+          <div style="font-size:11px;color:#92400E;text-transform:uppercase;letter-spacing:0.5px;font-weight:600;">Faturamento não coberto</div>
+          <span class="material-symbols-rounded" style="font-size:14px;color:#B45309;cursor:help;" title="Soma do faturamento dos top hospitais da Haverim que a equipe ainda não visitou no período. Cada hospital visitado por algum nutri (com CNPJ mapeado) sai daqui e vai pro card 'Faturamento coberto'. A meta é diminuir esse número conforme a equipe cresce a cobertura.">info</span>
+        </div>
+        <span style="font-family:var(--font-display);font-weight:700;font-size:26px;color:#B45309;line-height:1;">${_perfFmtMoeda(totalFatNaoCoberto)}</span>
+        <div style="font-size:10.5px;color:#92400E;margin-top:4px;">${oportunidades.length} hospitais top sem visita · veja seção abaixo</div>
       </div>
     </div>
   `;
 
-  // Ranking
+  // Ranking enriquecido (sem ROI/visita, com tendência e última visita)
   const maxFat = Math.max(1, ...ranking.map(r => r.faturamento));
   let rankingHtml = '';
   if (ranking.length === 0) {
     rankingHtml = `<div style="padding:40px;text-align:center;color:var(--neutral-500);font-size:13px;">Ninguém da equipe tem visitas no período.</div>`;
   } else {
     rankingHtml = `
-      <div style="display:grid;grid-template-columns:40px 1fr 90px 110px 160px 100px;gap:10px;padding:10px 14px;font-size:10.5px;color:var(--neutral-500);text-transform:uppercase;letter-spacing:0.4px;font-weight:700;border-bottom:1px solid var(--neutral-200);">
+      <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
+      <div style="min-width:780px;">
+      <div style="display:grid;grid-template-columns:40px 1fr 100px 70px 70px 100px 130px 80px;gap:10px;padding:10px 14px;font-size:10.5px;color:var(--neutral-500);text-transform:uppercase;letter-spacing:0.4px;font-weight:700;border-bottom:1px solid var(--neutral-200);">
         <div>#</div>
         <div>Profissional</div>
+        <div style="text-align:center;">Tendência</div>
         <div style="text-align:right;">Visitas</div>
         <div style="text-align:right;">Hospitais</div>
+        <div style="text-align:right;">Última</div>
         <div style="text-align:right;">Faturamento</div>
-        <div style="text-align:right;">ROI/visita</div>
+        <div style="text-align:right;">vs. ant.</div>
       </div>
       ${ranking.map((r, i) => {
         const pct = maxFat > 0 ? (r.faturamento / maxFat) * 100 : 0;
         const fotoUrl = r.foto_url || '';
         const iniciais_ = (r.nome || 'N').split(' ').slice(0,2).map(p => p[0]).join('').toUpperCase();
         const medalha = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '';
+        const corUlt = corDataRelativa(r.ultimaVisita);
         return `
-          <div style="display:grid;grid-template-columns:40px 1fr 90px 110px 160px 100px;gap:10px;padding:12px 14px;align-items:center;border-bottom:1px solid var(--neutral-100);position:relative;">
-            <!-- barra de fundo -->
+          <div style="display:grid;grid-template-columns:40px 1fr 100px 70px 70px 100px 130px 80px;gap:10px;padding:12px 14px;align-items:center;border-bottom:1px solid var(--neutral-100);position:relative;">
             <div style="position:absolute;left:0;top:0;bottom:0;width:${pct}%;background:linear-gradient(90deg,rgba(139,198,63,0.06) 0%,rgba(139,198,63,0.01) 100%);pointer-events:none;z-index:0;"></div>
             <div style="position:relative;z-index:1;font-family:var(--font-mono);font-weight:700;color:var(--neutral-500);font-size:13px;">${medalha || (i + 1)}</div>
             <div style="position:relative;z-index:1;display:flex;align-items:center;gap:10px;min-width:0;">
@@ -27731,42 +28023,132 @@ function _roiRenderEquipe() {
               </div>
               <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;">${(r.nome || '').replace(/</g,'&lt;')}</div>
             </div>
+            <div style="position:relative;z-index:1;text-align:center;" title="Visitas mês a mês — verde subindo, laranja descendo">${gerarSparkline(r.serieMensal)}</div>
             <div style="position:relative;z-index:1;text-align:right;font-family:var(--font-mono);font-weight:700;color:var(--brand-navy);font-size:13px;">${r.visitas}</div>
-            <div style="position:relative;z-index:1;text-align:right;font-family:var(--font-mono);font-size:12px;color:var(--neutral-600);">
-              ${r.instituicoes} ${r.inst_com_match < r.instituicoes ? `<span style="color:var(--neutral-400);font-size:10.5px;">(${r.inst_com_match} c/ CNPJ)</span>` : ''}
-            </div>
+            <div style="position:relative;z-index:1;text-align:right;font-family:var(--font-mono);font-size:12px;color:var(--neutral-600);">${r.instituicoes}</div>
+            <div style="position:relative;z-index:1;text-align:right;font-family:var(--font-mono);font-size:11.5px;color:${corUlt};font-weight:700;">${fmtRelativo(r.ultimaVisita)}</div>
             <div style="position:relative;z-index:1;text-align:right;font-family:var(--font-mono);font-weight:700;color:var(--brand-navy);font-size:13px;">${_perfFmtMoeda(r.faturamento)}</div>
-            <div style="position:relative;z-index:1;text-align:right;font-family:var(--font-mono);font-size:12px;color:var(--brand-lime);font-weight:700;">${_perfFmtMoeda(r.roi)}</div>
+            <div style="position:relative;z-index:1;text-align:right;">${deltaBadge(r.deltaFatPct) || '<span style="color:#9CA3AF;font-size:11px;">—</span>'}</div>
           </div>
         `;
       }).join('')}
+      </div>
+      </div>
     `;
   }
 
-  // Top hospitais cobertos pela equipe
+  // OPORTUNIDADES: hospitais top NÃO cobertos
+  let oportunidadesHtml = '';
+  if (oportunidades.length > 0) {
+    oportunidadesHtml = `
+      <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:14px;padding:14px 4px;margin-top:18px;">
+        <div style="margin:0 16px 10px;display:flex;align-items:center;gap:8px;">
+          <span class="material-symbols-rounded" style="font-size:20px;color:#16A34A;">trending_up</span>
+          <div>
+            <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:14.5px;">Oportunidades — top hospitais sem cobertura</div>
+            <div style="font-size:11.5px;color:var(--neutral-600);margin-top:2px;">Faturam alto mas ninguém da equipe visitou no período. Foco prioritário pra direcionar nutris.</div>
+          </div>
+        </div>
+        <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
+        <div style="min-width:420px;">
+        ${oportunidades.map((o, i) => `
+          <div style="display:grid;grid-template-columns:30px 1fr 140px;gap:10px;padding:10px 14px;align-items:center;border-bottom:1px solid var(--neutral-100);">
+            <div style="font-family:var(--font-mono);font-weight:700;color:var(--neutral-500);font-size:12px;">${i + 1}</div>
+            <div style="min-width:0;">
+              <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${(o.nome || '').replace(/</g,'&lt;')}</div>
+              <div style="font-size:11px;color:var(--neutral-500);margin-top:2px;">${(o.cidade || '—').replace(/</g,'&lt;')}${o.estado ? ' · ' + o.estado : ''}</div>
+            </div>
+            <div style="text-align:right;font-family:var(--font-mono);font-weight:700;color:#B45309;font-size:13px;">${_perfFmtMoeda(o.faturamento)}</div>
+          </div>
+        `).join('')}
+        </div>
+        </div>
+      </div>
+    `;
+  }
+
+  // ESFRIANDO: hospitais cobertos sem visita > 30d
+  let esfriandoHtml = '';
+  if (esfriando.length > 0) {
+    esfriandoHtml = `
+      <div style="background:#FEF3C7;border:1px solid rgba(245,158,11,0.4);border-radius:14px;padding:14px 16px;margin-top:18px;">
+        <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:10px;">
+          <span class="material-symbols-rounded" style="font-size:20px;color:#B45309;flex-shrink:0;">warning</span>
+          <div>
+            <div style="font-family:var(--font-display);font-weight:700;color:#92400E;font-size:13.5px;">${esfriando.length} hospital${esfriando.length === 1 ? '' : 'is'} esfriando — sem visita há mais de 30 dias</div>
+            <div style="font-size:11.5px;color:#92400E;margin-top:2px;">Já cobertos no histórico mas faltam follow-up recente.</div>
+          </div>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;">
+          ${esfriando.map(h => `
+            <div style="background:rgba(255,255,255,0.6);border:1px solid rgba(245,158,11,0.3);border-radius:8px;padding:6px 10px;display:inline-flex;align-items:center;gap:8px;">
+              <span style="font-size:11.5px;color:#92400E;font-weight:700;">${(h.nome || '').replace(/</g,'&lt;').slice(0, 35)}</span>
+              <span style="font-size:10px;color:#B45309;font-family:var(--font-mono);">${fmtRelativo(h.ultimaVisita)}</span>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  // VISITADOS SEM RETORNO
+  let semRetornoHtml = '';
+  if (visitadosSemRetorno.length > 0) {
+    semRetornoHtml = `
+      <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:14px;padding:14px 16px;margin-top:18px;">
+        <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:10px;">
+          <span class="material-symbols-rounded" style="font-size:20px;color:#BE185D;flex-shrink:0;">help_outline</span>
+          <div>
+            <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:13.5px;">${visitadosSemRetorno.length} visita${visitadosSemRetorno.length === 1 ? '' : 's'} sem retorno medível</div>
+            <div style="font-size:11.5px;color:var(--neutral-600);margin-top:2px;">Hospitais visitados onde o CNPJ não bate com nenhum cliente do faturamento. Pode ser CNPJ não cadastrado na ficha ou cliente fora da base Omie.</div>
+          </div>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;">
+          ${visitadosSemRetorno.map(h => `
+            <div style="background:#FCE7F3;border:1px solid rgba(190,24,93,0.25);border-radius:8px;padding:6px 10px;display:inline-flex;align-items:center;gap:6px;">
+              <span style="font-size:11.5px;color:#9F1239;font-weight:700;">${(h.nome || '').replace(/</g,'&lt;').slice(0, 35)}</span>
+              <span style="font-size:9.5px;color:#BE185D;text-transform:uppercase;letter-spacing:0.3px;font-weight:700;">${h.semCnpj ? 'sem CNPJ' : 'fora da base'}</span>
+            </div>
+          `).join('')}
+        </div>
+        <a href="#/admin/mapear-cnpjs" style="display:inline-block;margin-top:10px;font-size:11.5px;color:var(--brand-lime);text-decoration:none;font-weight:600;">+ Mapear CNPJs faltantes →</a>
+      </div>
+    `;
+  }
+
+  // Top hospitais cobertos (mantido)
   let topHospHtml = '';
   if (topHospitais.length > 0) {
     topHospHtml = `
       <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:14px;padding:14px 4px;margin-top:18px;">
         <div style="margin:0 16px 10px;">
           <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:14.5px;">Top hospitais cobertos pela equipe</div>
-          <div style="font-size:11.5px;color:var(--neutral-600);margin-top:2px;">Hospitais visitados por algum nutri, com faturamento mapeado.</div>
+          <div style="font-size:11.5px;color:var(--neutral-600);margin-top:2px;">Hospitais visitados por algum nutri, ordenados por faturamento.</div>
         </div>
-        <div style="display:grid;grid-template-columns:1fr 180px 100px;gap:10px;padding:8px 14px;font-size:10.5px;color:var(--neutral-500);text-transform:uppercase;letter-spacing:0.4px;font-weight:700;border-bottom:1px solid var(--neutral-200);">
+        <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
+        <div style="min-width:560px;">
+        <div style="display:grid;grid-template-columns:1fr 130px 150px 80px;gap:10px;padding:8px 14px;font-size:10.5px;color:var(--neutral-500);text-transform:uppercase;letter-spacing:0.4px;font-weight:700;border-bottom:1px solid var(--neutral-200);">
           <div>Hospital</div>
+          <div style="text-align:right;">Última visita</div>
           <div style="text-align:right;">Faturamento</div>
           <div style="text-align:right;">Notas</div>
         </div>
-        ${topHospitais.map(h => `
-          <div style="display:grid;grid-template-columns:1fr 180px 100px;gap:10px;padding:10px 14px;align-items:center;border-bottom:1px solid var(--neutral-100);">
+        ${topHospitais.map(h => {
+          const corUlt = corDataRelativa(h.ultimaVisita);
+          return `
+          <div style="display:grid;grid-template-columns:1fr 130px 150px 80px;gap:10px;padding:10px 14px;align-items:center;border-bottom:1px solid var(--neutral-100);">
             <div style="min-width:0;">
               <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${(h.nome || '').replace(/</g,'&lt;')}</div>
               <div style="font-size:11px;color:var(--neutral-500);margin-top:2px;">${(h.cidade || '—').replace(/</g,'&lt;')}${h.estado ? ' · ' + h.estado : ''}</div>
             </div>
+            <div style="text-align:right;font-family:var(--font-mono);font-size:11.5px;color:${corUlt};font-weight:700;">${fmtRelativo(h.ultimaVisita)}</div>
             <div style="text-align:right;font-family:var(--font-mono);font-weight:700;color:var(--brand-navy);font-size:13px;">${_perfFmtMoeda(h.faturamento)}</div>
             <div style="text-align:right;font-family:var(--font-mono);font-size:12px;color:var(--neutral-600);">${(h.qtd_notas || 0).toLocaleString('pt-BR')}</div>
           </div>
-        `).join('')}
+          `;
+        }).join('')}
+        </div>
+        </div>
       </div>
     `;
   }
@@ -27777,12 +28159,15 @@ function _roiRenderEquipe() {
       <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 16px 6px;">
         <div>
           <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:14.5px;">Ranking da equipe</div>
-          <div style="font-size:11.5px;color:var(--neutral-600);margin-top:2px;">Ordenado por faturamento dos hospitais visitados. Só conta instituições com CNPJ mapeado.</div>
+          <div style="font-size:11.5px;color:var(--neutral-600);margin-top:2px;">Ordenado por faturamento dos hospitais visitados. Tendência compara com período anterior equivalente.</div>
         </div>
         <a href="#/admin/mapear-cnpjs" style="font-size:11.5px;color:var(--brand-lime);text-decoration:none;font-weight:600;white-space:nowrap;">+ Mapear CNPJs →</a>
       </div>
       ${rankingHtml}
     </div>
+    ${esfriandoHtml}
+    ${oportunidadesHtml}
+    ${semRetornoHtml}
     ${topHospHtml}
   `;
 }
