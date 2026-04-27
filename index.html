@@ -6197,7 +6197,7 @@ a {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.83-aba-consignado',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.84-consignado-produtos',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -27735,7 +27735,7 @@ window.rejeitarObjetivoPendente = async function(id) {
 let FAT_DATA = null;
 let _fatDataPromise = null;
 // __FAT_VERSION_START__ — substituído pelo atualizar_index.py com hash do JSON
-const FAT_DATA_VERSION = 'd2a7cf1f1074';
+const FAT_DATA_VERSION = 'd62765b144e2';
 // __FAT_VERSION_END__
 const FAT_DATA_URL = 'faturamento_data_inline.json?v=' + FAT_DATA_VERSION;
 
@@ -28237,15 +28237,31 @@ function _fatRenderInner() {
           <canvas id="fatConsChartMensal" style="max-height:280px;"></canvas>
         </div>
 
-        <!-- Top clientes em consignação -->
-        <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:12px;padding:16px;margin-bottom:14px;">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
-            <span class="material-symbols-rounded" style="font-size:18px;color:#F59E0B;">groups</span>
-            <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:14px;">Top clientes em consignação</div>
+        <!-- Top clientes + Top produtos lado a lado em desktop -->
+        <div id="fatConsRow" style="display:grid;grid-template-columns:1fr;gap:14px;margin-bottom:14px;">
+          <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:12px;padding:16px;">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
+              <span class="material-symbols-rounded" style="font-size:18px;color:#F59E0B;">groups</span>
+              <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:14px;">Top clientes em consignação</div>
+            </div>
+            <div id="fatConsTopClientes"></div>
           </div>
-          <div id="fatConsTopClientes"></div>
+
+          <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:12px;padding:16px;">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
+              <span class="material-symbols-rounded" style="font-size:18px;color:#F59E0B;">inventory_2</span>
+              <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:14px;">Top produtos em consignação</div>
+            </div>
+            <div id="fatConsTopProdutos"></div>
+          </div>
         </div>
       </div><!-- /fatPagina5 -->
+
+      <style>
+        @media (min-width: 1100px) {
+          #fatConsRow { grid-template-columns: 1fr 1fr !important; }
+        }
+      </style>
 
       <!-- Footer: meta info -->
       <div style="text-align:center;color:var(--neutral-500);font-size:11px;margin-top:24px;font-style:italic;">
@@ -30321,6 +30337,40 @@ function _fatRenderConsignado() {
               <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:10.5px;color:var(--neutral-500);">
                 <span>${(c.Cidade || '—')}/${(c.Estado || '—')} · ${_fmtNum(c.qtd_notas)} notas</span>
                 <span>Última: ${ultR}</span>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+  }
+
+  // Sprint 9.32.84: Top produtos em consignação
+  const consProd = FAT_DATA.consignado_produtos_top || [];
+  const prodEl = document.getElementById('fatConsTopProdutos');
+  if (prodEl) {
+    if (consProd.length === 0) {
+      prodEl.innerHTML = '<div style="text-align:center;padding:20px;color:var(--neutral-500);font-size:12px;">Nenhum produto em consignação.</div>';
+    } else {
+      const maxP = consProd[0].valor_consignado || 1;
+      prodEl.innerHTML = consProd.slice(0, 15).map((p, i) => {
+        const pct = (p.valor_consignado / maxP) * 100;
+        const desc = (p['Descrição do Produto'] || '—').replace(/</g,'&lt;');
+        const marca = (p['Marca'] || '').replace(/</g,'&lt;');
+        return `
+          <div class="fat-row">
+            <span style="width:22px;flex-shrink:0;text-align:center;font-size:11.5px;color:var(--neutral-500);font-weight:700;">${i+1}º</span>
+            <div style="flex:1;min-width:0;">
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:3px;">
+                <div style="font-size:12.5px;color:var(--brand-navy);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;">${desc}</div>
+                <div style="font-family:var(--font-display);font-size:13px;font-weight:700;color:#92400E;flex-shrink:0;">${_fmtMoeda(p.valor_consignado, true)}</div>
+              </div>
+              <div style="height:6px;background:var(--neutral-100);border-radius:9999px;overflow:hidden;margin-bottom:4px;">
+                <div style="height:100%;width:${pct}%;background:linear-gradient(90deg,#F59E0B,#92400E);transition:width 280ms ease-out;"></div>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:10.5px;color:var(--neutral-500);">
+                <span>${marca || '—'} · ${_fmtNum(p.qtd_notas)} notas</span>
+                <span>${_fmtNum(p.qtd_itens)} ${p.qtd_itens === 1 ? 'unidade' : 'unidades'}</span>
               </div>
             </div>
           </div>
