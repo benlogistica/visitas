@@ -6197,7 +6197,7 @@ a {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.105-instituicoes-nutri-tabela-admin',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.109-grafico-visitas-mes-desktop-html-mobile-svg',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -10938,6 +10938,72 @@ window._metaVisSalvar = function() {
 window.trocarMesDsdGrafico = function(offset) {
   window._dsdSemanaMesOffset = parseInt(offset, 10);
   renderGraficoVisitasTemporal();
+};
+
+// Sprint 9.32.108: editar meta MENSAL de visitas do nutri (painel de Indicadores)
+window.editarMetaVisitasMesNutri = function() {
+  const atual = parseInt(localStorage.getItem('bn_meta_visitas_mes_nutri') || '20', 10);
+  const html = `
+    <div id="metaVisMesOverlay" style="position:fixed;inset:0;background:rgba(10,31,92,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;">
+      <div style="background:var(--neutral-0);border-radius:14px;padding:22px;max-width:380px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.3);font-family:inherit;">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;">
+          <div style="width:42px;height:42px;border-radius:50%;background:#FAEEDA;color:#92400E;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <span class="material-symbols-rounded" style="font-size:22px;">flag</span>
+          </div>
+          <div>
+            <div style="font-family:var(--font-display);font-size:17px;font-weight:700;color:var(--brand-navy);">Sua meta mensal</div>
+            <div style="font-size:12px;color:var(--neutral-500);margin-top:2px;">Quantas visitas você quer fazer por mês?</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;">
+          <button onclick="window._metaVisMesDecr()" style="width:44px;height:44px;border-radius:8px;background:var(--neutral-50,#FAFBFD);border:1.5px solid var(--neutral-200);color:var(--brand-navy);font-size:22px;cursor:pointer;font-family:inherit;">−</button>
+          <input type="number" id="metaVisMesInput" value="${atual}" min="1" max="200" step="1" style="flex:1;text-align:center;font-family:var(--font-display);font-size:32px;font-weight:700;color:var(--brand-navy);border:1.5px solid var(--neutral-200);border-radius:8px;padding:6px;background:var(--neutral-0);" />
+          <button onclick="window._metaVisMesIncr()" style="width:44px;height:44px;border-radius:8px;background:var(--neutral-50,#FAFBFD);border:1.5px solid var(--neutral-200);color:var(--brand-navy);font-size:22px;cursor:pointer;font-family:inherit;">+</button>
+        </div>
+        <div style="background:#FFF8EE;border:1px solid #FCD9A0;border-radius:8px;padding:10px;font-size:11.5px;color:#854F0B;line-height:1.5;margin-bottom:14px;">
+          📅 Equivale a <strong id="metaVisMesEquiv">~${(atual / 22).toFixed(1)}/dia útil</strong> (considerando 22 dias úteis/mês)
+        </div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;">
+          <button onclick="document.getElementById('metaVisMesOverlay').remove()" style="background:transparent;color:var(--neutral-600);border:1.5px solid var(--neutral-200);padding:9px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">Cancelar</button>
+          <button onclick="window._metaVisMesSalvar()" style="background:var(--brand-lime);color:#fff;border:0;padding:9px 18px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">Salvar meta</button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.insertAdjacentHTML('beforeend', html);
+  const inp = document.getElementById('metaVisMesInput');
+  const equiv = document.getElementById('metaVisMesEquiv');
+  inp.addEventListener('input', () => {
+    const v = parseInt(inp.value || '0', 10);
+    if (equiv) equiv.textContent = `~${(v / 22).toFixed(1)}/dia útil`;
+  });
+  setTimeout(() => inp.select(), 50);
+};
+window._metaVisMesIncr = function() {
+  const inp = document.getElementById('metaVisMesInput');
+  if (!inp) return;
+  const v = parseInt(inp.value || '0', 10);
+  if (v < 200) inp.value = v + 1;
+  inp.dispatchEvent(new Event('input'));
+};
+window._metaVisMesDecr = function() {
+  const inp = document.getElementById('metaVisMesInput');
+  if (!inp) return;
+  const v = parseInt(inp.value || '0', 10);
+  if (v > 1) inp.value = v - 1;
+  inp.dispatchEvent(new Event('input'));
+};
+window._metaVisMesSalvar = function() {
+  const inp = document.getElementById('metaVisMesInput');
+  if (!inp) return;
+  const v = Math.max(1, Math.min(200, parseInt(inp.value || '20', 10)));
+  localStorage.setItem('bn_meta_visitas_mes_nutri', String(v));
+  document.getElementById('metaVisMesOverlay').remove();
+  setFlash && setFlash('success', `Meta mensal atualizada pra ${v} visitas.`);
+  // Re-renderiza o painel de indicadores se estiver visível
+  if (typeof carregarIndicadoresNutri === 'function' && document.getElementById('indicNutriContent')) {
+    carregarIndicadoresNutri();
+  }
 };
 
 // Donut chart de distribuição por objetivo
@@ -17641,7 +17707,7 @@ function renderNutriIndicadoresDesktop() {
     <div style="max-width:1280px;margin:0 auto;">
       <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:14px;padding:18px 20px;margin-bottom:14px;">
         <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:16px;">Seus indicadores</div>
-        <div style="font-size:12.5px;color:var(--neutral-600);margin-top:2px;">KPIs, evolução mensal, top hospitais e distribuição de objetivos.</div>
+        <div style="font-size:12.5px;color:var(--neutral-600);margin-top:2px;">Sua produção do mês comparada à equipe, frequência diária, insights e evolução.</div>
       </div>
       <div id="indicNutriContent">
         <div style="padding:60px;text-align:center;color:var(--neutral-500);font-size:13px;background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:14px;">
@@ -23231,48 +23297,238 @@ async function carregarIndicadoresNutri() {
       const nomes = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
       return `${nomes[parseInt(m, 10) - 1]}/${y.slice(-2)}`;
     };
+    const nomesMesPt = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+    const mesAtualLabel = nomesMesPt[agora.getMonth()];
+
+    // === Sprint 9.32.106: comparativo com equipe (todos nutris no mês) ===
+    let equipeMesPorNutri = {};
+    let equipeMesTotal = 0;
+    let equipeNumNutris = 0;
+    try {
+      const { data: equipeMes } = await db
+        .from('visitas')
+        .select('nutricionista_id')
+        .gte('checkin_timestamp', inicioMes.toISOString())
+        .not('checkin_timestamp', 'is', null)
+        .not('nutricionista_id', 'is', null);
+      (equipeMes || []).forEach(v => {
+        if (v.nutricionista_id) {
+          equipeMesPorNutri[v.nutricionista_id] = (equipeMesPorNutri[v.nutricionista_id] || 0) + 1;
+          equipeMesTotal++;
+        }
+      });
+      equipeNumNutris = Object.keys(equipeMesPorNutri).length;
+    } catch (e) {
+      console.warn('[indicadores] equipe:', e);
+    }
+    const mediaEquipeMes = equipeNumNutris > 0 ? equipeMesTotal / equipeNumNutris : 0;
+    const diffEquipe = kpiMes - mediaEquipeMes;
+    const pctEquipeNum = mediaEquipeMes > 0
+      ? Math.round((diffEquipe / mediaEquipeMes) * 100)
+      : (kpiMes > 0 ? 100 : 0);
+    const pctEquipeStr = (mediaEquipeMes > 0 || kpiMes > 0)
+      ? `${pctEquipeNum >= 0 ? '↑' : '↓'} ${Math.abs(pctEquipeNum)}% ${pctEquipeNum >= 0 ? 'acima' : 'abaixo'} da média da equipe (${mediaEquipeMes.toFixed(1)})`
+      : 'Sem dados da equipe ainda';
+
+    // Ranking
+    const sortedRanking = Object.entries(equipeMesPorNutri).sort((a,b) => b[1] - a[1]);
+    const posicaoRanking = sortedRanking.findIndex(([id]) => id === user.id) + 1;
+    const totalRanking = sortedRanking.length;
+    const medalhas = ['🥇','🥈','🥉'];
+    const medalha = posicaoRanking >= 1 && posicaoRanking <= 3 ? medalhas[posicaoRanking - 1] : '';
+
+    // Streak (dias consecutivos com pelo menos 1 visita, contando de hoje pra trás)
+    const datasUnicasSet = new Set();
+    visitas.forEach(v => {
+      if (!v.checkin_timestamp) return;
+      const d = new Date(v.checkin_timestamp);
+      d.setHours(0,0,0,0);
+      datasUnicasSet.add(d.getTime());
+    });
+    let streak = 0;
+    const cursorStreak = new Date(agora);
+    cursorStreak.setHours(0,0,0,0);
+    if (!datasUnicasSet.has(cursorStreak.getTime())) {
+      cursorStreak.setDate(cursorStreak.getDate() - 1);
+    }
+    while (datasUnicasSet.has(cursorStreak.getTime())) {
+      streak++;
+      cursorStreak.setDate(cursorStreak.getDate() - 1);
+    }
+
+    // Taxa aprovação (das que passaram por revisão)
+    const visitasRevisao = visitas.filter(v =>
+      ['completa','em_revisao','aprovada_pos_revisao'].includes(v.status) ||
+      v.revisao_solicitada_em || v.revisao_resolvida_em
+    );
+    const visitasAprovadasCount = visitas.filter(v => v.status === 'aprovada_pos_revisao').length;
+    const taxaAprovacao = visitasRevisao.length > 0
+      ? Math.round((visitasAprovadasCount / visitasRevisao.length) * 100)
+      : null;
+
+    // === Heatmap (90 dias, 14 semanas × 7 dias começando numa segunda) ===
+    const heatmapStart = new Date(agora);
+    heatmapStart.setDate(heatmapStart.getDate() - 90);
+    heatmapStart.setHours(0,0,0,0);
+    const fdHeat = heatmapStart.getDay();
+    const offsetHeat = fdHeat === 0 ? 6 : fdHeat - 1;
+    heatmapStart.setDate(heatmapStart.getDate() - offsetHeat);
+    const visitasPorDia = {};
+    visitas.forEach(v => {
+      if (!v.checkin_timestamp) return;
+      const d = new Date(v.checkin_timestamp);
+      d.setHours(0,0,0,0);
+      const k = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      visitasPorDia[k] = (visitasPorDia[k] || 0) + 1;
+    });
+    const heatmapDias = [];
+    const fimHeat = new Date(agora);
+    fimHeat.setHours(23,59,59,999);
+    for (let i = 0; i < 14*7; i++) {
+      const d = new Date(heatmapStart);
+      d.setDate(d.getDate() + i);
+      const k = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      heatmapDias.push({ date: new Date(d), key: k, count: visitasPorDia[k] || 0, futuro: d > fimHeat });
+    }
+    const maxHeatmap = Math.max(...heatmapDias.map(x => x.count), 1);
+
+    // === Insights inteligentes ===
+    const insights = [];
+    // Última visita por hospital
+    const hospUltimaVisita = {};
+    visitas.forEach(v => {
+      const nome = v.instituicoes?.nome || '(sem nome)';
+      const ts = v.checkin_timestamp ? new Date(v.checkin_timestamp).getTime() : 0;
+      if (!hospUltimaVisita[nome] || ts > hospUltimaVisita[nome]) hospUltimaVisita[nome] = ts;
+    });
+    const inicio30dias = new Date(agora);
+    inicio30dias.setDate(inicio30dias.getDate() - 30);
+    const hospitalEsfriando = Object.entries(hospCount)
+      .filter(([nome, count]) => count >= 3)
+      .map(([nome, count]) => ({
+        nome, count,
+        ultima: hospUltimaVisita[nome] || 0,
+        diasSemVisita: Math.floor((agora.getTime() - (hospUltimaVisita[nome] || 0)) / (1000*60*60*24))
+      }))
+      .filter(h => h.ultima < inicio30dias.getTime())
+      .sort((a,b) => b.count - a.count)[0];
+    if (hospitalEsfriando) {
+      insights.push({
+        emoji: '🔥',
+        cor: '#F59E0B',
+        bg: 'linear-gradient(135deg,#FEF4E1 0%,#FFF9EB 100%)',
+        borda: 'rgba(245,158,11,0.35)',
+        titulo: 'Hospital esfriando',
+        texto: `<strong>${hospitalEsfriando.nome}</strong> era um dos seus principais (${hospitalEsfriando.count} visitas em 6m), mas faz <strong>${hospitalEsfriando.diasSemVisita} dias</strong> sem visita.`,
+        cta: 'Agendar visita',
+        acao: `window.location.hash='#/visitas/nova'`
+      });
+    }
+
+    // Padrão dia da semana
+    const visitasPorDiaSemana = [0,0,0,0,0,0,0];
+    visitas.forEach(v => {
+      if (!v.checkin_timestamp) return;
+      visitasPorDiaSemana[new Date(v.checkin_timestamp).getDay()]++;
+    });
+    const diasNomes = ['domingo','segunda','terça','quarta','quinta','sexta','sábado'];
+    const totalVisDS = visitasPorDiaSemana.reduce((s,n) => s+n, 0);
+    if (totalVisDS >= 10) {
+      let melhorDia = 0;
+      visitasPorDiaSemana.forEach((c, i) => { if (c > visitasPorDiaSemana[melhorDia]) melhorDia = i; });
+      const pctMelhor = Math.round((visitasPorDiaSemana[melhorDia] / totalVisDS) * 100);
+      if (pctMelhor >= 25) {
+        insights.push({
+          emoji: '🎯',
+          cor: '#22A06B',
+          bg: 'linear-gradient(135deg,#E6F6EF 0%,#EFF7EE 100%)',
+          borda: 'rgba(34,160,107,0.35)',
+          titulo: 'Padrão detectado',
+          texto: `<strong>${pctMelhor}%</strong> das suas visitas acontecem na <strong>${diasNomes[melhorDia]}</strong>. Distribuir mais ao longo da semana pode aumentar suas oportunidades.`,
+        });
+      }
+    }
+
+    // Diversificação (concentração no top 1 hospital)
+    if (topHosp.length >= 3) {
+      const totalTH = topHosp.reduce((s, [_, c]) => s + c, 0);
+      const concentracao = Math.round((topHosp[0][1] / totalTH) * 100);
+      if (concentracao >= 50) {
+        insights.push({
+          emoji: '💡',
+          cor: '#2563EB',
+          bg: 'linear-gradient(135deg,#E4ECFD 0%,#EFF3FC 100%)',
+          borda: 'rgba(37,99,235,0.35)',
+          titulo: 'Oportunidade de diversificar',
+          texto: `<strong>${concentracao}%</strong> da sua produção está em <strong>${topHosp[0][0]}</strong>. Visitar mais hospitais pode ampliar suas conversões.`,
+        });
+      }
+    }
+
+    // Streak ativo (insight motivacional)
+    if (streak >= 5) {
+      insights.unshift({
+        emoji: '🚀',
+        cor: '#8BC63F',
+        bg: 'linear-gradient(135deg,#F0F7E1 0%,#F7FBE8 100%)',
+        borda: 'rgba(139,198,63,0.4)',
+        titulo: `${streak} dias seguidos visitando!`,
+        texto: `Você está em uma <strong>sequência</strong>. Mantenha o ritmo pra bater novos recordes pessoais.`,
+      });
+    }
 
     // Monta HTML
     container.innerHTML = `
-      <!-- Saudação/contexto -->
-      <div style="margin-bottom:16px;font-size:13px;color:var(--neutral-600);">
-        Sua produção dos últimos <strong>6 meses</strong> e do ano.
-      </div>
+      <!-- O · Hero "Você vs Equipe" -->
+      <div style="background:linear-gradient(135deg,#0A1F5C 0%,#1A3578 50%,#243F8A 100%);border-radius:16px;padding:18px 18px 20px;margin-bottom:14px;color:#fff;box-shadow:0 6px 18px rgba(10,31,92,0.18);position:relative;overflow:hidden;">
+        <div style="position:absolute;top:-30px;right:-30px;width:140px;height:140px;border-radius:50%;background:rgba(139,198,63,0.08);pointer-events:none;"></div>
+        <div style="position:absolute;bottom:-40px;right:30px;width:80px;height:80px;border-radius:50%;background:rgba(139,198,63,0.06);pointer-events:none;"></div>
 
-      <!-- KPIs grid 2x2 -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">
-        <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:12px;padding:14px;">
-          <div style="font-size:11px;color:var(--neutral-500);text-transform:uppercase;letter-spacing:0.4px;font-weight:600;margin-bottom:6px;">Mês atual</div>
-          <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;">
-            <span style="font-family:var(--font-display);font-weight:700;font-size:32px;color:var(--brand-navy);line-height:1;">${kpiMes}</span>
-            <span style="display:inline-flex;align-items:center;gap:2px;font-size:11px;font-weight:700;color:${pctColor};">
-              <span class="material-symbols-rounded" style="font-size:14px;">${pctIcon}</span>
-              ${pctStr}
-            </span>
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;position:relative;z-index:1;">
+          <div style="min-width:0;flex:1;">
+            <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.6px;font-weight:600;opacity:0.78;">Sua produção · ${mesAtualLabel}/${String(agora.getFullYear()).slice(-2)}</div>
+            <div style="font-family:var(--font-display);font-weight:800;font-size:42px;line-height:1.05;margin-top:4px;">${kpiMes} <span style="font-size:14px;font-weight:600;opacity:0.85;">visita${kpiMes !== 1 ? 's' : ''}</span></div>
           </div>
-          <div style="font-size:11px;color:var(--neutral-500);margin-top:4px;">vs ${kpiMesAnterior} no anterior</div>
+          ${posicaoRanking > 0 ? `
+            <div style="background:rgba(255,255,255,0.13);border:1px solid rgba(255,255,255,0.18);border-radius:10px;padding:8px 10px;text-align:center;flex-shrink:0;min-width:62px;">
+              ${medalha ? `<div style="font-size:22px;line-height:1;">${medalha}</div>` : `<div style="font-family:var(--font-display);font-weight:800;font-size:20px;line-height:1;">${posicaoRanking}º</div>`}
+              <div style="font-size:10px;font-weight:700;margin-top:3px;opacity:0.88;">${medalha ? `${posicaoRanking}º` : ''} de ${totalRanking}</div>
+            </div>
+          ` : ''}
         </div>
 
-        <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:12px;padding:14px;">
-          <div style="font-size:11px;color:var(--neutral-500);text-transform:uppercase;letter-spacing:0.4px;font-weight:600;margin-bottom:6px;">Esta semana</div>
-          <div style="font-family:var(--font-display);font-weight:700;font-size:32px;color:var(--brand-navy);line-height:1;">${kpiSemana}</div>
-          <div style="font-size:11px;color:var(--neutral-500);margin-top:4px;">desde segunda-feira</div>
+        <div style="display:inline-flex;align-items:center;gap:6px;background:${diffEquipe >= 0 ? 'rgba(139,198,63,0.22)' : 'rgba(255,255,255,0.12)'};border:1px solid ${diffEquipe >= 0 ? 'rgba(139,198,63,0.35)' : 'rgba(255,255,255,0.18)'};border-radius:8px;padding:5px 10px;font-size:11.5px;font-weight:700;margin-top:10px;position:relative;z-index:1;">
+          ${pctEquipeStr}
         </div>
 
-        <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:12px;padding:14px;">
-          <div style="font-size:11px;color:var(--neutral-500);text-transform:uppercase;letter-spacing:0.4px;font-weight:600;margin-bottom:6px;">Total no ano</div>
-          <div style="font-family:var(--font-display);font-weight:700;font-size:32px;color:var(--brand-navy);line-height:1;">${kpiAno || 0}</div>
-          <div style="font-size:11px;color:var(--neutral-500);margin-top:4px;">${agora.getFullYear()}</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px;position:relative;z-index:1;">
+          <div style="background:rgba(255,255,255,0.09);border-radius:10px;padding:9px 8px;text-align:center;">
+            <div style="font-size:18px;line-height:1;">🔥</div>
+            <div style="font-family:var(--font-display);font-weight:800;font-size:18px;margin-top:3px;">${streak}</div>
+            <div style="font-size:9.5px;font-weight:600;opacity:0.78;text-transform:uppercase;letter-spacing:0.3px;margin-top:1px;">${streak === 1 ? 'dia ativo' : 'dias ativos'}</div>
+          </div>
+          <div style="background:rgba(255,255,255,0.09);border-radius:10px;padding:9px 8px;text-align:center;">
+            <div style="font-size:18px;line-height:1;">${diff_ >= 0 ? '📈' : '📉'}</div>
+            <div style="font-family:var(--font-display);font-weight:800;font-size:18px;margin-top:3px;">${pctStr}</div>
+            <div style="font-size:9.5px;font-weight:600;opacity:0.78;text-transform:uppercase;letter-spacing:0.3px;margin-top:1px;">vs mês anterior</div>
+          </div>
+          <div style="background:rgba(255,255,255,0.09);border-radius:10px;padding:9px 8px;text-align:center;">
+            <div style="font-size:18px;line-height:1;">✓</div>
+            <div style="font-family:var(--font-display);font-weight:800;font-size:18px;margin-top:3px;">${taxaAprovacao !== null ? taxaAprovacao + '%' : '—'}</div>
+            <div style="font-size:9.5px;font-weight:600;opacity:0.78;text-transform:uppercase;letter-spacing:0.3px;margin-top:1px;">aprovação</div>
+          </div>
         </div>
 
-        <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:12px;padding:14px;">
-          <div style="font-size:11px;color:var(--neutral-500);text-transform:uppercase;letter-spacing:0.4px;font-weight:600;margin-bottom:6px;">Hospitais</div>
-          <div style="font-family:var(--font-display);font-weight:700;font-size:32px;color:var(--brand-navy);line-height:1;">${hospitaisDistinct}</div>
-          <div style="font-size:11px;color:var(--neutral-500);margin-top:4px;">distintos visitados</div>
+        <div style="display:flex;gap:10px;margin-top:12px;font-size:11.5px;opacity:0.88;position:relative;z-index:1;flex-wrap:wrap;">
+          <div><strong style="opacity:1;">${kpiSemana}</strong> esta semana</div>
+          <div style="opacity:0.5;">·</div>
+          <div><strong style="opacity:1;">${kpiAno || 0}</strong> no ano</div>
+          <div style="opacity:0.5;">·</div>
+          <div><strong style="opacity:1;">${hospitaisDistinct}</strong> hospitais</div>
         </div>
       </div>
 
-      <!-- Detalhes operacionais (2 chips) -->
+      <!-- Detalhes operacionais (chips) -->
       <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
         <div style="flex:1;min-width:140px;background:linear-gradient(135deg,#E4ECFD 0%,#EFF3FC 100%);border-radius:10px;padding:10px 12px;display:flex;align-items:center;gap:10px;">
           <span class="material-symbols-rounded" style="font-size:22px;color:var(--status-info);flex-shrink:0;">schedule</span>
@@ -23290,26 +23546,231 @@ async function carregarIndicadoresNutri() {
         </div>
       </div>
 
-      <!-- Gráfico: visitas por mês -->
+      <!-- P · Heatmap calendário (Sprint 9.32.107: quadradinhos maiores no desktop) -->
       <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:12px;padding:14px;margin-bottom:16px;">
-        <div style="display:flex;align-items:center;gap:6px;margin-bottom:12px;">
-          <span class="material-symbols-rounded" style="font-size:18px;color:var(--brand-lime);">stacked_bar_chart</span>
-          <span style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:13.5px;">Visitas por mês</span>
-        </div>
-        ${mesesArr.every(([, c]) => c === 0) ? `
-          <div style="padding:20px;text-align:center;color:var(--neutral-400);font-size:12px;">Sem visitas nos últimos 6 meses.</div>
-        ` : mesesArr.map(([key, count]) => `
-          <div style="padding:6px 0;">
-            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px;">
-              <span style="color:var(--brand-navy);font-weight:600;font-size:12px;font-family:var(--font-mono);">${mesLabel(key)}</span>
-              <span style="color:var(--brand-navy);font-family:var(--font-mono);font-size:12px;font-weight:700;">${count}</span>
-            </div>
-            <div style="height:6px;background:var(--neutral-100);border-radius:3px;overflow:hidden;">
-              <div style="height:100%;width:${(count / maxMes * 100).toFixed(1)}%;background:linear-gradient(90deg,var(--brand-lime),#A8D154);border-radius:3px;transition:width 600ms ease-out;"></div>
-            </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:10px;">
+          <div style="display:flex;align-items:center;gap:6px;min-width:0;">
+            <span class="material-symbols-rounded" style="font-size:18px;color:var(--brand-lime);">calendar_view_month</span>
+            <span style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:13.5px;">Sua frequência</span>
           </div>
-        `).join('')}
+          <div style="font-size:10.5px;color:var(--neutral-500);flex-shrink:0;">últimos 90 dias</div>
+        </div>
+        <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px;">
+          ${(() => {
+            const ehDesktop = (typeof isDesktop === 'function') ? isDesktop() : (window.innerWidth >= 1024);
+            const cellSize = ehDesktop ? 26 : 14;
+            const cellGap = ehDesktop ? 5 : 3;
+            const cellRadius = ehDesktop ? 5 : 3;
+            const labelSize = ehDesktop ? 11 : 9;
+            const labelPad = ehDesktop ? 8 : 4;
+            const legendSize = ehDesktop ? 16 : 11;
+            const semanas = [];
+            for (let s = 0; s < 14; s++) semanas.push(heatmapDias.slice(s*7, (s+1)*7));
+            const labels = ['S','T','Q','Q','S','S','D'];
+            const corHeat = (count, futuro) => {
+              if (futuro) return 'transparent';
+              if (count === 0) return 'var(--neutral-100)';
+              const ratio = Math.min(count / maxHeatmap, 1);
+              if (ratio < 0.25) return '#D7E9B5';
+              if (ratio < 0.5) return '#B5D680';
+              if (ratio < 0.75) return '#8BC63F';
+              return '#6BA32A';
+            };
+            const fmtData = (d) => `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getFullYear()).slice(-2)}`;
+            return `
+              <div style="display:flex;gap:${cellGap}px;min-width:fit-content;">
+                <div style="display:flex;flex-direction:column;gap:${cellGap}px;font-size:${labelSize}px;color:var(--neutral-500);font-weight:600;padding-right:${labelPad}px;">
+                  ${labels.map(l => `<div style="height:${cellSize}px;display:flex;align-items:center;">${l}</div>`).join('')}
+                </div>
+                ${semanas.map(semana => `
+                  <div style="display:flex;flex-direction:column;gap:${cellGap}px;">
+                    ${semana.map(dia => {
+                      if (dia.futuro) {
+                        return `<div style="width:${cellSize}px;height:${cellSize}px;"></div>`;
+                      }
+                      const titulo = `${fmtData(dia.date)} · ${dia.count} visita${dia.count !== 1 ? 's' : ''}`;
+                      return `<div title="${titulo}" style="width:${cellSize}px;height:${cellSize}px;border-radius:${cellRadius}px;background:${corHeat(dia.count, false)};cursor:pointer;transition:transform 100ms;" onmouseover="this.style.transform='scale(1.25)'" onmouseout="this.style.transform=''"></div>`;
+                    }).join('')}
+                  </div>
+                `).join('')}
+              </div>
+              <div style="display:flex;align-items:center;justify-content:flex-end;gap:6px;margin-top:${ehDesktop ? 14 : 10}px;font-size:${ehDesktop ? 11 : 10}px;color:var(--neutral-500);">
+                <span>menos</span>
+                <div style="display:flex;gap:3px;">
+                  ${['var(--neutral-100)','#D7E9B5','#B5D680','#8BC63F','#6BA32A'].map(c => `<div style="width:${legendSize}px;height:${legendSize}px;border-radius:${ehDesktop ? 3 : 2}px;background:${c};"></div>`).join('')}
+                </div>
+                <span>mais</span>
+              </div>
+            `;
+          })()}
+        </div>
       </div>
+
+      <!-- R · Insights inteligentes -->
+      ${insights.length > 0 ? `
+        <div style="margin-bottom:16px;">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;">
+            <span class="material-symbols-rounded" style="font-size:18px;color:var(--brand-lime);">auto_awesome</span>
+            <span style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:13.5px;">Insights pra você</span>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            ${insights.map(ins => `
+              <div style="background:${ins.bg};border:1px solid ${ins.borda};border-radius:12px;padding:12px 14px;display:flex;align-items:flex-start;gap:10px;">
+                <div style="font-size:22px;line-height:1;flex-shrink:0;">${ins.emoji}</div>
+                <div style="flex:1;min-width:0;">
+                  <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:13px;line-height:1.3;">${ins.titulo}</div>
+                  <div style="font-size:11.5px;color:var(--neutral-700);margin-top:3px;line-height:1.4;">${ins.texto}</div>
+                  ${ins.cta ? `<button onclick="${ins.acao}" style="margin-top:7px;background:${ins.cor};color:#fff;border:0;border-radius:7px;padding:5px 11px;font-size:11px;font-weight:700;cursor:pointer;">${ins.cta}</button>` : ''}
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      ` : ''}
+
+      <!-- Gráfico: visitas por mês — Sprint 9.32.109: layouts distintos desktop vs mobile -->
+      ${(() => {
+        const ehDesktopMes = (typeof isDesktop === 'function') ? isDesktop() : (window.innerWidth >= 1024);
+        const metaMensal = parseInt(localStorage.getItem('bn_meta_visitas_mes_nutri') || '20', 10);
+        const allZero = mesesArr.every(([, c]) => c === 0);
+        const valorMaxEixo = Math.max(maxMes, metaMensal, 1);
+        const ceilTo = (n, step) => Math.ceil(n / step) * step;
+        const eixoTop = valorMaxEixo <= 10 ? ceilTo(valorMaxEixo, 2)
+                       : valorMaxEixo <= 24 ? ceilTo(valorMaxEixo, 4)
+                       : valorMaxEixo <= 50 ? ceilTo(valorMaxEixo, 10)
+                       : ceilTo(valorMaxEixo, 20);
+        const eixoMid = eixoTop / 2;
+        const metaPctNum = metaMensal > 0 ? Math.round((kpiMes / metaMensal) * 100) : 0;
+        const metaIcone = kpiMes >= metaMensal ? 'check_circle' : (kpiMes >= metaMensal*0.7 ? 'pace' : 'flag');
+        const metaCor = kpiMes >= metaMensal ? '#22A06B' : (kpiMes >= metaMensal*0.7 ? '#F59E0B' : '#6B7280');
+
+        // ============ DESKTOP: HTML/CSS com colunas reais (sem SVG, sem distorção) ============
+        if (ehDesktopMes) {
+          const colMaxH = 220; // px
+          const fmtCount = (c) => c === 0 ? '<span style="color:var(--neutral-300);font-weight:600;">0</span>' : c;
+          return `
+          <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:12px;padding:18px 22px;margin-bottom:16px;">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
+              <span class="material-symbols-rounded" style="font-size:20px;color:var(--brand-lime);">stacked_bar_chart</span>
+              <span style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:15px;">Visitas por mês</span>
+              <span style="font-size:12px;color:var(--neutral-500);margin-left:6px;">últimos 6 meses</span>
+              <button onclick="window.editarMetaVisitasMesNutri && window.editarMetaVisitasMesNutri()" title="Ajustar meta mensal" style="margin-left:auto;display:inline-flex;align-items:center;gap:8px;cursor:pointer;background:#FEF8E9;border:1px solid rgba(245,158,11,0.3);border-radius:8px;padding:6px 12px;font-size:12px;color:#92400E;font-weight:700;font-family:inherit;">
+                <span class="material-symbols-rounded" style="font-size:16px;color:#F59E0B;">flag</span>
+                meta ${metaMensal}/mês
+                <span style="opacity:0.55;font-weight:600;">·</span>
+                <span style="display:inline-flex;align-items:center;gap:4px;color:${metaCor};">
+                  <span class="material-symbols-rounded" style="font-size:15px;">${metaIcone}</span>
+                  ${metaPctNum}%
+                </span>
+              </button>
+            </div>
+            ${allZero ? `
+              <div style="padding:36px;text-align:center;color:var(--neutral-400);font-size:13px;">Sem visitas nos últimos 6 meses.</div>
+            ` : `
+              <div style="display:flex;align-items:stretch;gap:18px;">
+                <!-- Eixo Y -->
+                <div style="display:flex;flex-direction:column;justify-content:space-between;font-size:11px;color:var(--neutral-400);font-weight:600;text-align:right;height:${colMaxH + 28}px;padding:6px 0 26px;min-width:24px;">
+                  <span>${eixoTop}</span>
+                  <span>${eixoMid}</span>
+                  <span>0</span>
+                </div>
+                <!-- Área das colunas -->
+                <div style="flex:1;position:relative;">
+                  <!-- Grade horizontal + linha de meta -->
+                  <div style="position:absolute;left:0;right:0;top:6px;height:${colMaxH}px;pointer-events:none;">
+                    <div style="position:absolute;left:0;right:0;top:0;border-top:1px dashed var(--neutral-100);"></div>
+                    <div style="position:absolute;left:0;right:0;top:50%;border-top:1px dashed var(--neutral-100);"></div>
+                    <div style="position:absolute;left:0;right:0;bottom:0;border-top:1px solid var(--neutral-200);"></div>
+                    <!-- Linha de meta -->
+                    <div style="position:absolute;left:0;right:0;top:${(1 - metaMensal/eixoTop) * colMaxH}px;border-top:2px dashed #F59E0B;"></div>
+                    <div style="position:absolute;right:-2px;top:${(1 - metaMensal/eixoTop) * colMaxH - 11}px;background:#FEF4E1;color:#92400E;font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:4px;border:1px solid #FCD9A0;">meta ${metaMensal}</div>
+                  </div>
+                  <!-- Colunas -->
+                  <div style="display:grid;grid-template-columns:repeat(${mesesArr.length},1fr);gap:14px;align-items:end;height:${colMaxH + 6}px;padding-top:6px;position:relative;">
+                    ${mesesArr.map(([key, count], i) => {
+                      const isAtual = i === mesesArr.length - 1;
+                      const altura = count === 0 ? 3 : Math.max(3, (count / eixoTop) * colMaxH);
+                      const fillCor = count === 0 ? 'var(--neutral-200)'
+                                    : isAtual ? 'linear-gradient(180deg,var(--brand-lime),#6BA32A)'
+                                    : 'linear-gradient(180deg,#B5D680,#97C459)';
+                      return `
+                        <div style="display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:6px;position:relative;">
+                          ${count > 0 ? `<div style="font-family:var(--font-display);font-weight:800;font-size:14px;color:var(--brand-navy);position:absolute;top:${colMaxH - altura - 24}px;">${count}</div>` : ''}
+                          <div title="${mesLabel(key)} · ${count} visita${count !== 1 ? 's' : ''}" style="width:100%;max-width:62px;height:${altura}px;background:${fillCor};border-radius:6px 6px 0 0;transition:height 600ms ease-out;"></div>
+                        </div>
+                      `;
+                    }).join('')}
+                  </div>
+                  <!-- Labels do eixo X -->
+                  <div style="display:grid;grid-template-columns:repeat(${mesesArr.length},1fr);gap:14px;margin-top:8px;">
+                    ${mesesArr.map(([key, count], i) => {
+                      const isAtual = i === mesesArr.length - 1;
+                      return `<div style="text-align:center;font-size:12px;font-weight:${isAtual ? 700 : 600};color:${isAtual ? 'var(--brand-navy)' : 'var(--neutral-500)'};">${mesLabel(key)}</div>`;
+                    }).join('')}
+                  </div>
+                </div>
+              </div>
+            `}
+          </div>`;
+        }
+
+        // ============ MOBILE: SVG compacto, viewBox proporcional ao tamanho real ============
+        const vbW = 360;
+        const vbH = 200;
+        const padTop = 22;
+        const padBottom = 28;
+        const padLeft = 28;
+        const padRight = 14;
+        const baseY = vbH - padBottom;
+        const topY = padTop;
+        const chartH = baseY - topY;
+        const colSpace = (vbW - padLeft - padRight) / mesesArr.length;
+        const barW = Math.min(colSpace * 0.5, 28);
+        const yFor = (v) => baseY - (v / eixoTop) * chartH;
+        const metaY = yFor(metaMensal);
+        return `
+        <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:12px;padding:14px;margin-bottom:16px;">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;flex-wrap:wrap;">
+            <span class="material-symbols-rounded" style="font-size:18px;color:var(--brand-lime);">stacked_bar_chart</span>
+            <span style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:13.5px;">Visitas por mês</span>
+            <button onclick="window.editarMetaVisitasMesNutri && window.editarMetaVisitasMesNutri()" title="Ajustar meta mensal" style="margin-left:auto;display:inline-flex;align-items:center;gap:6px;cursor:pointer;background:#FEF8E9;border:1px solid rgba(245,158,11,0.25);border-radius:7px;padding:3px 8px;font-size:10.5px;color:#92400E;font-weight:700;font-family:inherit;">
+              <span class="material-symbols-rounded" style="font-size:13px;color:#F59E0B;">flag</span>
+              meta ${metaMensal}
+              <span style="display:inline-flex;align-items:center;gap:2px;color:${metaCor};">
+                <span class="material-symbols-rounded" style="font-size:12px;">${metaIcone}</span>
+                ${metaPctNum}%
+              </span>
+            </button>
+          </div>
+          ${allZero ? `
+            <div style="padding:24px;text-align:center;color:var(--neutral-400);font-size:12px;">Sem visitas nos últimos 6 meses.</div>
+          ` : `
+            <svg viewBox="0 0 ${vbW} ${vbH}" style="width:100%;height:auto;display:block;">
+              <line x1="${padLeft}" y1="${baseY}" x2="${vbW - padRight}" y2="${baseY}" stroke="var(--neutral-200)" stroke-width="0.8"/>
+              <line x1="${padLeft}" y1="${yFor(eixoMid)}" x2="${vbW - padRight}" y2="${yFor(eixoMid)}" stroke="var(--neutral-100)" stroke-width="0.8" stroke-dasharray="2 3"/>
+              <line x1="${padLeft}" y1="${topY}" x2="${vbW - padRight}" y2="${topY}" stroke="var(--neutral-100)" stroke-width="0.8" stroke-dasharray="2 3"/>
+              <text x="${padLeft - 4}" y="${baseY + 3}" font-size="9" fill="var(--neutral-400)" text-anchor="end">0</text>
+              <text x="${padLeft - 4}" y="${yFor(eixoMid) + 3}" font-size="9" fill="var(--neutral-400)" text-anchor="end">${eixoMid}</text>
+              <text x="${padLeft - 4}" y="${topY + 3}" font-size="9" fill="var(--neutral-400)" text-anchor="end">${eixoTop}</text>
+              ${mesesArr.map(([key, count], i) => {
+                const cx = padLeft + colSpace * i + colSpace / 2;
+                const isAtual = i === mesesArr.length - 1;
+                const barX = cx - barW / 2;
+                const barY = count === 0 ? baseY - 2 : yFor(count);
+                const barH = count === 0 ? 2 : (baseY - barY);
+                const fillCor = count === 0 ? 'var(--neutral-200)' : (isAtual ? 'var(--brand-lime)' : '#B5D680');
+                const labelMobile = mesLabel(key).split('/')[0];
+                return `
+                  <rect x="${barX}" y="${barY}" width="${barW}" height="${barH}" rx="2.5" fill="${fillCor}"><title>${mesLabel(key)} · ${count} visita${count !== 1 ? 's' : ''}</title></rect>
+                  ${count > 0 ? `<text x="${cx}" y="${barY - 4}" font-size="10" font-weight="800" fill="var(--brand-navy)" text-anchor="middle">${count}</text>` : ''}
+                  <text x="${cx}" y="${baseY + 12}" font-size="9.5" fill="${isAtual ? 'var(--brand-navy)' : 'var(--neutral-500)'}" font-weight="${isAtual ? 700 : 600}" text-anchor="middle">${labelMobile}</text>
+                `;
+              }).join('')}
+              <line x1="${padLeft}" y1="${metaY}" x2="${vbW - padRight}" y2="${metaY}" stroke="#F59E0B" stroke-width="1.4" stroke-dasharray="3 2.5"/>
+            </svg>
+          `}
+        </div>`;
+      })()}
 
       <!-- Top hospitais -->
       <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:12px;padding:14px;margin-bottom:16px;">
@@ -28032,7 +28493,7 @@ window.rejeitarObjetivoPendente = async function(id) {
 let FAT_DATA = null;
 let _fatDataPromise = null;
 // __FAT_VERSION_START__ — substituído pelo atualizar_index.py com hash do JSON
-const FAT_DATA_VERSION = 'e3dc631e04a4';
+const FAT_DATA_VERSION = '8c5099e35b7d';
 // __FAT_VERSION_END__
 const FAT_DATA_URL = 'faturamento_data_inline.json?v=' + FAT_DATA_VERSION;
 
