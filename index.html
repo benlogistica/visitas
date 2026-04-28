@@ -6197,7 +6197,7 @@ a {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.93-cons-produtos-filtrados',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.105-instituicoes-nutri-tabela-admin',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -7409,6 +7409,9 @@ window.handleInstalarApp = async function() {
 // Logout
 function logout() {
   sessionStorage.removeItem('SIMULAR_NUTRI');
+  // Sprint 9.32.103: limpa flash de notificação pendente ao sair
+  // (evitava bug de "Hospital X atualizada" aparecer na tela de login após logout)
+  sessionStorage.removeItem(AUTH_FLASH);
   clearSession();
   pararPollingNotificacoes();
   window.location.hash = '#/login';
@@ -7963,12 +7966,13 @@ async function carregarDashboardData(periodo) {
 
   // Query base de visitas no período
   // Sprint 9.12: adicionado checkout_timestamp pra cálculo de tempo médio
+  // Sprint 9.32.97: incluído latitude/longitude/cidade/estado pra mapa geográfico
   let query = db.from('visitas').select(`
     id, status, data_visita, checkin_timestamp, checkout_timestamp, checkin_manual,
     flag_gps_divergente, visita_realizada,
     nutricionista_id, instituicao_id,
     usuarios:nutricionista_id(nome),
-    instituicoes(nome)
+    instituicoes(nome, cidade, estado, latitude, longitude)
   `);
   if (dataInicio) query = query.gte('checkin_timestamp', dataInicio);
 
@@ -9852,11 +9856,14 @@ function renderAdminDashboardDesktop() {
             <div class="ds-chart-card__header">
               <div>
                 <div class="ds-chart-card__title">Visitas realizadas</div>
-                <div class="ds-chart-card__subtitle">Agrupadas por período</div>
+                <div class="ds-chart-card__subtitle">Agrupadas por período · meta diária configurável</div>
               </div>
-              <div style="display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--neutral-600);">
-                <span style="width:9px;height:9px;border-radius:50%;background:var(--brand-lime);display:inline-block;"></span>
-                Visitas aprovadas
+              <div style="display:inline-flex;align-items:center;gap:10px;font-size:11px;color:var(--neutral-600);">
+                <div style="display:inline-flex;align-items:center;gap:5px;"><span style="width:9px;height:9px;border-radius:2px;background:#3B6D11;display:inline-block;"></span> ≥ meta</div>
+                <div style="display:inline-flex;align-items:center;gap:5px;"><span style="width:9px;height:9px;border-radius:2px;background:#C0DD97;display:inline-block;"></span> < meta</div>
+                <button onclick="window.editarMetaVisitasDia()" title="Ajustar meta diária" style="background:transparent;border:1px solid var(--neutral-200);width:28px;height:28px;border-radius:6px;cursor:pointer;color:var(--neutral-600);display:flex;align-items:center;justify-content:center;font-family:inherit;">
+                  <span class="material-symbols-rounded" style="font-size:15px;">tune</span>
+                </button>
               </div>
             </div>
             <div id="dsdVisitasSemana" style="min-height:200px;display:flex;align-items:center;justify-content:center;color:var(--neutral-400);font-size:12px;">Carregando...</div>
@@ -9874,10 +9881,10 @@ function renderAdminDashboardDesktop() {
           </div>
         </div>
 
-        <!-- Sprint 9.20.8: Heatmap + Status + Checkin numa linha de 3, Tipo + Inativos numa linha de 2 -->
+        <!-- Sprint 9.32.97: nova ordem — Heatmap + Mapa geo na linha 1, Status + Checkin + Tipo na linha 2 -->
         <div data-dash-section="heatmap-pies" style="display:flex;flex-direction:column;gap:20px;">
-          <!-- Linha 1: Heatmap + Status (barras) + Check-in (pizza) -->
-          <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:20px;">
+          <!-- Linha 1: Heatmap + Mapa geográfico das visitas -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
             <!-- Heatmap -->
             <div class="ds-chart-card">
               <div class="ds-chart-card__header">
@@ -9889,7 +9896,21 @@ function renderAdminDashboardDesktop() {
               <div id="dsdHeatmap" style="min-height:220px;display:flex;align-items:center;justify-content:center;color:var(--neutral-400);font-size:12px;">Carregando...</div>
             </div>
 
-            <!-- Status das visitas (BARRAS HORIZONTAIS) -->
+            <!-- Sprint 9.32.97: Mapa geográfico das visitas (Protótipo E aprovado) -->
+            <div class="ds-chart-card">
+              <div class="ds-chart-card__header">
+                <div>
+                  <div class="ds-chart-card__title">Mapa de visitas</div>
+                  <div class="ds-chart-card__subtitle" id="dsdMapaSubtitle">Onde a equipe esteve no período</div>
+                </div>
+              </div>
+              <div id="dsdMapa" style="min-height:220px;display:flex;align-items:center;justify-content:center;color:var(--neutral-400);font-size:12px;">Carregando...</div>
+            </div>
+          </div>
+
+          <!-- Linha 2: Status (barras) + Check-in (pizza) + Tipo institucional -->
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;">
+            <!-- Status das visitas -->
             <div class="ds-chart-card">
               <div class="ds-chart-card__header">
                 <div>
@@ -9910,11 +9931,8 @@ function renderAdminDashboardDesktop() {
               </div>
               <div id="dsdPieCheckin" style="min-height:220px;">Carregando...</div>
             </div>
-          </div>
 
-          <!-- Linha 2: Tipo de instituição + Nutris sem atividade -->
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
-            <!-- Tipo de instituição (pizza) -->
+            <!-- Tipo de instituição (movido pra cá pra completar a linha) -->
             <div class="ds-chart-card">
               <div class="ds-chart-card__header">
                 <div>
@@ -9924,8 +9942,10 @@ function renderAdminDashboardDesktop() {
               </div>
               <div id="dsdPieTipoInst" style="min-height:220px;">Carregando...</div>
             </div>
+          </div>
 
-            <!-- Nutris sem atividade -->
+          <!-- Linha 3: Nutricionistas sem atividade (sozinho — Tipo subiu pra linha 2) -->
+          <div style="display:grid;grid-template-columns:1fr;gap:20px;">
             <div class="ds-chart-card" id="dsdNutrisInativosCard">
               <div class="ds-chart-card__header">
                 <div>
@@ -10251,6 +10271,7 @@ async function carregarAdminDashboardDesktop() {
     renderDsdVisitasSemana(visitas);
     renderDsdDonutObjetivos(dataInicio);
     renderDsdHeatmap();
+    renderDsdMapaVisitas(visitas);
     renderDsdPiesStatusCheckinTipo(visitas);
     renderDsdNutrisInativos(visitas);
     renderDsdAcoesPendentes();
@@ -10716,92 +10737,125 @@ function renderGraficoVisitasTemporal() {
     return;
   }
 
-  // === SVG compacto (160px altura) ===
+  // Sprint 9.32.98: refatorado pra barras + linha de meta
+  // Lê meta diária do localStorage (default: 4). Configurável em /admin/configuracoes.
+  const metaDiaria = parseInt(localStorage.getItem('bn_meta_visitas_dia') || '4', 10);
+  // Calcula meta efetiva conforme granularidade
+  let metaEfetiva = metaDiaria;
+  let metaLabel = `Meta: ${metaDiaria}/dia`;
+  if (gran === 'semana') { metaEfetiva = metaDiaria * 5; metaLabel = `Meta: ${metaEfetiva}/sem (${metaDiaria}×5 dias úteis)`; }
+  else if (gran === 'mes') { metaEfetiva = metaDiaria * 22; metaLabel = `Meta: ${metaEfetiva}/mês (${metaDiaria}×22 dias úteis)`; }
+
+  // === SVG compacto com BARRAS ===
   const W = 620, H = 160, padL = 40, padR = 20, padT = 20, padB = 24;
-  const max = Math.max(...buckets.map(b => b.count), 1);
-  const min = 0;
+  const maxData = Math.max(...buckets.map(b => b.count), 1);
+  const max = Math.max(maxData, metaEfetiva); // garante que a linha de meta fica visível
   const chartW = W - padL - padR, chartH = H - padT - padB;
-  const xs = buckets.map((_, i) => padL + (buckets.length === 1 ? chartW / 2 : (i * chartW / (buckets.length - 1))));
-  const ys = buckets.map(b => padT + chartH - ((b.count - min) / (max - min || 1)) * chartH);
-  const lastIdx = buckets.length - 1;
+  const barGap = 2;
+  const barW = Math.max(2, (chartW - barGap * (buckets.length - 1)) / buckets.length);
+  const yBase = padT + chartH;
 
-  const linePath = xs.map((x, i) => `${i === 0 ? 'M' : 'L'} ${x} ${ys[i]}`).join(' ');
-  const areaPath = `${linePath} L ${xs[lastIdx]} ${H - padB} L ${xs[0]} ${H - padB} Z`;
+  // Linha de meta (Y position)
+  const yMeta = padT + chartH - (metaEfetiva / max) * chartH;
 
-  const gridLines = [0, 0.5, 1].map(t => {
+  // Cores: verde escuro se >= meta; verde claro se < meta; cinza claro se 0
+  const corBarra = (count) => {
+    if (count === 0) return 'var(--neutral-200)';
+    if (count >= metaEfetiva) return '#3B6D11';   // verde escuro
+    return '#C0DD97';                              // verde claro
+  };
+
+  const bars = buckets.map((b, i) => {
+    const x = padL + i * (barW + barGap);
+    const h = b.count > 0 ? Math.max(2, (b.count / max) * chartH) : 0;
+    const y = yBase - h;
+    return `
+      <g class="dsd-bar-grp" data-count="${b.count}" data-label="${b.label.replace(/"/g,'&quot;')}" data-meta="${metaEfetiva}" style="cursor:pointer;">
+        <rect x="${x - 0.5}" y="${padT}" width="${barW + 1}" height="${chartH}" fill="transparent"/>
+        <rect x="${x}" y="${y}" width="${barW}" height="${h}" fill="${corBarra(b.count)}" rx="2" class="dsd-bar"/>
+      </g>
+    `;
+  }).join('');
+
+  // Grid lines
+  const ticks = [0, 0.5, 1];
+  const gridLines = ticks.map(t => {
     const y = padT + chartH * (1 - t);
-    const val = Math.round(min + (max - min) * t);
+    const val = Math.round(max * t);
     return `
       <line x1="${padL}" y1="${y}" x2="${W - padR}" y2="${y}" stroke="var(--neutral-100)" stroke-width="1" stroke-dasharray="${t === 0 ? '0' : '3 3'}" />
       <text x="${padL - 6}" y="${y + 3}" font-size="9" fill="var(--neutral-400)" text-anchor="end" font-family="JetBrains Mono">${val}</text>
     `;
   }).join('');
 
-  const labels = xs.map((x, i) => buckets[i].labelX ? `
-    <text x="${x}" y="${H - 6}" font-size="8" fill="var(--neutral-400)" text-anchor="middle" font-family="JetBrains Mono">${buckets[i].labelX}</text>
-  ` : '').join('');
+  // Linha de meta + label
+  const metaLine = metaEfetiva > 0 ? `
+    <line x1="${padL}" y1="${yMeta}" x2="${W - padR}" y2="${yMeta}" stroke="#F59E0B" stroke-width="1.5" stroke-dasharray="6,4" />
+    <text x="${W - padR - 4}" y="${yMeta - 4}" font-size="10" fill="#92400E" text-anchor="end" font-weight="600" font-family="Inter, sans-serif">${metaLabel}</text>
+  ` : '';
 
-  // Pontos interativos
-  const hoverPoints = xs.map((x, i) => `
-    <g class="dsd-semana-point" data-count="${buckets[i].count}" data-label="${buckets[i].label.replace(/"/g,'&quot;')}" style="cursor:pointer;">
-      <circle cx="${x}" cy="${ys[i]}" r="3" fill="#fff" stroke="var(--brand-lime)" stroke-width="2" />
-      <circle cx="${x}" cy="${ys[i]}" r="14" fill="transparent" />
-    </g>
-  `).join('');
+  const labels = buckets.map((b, i) => {
+    if (!b.labelX) return '';
+    const x = padL + i * (barW + barGap) + barW / 2;
+    return `<text x="${x}" y="${H - 6}" font-size="8" fill="var(--neutral-400)" text-anchor="middle" font-family="JetBrains Mono">${b.labelX}</text>`;
+  }).join('');
+
+  // Stats no rodapé
+  const diasComMeta = buckets.filter(b => b.count >= metaEfetiva && metaEfetiva > 0).length;
+  const diasAtivos = buckets.filter(b => b.count > 0).length;
+  const taxaMeta = buckets.length > 0 ? Math.round((diasComMeta / buckets.length) * 100) : 0;
+  const periodo = gran === 'dia' ? 'dias' : (gran === 'semana' ? 'semanas' : 'meses');
+  const granLabel = gran === 'dia' ? 'dia' : (gran === 'semana' ? 'sem' : 'mês');
 
   container.style.display = 'block';
   container.innerHTML = `
     ${headerHtml}
     <div style="position:relative;">
       <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="width:100%;height:160px;display:block;">
-        <defs>
-          <linearGradient id="dsdAreaGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="var(--brand-lime)" stop-opacity="0.3" />
-            <stop offset="100%" stop-color="var(--brand-lime)" stop-opacity="0" />
-          </linearGradient>
-        </defs>
         ${gridLines}
-        <path d="${areaPath}" fill="url(#dsdAreaGrad)" />
-        <path d="${linePath}" fill="none" stroke="var(--brand-lime)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" />
-        ${hoverPoints}
+        ${bars}
+        ${metaLine}
         ${labels}
       </svg>
       <div id="dsdSemanaTooltip" style="position:absolute;display:none;background:var(--brand-navy);color:#fff;padding:6px 10px;border-radius:6px;font-size:11px;font-family:'Inter',sans-serif;pointer-events:none;white-space:nowrap;z-index:10;box-shadow:0 4px 12px rgba(10,31,92,0.3);transform:translate(-50%, -100%);margin-top:-6px;">
         <div style="font-family:'JetBrains Mono',monospace;font-weight:700;font-size:12px;" id="dsdSemanaTooltipCount">—</div>
         <div style="font-size:10px;opacity:0.85;margin-top:1px;" id="dsdSemanaTooltipLabel">—</div>
+        <div style="font-size:10px;opacity:0.85;margin-top:1px;" id="dsdSemanaTooltipMeta">—</div>
       </div>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:14px;margin-top:8px;padding-top:8px;border-top:0.5px solid var(--neutral-100);font-size:11px;color:var(--neutral-600);flex-wrap:wrap;">
+      <span><strong style="color:#3B6D11;">${diasComMeta} ${periodo.slice(0,-1)}${diasComMeta !== 1 ? 's' : ''}</strong> bateu meta · <strong style="color:#854F0B;">${buckets.length - diasComMeta} abaixo</strong></span>
+      <span>Total: <strong style="color:var(--brand-navy);">${total} visita${total !== 1 ? 's' : ''}</strong></span>
+      <span style="margin-left:auto;color:#3B6D11;font-weight:600;">${taxaMeta}% acima da meta</span>
     </div>
   `;
 
-  // Binding dos tooltips
+  // Tooltips das barras
   const tooltip = document.getElementById('dsdSemanaTooltip');
   const tooltipCount = document.getElementById('dsdSemanaTooltipCount');
   const tooltipLabel = document.getElementById('dsdSemanaTooltipLabel');
-  const wrapper = container.querySelector('div:last-child');
-  container.querySelectorAll('.dsd-semana-point').forEach(g => {
+  const tooltipMeta = document.getElementById('dsdSemanaTooltipMeta');
+  const wrapper = container.querySelector('div:nth-child(2)');
+  container.querySelectorAll('.dsd-bar-grp').forEach(g => {
     g.addEventListener('mouseenter', () => {
-      const count = g.dataset.count;
+      const count = parseInt(g.dataset.count, 10);
       const label = g.dataset.label;
-      tooltipCount.textContent = `${count} ${count === '1' ? 'visita' : 'visitas'}`;
+      const meta = parseInt(g.dataset.meta, 10);
+      tooltipCount.textContent = `${count} ${count === 1 ? 'visita' : 'visitas'}`;
       tooltipLabel.textContent = label;
-      const circle = g.querySelector('circle');
-      const rectSvg = container.querySelector('svg').getBoundingClientRect();
+      tooltipMeta.textContent = count >= meta ? `✓ acima da meta (${meta})` : `↓ ${meta - count} abaixo da meta`;
+      const rect = g.querySelector('rect:last-child').getBoundingClientRect();
       const rectWrap = wrapper.getBoundingClientRect();
-      const cx = parseFloat(circle.getAttribute('cx'));
-      const cy = parseFloat(circle.getAttribute('cy'));
-      const pxX = (cx / W) * rectSvg.width + (rectSvg.left - rectWrap.left);
-      const pxY = (cy / H) * rectSvg.height + (rectSvg.top - rectWrap.top);
-      tooltip.style.left = `${pxX}px`;
-      tooltip.style.top = `${pxY}px`;
+      tooltip.style.left = `${rect.left - rectWrap.left + rect.width / 2}px`;
+      tooltip.style.top = `${rect.top - rectWrap.top}px`;
       tooltip.style.display = 'block';
-      circle.setAttribute('r', '5');
-      circle.setAttribute('fill', 'var(--brand-lime)');
+      const bar = g.querySelector('rect.dsd-bar');
+      bar.style.opacity = '0.85';
     });
     g.addEventListener('mouseleave', () => {
       tooltip.style.display = 'none';
-      const circle = g.querySelector('circle');
-      circle.setAttribute('r', '3');
-      circle.setAttribute('fill', '#fff');
+      const bar = g.querySelector('rect.dsd-bar');
+      bar.style.opacity = '1';
     });
   });
 }
@@ -10813,6 +10867,72 @@ window.trocarGranDsdGrafico = function(gran) {
     window._dsdSemanaMesOffset = 0;
   }
   renderGraficoVisitasTemporal();
+};
+
+// Sprint 9.32.98: editar meta diária (salva em localStorage e re-renderiza gráfico)
+window.editarMetaVisitasDia = function() {
+  const atual = parseInt(localStorage.getItem('bn_meta_visitas_dia') || '4', 10);
+  const html = `
+    <div id="metaVisDayOverlay" style="position:fixed;inset:0;background:rgba(10,31,92,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;">
+      <div style="background:var(--neutral-0);border-radius:14px;padding:22px;max-width:380px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.3);font-family:inherit;">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;">
+          <div style="width:42px;height:42px;border-radius:50%;background:#FAEEDA;color:#92400E;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <span class="material-symbols-rounded" style="font-size:22px;">flag</span>
+          </div>
+          <div>
+            <div style="font-family:var(--font-display);font-size:17px;font-weight:700;color:var(--brand-navy);">Meta diária de visitas</div>
+            <div style="font-size:12px;color:var(--neutral-500);margin-top:2px;">Quantas visitas por nutricionista por dia útil?</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;">
+          <button onclick="window._metaVisDecr()" style="width:44px;height:44px;border-radius:8px;background:var(--neutral-50,#FAFBFD);border:1.5px solid var(--neutral-200);color:var(--brand-navy);font-size:22px;cursor:pointer;font-family:inherit;">−</button>
+          <input type="number" id="metaVisInput" value="${atual}" min="1" max="20" step="1" style="flex:1;text-align:center;font-family:var(--font-display);font-size:32px;font-weight:700;color:var(--brand-navy);border:1.5px solid var(--neutral-200);border-radius:8px;padding:6px;background:var(--neutral-0);" />
+          <button onclick="window._metaVisIncr()" style="width:44px;height:44px;border-radius:8px;background:var(--neutral-50,#FAFBFD);border:1.5px solid var(--neutral-200);color:var(--brand-navy);font-size:22px;cursor:pointer;font-family:inherit;">+</button>
+        </div>
+        <div style="background:#FFF8EE;border:1px solid #FCD9A0;border-radius:8px;padding:10px;font-size:11.5px;color:#854F0B;line-height:1.5;margin-bottom:14px;">
+          📅 Equivale a <strong id="metaVisEquiv">${atual * 5}/sem · ${atual * 22}/mês</strong> (considerando 5 dias úteis/semana, 22/mês)
+        </div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;">
+          <button onclick="document.getElementById('metaVisDayOverlay').remove()" style="background:transparent;color:var(--neutral-600);border:1.5px solid var(--neutral-200);padding:9px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">Cancelar</button>
+          <button onclick="window._metaVisSalvar()" style="background:var(--brand-lime);color:#fff;border:0;padding:9px 18px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">Salvar meta</button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.insertAdjacentHTML('beforeend', html);
+
+  // Atualiza preview ao mudar
+  const inp = document.getElementById('metaVisInput');
+  const equiv = document.getElementById('metaVisEquiv');
+  inp.addEventListener('input', () => {
+    const v = parseInt(inp.value || '0', 10);
+    if (equiv) equiv.textContent = `${v * 5}/sem · ${v * 22}/mês`;
+  });
+  setTimeout(() => inp.select(), 50);
+};
+window._metaVisIncr = function() {
+  const inp = document.getElementById('metaVisInput');
+  if (!inp) return;
+  const v = parseInt(inp.value || '0', 10);
+  if (v < 20) inp.value = v + 1;
+  inp.dispatchEvent(new Event('input'));
+};
+window._metaVisDecr = function() {
+  const inp = document.getElementById('metaVisInput');
+  if (!inp) return;
+  const v = parseInt(inp.value || '0', 10);
+  if (v > 1) inp.value = v - 1;
+  inp.dispatchEvent(new Event('input'));
+};
+window._metaVisSalvar = function() {
+  const inp = document.getElementById('metaVisInput');
+  if (!inp) return;
+  const v = Math.max(1, Math.min(20, parseInt(inp.value || '4', 10)));
+  localStorage.setItem('bn_meta_visitas_dia', String(v));
+  document.getElementById('metaVisDayOverlay').remove();
+  setFlash && setFlash('success', `Meta atualizada pra ${v} visitas/dia.`);
+  // Re-renderiza o gráfico se estiver visível
+  if (typeof renderGraficoVisitasTemporal === 'function') renderGraficoVisitasTemporal();
 };
 
 window.trocarMesDsdGrafico = function(offset) {
@@ -11007,6 +11127,113 @@ function renderDsdRankingInst(visitas) {
       </div>
     `;
   }).join('');
+}
+
+// Sprint 9.32.97: Mapa geográfico das visitas (Protótipo E)
+// Agrega visitas do período por hospital e mostra como pinos no mapa SVG simplificado de SP.
+// Tamanho do pino = qtd de visitas; cor = intensidade.
+async function renderDsdMapaVisitas(visitas) {
+  const container = document.getElementById('dsdMapa');
+  const subtitle = document.getElementById('dsdMapaSubtitle');
+  if (!container) return;
+
+  try {
+    // Agrega visitas por instituição
+    const porInst = {};
+    (visitas || []).forEach(v => {
+      const id = v.instituicao_id;
+      if (!id) return;
+      if (!porInst[id]) porInst[id] = { id, count: 0, nome: v.instituicoes?.nome || '—', cidade: v.instituicoes?.cidade || '', estado: v.instituicoes?.estado || '', latitude: v.instituicoes?.latitude || null, longitude: v.instituicoes?.longitude || null };
+      porInst[id].count++;
+    });
+
+    let pontos = Object.values(porInst).filter(p => p.latitude && p.longitude);
+
+    if (pontos.length === 0) {
+      container.innerHTML = `
+        <div style="text-align:center;color:var(--neutral-400);font-size:12px;padding:30px;">
+          <span class="material-symbols-rounded" style="font-size:36px;color:var(--neutral-300);display:block;margin-bottom:6px;">location_off</span>
+          Nenhuma visita com geolocalização no período.
+        </div>
+      `;
+      if (subtitle) subtitle.textContent = 'Sem dados geográficos';
+      return;
+    }
+
+    // Bounding box dos pontos
+    const lats = pontos.map(p => Number(p.latitude));
+    const lngs = pontos.map(p => Number(p.longitude));
+    let minLat = Math.min(...lats), maxLat = Math.max(...lats);
+    let minLng = Math.min(...lngs), maxLng = Math.max(...lngs);
+    // Adiciona margem ~10% se o range for muito apertado
+    const padLat = Math.max((maxLat - minLat) * 0.15, 0.1);
+    const padLng = Math.max((maxLng - minLng) * 0.15, 0.1);
+    minLat -= padLat; maxLat += padLat;
+    minLng -= padLng; maxLng += padLng;
+
+    const W = 600, H = 240;
+    const proj = (lat, lng) => {
+      const x = ((lng - minLng) / (maxLng - minLng)) * (W - 40) + 20;
+      // Invert Y (lat maior = topo)
+      const y = ((maxLat - lat) / (maxLat - minLat)) * (H - 60) + 20;
+      return { x, y };
+    };
+
+    const maxCount = Math.max(...pontos.map(p => p.count));
+    const corPino = (count) => {
+      const ratio = count / maxCount;
+      if (ratio > 0.7) return '#3B6D11';   // verde escuro
+      if (ratio > 0.4) return '#639922';   // verde médio
+      if (ratio > 0.2) return '#97C459';   // verde claro
+      return '#C0DD97';                    // verde bem claro
+    };
+    const tamPino = (count) => 5 + (count / maxCount) * 9;  // 5px a 14px
+
+    // Agrupa por cidade pra mostrar labels limpos
+    const porCidade = {};
+    pontos.forEach(p => {
+      const k = `${p.cidade}/${p.estado}`;
+      if (!porCidade[k]) porCidade[k] = { cidade: p.cidade, estado: p.estado, count: 0, _pontos: [] };
+      porCidade[k].count += p.count;
+      porCidade[k]._pontos.push(p);
+    });
+
+    // Top 6 cidades pra mostrar label
+    const topCidades = Object.values(porCidade).sort((a, b) => b.count - a.count).slice(0, 6);
+    const labelsCidade = new Set(topCidades.map(c => `${c.cidade}/${c.estado}`));
+
+    container.innerHTML = `
+      <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block;">
+        <rect x="0" y="0" width="${W}" height="${H}" fill="#FAFAF5" rx="6"/>
+        ${pontos.map(p => {
+          const { x, y } = proj(Number(p.latitude), Number(p.longitude));
+          const r = tamPino(p.count);
+          const cor = corPino(p.count);
+          return `
+            <g class="dsd-pin" style="cursor:pointer;" onclick="window.location.hash='#/admin/visitas?inst=${p.id}'">
+              <title>${(p.nome || '').replace(/</g,'&lt;')} · ${p.count} visita${p.count > 1 ? 's' : ''}</title>
+              <circle cx="${x}" cy="${y}" r="${r + 4}" fill="${cor}" opacity="0.25"/>
+              <circle cx="${x}" cy="${y}" r="${r}" fill="${cor}"/>
+              ${p.count >= 3 ? `<text x="${x}" y="${y + 3}" text-anchor="middle" font-size="${r > 9 ? 9 : 8}" fill="#fff" font-weight="700" style="pointer-events:none;">${p.count}</text>` : ''}
+            </g>
+          `;
+        }).join('')}
+        ${topCidades.map(c => {
+          const p = c._pontos[0];
+          const { x, y } = proj(Number(p.latitude), Number(p.longitude));
+          return `<text x="${x}" y="${Math.max(12, y - tamPino(p.count) - 4)}" text-anchor="middle" font-size="9.5" fill="#5F5E5A" font-weight="500" style="pointer-events:none;">${c.cidade}</text>`;
+        }).join('')}
+      </svg>
+      <div style="display:flex;align-items:center;gap:14px;padding:8px 4px 0;font-size:11px;color:var(--neutral-600);flex-wrap:wrap;">
+        <span><strong style="color:var(--brand-navy);">${(visitas || []).length}</strong> visitas em <strong>${Object.keys(porCidade).length}</strong> cidade${Object.keys(porCidade).length !== 1 ? 's' : ''}</span>
+        <span style="margin-left:auto;color:#3B6D11;font-weight:600;">${topCidades[0].cidade} lidera 🏆</span>
+      </div>
+    `;
+    if (subtitle) subtitle.textContent = `${pontos.length} hospitais · ${Object.keys(porCidade).length} cidades`;
+  } catch (err) {
+    console.warn('[dash mapa]', err);
+    container.innerHTML = `<div style="text-align:center;color:var(--status-danger);font-size:12px;padding:20px;">Erro ao carregar mapa: ${(err.message || err).replace(/</g,'&lt;')}</div>`;
+  }
 }
 
 // Sprint 9.20: 3 mini-pizzas (Status, Check-in, Tipo de instituição)
@@ -16708,14 +16935,15 @@ function renderInicioNutriDesktop() {
   });
 }
 
-// Wrapper: reusa renderItensPadronizados({embed:true}) dentro do shell nutri
+// Sprint 9.32.99: nutri desktop usa a mesma swimlane do admin.
+// Funções _ipSwimRender, _ipSwimCard, etc. são compartilhadas — só muda o shell.
 function renderItensPadronizadosDesktopNutri() {
   const user = requireAuth();
   if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
   return desktopShellNutri({
     title: 'Itens padronizados',
     breadcrumb: ['Nutri', 'Itens padronizados'],
-    content: renderItensPadronizados({ embed: true }),
+    content: renderItensPadronizadosSwimlane(),
     activeId: 'standardized',
   });
 }
@@ -17234,105 +17462,166 @@ function renderAgendaDesktopNutri() {
 
 // Sprint 9.26 Fase 3: Instituições no desktop nutri.
 // Reusa carregarInstituicoesNutri/filtrarInstNutriLocal (IDs #nutriInstList, #nutriInstBusca, #nutriInstContador).
+// Sprint 9.32.105: Instituições no desktop nutri reusa o MESMO layout do admin
+// (tabs Ativas/Pendentes/Desativadas, tabela completa, busca, exportar CSV).
+// Diferenças: requireAuth, shell nutri, botão "Nova" usa fluxo nutri (pendente_aprovacao=true).
 function renderNutriInstituicoesDesktop() {
   const user = requireAuth();
   if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
 
-  setTimeout(async () => {
-    await carregarInstituicoesNutri();
+  const filtroPorRota = window._routeParams?.filtro || null;
+  if (!window._instDesktopState) window._instDesktopState = { filtro: 'ativas', busca: '' };
+  if (filtroPorRota) window._instDesktopState.filtro = filtroPorRota;
+
+  setTimeout(() => {
+    carregarAdminInstituicoesDesktop();
   }, 0);
 
+  const s = window._instDesktopState;
+  const tabs = [
+    { id: 'ativas',      label: 'Ativas',      badgeId: 'dsdInstCntAtivas' },
+    { id: 'pendentes',   label: 'Pendentes',   badgeId: 'dsdInstCntPend' },
+    { id: 'desativadas', label: 'Desativadas', badgeId: 'dsdInstCntDesat' },
+  ];
+  const titleExtra = `
+    <div style="display:inline-flex;gap:4px;background:var(--neutral-100);border-radius:9999px;padding:3px;">
+      ${tabs.map(t => `
+        <button onclick="trocarAbaInstDesktop('${t.id}')" id="dsdInstTab_${t.id}" style="padding:5px 14px;border:0;background:${s.filtro === t.id ? 'var(--brand-navy)' : 'transparent'};color:${s.filtro === t.id ? '#fff' : 'var(--neutral-600)'};border-radius:9999px;font-size:11.5px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px;">
+          ${t.label}
+          <span id="${t.badgeId}" style="font-family:'JetBrains Mono',monospace;font-size:10px;background:${s.filtro === t.id ? 'rgba(255,255,255,0.18)' : 'var(--neutral-200)'};padding:1px 6px;border-radius:9999px;min-width:18px;text-align:center;">—</span>
+        </button>
+      `).join('')}
+    </div>
+  `;
+
   const content = `
-    <div style="max-width:1280px;margin:0 auto;">
-      <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:14px;padding:18px 20px;">
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:14px;flex-wrap:wrap;">
-          <div>
-            <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:16px;">Instituições</div>
-            <div id="nutriInstContador" style="font-size:12.5px;color:var(--neutral-600);margin-top:2px;">—</div>
-          </div>
-          <button onclick="novaInstituicaoNutri()" style="display:inline-flex;align-items:center;gap:8px;background:var(--brand-lime);color:#fff;border:0;padding:10px 18px;border-radius:9999px;cursor:pointer;font-weight:700;font-size:12.5px;font-family:inherit;">
-            <span class="material-symbols-rounded" style="font-size:18px;">add_location_alt</span>
-            Nova instituição
-          </button>
-        </div>
+    <div style="display:flex;flex-direction:column;gap:18px;">
 
-        <div style="position:relative;margin:0 0 14px;max-width:460px;">
-          <span class="material-symbols-rounded" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--neutral-500);font-size:18px;pointer-events:none;">search</span>
-          <input type="text"
-                 id="nutriInstBusca"
-                 placeholder="Filtrar por nome, bairro ou cidade..."
-                 oninput="filtrarInstNutriLocal(this.value)"
-                 style="width:100%;padding:10px 14px 10px 38px;border:1px solid var(--neutral-200);border-radius:10px;font-family:inherit;font-size:13px;background:var(--neutral-0);color:var(--brand-navy);" />
-        </div>
-
-        <div style="background:linear-gradient(135deg,#E4ECFD 0%,#EFF3FC 100%);border:1px solid rgba(29,53,122,0.15);border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:12.5px;color:var(--brand-navy);display:flex;align-items:center;gap:10px;">
-          <span class="material-symbols-rounded" style="font-size:20px;color:var(--status-info);flex-shrink:0;">info</span>
-          <span>Cadastros novos ficam <strong>pendentes</strong> até o admin completar os dados e aprovar.</span>
-        </div>
-
-        <div class="visits-list" id="nutriInstList" style="background:var(--neutral-0);">
-          <div style="padding:30px;text-align:center;color:var(--neutral-500);font-size:13px;">Carregando...</div>
+      <!-- Banner explicativo pro nutri -->
+      <div style="background:#fff;border:1px solid var(--neutral-200);border-radius:10px;padding:14px 16px;display:flex;gap:12px;align-items:center;">
+        <span class="material-symbols-rounded" style="font-size:22px;color:var(--status-info);flex-shrink:0;">info</span>
+        <div style="flex:1;font-size:12.5px;color:var(--neutral-600);line-height:1.5;">
+          Você pode <strong>cadastrar e editar todas as instituições</strong>. Cadastros novos ficam pendentes até o admin completar os dados e aprovar.
         </div>
       </div>
+
+      <!-- Barra de ações -->
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:260px;position:relative;">
+          <span class="material-symbols-rounded" style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--neutral-500);font-size:18px;pointer-events:none;">search</span>
+          <input type="text" id="dsdInstBusca" placeholder="Buscar por nome, cidade, CNPJ..." value="${(s.busca || '').replace(/"/g,'&quot;')}" oninput="buscarInstDesktop(this.value)" style="width:100%;height:42px;padding:0 14px 0 42px;border:1px solid var(--neutral-200);border-radius:10px;background:#fff;font-family:inherit;font-size:13.5px;color:var(--brand-navy);" />
+        </div>
+        <button onclick="exportarInstCsvDesktop()" style="height:42px;padding:0 16px;border:1px solid var(--neutral-200);background:#fff;color:var(--neutral-600);border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px;">
+          <span class="material-symbols-rounded" style="font-size:17px;">download</span>
+          Exportar CSV
+        </button>
+        <button onclick="novaInstituicaoNutri()" style="height:42px;padding:0 18px;background:var(--brand-lime);color:#fff;border:0;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px;box-shadow:0 2px 6px rgba(139,198,63,0.25);">
+          <span class="material-symbols-rounded" style="font-size:18px;">add_location_alt</span>
+          Nova instituição
+        </button>
+      </div>
+
+      <!-- Tabela -->
+      <div style="background:#fff;border-radius:12px;border:1px solid var(--neutral-200);box-shadow:0 1px 3px rgba(10,31,92,0.04);overflow:hidden;">
+        <div id="dsdInstTable" style="min-height:260px;">
+          <div style="padding:50px;text-align:center;color:var(--neutral-500);font-size:13px;">
+            <span class="material-symbols-rounded" style="font-size:28px;color:var(--neutral-400);">hourglass_empty</span>
+            <div style="margin-top:6px;">Carregando...</div>
+          </div>
+        </div>
+      </div>
+
+      <div id="dsdInstFooter" style="font-size:12px;color:var(--neutral-500);text-align:right;padding:0 4px;">—</div>
     </div>
   `;
 
   return desktopShellNutri({
     title: 'Instituições',
     breadcrumb: ['Nutri', 'Instituições'],
+    titleExtra,
     content,
     activeId: 'institutions',
   });
 }
 
-// Sprint 9.26 Fase 3: Profissionais no desktop nutri.
-// Reusa carregarProfissionaisNutri/filtrarProfNutriLocal.
+// Sprint 9.32.104: Profissionais no desktop nutri reusa o MESMO layout do admin
+// (tabs Ativos/Desativados, tabela completa, busca, exportar CSV, etc).
+// Diferenças: requireAuth (em vez de requireAdmin), shell do nutri, botão "Novo" usa
+// fluxo nutri (que respeita regras de cadastro com aviso "novo cargo vai pra admin").
 function renderNutriProfissionaisDesktop() {
   const user = requireAuth();
   if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
 
-  setTimeout(async () => {
-    await carregarProfissionaisNutri();
+  const filtroPorRota = window._routeParams?.filtro || null;
+  if (!window._profDesktopState) window._profDesktopState = { filtro: 'ativos', busca: '' };
+  if (filtroPorRota && ['ativos','desativados'].includes(filtroPorRota)) {
+    window._profDesktopState.filtro = filtroPorRota;
+  }
+
+  setTimeout(() => {
+    carregarAdminProfissionaisDesktop();
   }, 0);
 
+  const s = window._profDesktopState;
+  const tabs = [
+    { id: 'ativos',      label: 'Ativos',      badgeId: 'dsdProfCntAtiv' },
+    { id: 'desativados', label: 'Desativados', badgeId: 'dsdProfCntDesat' },
+  ];
+  const titleExtra = `
+    <div style="display:inline-flex;gap:4px;background:var(--neutral-100);border-radius:9999px;padding:3px;">
+      ${tabs.map(t => `
+        <button onclick="trocarAbaProfDesktop('${t.id}')" id="dsdProfTab_${t.id}" style="padding:5px 14px;border:0;background:${s.filtro === t.id ? 'var(--brand-navy)' : 'transparent'};color:${s.filtro === t.id ? '#fff' : 'var(--neutral-600)'};border-radius:9999px;font-size:11.5px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px;">
+          ${t.label}
+          <span id="${t.badgeId}" style="font-family:'JetBrains Mono',monospace;font-size:10px;background:${s.filtro === t.id ? 'rgba(255,255,255,0.18)' : 'var(--neutral-200)'};padding:1px 6px;border-radius:9999px;min-width:18px;text-align:center;">—</span>
+        </button>
+      `).join('')}
+    </div>
+  `;
+
   const content = `
-    <div style="max-width:1280px;margin:0 auto;">
-      <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:14px;padding:18px 20px;">
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:14px;flex-wrap:wrap;">
-          <div>
-            <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:16px;">Profissionais</div>
-            <div id="nutriProfContador" style="font-size:12.5px;color:var(--neutral-600);margin-top:2px;">—</div>
-          </div>
-          <button onclick="novoProfissionalNutri()" style="display:inline-flex;align-items:center;gap:8px;background:var(--brand-lime);color:#fff;border:0;padding:10px 18px;border-radius:9999px;cursor:pointer;font-weight:700;font-size:12.5px;font-family:inherit;">
-            <span class="material-symbols-rounded" style="font-size:18px;">person_add</span>
-            Novo profissional
-          </button>
-        </div>
-
-        <div style="position:relative;margin:0 0 14px;max-width:460px;">
-          <span class="material-symbols-rounded" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--neutral-500);font-size:18px;pointer-events:none;">search</span>
-          <input type="text"
-                 id="nutriProfBusca"
-                 placeholder="Filtrar por nome, profissão ou hospital..."
-                 oninput="filtrarProfNutriLocal(this.value)"
-                 style="width:100%;padding:10px 14px 10px 38px;border:1px solid var(--neutral-200);border-radius:10px;font-family:inherit;font-size:13px;background:var(--neutral-0);color:var(--brand-navy);" />
-        </div>
-
-        <div style="background:linear-gradient(135deg,#E6F6EF 0%,#EFF7EE 100%);border:1px solid rgba(34,160,107,0.2);border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:12.5px;color:var(--brand-navy);display:flex;align-items:center;gap:10px;">
-          <span class="material-symbols-rounded" style="font-size:20px;color:var(--status-success);flex-shrink:0;">check_circle</span>
-          <span>Você pode editar apenas os profissionais que <strong>você cadastrou</strong>. Os outros ficam só pra visualizar.</span>
-        </div>
-
-        <div class="visits-list" id="nutriProfList" style="background:var(--neutral-0);">
-          <div style="padding:30px;text-align:center;color:var(--neutral-500);font-size:13px;">Carregando...</div>
+    <div style="display:flex;flex-direction:column;gap:18px;">
+      <!-- Info banner -->
+      <div style="background:#fff;border:1px solid var(--neutral-200);border-radius:10px;padding:14px 16px;display:flex;gap:12px;align-items:center;">
+        <span class="material-symbols-rounded" style="font-size:22px;color:var(--status-info);flex-shrink:0;">info</span>
+        <div style="flex:1;font-size:12.5px;color:var(--neutral-600);line-height:1.5;">
+          <strong>Profissionais de saúde</strong> são médicos, enfermeiros, farmacêuticos e outros profissionais <strong>externos</strong> (da instituição visitada). Você pode editar todos. Cargos novos podem virar opções universais após revisão do admin.
         </div>
       </div>
+
+      <!-- Barra de ações -->
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:260px;position:relative;">
+          <span class="material-symbols-rounded" style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--neutral-500);font-size:18px;pointer-events:none;">search</span>
+          <input type="text" id="dsdProfBusca" placeholder="Buscar por nome, profissão ou hospital..." value="${(s.busca || '').replace(/"/g,'&quot;')}" oninput="buscarProfDesktop(this.value)" style="width:100%;height:42px;padding:0 14px 0 42px;border:1px solid var(--neutral-200);border-radius:10px;background:#fff;font-family:inherit;font-size:13.5px;color:var(--brand-navy);" />
+        </div>
+        <button onclick="exportarProfCsvDesktop()" style="height:42px;padding:0 16px;border:1px solid var(--neutral-200);background:#fff;color:var(--neutral-600);border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px;">
+          <span class="material-symbols-rounded" style="font-size:17px;">download</span>
+          Exportar CSV
+        </button>
+        <button onclick="novoProfissionalNutri()" style="height:42px;padding:0 18px;background:var(--brand-lime);color:#fff;border:0;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px;box-shadow:0 2px 6px rgba(139,198,63,0.25);">
+          <span class="material-symbols-rounded" style="font-size:18px;">person_add</span>
+          Novo profissional
+        </button>
+      </div>
+
+      <!-- Tabela -->
+      <div style="background:#fff;border-radius:12px;border:1px solid var(--neutral-200);box-shadow:0 1px 3px rgba(10,31,92,0.04);overflow:hidden;">
+        <div id="dsdProfTable" style="min-height:260px;">
+          <div style="padding:50px;text-align:center;color:var(--neutral-500);font-size:13px;">
+            <span class="material-symbols-rounded" style="font-size:28px;color:var(--neutral-400);">hourglass_empty</span>
+            <div style="margin-top:6px;">Carregando...</div>
+          </div>
+        </div>
+      </div>
+
+      <div id="dsdProfFooter" style="font-size:12px;color:var(--neutral-500);text-align:right;padding:0 4px;">—</div>
     </div>
   `;
 
   return desktopShellNutri({
     title: 'Profissionais',
     breadcrumb: ['Nutri', 'Profissionais'],
+    titleExtra,
     content,
     activeId: 'professions',
   });
@@ -22505,10 +22794,10 @@ async function carregarInstituicoesNutri() {
       } else if (pendenteOutro) {
         badgeHtml = `<span title="Sugerida por outro profissional" style="display:inline-flex;align-items:center;gap:3px;font-size:10.5px;color:var(--neutral-600);background:var(--neutral-100);padding:2px 7px;border-radius:9999px;font-weight:600;"><span class="material-symbols-rounded" style="font-size:13px;">hourglass_empty</span>Pendente</span>`;
       }
-      // Nutri pode clicar em suas pendentes pra editar (enquanto aguarda aprovação)
-      const clicavel = minhaSugestao;
+      // Sprint 9.32.100: ícone de editar visível em todas — reusa editarSugestaoNutri
+      // O handler é tolerante: se RLS bloquear (admin-only), mostra mensagem amigável
       return `
-        <div class="visits-list__item" data-id="${inst.id}" ${clicavel ? `onclick="editarSugestaoNutri('${inst.id}')" style="cursor:pointer;"` : ''}>
+        <div class="visits-list__item" data-id="${inst.id}" onclick="editarSugestaoNutri('${inst.id}')" style="cursor:pointer;">
           <div class="visits-list__icon">
             <span class="material-symbols-rounded">local_hospital</span>
           </div>
@@ -22521,7 +22810,9 @@ async function carregarInstituicoesNutri() {
               ${local || '<span style="color:var(--neutral-400);">Sem endereço</span>'}
             </div>
           </div>
-          ${clicavel ? `<span class="material-symbols-rounded" style="color:var(--neutral-300);font-size:18px;margin-left:4px;">chevron_right</span>` : ''}
+          <button onclick="event.stopPropagation();editarSugestaoNutri('${inst.id}')" title="Editar instituição" style="background:transparent;border:0;color:var(--brand-lime);width:32px;height:32px;border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;font-family:inherit;" onmouseover="this.style.background='var(--neutral-100)'" onmouseout="this.style.background='transparent'">
+            <span class="material-symbols-rounded" style="font-size:18px;">edit</span>
+          </button>
         </div>
       `;
     }).join('');
@@ -22549,14 +22840,16 @@ window.filtrarInstNutriLocal = function(termo) {
 window.novaInstituicaoNutri = async function() {
   if (await bloqueioSimulacao('sugerir instituição')) return;
   try {
-    // Reusa o modal existente — perfilAdmin=false + permitirCoords=true
+    // Sprint 9.32.101: nutri vê e preenche TODOS os campos (mas continua pendente de aprovação)
     const dados = await showModalInstituicaoNova({
       modo: 'cadastro',
       perfilAdmin: false,
       permitirCoords: true,
+      mostrarTodosCampos: true,
     });
     if (!dados) return;
-    const nova = await criarInstituicaoSugerida(dados);
+    // Usa criarInstituicao (que aceita todos os campos) com ativaDireto:false → pendente_aprovacao=true
+    const nova = await criarInstituicao(dados, { ativaDireto: false });
     setFlash('success', `"${nova.nome}" sugerida! Aguardando aprovação do admin.`);
     await carregarInstituicoesNutri();
   } catch (err) {
@@ -22581,6 +22874,7 @@ window.editarSugestaoNutri = async function(id) {
       instExistente: inst,
       perfilAdmin: false,
       permitirCoords: true,
+      mostrarTodosCampos: true,
     });
     if (!novosDados) return;
     // Mantém pendente_aprovacao=true (admin aprova depois)
@@ -22631,7 +22925,7 @@ function renderNutriProfissionais() {
 
         <div style="background:linear-gradient(135deg,#E6F6EF 0%,#EFF7EE 100%);border:1px solid rgba(34,160,107,0.2);border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:12px;color:var(--brand-navy);display:flex;align-items:center;gap:8px;">
           <span class="material-symbols-rounded" style="font-size:18px;color:var(--status-success);flex-shrink:0;">check_circle</span>
-          <span>Você pode editar apenas os profissionais que <strong>você cadastrou</strong>. Os outros ficam só pra visualizar.</span>
+          <span>Você pode <strong>editar todos</strong> os profissionais cadastrados — clique em qualquer um pra ajustar os dados.</span>
         </div>
 
         <div class="visits-list" id="nutriProfList" style="background:var(--neutral-0);">
@@ -22678,12 +22972,12 @@ async function carregarProfissionaisNutri() {
       cnt.innerHTML = partes.join(' · ');
     }
 
-    // Renderiza cards
+    // Sprint 9.32.102: ícone de editar visível em todos
     listEl.innerHTML = profs.map(p => {
       const instName = p.instituicoes?.nome || 'Sem instituição';
       const ehMeu = p.criado_por === user?.id;
       return `
-        <div class="visits-list__item" data-id="${p.id}" ${ehMeu ? `onclick="editarProfissionalNutri('${p.id}')" style="cursor:pointer;"` : ''}>
+        <div class="visits-list__item" data-id="${p.id}" onclick="editarProfissionalNutri('${p.id}')" style="cursor:pointer;">
           <div class="prof-dropdown-item__avatar" style="flex-shrink:0;">${iniciais(p.nome)}</div>
           <div class="visits-list__info" style="min-width:0;">
             <div class="visits-list__name" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
@@ -22696,7 +22990,9 @@ async function carregarProfissionaisNutri() {
               ${instName.replace(/"/g,'&quot;')}
             </div>
           </div>
-          ${ehMeu ? `<span class="material-symbols-rounded" style="color:var(--neutral-300);font-size:18px;margin-left:4px;">chevron_right</span>` : ''}
+          <button onclick="event.stopPropagation();editarProfissionalNutri('${p.id}')" title="Editar profissional" style="background:transparent;border:0;color:var(--brand-lime);width:32px;height:32px;border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;font-family:inherit;" onmouseover="this.style.background='var(--neutral-100)'" onmouseout="this.style.background='transparent'">
+            <span class="material-symbols-rounded" style="font-size:18px;">edit</span>
+          </button>
         </div>
       `;
     }).join('');
@@ -22759,23 +23055,17 @@ window.novoProfissionalNutri = async function() {
   }
 };
 
-// Handler: nutri edita profissional que ele próprio cadastrou
+// Sprint 9.32.102: nutri pode editar QUALQUER profissional (não só os próprios)
 window.editarProfissionalNutri = async function(id) {
   if (await bloqueioSimulacao('editar profissional')) return;
-  const user = getCurrentUser();
   try {
     const { data: prof, error } = await db.from('profissionais').select('*, instituicoes(nome)').eq('id', id).maybeSingle();
     if (error) throw new Error(error.message);
     if (!prof) throw new Error('Profissional não encontrado.');
-    // Guarda dupla: só deixa editar se foi o nutri que criou
-    if (prof.criado_por !== user?.id) {
-      setFlash('warning', 'Você só pode editar profissionais que cadastrou.');
-      return;
-    }
     const novosDados = await showModalProfissionalAdmin({
       modo: 'edicao',
       profExistente: prof,
-      permitirAcoesAdmin: false, // nutri não desativa/exclui
+      permitirAcoesAdmin: false, // nutri não desativa/exclui (só admin)
     });
     if (!novosDados) return;
     const { error: upErr } = await db.from('profissionais').update(novosDados).eq('id', id);
@@ -26232,11 +26522,14 @@ function coordsValidas(lat, lng) {
   return true;
 }
 
-function showModalInstituicaoNova({ valorInicialNome = '', modo = 'cadastro', instExistente = null, perfilAdmin = false, permitirCoords = false } = {}) {
+function showModalInstituicaoNova({ valorInicialNome = '', modo = 'cadastro', instExistente = null, perfilAdmin = false, permitirCoords = false, mostrarTodosCampos = false } = {}) {
   return new Promise((resolve) => {
     const backdrop = document.createElement('div');
     backdrop.className = 'modal-backdrop';
     const ehEdicao = modo === 'edicao';
+    // Sprint 9.32.101: nutri pode ver todos os campos (CNPJ, CEP, UF, Perfil, Equipe, Supervisor, Enf curativo)
+    // mas mantém comportamento de "pendente_aprovacao" (não vira admin de verdade)
+    const temAcessoExtra = perfilAdmin || mostrarTodosCampos;
     const temGPS = !!(window.CheckinFlow && CheckinFlow.userPos);
     // Sprint 9.4: se permitirCoords está ligado, coords já são pré-populadas no painel
     // Então o banner "GPS ativo" fica redundante. Só mostra no fluxo legacy (sem permitirCoords).
@@ -26327,8 +26620,8 @@ function showModalInstituicaoNova({ valorInicialNome = '', modo = 'cadastro', in
     // Pro nutri em cadastro novo: esconde até endereço ter conteúdo
     const coordsInicialmenteOculta = !perfilAdmin && permitirCoords && !ehEdicao && !(valEnd || '').trim();
 
-    // Seção de campos admin (CNPJ, CEP, UF) — sem as coords
-    const camposExtrasAdminHtml = perfilAdmin ? `
+    // Seção de campos extras (CNPJ, CEP, UF, Tipo pessoa) — admin OU nutri com mostrarTodosCampos
+    const camposExtrasAdminHtml = temAcessoExtra ? `
       <!-- Sprint 9.22: Tipo de pessoa (PF/PJ) — afeta se CNPJ é obrigatório/relevante -->
       <div class="report-field">
         <label style="font-size:12px;">Tipo de pessoa</label>
@@ -26420,7 +26713,7 @@ function showModalInstituicaoNova({ valorInicialNome = '', modo = 'cadastro', in
 
     // Sprint 9.3: 3 seções colapsáveis (Perfil, Equipe de nutrição, Supervisor)
     // Cada uma usa <details> nativo — abre automático se já tiver valor
-    const perfilEquipeSupervisorHtml = perfilAdmin ? `
+    const perfilEquipeSupervisorHtml = temAcessoExtra ? `
       <details ${temPerfil ? 'open' : ''} style="border:1px solid var(--neutral-200);border-radius:10px;padding:0;overflow:hidden;">
         <summary style="cursor:pointer;padding:12px 14px;font-family:var(--font-display);font-size:13px;font-weight:700;color:var(--brand-navy);display:flex;align-items:center;gap:8px;user-select:none;list-style:none;">
           <span class="material-symbols-rounded" style="font-size:18px;color:var(--brand-lime-dark,#6FA62E);">hotel_class</span>
@@ -27055,6 +27348,10 @@ function showModalProfissionalAdmin({ modo = 'cadastro', profExistente = null, p
           <div class="report-field" id="mpaProfOutroWrap" style="display:${mostrarProfOutro ? 'block' : 'none'};">
             <label for="mpaProfOutro">Especifique a profissão <span style="color:var(--status-danger)">*</span></label>
             <input type="text" id="mpaProfOutro" placeholder="Ex: Fisioterapeuta" value="${valProfOutro.replace(/"/g,'&quot;')}" style="width:100%;padding:10px 12px;border:1.5px solid var(--neutral-200);border-radius:10px;font-size:14px;font-family:inherit;" />
+            <div style="font-size:11px;color:#92400E;background:#FFF8EE;border:1px solid #FCD9A0;padding:6px 10px;border-radius:6px;margin-top:6px;line-height:1.4;display:flex;gap:6px;align-items:flex-start;">
+              <span class="material-symbols-rounded" style="font-size:14px;flex-shrink:0;margin-top:1px;">info</span>
+              <span>Esse cadastro funciona normalmente. O admin pode <strong>promover esse cargo</strong> pra ficar como opção universal pra toda a equipe depois.</span>
+            </div>
           </div>
 
           <!-- Sprint 9.22: Registro de classe (CRM/CRF/CRN/etc) -->
@@ -27735,7 +28032,7 @@ window.rejeitarObjetivoPendente = async function(id) {
 let FAT_DATA = null;
 let _fatDataPromise = null;
 // __FAT_VERSION_START__ — substituído pelo atualizar_index.py com hash do JSON
-const FAT_DATA_VERSION = 'f3173df88a51';
+const FAT_DATA_VERSION = 'e3dc631e04a4';
 // __FAT_VERSION_END__
 const FAT_DATA_URL = 'faturamento_data_inline.json?v=' + FAT_DATA_VERSION;
 
@@ -33747,6 +34044,28 @@ async function showModalItemPadronizado({ modo = 'cadastro', itemExistente = nul
     const valNhscMarca = ehEdicao ? (itemExistente.convertido_em_marca || '') : '';
     const mostrarSecaoNhsc = ehEdicao && (valStatus === 'em_negociacao' || valStatus === 'convertido');
 
+    // Sprint 9.32.94: regras de transição de status por etapa
+    // Cadastro novo → só padronizado (etapa inicial)
+    // Edição → mostra só transições válidas a partir do status atual
+    const TRANSICOES_VALIDAS = {
+      padronizado:    ['padronizado', 'em_negociacao', 'perdido'],
+      em_negociacao:  ['em_negociacao', 'padronizado', 'convertido'],   // padronizado = "cancelar negociação"
+      convertido:     ['convertido', 'padronizado'],                     // padronizado = "reverter conversão"
+      perdido:        ['perdido', 'padronizado'],                        // recupera item antes perdido
+    };
+    const statusPermitidos = ehEdicao
+      ? (TRANSICOES_VALIDAS[valStatus] || ['padronizado','em_negociacao','convertido','perdido'])
+      : ['padronizado'];
+
+    // Helper visual: descrição da ação ao mover pra outro status (no cadastro/edição)
+    const _labelTransicao = (statusAtual, statusDestino) => {
+      if (statusAtual === statusDestino) return null;
+      if (statusAtual === 'em_negociacao' && statusDestino === 'padronizado') return '↩ cancelar negociação';
+      if (statusAtual === 'convertido'    && statusDestino === 'padronizado') return '↶ reverter conversão';
+      if (statusAtual === 'perdido'       && statusDestino === 'padronizado') return '↺ recuperar item';
+      return null;
+    };
+
     const titulo = ehEdicao ? 'Editar item padronizado' : 'Novo item padronizado';
     const subtitulo = ehEdicao
       ? 'Ajuste informações do item. Mudanças ficam registradas no log.'
@@ -33758,7 +34077,10 @@ async function showModalItemPadronizado({ modo = 'cadastro', itemExistente = nul
     const backdrop = document.createElement('div');
     backdrop.className = 'modal-backdrop';
     backdrop.innerHTML = `
-      <div class="modal-card" style="max-width:520px;max-height:92vh;overflow-y:auto;">
+      <div class="modal-card" style="max-width:520px;max-height:92vh;overflow-y:auto;position:relative;">
+        <button id="mipFechar" type="button" aria-label="Fechar" style="position:absolute;top:12px;right:12px;background:transparent;border:0;color:var(--neutral-500);cursor:pointer;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0;transition:background 120ms;" onmouseover="this.style.background='var(--neutral-100)'" onmouseout="this.style.background='transparent'">
+          <span class="material-symbols-rounded" style="font-size:20px;">close</span>
+        </button>
         <div class="modal-card__header">
           <div class="modal-card__icon" style="background:#E4ECFD;color:var(--status-info);">
             <span class="material-symbols-rounded">${ehEdicao ? 'edit' : 'add_box'}</span>
@@ -33807,15 +34129,20 @@ async function showModalItemPadronizado({ modo = 'cadastro', itemExistente = nul
           </div>
 
           <div class="report-field">
-            <label>Status</label>
+            <label>Status${!ehEdicao ? ' <span style="color:var(--neutral-400);font-weight:normal;">(novos itens começam como padronizado)</span>' : ''}</label>
             <div style="display:flex;flex-wrap:wrap;gap:6px;">
-              ${Object.entries(ITENS_PAD_STATUS).map(([id, s]) => `
-                <label style="display:inline-flex;align-items:center;gap:5px;padding:7px 12px;border:1.5px solid var(--neutral-200);border-radius:8px;cursor:pointer;font-size:12.5px;flex:1;justify-content:center;${valStatus === id ? `background:${s.bg};border-color:${s.cor};color:${s.cor};font-weight:600;` : ''}">
-                  <input type="radio" name="mipStatus" value="${id}" ${valStatus === id ? 'checked' : ''} style="display:none;" />
-                  <span>${s.emoji}</span> ${s.label}
-                </label>
-              `).join('')}
+              ${Object.entries(ITENS_PAD_STATUS).filter(([id]) => statusPermitidos.includes(id)).map(([id, s]) => {
+                const ativo = valStatus === id;
+                const transLabel = ehEdicao ? _labelTransicao(valStatus, id) : null;
+                return `
+                  <label style="display:inline-flex;align-items:center;gap:5px;padding:7px 10px;border:1.5px solid var(--neutral-200);border-radius:8px;cursor:pointer;font-size:12px;flex:1;justify-content:center;text-align:center;line-height:1.3;${ativo ? `background:${s.bg};border-color:${s.cor};color:${s.cor};font-weight:600;` : ''}">
+                    <input type="radio" name="mipStatus" value="${id}" ${ativo ? 'checked' : ''} style="display:none;" />
+                    <span>${s.emoji} ${s.label}${transLabel ? `<br><span style="font-size:9.5px;font-weight:500;color:var(--neutral-500);">${transLabel}</span>` : ''}</span>
+                  </label>
+                `;
+              }).join('')}
             </div>
+            ${ehEdicao && valStatus !== 'padronizado' ? `<div style="font-size:11px;color:var(--neutral-500);margin-top:6px;line-height:1.4;">💡 Voltar pra <strong>Padronizado</strong> mantém o histórico do item — você pode renegociar depois.</div>` : ''}
           </div>
 
           <div id="mipSecaoNhsc" style="display:${mostrarSecaoNhsc ? 'flex' : 'none'};background:#FFF8EE;border:1.5px solid #F59E0B;border-radius:10px;padding:12px;flex-direction:column;gap:10px;">
@@ -33970,7 +34297,13 @@ async function showModalItemPadronizado({ modo = 'cadastro', itemExistente = nul
       });
     };
     backdrop.querySelector('#mipCancel').onclick = () => { cleanup(); resolve(null); };
-    backdrop.onclick = (e) => { if (e.target === backdrop) { cleanup(); resolve(null); } };
+    // Sprint 9.32.95: NÃO fecha ao clicar fora (evita perda acidental do que tava digitando)
+    // Pra fechar: botão X no header, Cancelar no rodapé, ou ESC.
+    backdrop.querySelector('#mipFechar')?.addEventListener('click', () => { cleanup(); resolve(null); });
+    const escListener = (e) => {
+      if (e.key === 'Escape') { document.removeEventListener('keydown', escListener); cleanup(); resolve(null); }
+    };
+    document.addEventListener('keydown', escListener);
 
     // Visual ao selecionar status (re-render) + mostra/esconde seção NHSC
     backdrop.querySelectorAll('input[name="mipStatus"]').forEach(r => {
@@ -35353,6 +35686,10 @@ function formatarMesAnoConv(it) {
 }
 
 function renderItensPadronizadosSwimlane() {
+  // Sprint 9.32.99: usado tanto por admin quanto nutri — algumas ações só pra admin
+  const _user = getCurrentUser();
+  const _ehAdmin = _user?.perfil === 'admin';
+
   // State local (compartilhado com o accordion via window._ipFiltro pra não duplicar)
   if (!window._ipFiltro) {
     window._ipFiltro = { categoria: 'todas', status: 'todos', instituicao: 'todas', busca: '', esconderPadronizado: false, esconderEmNeg: false, esconderConvertido: false };
@@ -35380,10 +35717,12 @@ function renderItensPadronizadosSwimlane() {
           </div>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;flex-shrink:0;">
+          ${_ehAdmin ? `
           <button onclick="window.location.hash='#/admin/itens-padronizados/historico'" style="background:var(--neutral-0);color:var(--brand-navy);border:1.5px solid var(--neutral-200);padding:9px 16px;border-radius:9999px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-family:inherit;" title="Histórico de conversões">
             <span class="material-symbols-rounded" style="font-size:17px;">history</span>
             Histórico
           </button>
+          ` : ''}
           <button onclick="window.location.hash='#/itens-padronizados/ranking'" style="background:linear-gradient(135deg,#FBBF24 0%,#F59E0B 100%);color:#fff;border:0;padding:10px 18px;border-radius:9999px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-family:inherit;box-shadow:0 4px 12px rgba(245,158,11,0.25);">
             <span style="font-size:16px;">🏆</span>
             Ranking & Insights
@@ -35436,6 +35775,15 @@ function renderItensPadronizadosSwimlane() {
               <span style="font-size:14px;">🎯</span>
               <span id="ipBtnOportTxt">Ver oportunidades</span>
             </button>
+          </div>
+
+          <!-- Sprint 9.32.96: Insights inteligentes (igual mobile, mas agregado pra todos os hospitais) -->
+          <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:12px;padding:12px 14px;">
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;">
+              <span style="font-size:16px;">💡</span>
+              <div style="font-family:var(--font-display);font-size:13px;font-weight:700;color:var(--brand-navy);">Insights da equipe</div>
+            </div>
+            <div id="ipInsights" style="font-size:11.5px;"></div>
           </div>
         </aside>
       </div>
@@ -35737,7 +36085,104 @@ function _ipSwimRender() {
       }).join('');
     }
   }
+
+  // Sprint 9.32.96: Insights agregados de TODOS os hospitais
+  _ipSwimRenderInsights(Object.values(gruposTodos));
 }
+
+// Calcula insights agregados pra todos os hospitais e renderiza no sidebar
+function _ipSwimRenderInsights(grupos) {
+  const el = document.getElementById('ipInsights');
+  if (!el) return;
+  const sessentaDiasMs = 60 * 86400000;
+  const trintaDiasMs = 30 * 86400000;
+  const agora = Date.now();
+  const trintaAtras = agora - trintaDiasMs;
+
+  // Categoriza hospitais
+  const oportunidades = [];   // padronizados parados +60d sem em_negoc
+  const esfriando = [];       // em_negoc +30d
+  const aquecendo = [];       // ≥2 conversões nos últimos 30d
+  const semCatalogo = [];     // sem nenhum item
+
+  grupos.forEach(g => {
+    const totalItens = g.padronizado.length + g.em_negociacao.length + g.convertido.length;
+    if (totalItens === 0) {
+      semCatalogo.push({ id: g.id, nome: g.nome });
+      return;
+    }
+    const paradosCount = g.padronizado.filter(it => {
+      const ts = it.atualizado_em ? new Date(it.atualizado_em).getTime() : (it.criado_em ? new Date(it.criado_em).getTime() : 0);
+      return ts > 0 && (agora - ts) > sessentaDiasMs;
+    }).length;
+    if (paradosCount > 0 && g.em_negociacao.length === 0) {
+      oportunidades.push({ id: g.id, nome: g.nome, count: paradosCount });
+    }
+    const longas = g.em_negociacao.filter(it => {
+      const ts = it.conversao_iniciada_em ? new Date(it.conversao_iniciada_em).getTime() : 0;
+      return ts > 0 && (agora - ts) > trintaDiasMs;
+    }).length;
+    if (longas > 0) {
+      esfriando.push({ id: g.id, nome: g.nome, count: longas });
+    }
+    const recentes = g.convertido.filter(it => {
+      const ts = it.convertido_em ? new Date(it.convertido_em).getTime() : 0;
+      return ts > 0 && ts > trintaAtras;
+    }).length;
+    if (recentes >= 2) {
+      aquecendo.push({ id: g.id, nome: g.nome, count: recentes });
+    }
+  });
+
+  oportunidades.sort((a, b) => b.count - a.count);
+  esfriando.sort((a, b) => b.count - a.count);
+  aquecendo.sort((a, b) => b.count - a.count);
+
+  if (oportunidades.length === 0 && esfriando.length === 0 && aquecendo.length === 0 && semCatalogo.length === 0) {
+    el.innerHTML = '<div style="color:var(--neutral-400);font-size:11.5px;text-align:center;padding:10px 0;font-style:italic;">Tudo nos eixos por aqui 🎉</div>';
+    return;
+  }
+
+  const _renderGrupo = (titulo, icon, cor, bg, lista, mensagem) => {
+    if (lista.length === 0) return '';
+    return `
+      <div style="background:${bg};border:1px solid ${cor}40;border-radius:8px;padding:8px 10px;margin-bottom:8px;">
+        <div style="display:flex;align-items:center;gap:5px;font-weight:700;color:${cor};font-size:11px;margin-bottom:4px;">
+          <span style="font-size:13px;">${icon}</span>
+          ${titulo} · ${lista.length}
+        </div>
+        <div style="font-size:10.5px;color:var(--neutral-700);line-height:1.4;">${mensagem}</div>
+        <div style="margin-top:6px;display:flex;flex-direction:column;gap:3px;">
+          ${lista.slice(0, 3).map(h => `
+            <button onclick="_ipSwimIrParaHospital('${h.id}')" style="background:transparent;border:0;color:${cor};font-size:10.5px;font-weight:600;text-align:left;cursor:pointer;font-family:inherit;padding:0;text-decoration:underline;text-decoration-style:dotted;text-underline-offset:2px;">
+              · ${h.nome.replace(/</g,'&lt;').slice(0, 28)}${h.nome.length > 28 ? '…' : ''} ${h.count ? `<span style="color:var(--neutral-500);font-weight:400;">(${h.count})</span>` : ''}
+            </button>
+          `).join('')}
+          ${lista.length > 3 ? `<div style="font-size:10px;color:var(--neutral-500);font-style:italic;padding-top:2px;">+${lista.length - 3} outros</div>` : ''}
+        </div>
+      </div>
+    `;
+  };
+
+  el.innerHTML = [
+    _renderGrupo('Oportunidades', '💡', '#854F0B', '#FFF8EE', oportunidades, 'Padronizados parados há +60 dias. Hora de iniciar negociação.'),
+    _renderGrupo('Esfriando', '⏳', '#A32D2D', '#FCEBEB', esfriando, 'Negociações há +30 dias. Hora de fechar ou cancelar.'),
+    _renderGrupo('Aquecendo', '🔥', '#0F6E56', '#EAF5EE', aquecendo, '≥2 conversões nos últimos 30 dias. Aproveite o momento.'),
+    _renderGrupo('Sem catálogo', '📋', '#0C447C', '#E6F1FB', semCatalogo, 'Nenhum item cadastrado. Bora mapear?'),
+  ].join('');
+}
+
+// Faz scroll até a row do hospital específico na swimlane (com highlight)
+window._ipSwimIrParaHospital = function(instId) {
+  const row = document.querySelector(`.ip-swim-row[data-inst-id="${instId}"]`);
+  if (!row) return;
+  row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  // Flash visual
+  const corOriginal = row.style.boxShadow;
+  row.style.boxShadow = '0 0 0 3px rgba(245,158,11,0.6)';
+  row.style.transition = 'box-shadow 200ms';
+  setTimeout(() => { row.style.boxShadow = corOriginal; }, 1600);
+};
 
 // Card "origem" — versão visual do item padronizado mostrada DENTRO do par em negociação
 // (lado esquerdo do par, mostrando o produto original do hospital que originou a negociação).
@@ -40094,10 +40539,16 @@ window.editarInstituicaoAdmin = async function(id) {
     const { data: inst, error } = await db.from('instituicoes').select('*').eq('id', id).maybeSingle();
     if (error) throw new Error(error.message);
     if (!inst) throw new Error('Instituição não encontrada.');
+    // Sprint 9.32.105: nutri usa a mesma tabela do admin pelo desktop, mas sem perfilAdmin
+    // (não vê os botões de aprovar/rejeitar/desativar nem o banner "criação direta")
+    const _user = getCurrentUser();
+    const _ehAdmin = _user?.perfil === 'admin';
     const novosDados = await showModalInstituicaoNova({
       modo: 'edicao',
       instExistente: inst,
-      perfilAdmin: true,
+      perfilAdmin: _ehAdmin,
+      mostrarTodosCampos: !_ehAdmin,  // nutri vê todos os campos sem virar admin
+      permitirCoords: true,
     });
     if (!novosDados) return;
     // Sprint 9.2: modal pode retornar uma ação especial de desativar/reativar
@@ -40735,7 +41186,10 @@ window.editarProfissionalAdmin = async function(id) {
     if (error) throw new Error(error.message);
     if (!prof) throw new Error('Profissional não encontrado.');
 
-    const resultado = await showModalProfissionalAdmin({ modo: 'edicao', profExistente: prof });
+    // Sprint 9.32.104: nutri pode editar pelo painel desktop, mas sem ações admin (desativar/excluir)
+    const _user = getCurrentUser();
+    const _ehAdmin = _user?.perfil === 'admin';
+    const resultado = await showModalProfissionalAdmin({ modo: 'edicao', profExistente: prof, permitirAcoesAdmin: _ehAdmin });
     if (!resultado) return;
 
     // Ação extra (desativar/reativar/excluir) vinda do rodapé
