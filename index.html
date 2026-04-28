@@ -6197,7 +6197,7 @@ a {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.92-cons-grafico-mantem-meses',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.93-cons-produtos-filtrados',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -27735,7 +27735,7 @@ window.rejeitarObjetivoPendente = async function(id) {
 let FAT_DATA = null;
 let _fatDataPromise = null;
 // __FAT_VERSION_START__ — substituído pelo atualizar_index.py com hash do JSON
-const FAT_DATA_VERSION = 'cdc4ba29ca04';
+const FAT_DATA_VERSION = 'f3173df88a51';
 // __FAT_VERSION_END__
 const FAT_DATA_URL = 'faturamento_data_inline.json?v=' + FAT_DATA_VERSION;
 
@@ -30396,10 +30396,33 @@ function _fatRenderConsignado() {
     `;
   }
 
-  // Top produtos — filtra por período (se houver registro mensal granular)
-  // Por enquanto, top produtos é lifetime (sem cruzamento mensal). Mostra aviso se filtro ativo.
-  const consProd = (FAT_DATA.consignado_produtos_top || []).slice();
+  // Sprint 9.32.93: Top produtos — usa consignado_produtos_mes quando filtro ativo, senão lifetime
   const filtroAtivo = (f.periodo && f.periodo !== 'todos') || (f.mes && f.mes !== 'todos') || temFiltroCliente;
+  let consProd;
+  if (filtroAtivo && FAT_DATA.consignado_produtos_mes) {
+    const aggProd = {};
+    FAT_DATA.consignado_produtos_mes.forEach(p => {
+      if (!mesesSet.has(p.ano_mes)) return;
+      const k = p['Código do Produto'];
+      if (!aggProd[k]) aggProd[k] = {
+        'Código do Produto': k,
+        'Descrição do Produto': p['Descrição do Produto'],
+        'Marca': p.Marca,
+        valor_consignado: 0,
+        qtd_itens: 0,
+        qtd_notas: 0,
+      };
+      aggProd[k].valor_consignado += p.valor_consignado;
+      aggProd[k].qtd_itens += (p.qtd_itens || 0);
+      aggProd[k].qtd_notas += (p.qtd_notas || 0);
+    });
+    consProd = Object.values(aggProd)
+      .filter(p => p.valor_consignado > 0)
+      .sort((a, b) => b.valor_consignado - a.valor_consignado)
+      .slice(0, 30);
+  } else {
+    consProd = (FAT_DATA.consignado_produtos_top || []).slice();
+  }
 
   // Gráfico mensal
   const canvas = document.getElementById('fatConsChartMensal');
@@ -30531,18 +30554,14 @@ function _fatRenderConsignado() {
     }
   }
 
-  // Sprint 9.32.84: Top produtos em consignação
-  // NOTA: top produtos é lifetime (sem cruzamento mensal). Quando filtro ativo, mostra aviso.
+  // Sprint 9.32.84/93: Top produtos em consignação (agora filtra por período)
   const prodEl = document.getElementById('fatConsTopProdutos');
   if (prodEl) {
     if (consProd.length === 0) {
-      prodEl.innerHTML = '<div style="text-align:center;padding:20px;color:var(--neutral-500);font-size:12px;">Nenhum produto em consignação.</div>';
+      prodEl.innerHTML = '<div style="text-align:center;padding:20px;color:var(--neutral-500);font-size:12px;">Nenhum produto em consignação no recorte.</div>';
     } else {
-      const avisoLifetime = filtroAtivo
-        ? `<div style="background:#FFF8EE;border:1px solid #FCD9A0;color:#854F0B;font-size:10.5px;padding:6px 10px;border-radius:6px;margin-bottom:10px;line-height:1.4;">⚠️ Top produtos sempre mostra <strong>lifetime</strong> (não filtra por período). Pra ver detalhe granular, use os totais e o gráfico mensal acima.</div>`
-        : '';
       const maxP = consProd[0].valor_consignado || 1;
-      prodEl.innerHTML = avisoLifetime + consProd.slice(0, 15).map((p, i) => {
+      prodEl.innerHTML = consProd.slice(0, 15).map((p, i) => {
         const pct = (p.valor_consignado / maxP) * 100;
         const desc = (p['Descrição do Produto'] || '—').replace(/</g,'&lt;');
         const marca = (p['Marca'] || '').replace(/</g,'&lt;');
