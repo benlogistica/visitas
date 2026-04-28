@@ -497,6 +497,69 @@ def gerar_estados(df_vendas: pd.DataFrame) -> list:
     ]
 
 
+# Sprint 9.32.89: agregações granulares por mês pra suportar filtros de período
+def gerar_estados_mes(df_vendas: pd.DataFrame) -> list:
+    """Faturamento por estado × mês (pra filtro de período)."""
+    g = df_vendas.groupby(['Estado', '_ano_mes']).agg(
+        faturamento=('Total de Mercadoria', 'sum'),
+        qtd_clientes=('CNPJ/CPF', 'nunique'),
+    ).reset_index().rename(columns={'_ano_mes': 'ano_mes'})
+    g = g.sort_values(['Estado', 'ano_mes'])
+    return [
+        {
+            'Estado': r['Estado'],
+            'ano_mes': r['ano_mes'],
+            'faturamento': round(r['faturamento'], 2),
+            'qtd_clientes': int(r['qtd_clientes']),
+        }
+        for _, r in g.iterrows()
+    ]
+
+
+def gerar_marcas_mes(df_vendas: pd.DataFrame) -> list:
+    """Faturamento por marca × mês (pra filtro de período)."""
+    g = df_vendas.groupby(['Marca', '_ano_mes']).agg(
+        faturamento=('Total de Mercadoria', 'sum'),
+        qtd_notas=('Nota Fiscal', 'nunique'),
+        qtd_itens=('Quantidade', 'sum'),
+    ).reset_index().rename(columns={'_ano_mes': 'ano_mes'})
+    g = g.sort_values(['Marca', 'ano_mes'])
+    return [
+        {
+            'Marca': r['Marca'],
+            'ano_mes': r['ano_mes'],
+            'faturamento': round(r['faturamento'], 2),
+            'qtd_notas': int(r['qtd_notas']),
+            'qtd_itens': round(r['qtd_itens'], 2) if pd.notna(r['qtd_itens']) else 0,
+        }
+        for _, r in g.iterrows()
+    ]
+
+
+def gerar_produtos_mes(df_vendas: pd.DataFrame, n_top: int = 50) -> list:
+    """Faturamento por produto × mês (top N produtos lifetime, pra filtro)."""
+    # Top N produtos lifetime
+    top_codes = (df_vendas.groupby('Código do Produto')['Total de Mercadoria'].sum()
+                 .sort_values(ascending=False).head(n_top).index.tolist())
+    df_top = df_vendas[df_vendas['Código do Produto'].isin(top_codes)]
+    g = df_top.groupby(['Código do Produto', 'Descrição do Produto', 'Marca', '_ano_mes']).agg(
+        faturamento=('Total de Mercadoria', 'sum'),
+        qtd_itens=('Quantidade', 'sum'),
+    ).reset_index().rename(columns={'_ano_mes': 'ano_mes'})
+    g = g.sort_values(['Código do Produto', 'ano_mes'])
+    return [
+        {
+            'Código do Produto': str(r['Código do Produto']) if pd.notna(r['Código do Produto']) else 'N/D',
+            'Descrição do Produto': r['Descrição do Produto'],
+            'Marca': r['Marca'],
+            'ano_mes': r['ano_mes'],
+            'faturamento': round(r['faturamento'], 2),
+            'qtd_itens': round(r['qtd_itens'], 2) if pd.notna(r['qtd_itens']) else 0,
+        }
+        for _, r in g.iterrows()
+    ]
+
+
 def gerar_devolucoes_mensal(df_devolucoes: pd.DataFrame) -> list:
     """Devoluções por mês (valor positivo)."""
     g = df_devolucoes.groupby('_ano_mes').agg(
@@ -828,6 +891,108 @@ def gerar_consignado_mensal(df_consignado: pd.DataFrame) -> list:
     ]
 
 
+def gerar_consignado_clientes_top(df_consignado: pd.DataFrame, n: int = 30) -> list:
+    """Sprint 9.32.83: Top N clientes em consignação (remessas)."""
+    if len(df_consignado) == 0:
+        return []
+    g = df_consignado.groupby(['Cliente (Nome Fantasia)']).agg(
+        valor_consignado=('Total de Mercadoria', 'sum'),
+        qtd_notas=('Nota Fiscal', 'nunique'),
+        ultima_remessa=('Data de Emissão (completa)', 'max'),
+        cnpj=('CNPJ/CPF', 'first'),
+        cidade=('Cidade', 'first'),
+        estado=('Estado', 'first'),
+    ).reset_index()
+    g = g.sort_values('valor_consignado', ascending=False).head(n)
+    return [
+        {
+            'Cliente (Nome Fantasia)': r['Cliente (Nome Fantasia)'],
+            'CNPJ/CPF': r['cnpj'] if pd.notna(r['cnpj']) else '',
+            'Cidade': r['cidade'] if pd.notna(r['cidade']) else '',
+            'Estado': r['estado'] if pd.notna(r['estado']) else '',
+            'valor_consignado': round(r['valor_consignado'], 2),
+            'qtd_notas': int(r['qtd_notas']),
+            'ultima_remessa': r['ultima_remessa'].strftime('%Y-%m-%d') if pd.notna(r['ultima_remessa']) else None,
+        }
+        for _, r in g.iterrows()
+    ]
+
+
+def gerar_consignado_produtos_mes(df_consignado: pd.DataFrame, n_top: int = 50) -> list:
+    """Sprint 9.32.93: cruzamento produto × mês de consignado (top N produtos lifetime)."""
+    if len(df_consignado) == 0:
+        return []
+    # Top N códigos por valor consignado lifetime
+    top_codes = (df_consignado.groupby('Código do Produto')['Total de Mercadoria'].sum()
+                 .sort_values(ascending=False).head(n_top).index.tolist())
+    df_top = df_consignado[df_consignado['Código do Produto'].isin(top_codes)]
+    g = df_top.groupby(['Código do Produto', 'Descrição do Produto', 'Marca', '_ano_mes']).agg(
+        valor_consignado=('Total de Mercadoria', 'sum'),
+        qtd_itens=('Quantidade', 'sum'),
+        qtd_notas=('Nota Fiscal', 'nunique'),
+    ).reset_index().rename(columns={'_ano_mes': 'ano_mes'})
+    g = g.sort_values(['Código do Produto', 'ano_mes'])
+    return [
+        {
+            'Código do Produto': str(r['Código do Produto']) if pd.notna(r['Código do Produto']) else 'N/D',
+            'Descrição do Produto': r['Descrição do Produto'] if pd.notna(r['Descrição do Produto']) else '—',
+            'Marca': r['Marca'] if pd.notna(r['Marca']) else '—',
+            'ano_mes': r['ano_mes'],
+            'valor_consignado': round(r['valor_consignado'], 2),
+            'qtd_itens': round(r['qtd_itens'], 2) if pd.notna(r['qtd_itens']) else 0,
+            'qtd_notas': int(r['qtd_notas']),
+        }
+        for _, r in g.iterrows()
+    ]
+
+
+def gerar_cliente_consignado_mes(df_consignado: pd.DataFrame) -> list:
+    """Sprint 9.32.83: cruzamento cliente x mês de consignado (top 30 clientes)."""
+    if len(df_consignado) == 0:
+        return []
+    # Pega top 30 clientes por valor consignado
+    top_cnpj = (df_consignado.groupby('CNPJ/CPF')['Total de Mercadoria'].sum()
+                .sort_values(ascending=False).head(30).index.tolist())
+    df_top = df_consignado[df_consignado['CNPJ/CPF'].isin(top_cnpj)]
+    g = df_top.groupby(['CNPJ/CPF', '_ano_mes']).agg(
+        valor_consignado=('Total de Mercadoria', 'sum'),
+        qtd_notas=('Nota Fiscal', 'nunique'),
+    ).reset_index().rename(columns={'_ano_mes': 'ano_mes'})
+    g = g.sort_values(['CNPJ/CPF', 'ano_mes'])
+    return [
+        {
+            'CNPJ/CPF': r['CNPJ/CPF'] if pd.notna(r['CNPJ/CPF']) else '',
+            'ano_mes': r['ano_mes'],
+            'valor_consignado': round(r['valor_consignado'], 2),
+            'qtd_notas': int(r['qtd_notas']),
+        }
+        for _, r in g.iterrows()
+    ]
+
+
+def gerar_consignado_produtos_top(df_consignado: pd.DataFrame, n: int = 30) -> list:
+    """Sprint 9.32.84: Top N produtos em consignação (por valor)."""
+    if len(df_consignado) == 0:
+        return []
+    g = df_consignado.groupby(['Código do Produto', 'Descrição do Produto', 'Marca']).agg(
+        valor_consignado=('Total de Mercadoria', 'sum'),
+        qtd_itens=('Quantidade', 'sum'),
+        qtd_notas=('Nota Fiscal', 'nunique'),
+    ).reset_index()
+    g = g.sort_values('valor_consignado', ascending=False).head(n)
+    return [
+        {
+            'Código do Produto': str(r['Código do Produto']) if pd.notna(r['Código do Produto']) else 'N/D',
+            'Descrição do Produto': r['Descrição do Produto'] if pd.notna(r['Descrição do Produto']) else '—',
+            'Marca': r['Marca'] if pd.notna(r['Marca']) else '—',
+            'valor_consignado': round(r['valor_consignado'], 2),
+            'qtd_itens': round(r['qtd_itens'], 2) if pd.notna(r['qtd_itens']) else 0,
+            'qtd_notas': int(r['qtd_notas']),
+        }
+        for _, r in g.iterrows()
+    ]
+
+
 def gerar_empresa_total(df_vendas: pd.DataFrame) -> list:
     """Total por empresa."""
     g = df_vendas.groupby('Minha Empresa (Nome Fantasia)').agg(
@@ -1071,7 +1236,16 @@ def main():
         'cliente_devolucao_empresa_mes': gerar_cliente_devolucao_empresa_mes(df_devolucoes),
         'cliente_devolucao_marca_mes':   gerar_cliente_devolucao_marca_mes(df_devolucoes),
         'cliente_devolucao_produto_mes': gerar_cliente_devolucao_produto_mes(df_devolucoes),
-        'consignado_mensal':   gerar_consignado_mensal(df_consignado),
+        'consignado_mensal':         gerar_consignado_mensal(df_consignado),
+        # Sprint 9.32.83/84 — detalhamento de consignados (top clientes/produtos + cruzamento mensal)
+        'consignado_clientes_top':   gerar_consignado_clientes_top(df_consignado),
+        'consignado_produtos_top':   gerar_consignado_produtos_top(df_consignado),
+        'consignado_produtos_mes':   gerar_consignado_produtos_mes(df_consignado),
+        'cliente_consignado_mes':    gerar_cliente_consignado_mes(df_consignado),
+        # Sprint 9.32.89 — agregações granulares pra suportar filtro de período na Visão Geral
+        'estados_mes':         gerar_estados_mes(df_vendas),
+        'marcas_mes':          gerar_marcas_mes(df_vendas),
+        'produtos_mes':        gerar_produtos_mes(df_vendas),
         'empresa_total':       gerar_empresa_total(df_vendas),
         'empresa_mes':         gerar_empresa_mes(df_vendas),
         'empresa_clientes_top': gerar_empresa_clientes_top(df_vendas),  # Sprint 9.32.30 — top clientes por empresa
