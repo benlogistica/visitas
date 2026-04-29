@@ -28,6 +28,9 @@
 <!-- Supabase Client -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<!-- Sprint 9.32.111: Leaflet (mapa real OSM) — substitui o SVG fake nos relatórios de visita -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
 <!-- Sprint 9.32.35: faturamento_data_inline.json carregado via fetch sob demanda (não precisa script aqui) -->
 
 <style>
@@ -6197,7 +6200,7 @@ a {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.109-grafico-visitas-mes-desktop-html-mobile-svg',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.111-relatorio-visita-mapa-leaflet-endereco-cards',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -15254,6 +15257,234 @@ async function atualizarConfig(chave, novoValor) {
   return true;
 }
 
+// === Sprint 9.32.110: Metas centralizadas (admin define, nutri consome) ===
+// Faz UPSERT pra criar a chave se não existir (atualizarConfig só faz update).
+async function salvarMetaConfig(chave, valor) {
+  if (!db) throw new Error('Banco não conectado');
+  const user = getCurrentUser();
+  if (!user || user.perfil !== 'admin') throw new Error('Apenas admin pode alterar metas');
+  const { error } = await db.from('configuracoes_sistema').upsert({
+    chave,
+    valor: typeof valor === 'object' ? JSON.stringify(valor) : String(valor),
+    atualizado_em: new Date().toISOString(),
+    atualizado_por: user.id,
+  }, { onConflict: 'chave' });
+  if (error) throw new Error(error.message);
+  ConfigCache.data = null;
+  ConfigCache.loadedAt = null;
+  return true;
+}
+
+// Renderiza o card de Metas dos profissionais (vai dentro de Configurações).
+async function renderCardMetasProfissionais(configs) {
+  const modo = configs.meta_visitas_mes_modo?.valor || 'global';
+  const valorGlobal = parseInt(configs.meta_visitas_mes_global?.valor ?? '20', 10) || 20;
+  let indvObj = {};
+  const indvRaw = configs.meta_visitas_mes_individual?.valor;
+  if (indvRaw) {
+    try { indvObj = typeof indvRaw === 'string' ? JSON.parse(indvRaw) : indvRaw; }
+    catch (e) { console.warn('[meta] JSON individual inválido', e); }
+  }
+
+  // Busca todos os nutris ativos
+  let nutris = [];
+  try {
+    const { data, error } = await db
+      .from('usuarios')
+      .select('id, nome, cpf, status')
+      .eq('perfil', 'nutricionista')
+      .eq('status', 'ativo')
+      .order('nome', { ascending: true });
+    if (error) throw error;
+    nutris = data || [];
+  } catch (e) {
+    console.warn('[metas] erro ao listar nutris:', e);
+  }
+
+  const ehGlobal = modo === 'global';
+
+  return `
+    <div style="grid-column:1/-1;background:#fff;border-radius:12px;border:1px solid var(--neutral-200);box-shadow:0 1px 3px rgba(10,31,92,0.04);overflow:hidden;">
+      <div style="display:flex;align-items:center;gap:12px;padding:18px 22px;border-bottom:1px solid var(--neutral-100);background:linear-gradient(to right,#FEF4E1,transparent);">
+        <div style="width:40px;height:40px;border-radius:10px;background:#FEF4E1;color:#92400E;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <span class="material-symbols-rounded" style="font-size:22px;">flag</span>
+        </div>
+        <div style="flex:1;">
+          <div style="font-family:'Poppins',sans-serif;font-weight:600;font-size:15px;color:var(--brand-navy);">Metas dos profissionais</div>
+          <div style="font-size:11.5px;color:var(--neutral-500);margin-top:1px;">Define a meta mensal de visitas que aparece no painel de Indicadores de cada nutri.</div>
+        </div>
+        <span id="metasSavedBadge" style="font-size:11px;color:var(--status-success);font-weight:700;opacity:0;transition:opacity 200ms;">✓ salvo</span>
+      </div>
+
+      <div style="padding:18px 22px;">
+        <!-- Toggle de modo -->
+        <div style="display:flex;gap:10px;background:var(--neutral-50,#F5F7FA);border-radius:10px;padding:4px;margin-bottom:18px;">
+          <button onclick="window.metasMudarModo('global')" id="metaModoBtnGlobal" style="flex:1;padding:10px 14px;border:0;border-radius:8px;cursor:pointer;font-weight:700;font-size:12.5px;font-family:inherit;background:${ehGlobal ? '#fff' : 'transparent'};color:${ehGlobal ? 'var(--brand-navy)' : 'var(--neutral-500)'};box-shadow:${ehGlobal ? '0 1px 3px rgba(10,31,92,0.08)' : 'none'};display:inline-flex;align-items:center;justify-content:center;gap:6px;">
+            <span class="material-symbols-rounded" style="font-size:16px;">groups</span>
+            Meta única pra todos
+          </button>
+          <button onclick="window.metasMudarModo('individual')" id="metaModoBtnIndv" style="flex:1;padding:10px 14px;border:0;border-radius:8px;cursor:pointer;font-weight:700;font-size:12.5px;font-family:inherit;background:${!ehGlobal ? '#fff' : 'transparent'};color:${!ehGlobal ? 'var(--brand-navy)' : 'var(--neutral-500)'};box-shadow:${!ehGlobal ? '0 1px 3px rgba(10,31,92,0.08)' : 'none'};display:inline-flex;align-items:center;justify-content:center;gap:6px;">
+            <span class="material-symbols-rounded" style="font-size:16px;">person</span>
+            Personalizar por nutricionista
+          </button>
+        </div>
+
+        <!-- Modo Global -->
+        <div id="metasModoGlobal" style="display:${ehGlobal ? 'block' : 'none'};">
+          <div style="background:#F0F7E1;border:1px solid rgba(139,198,63,0.3);border-radius:10px;padding:14px 16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+            <span class="material-symbols-rounded" style="font-size:22px;color:var(--brand-lime);">target</span>
+            <div style="flex:1;min-width:160px;">
+              <div style="font-size:11px;color:var(--neutral-600);text-transform:uppercase;letter-spacing:0.4px;font-weight:700;margin-bottom:2px;">Meta mensal aplicada a todos</div>
+              <div style="font-size:11px;color:var(--neutral-500);">Cada nutricionista verá esta meta no painel de Indicadores.</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <button onclick="window.metasGlobalDecr()" style="width:34px;height:34px;border-radius:8px;background:#fff;border:1.5px solid var(--neutral-200);color:var(--brand-navy);font-size:18px;cursor:pointer;font-family:inherit;">−</button>
+              <input type="number" id="metaGlobalInput" value="${valorGlobal}" min="1" max="200" step="1" style="width:80px;text-align:center;font-family:var(--font-display);font-size:22px;font-weight:700;color:var(--brand-navy);border:1.5px solid var(--neutral-200);border-radius:8px;padding:6px;background:#fff;" />
+              <button onclick="window.metasGlobalIncr()" style="width:34px;height:34px;border-radius:8px;background:#fff;border:1.5px solid var(--neutral-200);color:var(--brand-navy);font-size:18px;cursor:pointer;font-family:inherit;">+</button>
+              <span style="font-size:12px;color:var(--neutral-600);font-weight:600;">visitas/mês</span>
+              <button onclick="window.metasSalvarGlobal()" style="background:var(--brand-lime);color:#fff;border:0;padding:8px 16px;border-radius:8px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit;margin-left:6px;">Salvar</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Modo Individual -->
+        <div id="metasModoIndividual" style="display:${ehGlobal ? 'none' : 'block'};">
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px;background:var(--neutral-50,#F5F7FA);border-radius:10px;padding:10px 14px;">
+            <span style="font-size:12px;color:var(--neutral-600);font-weight:700;">Aplicar este valor a todos:</span>
+            <input type="number" id="metaBulkInput" placeholder="20" min="1" max="200" step="1" style="width:80px;text-align:center;font-family:var(--font-display);font-size:14px;font-weight:700;color:var(--brand-navy);border:1.5px solid var(--neutral-200);border-radius:6px;padding:5px;background:#fff;" />
+            <button onclick="window.metasAplicarATodos()" style="background:var(--brand-navy);color:#fff;border:0;padding:6px 12px;border-radius:6px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:inherit;">Aplicar a todos</button>
+            <span style="margin-left:auto;font-size:11px;color:var(--neutral-500);">${nutris.length} ${nutris.length === 1 ? 'profissional ativo' : 'profissionais ativos'}</span>
+          </div>
+
+          ${nutris.length === 0 ? `
+            <div style="padding:24px;text-align:center;color:var(--neutral-400);font-size:12.5px;">Nenhum nutricionista ativo encontrado.</div>
+          ` : `
+            <div style="border:1px solid var(--neutral-200);border-radius:10px;overflow:hidden;">
+              ${nutris.map((n, i) => {
+                const v = indvObj[n.id] ?? '';
+                const iniciais = (n.nome || '?').split(' ').map(p => p[0]).slice(0,2).join('').toUpperCase();
+                return `
+                  <div style="display:flex;align-items:center;gap:12px;padding:10px 14px;${i < nutris.length - 1 ? 'border-bottom:1px solid var(--neutral-100);' : ''}background:${i % 2 === 0 ? '#fff' : '#FAFBFC'};">
+                    <div style="width:32px;height:32px;border-radius:50%;background:#E4ECFD;color:var(--brand-navy);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0;">${iniciais}</div>
+                    <div style="flex:1;min-width:0;">
+                      <div style="font-size:13px;color:var(--brand-navy);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${n.nome || '(sem nome)'}</div>
+                    </div>
+                    <input type="number" data-nutri-id="${n.id}" class="metaIndividualInput" value="${v}" placeholder="${valorGlobal}" min="1" max="200" step="1" style="width:70px;text-align:center;font-family:var(--font-display);font-size:14px;font-weight:700;color:var(--brand-navy);border:1.5px solid var(--neutral-200);border-radius:6px;padding:5px;background:#fff;" />
+                    <span style="font-size:11px;color:var(--neutral-500);">vis/mês</span>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;gap:10px;flex-wrap:wrap;">
+              <div style="font-size:11px;color:var(--neutral-500);">💡 Quem ficar em branco usa o valor padrão (${valorGlobal}).</div>
+              <button onclick="window.metasSalvarIndividual()" style="background:var(--brand-lime);color:#fff;border:0;padding:9px 18px;border-radius:8px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit;">Salvar todas</button>
+            </div>
+          `}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+window._metasShowSaved = function() {
+  const b = document.getElementById('metasSavedBadge');
+  if (!b) return;
+  b.style.opacity = '1';
+  setTimeout(() => { b.style.opacity = '0'; }, 1800);
+};
+
+window.metasMudarModo = async function(novoModo) {
+  try {
+    await salvarMetaConfig('meta_visitas_mes_modo', novoModo);
+    if (typeof carregarAdminConfigDesktop === 'function') await carregarAdminConfigDesktop();
+    window._metasShowSaved && window._metasShowSaved();
+  } catch (e) {
+    alert('Erro ao mudar modo: ' + e.message);
+  }
+};
+
+window.metasGlobalIncr = function() {
+  const inp = document.getElementById('metaGlobalInput');
+  if (!inp) return;
+  const v = parseInt(inp.value || '0', 10);
+  if (v < 200) inp.value = v + 1;
+};
+window.metasGlobalDecr = function() {
+  const inp = document.getElementById('metaGlobalInput');
+  if (!inp) return;
+  const v = parseInt(inp.value || '0', 10);
+  if (v > 1) inp.value = v - 1;
+};
+
+window.metasSalvarGlobal = async function() {
+  const inp = document.getElementById('metaGlobalInput');
+  if (!inp) return;
+  const v = Math.max(1, Math.min(200, parseInt(inp.value || '20', 10) || 20));
+  inp.value = v;
+  try {
+    await salvarMetaConfig('meta_visitas_mes_global', v);
+    window._metasShowSaved && window._metasShowSaved();
+    setFlash && setFlash('success', `Meta global atualizada pra ${v} visitas/mês.`);
+  } catch (e) {
+    alert('Erro ao salvar: ' + e.message);
+  }
+};
+
+window.metasAplicarATodos = function() {
+  const bulk = document.getElementById('metaBulkInput');
+  if (!bulk) return;
+  const v = parseInt(bulk.value || '0', 10);
+  if (!v || v < 1) {
+    alert('Informe um valor válido (1 a 200).');
+    return;
+  }
+  document.querySelectorAll('.metaIndividualInput').forEach(inp => {
+    inp.value = Math.max(1, Math.min(200, v));
+  });
+};
+
+window.metasSalvarIndividual = async function() {
+  const obj = {};
+  document.querySelectorAll('.metaIndividualInput').forEach(inp => {
+    const id = inp.dataset.nutriId;
+    const v = parseInt(inp.value || '0', 10);
+    if (id && v > 0 && v <= 200) obj[id] = v;
+  });
+  try {
+    await salvarMetaConfig('meta_visitas_mes_individual', obj);
+    window._metasShowSaved && window._metasShowSaved();
+    setFlash && setFlash('success', `Metas individuais salvas (${Object.keys(obj).length} nutricionistas).`);
+  } catch (e) {
+    alert('Erro ao salvar: ' + e.message);
+  }
+};
+
+// Lê a meta de visitas/mês efetiva pra um nutri.
+// Modo 'global': todos têm a mesma meta (meta_visitas_mes_global).
+// Modo 'individual': cada nutri tem a sua (meta_visitas_mes_individual JSON), com fallback pro global.
+async function getMetaVisitasMesNutri(userId) {
+  try {
+    const configs = await carregarConfigs();
+    const modo = configs.meta_visitas_mes_modo?.valor || 'global';
+    const valorGlobalRaw = configs.meta_visitas_mes_global?.valor;
+    const valorGlobal = parseInt(valorGlobalRaw ?? '20', 10) || 20;
+    if (modo === 'individual' && userId) {
+      const indvRaw = configs.meta_visitas_mes_individual?.valor;
+      let indvObj = {};
+      if (indvRaw) {
+        try { indvObj = typeof indvRaw === 'string' ? JSON.parse(indvRaw) : indvRaw; }
+        catch (e) { console.warn('[meta] JSON individual inválido', e); }
+      }
+      const v = indvObj[userId];
+      return parseInt(v ?? valorGlobal, 10) || valorGlobal;
+    }
+    return valorGlobal;
+  } catch (e) {
+    console.warn('[meta] erro ao ler meta efetiva, usando default 20:', e);
+    return 20;
+  }
+}
+
 /* ==========================================================================
    SPRINT 3 — Admin: Fila de Revisão
    ========================================================================== */
@@ -23181,6 +23412,10 @@ async function carregarIndicadoresNutri() {
   if (!user) return;
 
   try {
+    // Sprint 9.32.110: meta agora vem do banco (admin define em Configurações)
+    try { window._metaMensalEfetiva = await getMetaVisitasMesNutri(user.id); }
+    catch (e) { window._metaMensalEfetiva = 20; }
+
     // Marcos temporais
     const agora = new Date();
     const inicioMes = new Date(agora.getFullYear(), agora.getMonth(), 1);
@@ -23628,10 +23863,10 @@ async function carregarIndicadoresNutri() {
         </div>
       ` : ''}
 
-      <!-- Gráfico: visitas por mês — Sprint 9.32.109: layouts distintos desktop vs mobile -->
+      <!-- Gráfico: visitas por mês — Sprint 9.32.110: meta vem do banco (admin define) -->
       ${(() => {
         const ehDesktopMes = (typeof isDesktop === 'function') ? isDesktop() : (window.innerWidth >= 1024);
-        const metaMensal = parseInt(localStorage.getItem('bn_meta_visitas_mes_nutri') || '20', 10);
+        const metaMensal = window._metaMensalEfetiva || 20;
         const allZero = mesesArr.every(([, c]) => c === 0);
         const valorMaxEixo = Math.max(maxMes, metaMensal, 1);
         const ceilTo = (n, step) => Math.ceil(n / step) * step;
@@ -23654,7 +23889,7 @@ async function carregarIndicadoresNutri() {
               <span class="material-symbols-rounded" style="font-size:20px;color:var(--brand-lime);">stacked_bar_chart</span>
               <span style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:15px;">Visitas por mês</span>
               <span style="font-size:12px;color:var(--neutral-500);margin-left:6px;">últimos 6 meses</span>
-              <button onclick="window.editarMetaVisitasMesNutri && window.editarMetaVisitasMesNutri()" title="Ajustar meta mensal" style="margin-left:auto;display:inline-flex;align-items:center;gap:8px;cursor:pointer;background:#FEF8E9;border:1px solid rgba(245,158,11,0.3);border-radius:8px;padding:6px 12px;font-size:12px;color:#92400E;font-weight:700;font-family:inherit;">
+              <span title="Meta definida pelo admin em Configurações" style="margin-left:auto;display:inline-flex;align-items:center;gap:8px;background:#FEF8E9;border:1px solid rgba(245,158,11,0.3);border-radius:8px;padding:6px 12px;font-size:12px;color:#92400E;font-weight:700;">
                 <span class="material-symbols-rounded" style="font-size:16px;color:#F59E0B;">flag</span>
                 meta ${metaMensal}/mês
                 <span style="opacity:0.55;font-weight:600;">·</span>
@@ -23662,7 +23897,7 @@ async function carregarIndicadoresNutri() {
                   <span class="material-symbols-rounded" style="font-size:15px;">${metaIcone}</span>
                   ${metaPctNum}%
                 </span>
-              </button>
+              </span>
             </div>
             ${allZero ? `
               <div style="padding:36px;text-align:center;color:var(--neutral-400);font-size:13px;">Sem visitas nos últimos 6 meses.</div>
@@ -23733,14 +23968,14 @@ async function carregarIndicadoresNutri() {
           <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;flex-wrap:wrap;">
             <span class="material-symbols-rounded" style="font-size:18px;color:var(--brand-lime);">stacked_bar_chart</span>
             <span style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:13.5px;">Visitas por mês</span>
-            <button onclick="window.editarMetaVisitasMesNutri && window.editarMetaVisitasMesNutri()" title="Ajustar meta mensal" style="margin-left:auto;display:inline-flex;align-items:center;gap:6px;cursor:pointer;background:#FEF8E9;border:1px solid rgba(245,158,11,0.25);border-radius:7px;padding:3px 8px;font-size:10.5px;color:#92400E;font-weight:700;font-family:inherit;">
+            <span title="Meta definida pelo admin" style="margin-left:auto;display:inline-flex;align-items:center;gap:6px;background:#FEF8E9;border:1px solid rgba(245,158,11,0.25);border-radius:7px;padding:3px 8px;font-size:10.5px;color:#92400E;font-weight:700;">
               <span class="material-symbols-rounded" style="font-size:13px;color:#F59E0B;">flag</span>
               meta ${metaMensal}
               <span style="display:inline-flex;align-items:center;gap:2px;color:${metaCor};">
                 <span class="material-symbols-rounded" style="font-size:12px;">${metaIcone}</span>
                 ${metaPctNum}%
               </span>
-            </button>
+            </span>
           </div>
           ${allZero ? `
             <div style="padding:24px;text-align:center;color:var(--neutral-400);font-size:12px;">Sem visitas nos últimos 6 meses.</div>
@@ -25836,6 +26071,9 @@ function renderAdminRevisaoDetalhe() {
       const v = await getVisitaAdmin(visitaId);
       window._currentReviewVisita = v;
       bodyEl.innerHTML = renderReviewDetailContent(v);
+      // Sprint 9.32.111: hidrata os endereços (reverse geocoding) e inicia mapa Leaflet
+      _hidratarEnderecosVisita(v);
+      _initMapaLeafletVisita(v);
     } catch (err) {
       bodyEl.innerHTML = `
         <div class="empty-state" style="margin:0;">
@@ -25885,6 +26123,9 @@ function renderAdminRevisaoDetalheDesktop() {
       const v = await getVisitaAdmin(visitaId);
       window._currentReviewVisita = v;
       bodyEl.innerHTML = renderReviewDetailContent(v);
+      // Sprint 9.32.111: hidrata os endereços (reverse geocoding) e inicia mapa Leaflet
+      _hidratarEnderecosVisita(v);
+      _initMapaLeafletVisita(v);
     } catch (err) {
       bodyEl.innerHTML = `
         <div class="empty-state" style="margin:0;">
@@ -26021,23 +26262,19 @@ function renderReviewDetailContent(v) {
       </div>
       ${v.checkin_latitude ? `
         <div class="review-detail__row">
-          <span class="review-detail__label">Coords check-in</span>
-          <span class="review-detail__value review-detail__value--mono">
-            <a href="https://www.google.com/maps?q=${v.checkin_latitude},${v.checkin_longitude}" target="_blank" rel="noopener" style="color:var(--status-info);text-decoration:none;display:inline-flex;align-items:center;gap:4px;">
-              ${v.checkin_latitude.toFixed(5)}, ${v.checkin_longitude.toFixed(5)}
-              <span class="material-symbols-rounded" style="font-size:14px;">open_in_new</span>
-            </a>
+          <span class="review-detail__label">Endereço check-in</span>
+          <span class="review-detail__value" id="addrCheckin_${v.id}" style="text-align:right;">
+            <span style="color:var(--neutral-400);font-size:12px;font-style:italic;">buscando endereço...</span>
+            <a href="https://www.google.com/maps?q=${v.checkin_latitude},${v.checkin_longitude}" target="_blank" rel="noopener" style="color:var(--status-info);text-decoration:none;font-family:var(--font-mono);font-size:11px;display:inline-flex;align-items:center;gap:3px;margin-left:6px;">${v.checkin_latitude.toFixed(5)}, ${v.checkin_longitude.toFixed(5)} <span class="material-symbols-rounded" style="font-size:13px;">open_in_new</span></a>
           </span>
         </div>
       ` : ''}
       ${v.checkout_latitude ? `
         <div class="review-detail__row">
-          <span class="review-detail__label">Coords check-out</span>
-          <span class="review-detail__value review-detail__value--mono">
-            <a href="https://www.google.com/maps?q=${v.checkout_latitude},${v.checkout_longitude}" target="_blank" rel="noopener" style="color:var(--status-info);text-decoration:none;display:inline-flex;align-items:center;gap:4px;">
-              ${v.checkout_latitude.toFixed(5)}, ${v.checkout_longitude.toFixed(5)}
-              <span class="material-symbols-rounded" style="font-size:14px;">open_in_new</span>
-            </a>
+          <span class="review-detail__label">Endereço check-out</span>
+          <span class="review-detail__value" id="addrCheckout_${v.id}" style="text-align:right;">
+            <span style="color:var(--neutral-400);font-size:12px;font-style:italic;">buscando endereço...</span>
+            <a href="https://www.google.com/maps?q=${v.checkout_latitude},${v.checkout_longitude}" target="_blank" rel="noopener" style="color:var(--status-info);text-decoration:none;font-family:var(--font-mono);font-size:11px;display:inline-flex;align-items:center;gap:3px;margin-left:6px;">${v.checkout_latitude.toFixed(5)}, ${v.checkout_longitude.toFixed(5)} <span class="material-symbols-rounded" style="font-size:13px;">open_in_new</span></a>
           </span>
         </div>
       ` : ''}
@@ -26106,14 +26343,7 @@ function renderReviewDetailContent(v) {
             ${v.objetivos?.length ? v.objetivos.map(o => `<div style="padding:4px 0;">• ${o.nome}</div>`).join('') : '<span style="color:var(--neutral-400);font-style:italic;">Nenhum objetivo registrado</span>'}
           </div>
         </div>
-        <div class="review-detail__row" style="flex-direction:column;align-items:flex-start;">
-          <span class="review-detail__label">Resumo</span>
-          <span class="review-detail__value review-detail__value--multiline">${(v.resumo || '—').replace(/</g, '&lt;')}</span>
-        </div>
-        <div class="review-detail__row" style="flex-direction:column;align-items:flex-start;">
-          <span class="review-detail__label">Próximos passos</span>
-          <span class="review-detail__value review-detail__value--multiline">${(v.proximos_passos || '—').replace(/</g, '&lt;')}</span>
-        </div>
+        ${renderRelatorioCards(v)}
       `}
     </div>
 
@@ -26133,95 +26363,221 @@ function renderReviewDetailContent(v) {
   `;
 }
 
-// Formata timestamp completo (data + hora)
-// Renderiza mini mapa SVG ilustrativo com os pinos check-in / check-out / instituição
-// + link pro Google Maps com rota completa.
+// Sprint 9.32.111: parser de próximos passos.
+// Detecta padrão (Ação / Responsável / Prazo em grupos de 3 linhas).
+// Aceita também variações: linhas em sequência onde a 3ª contém data.
+// Retorna array de {acao, responsavel, prazo, prazoStatus} ou null se não detectar.
+function _parseProximosPassos(texto) {
+  if (!texto || typeof texto !== 'string') return null;
+  // Limpa linhas vazias e cabeçalhos textuais
+  const linhas = texto.split('\n').map(l => l.trim()).filter(Boolean);
+  if (linhas.length < 3) return null;
+  // Remove headers comuns ("PRÓXIMOS PASSOS", "Ação", "Responsável", "Prazo") do topo
+  const headers = ['próximos passos', 'proximos passos', 'ação', 'acao', 'responsável', 'responsavel', 'prazo', 'data'];
+  const limpo = [];
+  for (const l of linhas) {
+    const lower = l.toLowerCase().replace(/[:\-—_]/g, '').trim();
+    if (headers.includes(lower)) continue;
+    limpo.push(l);
+  }
+  if (limpo.length < 3) return null;
+
+  // Regex pra detectar data BR (DD/MM, DD/MM/YYYY, "até DD/MM/YYYY", "DD-MM", "DD de MMM")
+  const reData = /^(at[eé]\s+)?\d{1,2}[\/\-\.]\d{1,2}([\/\-\.]\d{2,4})?\s*$/i;
+  // Tenta agrupar de 3 em 3 onde o 3º elemento case com data
+  const itens = [];
+  for (let i = 0; i + 2 < limpo.length; i += 3) {
+    const acao = limpo[i];
+    const responsavel = limpo[i + 1];
+    const prazo = limpo[i + 2];
+    if (!reData.test(prazo)) {
+      // Padrão não bate — descarta tudo
+      return null;
+    }
+    itens.push({ acao, responsavel, prazo: prazo.replace(/\.$/, '') });
+  }
+  if (itens.length === 0) return null;
+
+  // Calcula status do prazo (vencido / próximo / futuro) baseado na data
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  const em7d = new Date(hoje); em7d.setDate(em7d.getDate() + 7);
+  itens.forEach(it => {
+    const d = _parseDataBr(it.prazo);
+    if (!d) { it.prazoStatus = 'neutro'; return; }
+    if (d < hoje) it.prazoStatus = 'vencido';
+    else if (d <= em7d) it.prazoStatus = 'proximo';
+    else it.prazoStatus = 'futuro';
+  });
+  return itens;
+}
+
+function _parseDataBr(s) {
+  if (!s) return null;
+  const m = s.match(/(\d{1,2})[\/\-\.](\d{1,2})(?:[\/\-\.](\d{2,4}))?/);
+  if (!m) return null;
+  const dia = parseInt(m[1], 10);
+  const mes = parseInt(m[2], 10) - 1;
+  let ano = m[3] ? parseInt(m[3], 10) : new Date().getFullYear();
+  if (ano < 100) ano += 2000;
+  const d = new Date(ano, mes, dia);
+  if (isNaN(d.getTime())) return null;
+  return d;
+}
+
+// Renderiza o resumo + próximos passos como cards bonitos (Sprint 9.32.111)
+function renderRelatorioCards(v) {
+  const resumoTxt = (v.resumo || '').trim();
+  const ppTxt = (v.proximos_passos || '').trim();
+  const ppItens = _parseProximosPassos(ppTxt);
+
+  const escapeHtml = (s) => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+  const corPrazoBg = { vencido: '#FCEBEB', proximo: '#FAEEDA', futuro: '#F1EFE8', neutro: '#F1EFE8' };
+  const corPrazoFg = { vencido: '#A32D2D', proximo: '#854F0B', futuro: '#444441', neutro: '#444441' };
+  const lblPrazo = { vencido: 'vencido', proximo: 'próximo', futuro: '', neutro: '' };
+
+  return `
+    <!-- Card Resumo (cinza neutro) -->
+    <div style="margin-top:8px;background:#fff;border:1px solid var(--neutral-200);border-radius:10px;overflow:hidden;">
+      <div style="background:#F3F4F6;padding:9px 14px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--neutral-200);">
+        <span class="material-symbols-rounded" style="font-size:18px;color:var(--neutral-600);">notes</span>
+        <span style="font-size:12.5px;font-weight:700;color:var(--brand-navy);">Resumo da reunião</span>
+        ${resumoTxt ? `<span style="margin-left:auto;font-size:10.5px;color:var(--neutral-500);">${resumoTxt.split(/\s+/).filter(Boolean).length} palavras</span>` : ''}
+      </div>
+      <div style="padding:12px 16px;font-size:12.5px;color:var(--neutral-700);line-height:1.65;white-space:pre-wrap;word-wrap:break-word;">${resumoTxt ? escapeHtml(resumoTxt) : '<span style="color:var(--neutral-400);font-style:italic;">Sem resumo registrado.</span>'}</div>
+    </div>
+
+    <!-- Card Próximos passos -->
+    <div style="margin-top:10px;background:#fff;border:1px solid #B5D4F4;border-radius:10px;overflow:hidden;">
+      <div style="background:#E6F1FB;padding:9px 14px;display:flex;align-items:center;gap:8px;border-bottom:1px solid #B5D4F4;">
+        <span class="material-symbols-rounded" style="font-size:18px;color:#185FA5;">arrow_forward</span>
+        <span style="font-size:12.5px;font-weight:700;color:#0C447C;">Próximos passos</span>
+        ${ppItens ? `<span style="margin-left:auto;font-size:10.5px;color:#185FA5;font-weight:600;">${ppItens.length} ${ppItens.length === 1 ? 'ação' : 'ações'}</span>` : ''}
+      </div>
+      ${ppItens ? `
+        <table style="width:100%;border-collapse:collapse;font-size:12px;">
+          <thead>
+            <tr style="background:#F9FAFB;">
+              <th style="text-align:left;padding:8px 14px;font-size:10.5px;color:var(--neutral-500);font-weight:700;text-transform:uppercase;letter-spacing:0.4px;">Ação</th>
+              <th style="text-align:left;padding:8px 10px;font-size:10.5px;color:var(--neutral-500);font-weight:700;text-transform:uppercase;letter-spacing:0.4px;">Responsável</th>
+              <th style="text-align:left;padding:8px 14px;font-size:10.5px;color:var(--neutral-500);font-weight:700;text-transform:uppercase;letter-spacing:0.4px;">Prazo</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${ppItens.map(it => `
+              <tr style="border-top:1px solid var(--neutral-100);">
+                <td style="padding:9px 14px;color:var(--brand-navy);font-weight:600;">${escapeHtml(it.acao)}</td>
+                <td style="padding:9px 10px;color:var(--neutral-700);">${escapeHtml(it.responsavel)}</td>
+                <td style="padding:9px 14px;"><span style="background:${corPrazoBg[it.prazoStatus]};color:${corPrazoFg[it.prazoStatus]};font-size:11px;font-weight:700;padding:3px 9px;border-radius:5px;display:inline-flex;align-items:center;gap:4px;">${escapeHtml(it.prazo)}${lblPrazo[it.prazoStatus] ? ` · ${lblPrazo[it.prazoStatus]}` : ''}</span></td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      ` : `
+        <div style="padding:12px 16px;font-size:12.5px;color:var(--neutral-700);line-height:1.65;white-space:pre-wrap;word-wrap:break-word;">${ppTxt ? escapeHtml(ppTxt) : '<span style="color:var(--neutral-400);font-style:italic;">Sem próximos passos registrados.</span>'}</div>
+      `}
+    </div>
+  `;
+}
+
+// Sprint 9.32.111: mapa Leaflet REAL (substituiu o SVG ilustrativo).
+// Retorna só o container; o Leaflet é inicializado por _initMapaLeafletVisita após a inserção no DOM.
 function renderMiniMapaVisita(v) {
   const inst = v.instituicoes || {};
   const temInst = inst.latitude !== null && inst.latitude !== undefined;
   const temCheckin = v.checkin_latitude !== null && v.checkin_latitude !== undefined;
   const temCheckout = v.checkout_latitude !== null && v.checkout_latitude !== undefined;
-
-  // Se não tem nenhuma coord, não renderiza nada
   if (!temInst && !temCheckin && !temCheckout) return '';
 
-  // Coleta pontos com lat/lng pra calcular bounds
   const pontos = [];
-  if (temInst) pontos.push({ tipo: 'inst', lat: inst.latitude, lng: inst.longitude, cor: 'var(--brand-lime)', label: 'Local' });
-  if (temCheckin) pontos.push({ tipo: 'in', lat: v.checkin_latitude, lng: v.checkin_longitude, cor: 'var(--status-info)', label: 'Check-in' });
-  if (temCheckout) pontos.push({ tipo: 'out', lat: v.checkout_latitude, lng: v.checkout_longitude, cor: 'var(--status-warning)', label: 'Check-out' });
+  if (temInst) pontos.push({ tipo: 'inst', lat: inst.latitude, lng: inst.longitude });
+  if (temCheckin) pontos.push({ tipo: 'in', lat: v.checkin_latitude, lng: v.checkin_longitude });
+  if (temCheckout) pontos.push({ tipo: 'out', lat: v.checkout_latitude, lng: v.checkout_longitude });
 
-  // Bounds
-  const lats = pontos.map(p => p.lat);
-  const lngs = pontos.map(p => p.lng);
-  const minLat = Math.min(...lats), maxLat = Math.max(...lats);
-  const minLng = Math.min(...lngs), maxLng = Math.max(...lngs);
-  const dLat = Math.max(maxLat - minLat, 0.001);
-  const dLng = Math.max(maxLng - minLng, 0.001);
-  // Padding nos bounds (15% de margem)
-  const padLat = dLat * 0.2, padLng = dLng * 0.2;
-
-  // Mapeia para coords de tela (SVG 100x50 viewBox)
-  const W = 100, H = 50;
-  const toXY = (lat, lng) => {
-    const x = ((lng - (minLng - padLng)) / (dLng + 2 * padLng)) * W;
-    // inverte Y (lat maior = mais ao norte = topo)
-    const y = H - ((lat - (minLat - padLat)) / (dLat + 2 * padLat)) * H;
-    return { x, y };
-  };
-
-  // Calcula distância aproximada entre check-in e instituição (pra mostrar no label)
   let distStr = '';
   if (temCheckin && temInst) {
     const d = calcularDistanciaMetros(v.checkin_latitude, v.checkin_longitude, inst.latitude, inst.longitude);
     distStr = d < 1000 ? `${Math.round(d)}m do local` : `${(d / 1000).toFixed(1)}km do local`;
   }
-
-  // Monta URL do Google Maps com todos os pinos
   const mapUrl = pontos.length > 1
     ? `https://www.google.com/maps/dir/${pontos.map(p => `${p.lat},${p.lng}`).join('/')}`
     : `https://www.google.com/maps?q=${pontos[0].lat},${pontos[0].lng}`;
 
-  // Linha ligando check-in -> check-out (se ambos existem)
-  let linhaPath = '';
-  if (temCheckin && temCheckout) {
-    const a = toXY(v.checkin_latitude, v.checkin_longitude);
-    const b = toXY(v.checkout_latitude, v.checkout_longitude);
-    linhaPath = `<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="var(--neutral-300)" stroke-width="0.5" stroke-dasharray="1.5 1.5" />`;
-  }
-
-  // Pinos
-  const pinsSvg = pontos.map(p => {
-    const { x, y } = toXY(p.lat, p.lng);
-    return `
-      <circle cx="${x}" cy="${y}" r="4" fill="${p.cor}" opacity="0.25" />
-      <circle cx="${x}" cy="${y}" r="2" fill="${p.cor}" />
-    `;
-  }).join('');
-
-  // Legenda
-  const legenda = pontos.map(p => `
-    <span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--neutral-600);">
-      <span style="width:8px;height:8px;border-radius:50%;background:${p.cor};"></span>${p.label}
-    </span>
-  `).join('<span style="color:var(--neutral-300);">·</span>');
+  const legenda = `
+    ${temInst ? '<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--neutral-600);"><span style="width:10px;height:10px;border-radius:50%;background:var(--brand-lime);border:2px solid #fff;box-shadow:0 0 0 1px var(--brand-lime);"></span>Local</span>' : ''}
+    ${temCheckin ? '<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--neutral-600);"><span style="width:10px;height:10px;border-radius:50%;background:var(--status-info);border:2px solid #fff;box-shadow:0 0 0 1px var(--status-info);"></span>Check-in</span>' : ''}
+    ${temCheckout ? '<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--neutral-600);"><span style="width:10px;height:10px;border-radius:50%;background:var(--status-warning);border:2px solid #fff;box-shadow:0 0 0 1px var(--status-warning);"></span>Check-out</span>' : ''}
+  `;
 
   return `
     <div style="margin-top:12px;padding:12px;background:var(--neutral-50);border-radius:10px;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:8px;flex-wrap:wrap;">
-        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">${legenda}</div>
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">${legenda}</div>
         <a href="${mapUrl}" target="_blank" rel="noopener" style="color:var(--status-info);text-decoration:none;display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:600;">
           Ver no Google Maps
           <span class="material-symbols-rounded" style="font-size:14px;">open_in_new</span>
         </a>
       </div>
-      <svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:120px;display:block;background:var(--neutral-0);border-radius:6px;border:1px solid var(--neutral-200);">
-        ${linhaPath}
-        ${pinsSvg}
-      </svg>
+      <div id="mapaLeaflet_${v.id}" style="width:100%;height:280px;border-radius:8px;border:1px solid var(--neutral-200);overflow:hidden;background:var(--neutral-100);"></div>
       ${distStr ? `<div style="margin-top:6px;font-size:11px;color:var(--neutral-500);text-align:center;">Check-in a aprox. <strong>${distStr}</strong></div>` : ''}
     </div>
   `;
+}
+
+// Inicializa o mapa Leaflet com pinos (chamado depois que o HTML é inserido no DOM)
+function _initMapaLeafletVisita(v) {
+  if (typeof L === 'undefined') {
+    console.warn('[mapa] Leaflet não carregou ainda');
+    return;
+  }
+  const containerId = `mapaLeaflet_${v.id}`;
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  // Se já tem mapa, remove (re-render)
+  if (container._leaflet_map) {
+    try { container._leaflet_map.remove(); } catch (e) {}
+    container._leaflet_map = null;
+  }
+  const inst = v.instituicoes || {};
+  const pontos = [];
+  if (inst.latitude && inst.longitude) pontos.push({ tipo: 'inst', lat: inst.latitude, lng: inst.longitude, cor: '#8BC63F', label: `Local${inst.nome ? ': ' + inst.nome : ''}` });
+  if (v.checkin_latitude && v.checkin_longitude) pontos.push({ tipo: 'in', lat: v.checkin_latitude, lng: v.checkin_longitude, cor: '#2563EB', label: 'Check-in' });
+  if (v.checkout_latitude && v.checkout_longitude) pontos.push({ tipo: 'out', lat: v.checkout_latitude, lng: v.checkout_longitude, cor: '#F59E0B', label: 'Check-out' });
+  if (pontos.length === 0) return;
+
+  // Init mapa centralizado no primeiro ponto
+  const map = L.map(containerId, { zoomControl: true, scrollWheelZoom: false }).setView([pontos[0].lat, pontos[0].lng], 16);
+  container._leaflet_map = map;
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap',
+    maxZoom: 19,
+  }).addTo(map);
+
+  // Adiciona pinos coloridos (DivIcon HTML)
+  const bounds = [];
+  pontos.forEach(p => {
+    const icon = L.divIcon({
+      html: `<div style="width:18px;height:18px;border-radius:50%;background:${p.cor};border:3px solid #fff;box-shadow:0 0 0 1.5px ${p.cor},0 2px 6px rgba(0,0,0,0.25);"></div>`,
+      className: '',
+      iconSize: [18, 18],
+      iconAnchor: [9, 9],
+    });
+    L.marker([p.lat, p.lng], { icon }).addTo(map).bindPopup(`<strong style="color:${p.cor};">${p.label}</strong>`);
+    bounds.push([p.lat, p.lng]);
+  });
+
+  // Linha entre check-in e check-out
+  const ci = pontos.find(p => p.tipo === 'in');
+  const co = pontos.find(p => p.tipo === 'out');
+  if (ci && co) {
+    L.polyline([[ci.lat, ci.lng], [co.lat, co.lng]], { color: '#9CA3AF', weight: 2, dashArray: '6 4' }).addTo(map);
+  }
+
+  // Auto-fit nos pinos com padding
+  if (bounds.length > 1) {
+    map.fitBounds(bounds, { padding: [30, 30], maxZoom: 17 });
+  }
 }
 
 function formatarDataCompleta(ts) {
@@ -26971,6 +27327,68 @@ async function geocodificarEndereco(endereco) {
   } catch (err) {
     console.warn('[geocodificarEndereco] falhou:', err);
     return null;
+  }
+}
+
+// Sprint 9.32.111: reverse geocoding (coords → endereço) via Nominatim.
+// Cache em memória pra evitar refazer requests durante a sessão.
+const _reverseGeoCache = new Map();
+async function reverseGeocode(lat, lng) {
+  if (typeof lat !== 'number' || typeof lng !== 'number') return null;
+  const key = `${lat.toFixed(5)},${lng.toFixed(5)}`;
+  if (_reverseGeoCache.has(key)) return _reverseGeoCache.get(key);
+  const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&zoom=18&addressdetails=1&accept-language=pt-BR`;
+  try {
+    const r = await fetch(url, { headers: { 'Accept-Language': 'pt-BR' } });
+    if (!r.ok) { _reverseGeoCache.set(key, null); return null; }
+    const data = await r.json();
+    if (!data || !data.address) { _reverseGeoCache.set(key, null); return null; }
+    const a = data.address;
+    // Monta endereço resumido: rua + número, bairro, cidade
+    const rua = a.road || a.pedestrian || a.path || '';
+    const numero = a.house_number || '';
+    const bairro = a.suburb || a.neighbourhood || a.quarter || '';
+    const cidade = a.city || a.town || a.village || a.municipality || '';
+    const estado = a.state_code || a.state || '';
+    const partes = [];
+    if (rua) partes.push(rua + (numero ? `, ${numero}` : ''));
+    if (bairro) partes.push(bairro);
+    if (cidade) partes.push(cidade + (estado ? ` - ${estado}` : ''));
+    const resumo = partes.join(' · ') || data.display_name || '';
+    const result = { resumo, completo: data.display_name || resumo };
+    _reverseGeoCache.set(key, result);
+    return result;
+  } catch (err) {
+    console.warn('[reverseGeocode] falhou:', err);
+    _reverseGeoCache.set(key, null);
+    return null;
+  }
+}
+
+// Resolve endereços de uma visita e injeta nos elementos com data-coord
+async function _hidratarEnderecosVisita(v) {
+  const items = [];
+  if (v.checkin_latitude && v.checkin_longitude) {
+    items.push({ id: `addrCheckin_${v.id}`, lat: v.checkin_latitude, lng: v.checkin_longitude });
+  }
+  if (v.checkout_latitude && v.checkout_longitude) {
+    items.push({ id: `addrCheckout_${v.id}`, lat: v.checkout_latitude, lng: v.checkout_longitude });
+  }
+  for (const it of items) {
+    const el = document.getElementById(it.id);
+    if (!el) continue;
+    try {
+      const addr = await reverseGeocode(it.lat, it.lng);
+      if (addr && addr.resumo) {
+        el.innerHTML = `<span title="${(addr.completo || '').replace(/"/g,'&quot;')}" style="color:var(--brand-navy);">${addr.resumo}</span> <a href="https://www.google.com/maps?q=${it.lat},${it.lng}" target="_blank" rel="noopener" style="color:var(--status-info);text-decoration:none;font-family:var(--font-mono);font-size:11px;display:inline-flex;align-items:center;gap:3px;margin-left:6px;">${it.lat.toFixed(5)}, ${it.lng.toFixed(5)} <span class="material-symbols-rounded" style="font-size:13px;">open_in_new</span></a>`;
+      } else {
+        el.innerHTML = `<a href="https://www.google.com/maps?q=${it.lat},${it.lng}" target="_blank" rel="noopener" style="color:var(--status-info);text-decoration:none;display:inline-flex;align-items:center;gap:4px;">${it.lat.toFixed(5)}, ${it.lng.toFixed(5)} <span class="material-symbols-rounded" style="font-size:14px;">open_in_new</span></a>`;
+      }
+    } catch (e) {
+      console.warn('[hidratarEnderecos] erro:', e);
+    }
+    // Pausa pra respeitar rate limit do Nominatim (1 req/seg)
+    await new Promise(r => setTimeout(r, 350));
   }
 }
 
@@ -28493,7 +28911,7 @@ window.rejeitarObjetivoPendente = async function(id) {
 let FAT_DATA = null;
 let _fatDataPromise = null;
 // __FAT_VERSION_START__ — substituído pelo atualizar_index.py com hash do JSON
-const FAT_DATA_VERSION = '4e82b2f28c9f';
+const FAT_DATA_VERSION = 'f9ba4ed8cb14';
 // __FAT_VERSION_END__
 const FAT_DATA_URL = 'faturamento_data_inline.json?v=' + FAT_DATA_VERSION;
 
@@ -42249,6 +42667,9 @@ async function carregarAdminConfigDesktop() {
   try {
     const configs = await carregarConfigs(true);
 
+    // Sprint 9.32.110: card de Metas dos profissionais (vai pro topo do grid)
+    const cardMetasHtml = await renderCardMetasProfissionais(configs);
+
     // Agrupa configs por categoria (mesma lógica do mobile)
     const grupos = {};
     Object.keys(ConfigMeta).forEach(chave => {
@@ -42266,7 +42687,7 @@ async function carregarAdminConfigDesktop() {
       'info':       { accent: 'var(--status-info)', bg: 'var(--status-info-bg,#E4ECFD)' },
     };
 
-    let html = '';
+    let html = cardMetasHtml; // Sprint 9.32.110: Metas vem primeiro
     Object.keys(ConfigCategorias).forEach(catKey => {
       const cat = ConfigCategorias[catKey];
       const items = grupos[catKey];
