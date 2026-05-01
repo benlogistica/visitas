@@ -6200,7 +6200,7 @@ a {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.118-fila-revisao-mobile-banner-reaberta-foto-nutri',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.119-fix-fontes-esticadas-grafico-visitas-realizadas',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -10749,8 +10749,8 @@ function renderGraficoVisitasTemporal() {
   if (gran === 'semana') { metaEfetiva = metaDiaria * 5; metaLabel = `Meta: ${metaEfetiva}/sem (${metaDiaria}×5 dias úteis)`; }
   else if (gran === 'mes') { metaEfetiva = metaDiaria * 22; metaLabel = `Meta: ${metaEfetiva}/mês (${metaDiaria}×22 dias úteis)`; }
 
-  // === SVG compacto com BARRAS ===
-  const W = 620, H = 160, padL = 40, padR = 20, padT = 20, padB = 24;
+  // === SVG compacto com BARRAS — Sprint 9.32.119: viewBox proporcional pro desktop, sem distorcer fontes ===
+  const W = 1200, H = 320, padL = 60, padR = 30, padT = 30, padB = 40;
   const maxData = Math.max(...buckets.map(b => b.count), 1);
   const max = Math.max(maxData, metaEfetiva); // garante que a linha de meta fica visível
   const chartW = W - padL - padR, chartH = H - padT - padB;
@@ -10787,20 +10787,20 @@ function renderGraficoVisitasTemporal() {
     const val = Math.round(max * t);
     return `
       <line x1="${padL}" y1="${y}" x2="${W - padR}" y2="${y}" stroke="var(--neutral-100)" stroke-width="1" stroke-dasharray="${t === 0 ? '0' : '3 3'}" />
-      <text x="${padL - 6}" y="${y + 3}" font-size="9" fill="var(--neutral-400)" text-anchor="end" font-family="JetBrains Mono">${val}</text>
+      <text x="${padL - 8}" y="${y + 5}" font-size="13" fill="var(--neutral-400)" text-anchor="end" font-family="JetBrains Mono">${val}</text>
     `;
   }).join('');
 
   // Linha de meta + label
   const metaLine = metaEfetiva > 0 ? `
-    <line x1="${padL}" y1="${yMeta}" x2="${W - padR}" y2="${yMeta}" stroke="#F59E0B" stroke-width="1.5" stroke-dasharray="6,4" />
-    <text x="${W - padR - 4}" y="${yMeta - 4}" font-size="10" fill="#92400E" text-anchor="end" font-weight="600" font-family="Inter, sans-serif">${metaLabel}</text>
+    <line x1="${padL}" y1="${yMeta}" x2="${W - padR}" y2="${yMeta}" stroke="#F59E0B" stroke-width="2" stroke-dasharray="8,5" />
+    <text x="${W - padR - 6}" y="${yMeta - 6}" font-size="14" fill="#92400E" text-anchor="end" font-weight="700" font-family="Inter, sans-serif">${metaLabel}</text>
   ` : '';
 
   const labels = buckets.map((b, i) => {
     if (!b.labelX) return '';
     const x = padL + i * (barW + barGap) + barW / 2;
-    return `<text x="${x}" y="${H - 6}" font-size="8" fill="var(--neutral-400)" text-anchor="middle" font-family="JetBrains Mono">${b.labelX}</text>`;
+    return `<text x="${x}" y="${H - 10}" font-size="12" fill="var(--neutral-400)" text-anchor="middle" font-family="JetBrains Mono">${b.labelX}</text>`;
   }).join('');
 
   // Stats no rodapé
@@ -10814,7 +10814,7 @@ function renderGraficoVisitasTemporal() {
   container.innerHTML = `
     ${headerHtml}
     <div style="position:relative;">
-      <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="width:100%;height:160px;display:block;">
+      <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;max-height:340px;display:block;">
         ${gridLines}
         ${bars}
         ${metaLine}
