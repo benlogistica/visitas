@@ -109,6 +109,23 @@ if errorlevel 1 (
     exit /b 1
 )
 
+REM Sprint 9.32.120: git pull --rebase ANTES do push pra evitar erro "rejected (fetch first)"
+REM Acontece quando algum commit foi feito no GitHub web (ex: criar CNAME) e nao foi baixado localmente.
+echo.
+echo Sincronizando com o GitHub (pull --rebase)...
+git pull --rebase origin main
+if errorlevel 1 (
+    echo.
+    echo [ERRO] Pull falhou! Provavel conflito de merge. Resolva manualmente:
+    echo    1^) git status              ^(ver arquivos em conflito^)
+    echo    2^) edita os arquivos para resolver
+    echo    3^) git add ^<arquivo^>
+    echo    4^) git rebase --continue
+    echo Ou aborta tudo com: git rebase --abort
+    pause
+    exit /b 1
+)
+
 echo.
 echo Enviando pro GitHub...
 git push
