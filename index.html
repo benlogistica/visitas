@@ -4075,6 +4075,77 @@ a {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.3; }
 }
+/* Sprint 9.32.170: painel de gravação estilo WhatsApp — waveform + transcrição provisória */
+.rte-mic-waveform {
+  display: none;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: linear-gradient(135deg, #FCE8E8 0%, #FFF5F5 100%);
+  border-bottom: 1px solid rgba(220,38,38,0.2);
+  flex-wrap: wrap;
+}
+.rte-mic-wave-bars {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: 24px;
+  flex-shrink: 0;
+}
+.rte-mic-wave-bars span {
+  display: inline-block;
+  width: 3px;
+  background: var(--status-danger, #DC2626);
+  border-radius: 2px;
+  animation: rte-mic-wave 1.2s ease-in-out infinite;
+}
+.rte-mic-wave-bars span:nth-child(1) { height: 8px;  animation-delay: 0s; }
+.rte-mic-wave-bars span:nth-child(2) { height: 14px; animation-delay: 0.1s; }
+.rte-mic-wave-bars span:nth-child(3) { height: 20px; animation-delay: 0.2s; }
+.rte-mic-wave-bars span:nth-child(4) { height: 14px; animation-delay: 0.3s; }
+.rte-mic-wave-bars span:nth-child(5) { height: 22px; animation-delay: 0.4s; }
+.rte-mic-wave-bars span:nth-child(6) { height: 12px; animation-delay: 0.5s; }
+.rte-mic-wave-bars span:nth-child(7) { height: 18px; animation-delay: 0.6s; }
+.rte-mic-wave-bars span:nth-child(8) { height: 10px; animation-delay: 0.7s; }
+.rte-mic-wave-bars span:nth-child(9) { height: 16px; animation-delay: 0.8s; }
+.rte-mic-wave-bars span:nth-child(10){ height: 8px;  animation-delay: 0.9s; }
+@keyframes rte-mic-wave {
+  0%, 100% { transform: scaleY(0.4); opacity: 0.6; }
+  50%      { transform: scaleY(1.2); opacity: 1; }
+}
+.rte-mic-interim {
+  flex: 1;
+  min-width: 100px;
+  font-size: 12.5px;
+  color: #7F1D1D;
+  font-style: italic;
+  line-height: 1.4;
+  max-height: 60px;
+  overflow-y: auto;
+}
+.rte-mic-interim:empty::before {
+  content: attr(data-empty);
+  opacity: 0.6;
+  font-style: normal;
+}
+.rte-mic-stop {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  background: var(--status-danger, #DC2626);
+  color: #fff;
+  border: 0;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  flex-shrink: 0;
+  transition: opacity 120ms;
+}
+.rte-mic-stop:hover { opacity: 0.9; }
+
 /* Área editável */
 .rte-editor {
   padding: 12px 14px;
@@ -6535,7 +6606,7 @@ a {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.169-rte-mic-auto-restart-so-para-no-clique',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.171-mic-diagnostico-detalhado-no-console',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -22526,43 +22597,98 @@ window.rteToggleMic = function(btn) {
   const status = wrap?.querySelector('.rte-mic-status');
   if (!editor) return;
 
-  // Detecta suporte
+  // Sprint 9.32.171: detecção mais informativa pra ajudar a debugar quando não funciona.
+  // Loga no console o navegador detectado + status de suporte.
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const ehHttps = location.protocol === 'https:' || location.hostname === 'localhost';
+  const ua = navigator.userAgent;
+  const ehFirefox = /Firefox/i.test(ua);
+  const ehChrome = /Chrome|Chromium|Edg/i.test(ua) && !/Edge\//i.test(ua); // Edge novo é Chromium
+  console.log('[mic] suporte:', !!SR, '| HTTPS:', ehHttps, '| Browser:', ehFirefox ? 'Firefox' : ehChrome ? 'Chrome/Edge' : 'Outro', '| UA:', ua);
+
+  if (!ehHttps) {
+    const msg = 'Microfone só funciona em HTTPS. Acesse via https:// (não http://).';
+    if (typeof setFlash === 'function') setFlash('warning', msg);
+    else alert(msg);
+    return;
+  }
   if (!SR) {
-    if (typeof setFlash === 'function') {
-      setFlash('warning', 'Seu navegador não suporta ditado por voz. Use Chrome, Edge ou Safari.');
+    let msg;
+    if (ehFirefox) {
+      msg = 'Firefox não suporta ditado por voz. Use Chrome, Edge ou Safari.';
     } else {
-      alert('Seu navegador não suporta ditado por voz. Use Chrome, Edge ou Safari.');
+      msg = 'Seu navegador não suporta ditado por voz. Tente Chrome, Edge ou Safari (versão atualizada).';
     }
+    if (typeof setFlash === 'function') setFlash('warning', msg);
+    else alert(msg);
     return;
   }
 
-  // Já tá ouvindo: para imediatamente (Sprint 9.32.166 + 9.32.169)
-  // abort() é instantâneo (descarta áudio pendente). stop() espera processar a última frase.
-  // 9.32.169: marca _rteUserWantsMic = false PRIMEIRO pra que o auto-restart no onend não dispare.
+  // ===== Sprint 9.32.170: modo "WhatsApp" — grava áudio + transcreve no fim =====
+  // Diferente do modo continuous (que reiniciava sozinho a cada 10-30s causando flicker),
+  // este modo:
+  // - Mantém UM SpeechRecognition rodando o tempo todo
+  // - Acumula resultados FINAIS num buffer interno (não insere no editor ainda)
+  // - Se o navegador encerra (timeout natural), reinicia silenciosamente sem aparecer
+  // - Mostra waveform animado + texto provisório (interim) abaixo do botão enquanto grava
+  // - Quando o usuário clica pra parar, processa TUDO de uma vez e insere no editor
+
+  // Já tá ouvindo: PARA + processa tudo acumulado
   if (btn.dataset.state === 'on') {
-    window._rteUserWantsMic = false; // sinaliza intenção de parar — onend não vai reiniciar
+    window._rteUserWantsMic = false;
     const recAtual = window._rteRecognition;
+    const bufferFinal = window._rteMicBuffer || '';
     window._rteRecognition = null;
+    window._rteMicBuffer = '';
     btn.dataset.state = 'off';
     btn.classList.remove('rte-mic-btn--on');
     if (status) status.style.display = 'none';
+    // Esconde waveform/interim
+    const waveform = wrap.querySelector('.rte-mic-waveform');
+    if (waveform) waveform.style.display = 'none';
     if (recAtual) {
       try { recAtual.abort(); } catch (e1) {
         try { recAtual.stop(); } catch (e2) {}
       }
     }
+    // Insere o buffer acumulado no editor (de uma vez só)
+    if (bufferFinal.trim()) {
+      const substituicoes = window._rteSubstituicoes;
+      let processado = bufferFinal;
+      if (substituicoes) substituicoes.forEach(([re, rep]) => { processado = processado.replace(re, rep); });
+      processado = processado.trim();
+      if (processado) {
+        editor.focus();
+        // Coloca cursor no fim do conteúdo
+        const range = document.createRange();
+        range.selectNodeContents(editor);
+        range.collapse(false);
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+        // Adiciona espaço antes se editor não tá vazio e não termina com whitespace
+        const conteudo = editor.innerText || '';
+        const prefixo = (conteudo && !/\s$/.test(conteudo)) ? ' ' : '';
+        const html = (prefixo + processado + ' ').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+        try {
+          document.execCommand('insertHTML', false, html);
+        } catch (e) {
+          editor.innerHTML += html;
+        }
+        window._rteSyncMirror(wrap);
+      }
+    }
     return;
   }
 
-  // Inicia
+  // ===== Inicia gravação =====
   const rec = new SR();
   rec.lang = 'pt-BR';
   rec.continuous = true;
-  rec.interimResults = false; // só insere quando frase é finalizada (evita texto duplicado)
+  rec.interimResults = true; // ativa pra mostrar texto provisório embaixo
 
-  // Comandos de pontuação por voz (substituições no resultado)
-  const substituicoes = [
+  // Comandos de pontuação (mesmos de antes — guardamos em window pra reusar no stop)
+  window._rteSubstituicoes = [
     [/\b(ponto final|ponto)\b/gi, '.'],
     [/\bv[ií]rgula\b/gi, ','],
     [/\bdois pontos\b/gi, ':'],
@@ -22576,94 +22702,107 @@ window.rteToggleMic = function(btn) {
     [/\b(fecha par[êe]nteses|fechar par[êe]nteses)\b/gi, ')'],
   ];
 
+  // Buffer acumula resultados finais (NÃO insere no editor durante a gravação)
+  window._rteMicBuffer = '';
+
+  // Cria/acha o painel de waveform + transcrição provisória
+  let waveform = wrap.querySelector('.rte-mic-waveform');
+  if (!waveform) {
+    waveform = document.createElement('div');
+    waveform.className = 'rte-mic-waveform';
+    waveform.innerHTML = `
+      <div class="rte-mic-wave-bars">
+        <span></span><span></span><span></span><span></span><span></span>
+        <span></span><span></span><span></span><span></span><span></span>
+      </div>
+      <div class="rte-mic-interim" data-empty="🎙️ Falando…"></div>
+      <button type="button" class="rte-mic-stop" onclick="window.rteToggleMic(document.querySelector('.rte-mic-btn'))">
+        <span class="material-symbols-rounded" style="font-size:16px;">stop_circle</span>
+        Parar e inserir
+      </button>
+    `;
+    // Insere logo após a toolbar
+    const toolbar = wrap.querySelector('.rte-toolbar');
+    if (toolbar && toolbar.nextSibling) {
+      wrap.insertBefore(waveform, toolbar.nextSibling);
+    } else {
+      wrap.appendChild(waveform);
+    }
+  }
+  waveform.style.display = 'flex';
+  const interimEl = waveform.querySelector('.rte-mic-interim');
+  if (interimEl) interimEl.textContent = '';
+
   rec.onresult = (event) => {
-    let textoNovo = '';
+    let textoFinalNovo = '';
+    let textoProvisorio = '';
     for (let i = event.resultIndex; i < event.results.length; i++) {
-      if (event.results[i].isFinal) {
-        textoNovo += event.results[i][0].transcript;
+      const res = event.results[i];
+      if (res.isFinal) {
+        textoFinalNovo += res[0].transcript + ' ';
+      } else {
+        textoProvisorio += res[0].transcript;
       }
     }
-    if (!textoNovo.trim()) return;
-    // Aplica comandos de pontuação
-    let processado = textoNovo;
-    substituicoes.forEach(([re, rep]) => { processado = processado.replace(re, rep); });
-    // Adiciona espaço antes (a não ser que já comece com pontuação ou \n)
-    if (!/^[.,;:!?\n)]/.test(processado.trim())) {
-      processado = ' ' + processado.trim() + ' ';
-    } else {
-      processado = processado.trim() + ' ';
+    // Acumula no buffer (não insere no editor ainda — só na hora de parar)
+    if (textoFinalNovo) {
+      window._rteMicBuffer = (window._rteMicBuffer || '') + textoFinalNovo;
     }
-    // Insere no cursor — converte \n em <br>
-    editor.focus();
-    const html = processado.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
-    try {
-      document.execCommand('insertHTML', false, html);
-    } catch (e) {
-      // Fallback: append no fim
-      editor.innerHTML += html;
+    // Atualiza preview do que tá sendo dito
+    if (interimEl) {
+      const total = (window._rteMicBuffer || '') + textoProvisorio;
+      interimEl.textContent = total.trim() || '';
     }
-    window._rteSyncMirror(wrap);
   };
 
   rec.onerror = (event) => {
     console.warn('[rte mic]', event.error);
-    // Sprint 9.32.169: 'no-speech' é silêncio normal — NÃO desliga o mic.
-    // Deixa o onend cuidar do reinício automático.
     if (event.error === 'no-speech' || event.error === 'aborted') {
-      return;
+      return; // ignora — onend faz restart se ainda tá ativo
     }
-    // Erro real: desliga.
     window._rteUserWantsMic = false;
     btn.dataset.state = 'off';
     btn.classList.remove('rte-mic-btn--on');
     if (status) status.style.display = 'none';
+    if (waveform) waveform.style.display = 'none';
     if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
-      if (typeof setFlash === 'function') {
-        setFlash('warning', 'Permissão de microfone negada. Habilite nas configurações do navegador.');
-      }
+      if (typeof setFlash === 'function') setFlash('warning', 'Permissão de microfone negada.');
     } else if (event.error === 'audio-capture') {
-      if (typeof setFlash === 'function') {
-        setFlash('warning', 'Sem acesso ao microfone. Verifique se está conectado.');
-      }
+      if (typeof setFlash === 'function') setFlash('warning', 'Sem acesso ao microfone.');
     } else {
-      if (typeof setFlash === 'function') {
-        setFlash('warning', `Erro no microfone: ${event.error}`);
-      }
+      if (typeof setFlash === 'function') setFlash('warning', `Erro: ${event.error}`);
     }
   };
 
-  // Sprint 9.32.169: auto-restart quando o navegador fecha a sessão por timeout/silêncio.
-  // Só reinicia se o usuário ainda QUER estar ouvindo (clicou pra ligar e não pra parar).
+  // onend: se o navegador fechou por timeout MAS o usuário ainda quer gravar, reinicia silencioso
+  // O usuário NÃO percebe o restart porque a UI continua igual (botão vermelho, waveform visível)
   rec.onend = () => {
     if (window._rteUserWantsMic && window._rteRecognition === rec) {
-      // Reinicia mesma instância pra continuar ouvindo
       try {
         rec.start();
-        return; // mantém UI como está (vermelho/pulsando)
+        return;
       } catch (e) {
         console.warn('[rte mic auto-restart]', e);
-        // Se falhou (browser realmente parou), cai pro reset abaixo
       }
     }
-    // Para de verdade: reseta UI
     btn.dataset.state = 'off';
     btn.classList.remove('rte-mic-btn--on');
     if (status) status.style.display = 'none';
+    if (waveform) waveform.style.display = 'none';
     window._rteRecognition = null;
   };
 
   try {
     rec.start();
     window._rteRecognition = rec;
-    window._rteUserWantsMic = true; // 9.32.169: usuário quer ouvir
+    window._rteUserWantsMic = true;
     btn.dataset.state = 'on';
     btn.classList.add('rte-mic-btn--on');
     if (status) status.style.display = 'inline-flex';
   } catch (e) {
     console.warn('[rte mic start]', e);
-    if (typeof setFlash === 'function') {
-      setFlash('warning', 'Erro ao iniciar microfone.');
-    }
+    if (waveform) waveform.style.display = 'none';
+    if (typeof setFlash === 'function') setFlash('warning', 'Erro ao iniciar microfone.');
   }
 };
 
