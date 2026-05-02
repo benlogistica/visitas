@@ -3952,6 +3952,165 @@ a {
   line-height: 1.5;
 }
 
+/* Sprint 9.32.164: RTE (Rich Text Editor) — WYSIWYG com toolbar + microfone */
+.rte-wrap {
+  border: 1.5px solid var(--neutral-300);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--neutral-0);
+  transition: border-color 140ms, box-shadow 140ms;
+}
+.rte-wrap--focused {
+  border-color: var(--brand-lime);
+  box-shadow: 0 0 0 3px rgba(139,198,63,0.2);
+}
+.rte-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  padding: 5px 8px;
+  background: #FAFBFC;
+  border-bottom: 1px solid var(--neutral-200);
+  gap: 2px;
+}
+.rte-btn {
+  width: 32px;
+  height: 32px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--neutral-700, #374151);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  transition: all 120ms;
+  font-family: inherit;
+  padding: 0;
+}
+.rte-btn:hover {
+  background: var(--neutral-100, #F3F4F6);
+  border-color: var(--neutral-200);
+}
+.rte-btn--active {
+  background: #F0F7E1;
+  border-color: #C0DD97;
+  color: #3B6D11;
+}
+.rte-divider {
+  width: 1px;
+  height: 22px;
+  background: var(--neutral-200);
+  margin: 0 4px;
+  align-self: center;
+}
+/* Botão de cor com barrinha embaixo */
+.rte-color-wrap { position: relative; display: inline-block; }
+.rte-color-btn {
+  flex-direction: column;
+  gap: 1px;
+  padding: 3px 0 0;
+}
+.rte-color-bar {
+  display: block;
+  width: 18px;
+  height: 3px;
+  border-radius: 1px;
+}
+.rte-color-picker {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 4px;
+  background: #fff;
+  border: 1px solid var(--neutral-200);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(10,31,92,0.12);
+  padding: 8px;
+  display: grid;
+  grid-template-columns: repeat(3, 24px);
+  gap: 6px;
+  z-index: 100;
+}
+.rte-color-swatch {
+  width: 24px;
+  height: 24px;
+  border-radius: 5px;
+  border: 1px solid rgba(0,0,0,0.08);
+  cursor: pointer;
+  padding: 0;
+  transition: transform 120ms;
+}
+.rte-color-swatch:hover { transform: scale(1.15); }
+/* Microfone — estado "ouvindo" pulsa em vermelho */
+.rte-mic-btn--on {
+  background: var(--status-danger, #DC2626) !important;
+  color: #fff !important;
+  border-color: var(--status-danger, #DC2626) !important;
+  animation: rte-mic-pulse 1.4s ease-in-out infinite;
+}
+@keyframes rte-mic-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(220,38,38,0.6); }
+  50% { box-shadow: 0 0 0 6px rgba(220,38,38,0); }
+}
+.rte-mic-status {
+  margin-left: 6px;
+  font-size: 11px;
+  color: var(--status-danger, #DC2626);
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.rte-mic-status::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--status-danger, #DC2626);
+  animation: rte-mic-blink 1s ease-in-out infinite;
+}
+@keyframes rte-mic-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+/* Área editável */
+.rte-editor {
+  padding: 12px 14px;
+  min-height: 100px;
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--brand-navy);
+  line-height: 1.6;
+  outline: 0;
+  cursor: text;
+  word-wrap: break-word;
+}
+/* Placeholder pro contenteditable (HTML não tem nativo) */
+.rte-editor:empty::before {
+  content: attr(data-placeholder);
+  color: var(--neutral-400, #9CA3AF);
+  font-style: italic;
+  pointer-events: none;
+}
+.rte-editor p { margin: 0 0 8px; }
+.rte-editor ul, .rte-editor ol { margin: 4px 0 8px; padding-left: 22px; }
+.rte-editor li { margin-bottom: 3px; }
+/* Modo somente leitura (visita travada) */
+.rte-readonly {
+  padding: 12px 14px;
+  border: 1.5px solid var(--neutral-200);
+  border-radius: 10px;
+  background: var(--neutral-50, #FAFBFC);
+  font-size: 14px;
+  color: var(--brand-navy);
+  line-height: 1.6;
+  word-wrap: break-word;
+}
+.rte-readonly p { margin: 0 0 8px; }
+.rte-readonly ul, .rte-readonly ol { margin: 4px 0 8px; padding-left: 22px; }
+
 /* Aviso de margem de horário divergente */
 .time-warning {
   background: var(--status-danger-bg);
@@ -5213,6 +5372,48 @@ a {
   white-space: pre-wrap;
 }
 
+/* Sprint 9.32.162: estilo R1 — cards estruturados na seção Relatório
+   Substitui o layout label-direita / valor-esquerda por mini-cards em grid 2-col,
+   uplabels uppercase e chips/pills coloridos pros profissionais e objetivos. */
+.report-r1-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.report-r1-cell {
+  background: var(--neutral-50, #FAFBFC);
+  border: 1px solid var(--neutral-100, #F1EFE8);
+  border-radius: 8px;
+  padding: 11px 13px;
+  min-width: 0;
+}
+.report-r1-uplabel {
+  font-size: 9.5px;
+  color: var(--neutral-500, #6B7280);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 5px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.report-r1-count {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 10.5px;
+  color: var(--brand-navy);
+  background: var(--neutral-100, #F1EFE8);
+  padding: 1px 7px;
+  border-radius: 9999px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+}
+/* Em telas estreitas (mobile <500px), cai pra 1 coluna */
+@media (max-width: 500px) {
+  .report-r1-grid { grid-template-columns: 1fr; }
+}
+
 /* Action bar fixa no fundo */
 .review-actions {
   position: sticky;
@@ -5309,6 +5510,47 @@ a {
   color: var(--brand-navy);
   font-style: italic;
   line-height: 1.45;
+}
+
+/* Sprint 9.32.161: Visão consolidada do relatório (P3) — esconde elementos do admin
+   quando o nutri está vendo, e estiliza pra impressão. */
+.nutri-relatorio-consolidado .review-actions { display: none !important; }
+
+/* @media print: imprime APENAS a área do relatório, esconde tudo o resto.
+   Funciona tanto pro nutri quanto pro admin que use o botão de imprimir. */
+@media print {
+  /* Esconde sidebar, topbar, drawers, ações e qualquer toolbar com .no-print */
+  .desktopSidebar,
+  .mbar, .mobile-app > header,
+  .desktopShell__topbar,
+  .desktopShellNutri__topbar,
+  .save-indicator,
+  .no-print,
+  .review-actions,
+  .reabert-banner,
+  .report-lock-warning,
+  .review-notice-nutri,
+  #notifDropdown, #perfilDropdown,
+  .flash-container,
+  body > [data-route="back"],
+  .breadcrumb,
+  .desktopShell__breadcrumb,
+  .desktopShellNutri__breadcrumb {
+    display: none !important;
+  }
+  /* Body branco + sem scroll */
+  body, html { background: #fff !important; color: #000 !important; }
+  /* Container principal: largura total, sem margem da sidebar */
+  .desktopShell__main, .desktopShellNutri__main { margin-left: 0 !important; padding: 0 !important; }
+  .mobile-app, .mcontent { padding: 0 !important; background: #fff !important; }
+  /* Cards do relatório: sem sombra (poluição na impressão) */
+  .ds-chart-card, .review-detail__section, .report-info {
+    box-shadow: none !important;
+    border: 1px solid #ccc !important;
+    page-break-inside: avoid;
+  }
+  /* Esconde mapa Leaflet (interativo, não imprime bem) */
+  .leaflet-container { display: none !important; }
 }
 
 /* ==========================================================================
@@ -6197,41 +6439,11 @@ a {
 .dsd-mobile #dsdPieCheckin > div > div > div:last-child > div:last-child { font-size: 9.5px !important; }
 .dsd-mobile #dsdPieCheckin > div > div > span[style*="position:absolute"] { font-size: 8.5px !important; padding: 2px 5px !important; top: 7px !important; right: 7px !important; }
 
-/* Sprint 9.32.151: comprime Heatmap dias × horários no mobile
-   Desktop usa células 38px com font 13px e gap 4px — ocupa muito espaço.
-   No mobile: célula 22px, font 10px, label dia menor → cabe tudo SEM scroll horizontal. */
+/* Sprint 9.32.159: heatmap se estica pra preencher o card pai (sem espaço branco sobrando).
+   Como o .ds-chart-card é flex column, o #dsdHeatmap pega flex:1 e cresce. */
+#dsdHeatmap { flex: 1; min-height: 0; }
 .dsd-mobile #dsdHeatmap { overflow-x: visible !important; }
 .dsd-mobile #dsdHeatmap > div { min-width: 0 !important; width: 100% !important; }
-/* Header (linha de horas) e cada linha de dia: reduz coluna do label de 42px → 28px */
-.dsd-mobile #dsdHeatmap > div > div > div[style*="grid-template-columns:42px"],
-.dsd-mobile #dsdHeatmap > div > div > div {
-  grid-template-columns: 28px repeat(12, minmax(0, 1fr)) !important;
-  gap: 3px !important;
-}
-/* Célula do horário (8h, 9h, ...) menor */
-.dsd-mobile #dsdHeatmap div[style*="font-family:'JetBrains Mono"][style*="text-align:center"] {
-  font-size: 9px !important;
-}
-/* Label do dia (Seg, Ter, ...) menor */
-.dsd-mobile #dsdHeatmap div[style*="color:var(--neutral-500)"][style*="font-weight:600"] {
-  font-size: 10px !important;
-}
-/* Célula do heatmap: altura 38 → 22, font 13 → 10 */
-.dsd-mobile #dsdHeatmap div[style*="border-radius:6px"][style*="height:38px"] {
-  height: 22px !important;
-  font-size: 10px !important;
-  border-radius: 4px !important;
-}
-/* Legenda menor */
-.dsd-mobile #dsdHeatmap div[style*="margin-top:14px"] {
-  margin-top: 8px !important;
-  font-size: 9.5px !important;
-  gap: 4px !important;
-}
-.dsd-mobile #dsdHeatmap div[style*="margin-top:14px"] span[style*="width:18px"] {
-  width: 14px !important;
-  height: 11px !important;
-}
 
 /* Tabelas desktop (Instituições, Equipe, Profissionais, etc.) */
 .ds-table__row {
@@ -6300,7 +6512,7 @@ a {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.157-status-kpi-hero-taxa-aprovacao-s3-com-sparkline',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.165-rte-fix-color-picker-e-mic-status-display-none',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -11337,37 +11549,44 @@ async function renderDsdHeatmap() {
     });
     const max = Math.max(1, ...matrix.flat());
     const nomes = ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'];
-    // Sprint 9.32.131: células flexíveis (1fr) + altura maior pra aproveitar todo o espaço do card
-    const cellH = 38, gap = 4;
 
     if (subtitle) subtitle.textContent = `Heatmap · últimos 90 dias · ${visitas.length} visitas`;
 
-    container.style.display = 'block';
+    // Sprint 9.32.160: heatmap se estica pra preencher o card pai.
+    // Bug fix do 9.32.159: o flex column estava encolhendo o grid horizontalmente.
+    // Solução: width:100% explícito em cada linha + align-items:stretch no container.
+    container.style.display = 'flex';
+    container.style.flexDirection = 'column';
+    container.style.alignItems = 'stretch';
+    container.style.width = '100%';
+    container.style.height = '100%';
+    container.style.minHeight = '220px';
+
+    const gap = 3;
+
     container.innerHTML = `
-      <div style="width:100%;">
-        <div style="display:flex;flex-direction:column;gap:${gap}px;">
-          <div style="display:grid;grid-template-columns:42px repeat(${horas.length}, minmax(0, 1fr));gap:${gap}px;align-items:center;">
-            <div></div>
-            ${horas.map(h => `<div style="font-size:11px;color:var(--neutral-400);text-align:center;font-family:'JetBrains Mono',monospace;">${h}h</div>`).join('')}
+      <div style="flex:1; display:flex; flex-direction:column; gap:${gap}px; min-height:0; width:100%;">
+        <div style="display:grid;grid-template-columns:34px repeat(${horas.length}, minmax(0, 1fr));gap:${gap}px;align-items:center; flex-shrink:0; width:100%;">
+          <div></div>
+          ${horas.map(h => `<div style="font-size:10px;color:var(--neutral-400);text-align:center;font-family:'JetBrains Mono',monospace;">${h}h</div>`).join('')}
+        </div>
+        ${nomes.map((dn, d) => `
+          <div style="display:grid;grid-template-columns:34px repeat(${horas.length}, minmax(0, 1fr));gap:${gap}px;align-items:stretch; flex:1; min-height:24px; width:100%;">
+            <div style="font-size:11px;color:var(--neutral-500);font-weight:600;display:flex;align-items:center;">${dn}</div>
+            ${horas.map((h, hi) => {
+              const v = matrix[d][hi];
+              const t = v / max;
+              const bg = v === 0 ? 'var(--neutral-100)' : `rgba(139, 198, 63, ${0.15 + t * 0.85})`;
+              const fg = t > 0.55 ? '#fff' : 'var(--neutral-600)';
+              return `<div title="${dn} ${h}h · ${v} visitas" style="border-radius:4px;background:${bg};display:flex;align-items:center;justify-content:center;font-size:11px;font-family:'JetBrains Mono',monospace;font-weight:700;color:${fg};">${v > 0 ? v : ''}</div>`;
+            }).join('')}
           </div>
-          ${nomes.map((dn, d) => `
-            <div style="display:grid;grid-template-columns:42px repeat(${horas.length}, minmax(0, 1fr));gap:${gap}px;align-items:center;">
-              <div style="font-size:12px;color:var(--neutral-500);font-weight:600;">${dn}</div>
-              ${horas.map((h, hi) => {
-                const v = matrix[d][hi];
-                const t = v / max;
-                const bg = v === 0 ? 'var(--neutral-100)' : `rgba(139, 198, 63, ${0.15 + t * 0.85})`;
-                const fg = t > 0.55 ? '#fff' : 'var(--neutral-600)';
-                return `<div title="${dn} ${h}h · ${v} visitas" style="height:${cellH}px;border-radius:6px;background:${bg};display:flex;align-items:center;justify-content:center;font-size:13px;font-family:'JetBrains Mono',monospace;font-weight:700;color:${fg};">${v > 0 ? v : ''}</div>`;
-              }).join('')}
-            </div>
-          `).join('')}
-        </div>
-        <div style="display:flex;align-items:center;gap:6px;margin-top:14px;font-size:11px;color:var(--neutral-500);justify-content:flex-end;">
-          <span>Menos</span>
-          ${[0.1, 0.3, 0.5, 0.7, 0.95].map(t => `<span style="width:18px;height:14px;border-radius:3px;background:${t === 0.1 ? 'var(--neutral-100)' : `rgba(139, 198, 63, ${t})`};display:inline-block;"></span>`).join('')}
-          <span>Mais</span>
-        </div>
+        `).join('')}
+      </div>
+      <div style="display:flex;align-items:center;gap:5px;margin-top:12px;font-size:10px;color:var(--neutral-500);justify-content:flex-end; flex-shrink:0; width:100%;">
+        <span>Menos</span>
+        ${[0.1, 0.3, 0.5, 0.7, 0.95].map(t => `<span style="width:14px;height:11px;border-radius:2px;background:${t === 0.1 ? 'var(--neutral-100)' : `rgba(139, 198, 63, ${t})`};display:inline-block;"></span>`).join('')}
+        <span>Mais</span>
       </div>
     `;
   } catch (err) {
@@ -18032,6 +18251,7 @@ function renderRelatorioDesktopNutri() {
   ReportState.objetivosSelecionados = new Set();
   if (ReportState.autoSaveTimer) clearTimeout(ReportState.autoSaveTimer);
   ReportState.pendingChanges = {};
+  window._nutriRelatorioModo = null;  // Sprint 9.32.161: zera modo (default contextual)
 
   setTimeout(async () => {
     try {
@@ -21006,6 +21226,7 @@ function renderRelatorio() {
   if (ReportState.autoSaveTimer) clearTimeout(ReportState.autoSaveTimer);
   ReportState.pendingChanges = {};
   ReportState.uncommittedChoices = {};  // Sprint 9.32.44: zera escolhas pendentes ao abrir nova visita
+  window._nutriRelatorioModo = null;  // Sprint 9.32.161: zera modo (default contextual: travada→consolidada, editável→form)
 
   // Carrega dados async
   setTimeout(async () => {
@@ -21116,6 +21337,40 @@ function hydrateReportForm() {
   const editabilidade = visitaPodeSerEditada(v);
   const readonly = !editabilidade.pode;
 
+  // Sprint 9.32.161: visão consolidada (P3)
+  // Decide qual modo mostrar:
+  // - Se nutri escolheu explicitamente um modo via toggle, respeita.
+  // - Senão: visita TRAVADA → visão consolidada (mais limpa, já que não pode editar mesmo)
+  //          visita EDITÁVEL → formulário (atual, pra poder editar)
+  const userLogado = getCurrentUser();
+  const ehAdmin = userLogado?.perfil === 'admin';
+  // Admin não usa esse fluxo (admin usa renderReviewDetailContent direto na fila de revisão).
+  // Só ativamos o toggle pro NUTRI dono da visita.
+  if (!ehAdmin) {
+    const modoEscolhido = window._nutriRelatorioModo;
+    let modoEfetivo;
+    if (modoEscolhido === 'formulario') {
+      modoEfetivo = 'formulario';
+    } else if (modoEscolhido === 'consolidado') {
+      modoEfetivo = 'consolidado';
+    } else {
+      // Default contextual: travada → consolidada, editável → formulário
+      modoEfetivo = readonly ? 'consolidado' : 'formulario';
+    }
+    if (modoEfetivo === 'consolidado') {
+      body.innerHTML = renderRelatorioConsolidadoNutri(v, {
+        mostrarBotaoEditar: !readonly, // só mostra "Editar" se ainda dá pra editar
+        mostrarBotaoImprimir: true,
+      });
+      // Hidrata endereços (reverse geocoding) e mapa (mesma lógica do admin)
+      if (typeof _hidratarEnderecosVisita === 'function') _hidratarEnderecosVisita(v);
+      if (typeof _initMapaLeafletVisita === 'function') _initMapaLeafletVisita(v);
+      return;
+    }
+    // Se chegou aqui, mostra o formulário (modo padrão).
+    // Vamos adicionar um botão "Ver versão consolidada" no topo do form abaixo.
+  }
+
   // Cálculos iniciais
   const duracao = calcularDuracaoMin(v.checkin_timestamp, v.checkout_timestamp);
   const checkinFmt = v.checkin_timestamp ? new Date(v.checkin_timestamp).toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' }) : '—';
@@ -21128,7 +21383,24 @@ function hydrateReportForm() {
   // Visita realizada (toggle)
   const realizada = v.visita_realizada;
 
+  // Sprint 9.32.161: botão "Ver versão consolidada" no topo do formulário (só pro nutri)
+  const _userLogadoForm = getCurrentUser();
+  const _ehAdminForm = _userLogadoForm?.perfil === 'admin';
+  const toggleConsolidadoHtml = !_ehAdminForm ? `
+    <div style="background:#fff;border:1px solid var(--neutral-200);border-radius:10px;padding:10px 14px;margin-bottom:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+      <div style="flex:1;min-width:160px;font-size:11.5px;color:var(--neutral-600);">
+        <span class="material-symbols-rounded" style="font-size:14px;color:var(--brand-lime);vertical-align:-2px;">edit</span>
+        Modo edição · preenchendo o formulário
+      </div>
+      <button onclick="window.alternarVisaoRelatorio('consolidado')" style="display:inline-flex;align-items:center;gap:6px;padding:7px 12px;background:#fff;color:var(--brand-navy);border:1px solid var(--neutral-200);border-radius:7px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:inherit;transition:all 140ms;" onmouseover="this.style.borderColor='var(--brand-navy)'" onmouseout="this.style.borderColor='var(--neutral-200)'">
+        <span class="material-symbols-rounded" style="font-size:15px;">visibility</span>
+        Ver versão consolidada
+      </button>
+    </div>
+  ` : '';
+
   body.innerHTML = `
+    ${toggleConsolidadoHtml}
     <div class="report-info">
       <div class="report-info__icon">
         <span class="material-symbols-rounded">local_hospital</span>
@@ -21319,7 +21591,7 @@ function hydrateReportForm() {
         <div class="objective-grid" id="objectiveGrid"></div>
       </section>
 
-      <!-- SEÇÃO 5: Resumo -->
+      <!-- SEÇÃO 5: Resumo (Sprint 9.32.164: editor WYSIWYG + microfone) -->
       <section class="report-section">
         <div class="report-section__title">
           <span class="material-symbols-rounded">description</span>
@@ -21327,7 +21599,65 @@ function hydrateReportForm() {
           <span class="report-section__required">*</span>
         </div>
         <div class="report-field">
-          <textarea id="fResumo" ${readonly ? 'disabled' : ''} placeholder="O que aconteceu? O que foi discutido?" oninput="handleReportChange('resumo', this.value)">${(v.resumo || '').replace(/</g,'&lt;')}</textarea>
+          ${readonly ? `
+            <!-- Modo leitura (visita travada) -->
+            <div class="rte-readonly">${_rteSanitizar(v.resumo || '') || '<span style="color:var(--neutral-400);font-style:italic;">Sem resumo registrado.</span>'}</div>
+          ` : `
+            <!-- Editor WYSIWYG -->
+            <div class="rte-wrap" data-target="fResumo">
+              <div class="rte-toolbar" role="toolbar" aria-label="Formatação do resumo">
+                <button type="button" class="rte-btn" data-cmd="bold" title="Negrito (Ctrl+B)" onclick="window.rteCmd(this, 'bold')"><strong>B</strong></button>
+                <button type="button" class="rte-btn" data-cmd="italic" title="Itálico (Ctrl+I)" onclick="window.rteCmd(this, 'italic')"><em>I</em></button>
+                <button type="button" class="rte-btn" data-cmd="underline" title="Sublinhado (Ctrl+U)" onclick="window.rteCmd(this, 'underline')"><span style="text-decoration:underline;">U</span></button>
+                <button type="button" class="rte-btn" data-cmd="strikeThrough" title="Tachado" onclick="window.rteCmd(this, 'strikeThrough')"><span style="text-decoration:line-through;">S</span></button>
+                <span class="rte-divider"></span>
+                <!-- Cor do texto: dropdown -->
+                <div class="rte-color-wrap">
+                  <button type="button" class="rte-btn rte-color-btn" title="Cor do texto" onclick="window.rteToggleColorPicker(this)">
+                    <span style="font-weight:700;">A</span>
+                    <span class="rte-color-bar" style="background:#0A1F5C;"></span>
+                  </button>
+                  <div class="rte-color-picker" style="display:none;">
+                    <button type="button" class="rte-color-swatch" data-color="#0A1F5C" style="background:#0A1F5C;" title="Navy" onclick="window.rteSetColor(this, '#0A1F5C')"></button>
+                    <button type="button" class="rte-color-swatch" data-color="#3B6D11" style="background:#3B6D11;" title="Verde" onclick="window.rteSetColor(this, '#3B6D11')"></button>
+                    <button type="button" class="rte-color-swatch" data-color="#1E40AF" style="background:#1E40AF;" title="Azul" onclick="window.rteSetColor(this, '#1E40AF')"></button>
+                    <button type="button" class="rte-color-swatch" data-color="#92400E" style="background:#92400E;" title="Laranja" onclick="window.rteSetColor(this, '#92400E')"></button>
+                    <button type="button" class="rte-color-swatch" data-color="#B91C1C" style="background:#B91C1C;" title="Vermelho" onclick="window.rteSetColor(this, '#B91C1C')"></button>
+                    <button type="button" class="rte-color-swatch" data-color="#6B7280" style="background:#6B7280;" title="Cinza" onclick="window.rteSetColor(this, '#6B7280')"></button>
+                  </div>
+                </div>
+                <!-- Marcador (highlight amarelo) -->
+                <button type="button" class="rte-btn" title="Marcador amarelo" onclick="window.rteHighlight(this)">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#EAB308" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/></svg>
+                </button>
+                <span class="rte-divider"></span>
+                <!-- Listas -->
+                <button type="button" class="rte-btn" data-cmd="insertUnorderedList" title="Lista com bullets" onclick="window.rteCmd(this, 'insertUnorderedList')">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                </button>
+                <button type="button" class="rte-btn" data-cmd="insertOrderedList" title="Lista numerada" onclick="window.rteCmd(this, 'insertOrderedList')">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="10" y1="6" x2="21" y2="6"/><line x1="10" y1="12" x2="21" y2="12"/><line x1="10" y1="18" x2="21" y2="18"/><path d="M4 6h1v4"/><path d="M4 10h2"/><path d="M6 18H4c0-1 2-2 2-3s-1-1.5-2-1"/></svg>
+                </button>
+                <span class="rte-divider"></span>
+                <!-- Microfone -->
+                <button type="button" class="rte-btn rte-mic-btn" title="Ditar por voz" onclick="window.rteToggleMic(this)" data-state="off">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+                </button>
+                <span class="rte-mic-status" style="display:none;">Ouvindo…</span>
+              </div>
+              <div class="rte-editor"
+                   id="fResumoEditor"
+                   contenteditable="true"
+                   data-placeholder="O que aconteceu? O que foi discutido?"
+                   oninput="window.rteOnInput(this, 'resumo', 'fResumo')"
+                   onpaste="window.rteOnPaste(event, this)"
+                   onkeydown="window.rteOnKeydown(event, this)"
+                   onblur="window.rteOnBlur(this)"
+                   onfocus="window.rteOnFocus(this)">${_rteSanitizar(v.resumo || '')}</div>
+              <!-- Mirror invisível: backend continua salvando o conteúdo (HTML) aqui -->
+              <textarea id="fResumo" hidden>${(v.resumo || '').replace(/</g,'&lt;')}</textarea>
+            </div>
+          `}
         </div>
       </section>
 
@@ -21890,6 +22220,354 @@ window.handleReportChange = function(campo, valor) {
   }
 
   scheduleAutoSave();
+};
+
+// ===========================================================================
+// Sprint 9.32.164: RTE (Rich Text Editor) — WYSIWYG + microfone (Web Speech API)
+// ===========================================================================
+// Editor contenteditable com toolbar formatadora + ditado por voz.
+// - Salva HTML (não texto puro) no campo do banco — sanitizado.
+// - Mantém compatibilidade: visitas antigas (texto puro) ainda renderizam OK
+//   porque o sanitizador devolve string vazia se o input for somente texto plain.
+// - Atalhos teclado: Ctrl+B, Ctrl+I, Ctrl+U funcionam nativos (browser intercepta).
+// - Microfone: Web Speech API (Chrome/Edge/Safari), pt-BR, com pontuação por voz.
+
+// Sanitiza HTML do RTE — só permite tags básicas e remove styles/scripts perigosos.
+// Aceita também texto puro (compatibilidade com visitas antigas) e devolve como-está
+// envolvido em <p> se necessário.
+function _rteSanitizar(html) {
+  if (!html) return '';
+  const s = String(html);
+  // Se não tem nenhuma tag, é texto puro: devolve com escape pra segurança
+  if (!/<[a-z][\s\S]*>/i.test(s)) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+  }
+  // Tem HTML: usa um DOM temporário pra filtrar tags/atributos permitidos
+  const tagsOk = new Set(['B','STRONG','I','EM','U','S','STRIKE','BR','P','DIV','UL','OL','LI','SPAN','FONT']);
+  const attrsOk = new Set(['style','color']); // style limitado abaixo
+  const stylesOk = new Set(['color','background-color','font-weight','font-style','text-decoration']);
+
+  const tmp = document.createElement('div');
+  tmp.innerHTML = s;
+
+  const limpar = (node) => {
+    // Remove scripts, styles, comentários
+    const filhos = Array.from(node.childNodes);
+    for (const f of filhos) {
+      if (f.nodeType === 8) { node.removeChild(f); continue; } // comentário
+      if (f.nodeType === 1) { // elemento
+        const tag = f.tagName;
+        if (!tagsOk.has(tag)) {
+          // Substitui por um span com o conteúdo (preserva texto)
+          const span = document.createElement('span');
+          while (f.firstChild) span.appendChild(f.firstChild);
+          node.replaceChild(span, f);
+          limpar(span);
+          continue;
+        }
+        // Limpa atributos
+        Array.from(f.attributes).forEach(a => {
+          if (!attrsOk.has(a.name.toLowerCase())) {
+            f.removeAttribute(a.name);
+          }
+        });
+        // Filtra style: só permite cor/bg/peso/decoração
+        if (f.hasAttribute('style')) {
+          const declared = (f.getAttribute('style') || '').split(';');
+          const ok = declared.map(d => {
+            const [k, v] = d.split(':').map(x => (x || '').trim());
+            if (!k) return null;
+            return stylesOk.has(k.toLowerCase()) ? `${k}:${v}` : null;
+          }).filter(Boolean).join(';');
+          if (ok) f.setAttribute('style', ok);
+          else f.removeAttribute('style');
+        }
+        limpar(f);
+      }
+    }
+  };
+  limpar(tmp);
+  return tmp.innerHTML;
+}
+
+// Aplica comando de formatação na seleção atual do editor (bold/italic/etc)
+window.rteCmd = function(btn, cmd) {
+  const wrap = btn.closest('.rte-wrap');
+  const editor = wrap?.querySelector('.rte-editor');
+  if (!editor) return;
+  editor.focus();
+  try {
+    document.execCommand(cmd, false, null);
+  } catch (e) {
+    console.warn('[rte cmd]', cmd, e);
+  }
+  window._rteSyncMirror(wrap);
+  window._rteUpdateToolbar(wrap);
+};
+
+// Toggle do dropdown de cores
+// Sprint 9.32.165 fix: usa display none/block em vez de attribute hidden,
+// e o "fechar ao clicar fora" só registra DEPOIS que o handler de clique atual termina
+// (evita o próprio clique de abertura ser capturado).
+window.rteToggleColorPicker = function(btn) {
+  const wrap = btn.closest('.rte-color-wrap');
+  const picker = wrap?.querySelector('.rte-color-picker');
+  if (!picker) return;
+
+  // Fecha qualquer outro picker aberto antes
+  document.querySelectorAll('.rte-color-picker').forEach(p => {
+    if (p !== picker) p.style.display = 'none';
+  });
+
+  const visible = picker.style.display === 'grid';
+  if (visible) {
+    picker.style.display = 'none';
+    return;
+  }
+
+  // Salva a seleção atual (vai perder quando clicar no dropdown)
+  window._rteSavedRange = window.getSelection().rangeCount > 0 ? window.getSelection().getRangeAt(0).cloneRange() : null;
+  picker.style.display = 'grid';
+
+  // Fecha ao clicar fora — registrado APÓS o evento atual de clique propagar
+  // Usamos um flag pra ignorar o primeiro mousedown (que é o da abertura)
+  let abriuAgora = true;
+  const closeIfOutside = (ev) => {
+    if (abriuAgora) { abriuAgora = false; return; }
+    if (!picker.contains(ev.target) && !btn.contains(ev.target)) {
+      picker.style.display = 'none';
+      document.removeEventListener('mousedown', closeIfOutside);
+    }
+  };
+  document.addEventListener('mousedown', closeIfOutside);
+};
+
+// Aplica cor selecionada no swatch
+window.rteSetColor = function(swatch, cor) {
+  const wrap = swatch.closest('.rte-wrap');
+  const editor = wrap?.querySelector('.rte-editor');
+  const picker = swatch.closest('.rte-color-picker');
+  if (picker) picker.style.display = 'none';
+  if (!editor) return;
+  // Restaura a seleção que tava antes do clique no dropdown
+  if (window._rteSavedRange) {
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(window._rteSavedRange);
+  }
+  editor.focus();
+  try {
+    document.execCommand('foreColor', false, cor);
+  } catch (e) {
+    console.warn('[rte color]', e);
+  }
+  // Atualiza barra de cor no botão pra refletir a última cor usada
+  const colorBar = wrap.querySelector('.rte-color-bar');
+  if (colorBar) colorBar.style.background = cor;
+  window._rteSyncMirror(wrap);
+};
+
+// Marcador (highlight amarelo)
+window.rteHighlight = function(btn) {
+  const wrap = btn.closest('.rte-wrap');
+  const editor = wrap?.querySelector('.rte-editor');
+  if (!editor) return;
+  editor.focus();
+  try {
+    // execCommand('hiliteColor') ou 'backColor' funcionam — o último é mais cross-browser
+    if (!document.execCommand('hiliteColor', false, '#FEF08A')) {
+      document.execCommand('backColor', false, '#FEF08A');
+    }
+  } catch (e) {
+    document.execCommand('backColor', false, '#FEF08A');
+  }
+  window._rteSyncMirror(wrap);
+};
+
+// Sincroniza o conteúdo do editor com o textarea espelho (que vai pro banco)
+window._rteSyncMirror = function(wrap) {
+  if (!wrap) return;
+  const editor = wrap.querySelector('.rte-editor');
+  const targetId = wrap.dataset.target;
+  const mirror = targetId ? document.getElementById(targetId) : null;
+  if (!editor || !mirror) return;
+  const html = editor.innerHTML;
+  mirror.value = html;
+  // Dispara o handleReportChange (mesmo fluxo do textarea original)
+  if (typeof window.handleReportChange === 'function') {
+    // Pega o nome do campo via convenção: id 'fResumo' → 'resumo'
+    const campo = (targetId.startsWith('f') ? targetId.charAt(1).toLowerCase() + targetId.slice(2) : targetId).toLowerCase();
+    window.handleReportChange(campo, html);
+  }
+};
+
+// Atualiza o estado visual da toolbar (B/I/U ficam highlighted quando o cursor está em texto formatado)
+window._rteUpdateToolbar = function(wrap) {
+  if (!wrap) return;
+  const cmds = ['bold', 'italic', 'underline', 'strikeThrough'];
+  cmds.forEach(cmd => {
+    const btn = wrap.querySelector(`.rte-btn[data-cmd="${cmd}"]`);
+    if (!btn) return;
+    let ativo = false;
+    try { ativo = document.queryCommandState(cmd); } catch (e) {}
+    btn.classList.toggle('rte-btn--active', ativo);
+  });
+};
+
+// Listeners do editor
+window.rteOnInput = function(editor, campo, mirrorId) {
+  const wrap = editor.closest('.rte-wrap');
+  window._rteSyncMirror(wrap);
+};
+window.rteOnFocus = function(editor) {
+  const wrap = editor.closest('.rte-wrap');
+  if (wrap) wrap.classList.add('rte-wrap--focused');
+};
+window.rteOnBlur = function(editor) {
+  const wrap = editor.closest('.rte-wrap');
+  if (wrap) wrap.classList.remove('rte-wrap--focused');
+};
+// Paste: limpa formatação rica do clipboard (cola só texto plain)
+window.rteOnPaste = function(ev, editor) {
+  ev.preventDefault();
+  const texto = (ev.clipboardData || window.clipboardData).getData('text/plain');
+  if (!texto) return;
+  // Insere texto plain na posição do cursor preservando quebras como <br>
+  const html = texto.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+  document.execCommand('insertHTML', false, html);
+  const wrap = editor.closest('.rte-wrap');
+  window._rteSyncMirror(wrap);
+};
+// Keydown: atualiza toolbar (pra refletir B/I/U em real-time enquanto cursor anda)
+window.rteOnKeydown = function(ev, editor) {
+  const wrap = editor.closest('.rte-wrap');
+  // setTimeout 0 pra ler estado APÓS o teclado mexer no cursor/seleção
+  setTimeout(() => window._rteUpdateToolbar(wrap), 0);
+};
+
+// Atualiza toolbar também ao clicar/soltar mouse no editor (cursor mudou de posição)
+document.addEventListener('mouseup', (ev) => {
+  const editor = ev.target.closest?.('.rte-editor');
+  if (editor) window._rteUpdateToolbar(editor.closest('.rte-wrap'));
+});
+
+// ===== Microfone (Web Speech API) =====
+window._rteRecognition = null;
+window.rteToggleMic = function(btn) {
+  const wrap = btn.closest('.rte-wrap');
+  const editor = wrap?.querySelector('.rte-editor');
+  const status = wrap?.querySelector('.rte-mic-status');
+  if (!editor) return;
+
+  // Detecta suporte
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) {
+    if (typeof setFlash === 'function') {
+      setFlash('warning', 'Seu navegador não suporta ditado por voz. Use Chrome, Edge ou Safari.');
+    } else {
+      alert('Seu navegador não suporta ditado por voz. Use Chrome, Edge ou Safari.');
+    }
+    return;
+  }
+
+  // Já tá ouvindo: para
+  if (window._rteRecognition && btn.dataset.state === 'on') {
+    try { window._rteRecognition.stop(); } catch (e) {}
+    btn.dataset.state = 'off';
+    btn.classList.remove('rte-mic-btn--on');
+    if (status) status.style.display = 'none';
+    return;
+  }
+
+  // Inicia
+  const rec = new SR();
+  rec.lang = 'pt-BR';
+  rec.continuous = true;
+  rec.interimResults = false; // só insere quando frase é finalizada (evita texto duplicado)
+
+  // Comandos de pontuação por voz (substituições no resultado)
+  const substituicoes = [
+    [/\b(ponto final|ponto)\b/gi, '.'],
+    [/\bv[ií]rgula\b/gi, ','],
+    [/\bdois pontos\b/gi, ':'],
+    [/\bponto e v[ií]rgula\b/gi, ';'],
+    [/\binterrogaç[ãa]o\b/gi, '?'],
+    [/\bexclamaç[ãa]o\b/gi, '!'],
+    [/\b(novo par[áa]grafo|nova linha|par[áa]grafo|enter)\b/gi, '\n\n'],
+    [/\bbarra\b/gi, '/'],
+    [/\baspas\b/gi, '"'],
+    [/\b(abre par[êe]nteses|abrir par[êe]nteses)\b/gi, '('],
+    [/\b(fecha par[êe]nteses|fechar par[êe]nteses)\b/gi, ')'],
+  ];
+
+  rec.onresult = (event) => {
+    let textoNovo = '';
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      if (event.results[i].isFinal) {
+        textoNovo += event.results[i][0].transcript;
+      }
+    }
+    if (!textoNovo.trim()) return;
+    // Aplica comandos de pontuação
+    let processado = textoNovo;
+    substituicoes.forEach(([re, rep]) => { processado = processado.replace(re, rep); });
+    // Adiciona espaço antes (a não ser que já comece com pontuação ou \n)
+    if (!/^[.,;:!?\n)]/.test(processado.trim())) {
+      processado = ' ' + processado.trim() + ' ';
+    } else {
+      processado = processado.trim() + ' ';
+    }
+    // Insere no cursor — converte \n em <br>
+    editor.focus();
+    const html = processado.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+    try {
+      document.execCommand('insertHTML', false, html);
+    } catch (e) {
+      // Fallback: append no fim
+      editor.innerHTML += html;
+    }
+    window._rteSyncMirror(wrap);
+  };
+
+  rec.onerror = (event) => {
+    console.warn('[rte mic]', event.error);
+    btn.dataset.state = 'off';
+    btn.classList.remove('rte-mic-btn--on');
+    if (status) status.style.display = 'none';
+    if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+      if (typeof setFlash === 'function') {
+        setFlash('warning', 'Permissão de microfone negada. Habilite nas configurações do navegador.');
+      }
+    } else if (event.error === 'no-speech') {
+      if (typeof setFlash === 'function') {
+        setFlash('info', 'Nada foi falado. Tente novamente.');
+      }
+    } else {
+      if (typeof setFlash === 'function') {
+        setFlash('warning', `Erro no microfone: ${event.error}`);
+      }
+    }
+  };
+
+  rec.onend = () => {
+    btn.dataset.state = 'off';
+    btn.classList.remove('rte-mic-btn--on');
+    if (status) status.style.display = 'none';
+    window._rteRecognition = null;
+  };
+
+  try {
+    rec.start();
+    window._rteRecognition = rec;
+    btn.dataset.state = 'on';
+    btn.classList.add('rte-mic-btn--on');
+    if (status) status.style.display = 'inline-flex';
+  } catch (e) {
+    console.warn('[rte mic start]', e);
+    if (typeof setFlash === 'function') {
+      setFlash('warning', 'Erro ao iniciar microfone.');
+    }
+  }
 };
 
 // Sprint 9.32.114: insere template de "passo" (3 linhas: Ação · Responsável · Data) no textarea de próximos passos.
@@ -27067,50 +27745,94 @@ function renderReviewDetailContent(v) {
         <span class="material-symbols-rounded">description</span>
         Relatório
       </div>
-      <div class="review-detail__row">
-        <span class="review-detail__label">Empresa representada</span>
-        <span class="review-detail__value">
+      <!-- Sprint 9.32.162: R1 — grid 2-col com mini-cards (Empresa / Horário / Realizada / Status) -->
+      <div class="report-r1-grid">
+        <div class="report-r1-cell">
+          <div class="report-r1-uplabel">Empresa representada</div>
           ${v.empresa_representada
             ? `<span style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:9999px;font-size:11.5px;font-weight:700;${
                 v.empresa_representada === 'Haverim' ? 'background:#DCFCE7;color:#166534;' :
                 v.empresa_representada === 'Nutricionais-Santos' ? 'background:#DBEAFE;color:#1E40AF;' :
                 'background:#FEF3C7;color:#92400E;'
-              }">${v.empresa_representada}</span>`
+              }">${String(v.empresa_representada).replace(/</g,'&lt;')}</span>`
             : '<span style="color:var(--status-warning);font-size:12px;">⚠ Não informada</span>'}
-        </span>
-      </div>
-      <div class="review-detail__row">
-        <span class="review-detail__label">Horário declarado</span>
-        <span class="review-detail__value review-detail__value--mono">
-          ${v.horario_inicio || '—'} → ${v.horario_termino || '—'}
-        </span>
-      </div>
-      <div class="review-detail__row">
-        <span class="review-detail__label">Foi realizada?</span>
-        <span class="review-detail__value" style="color:${v.visita_realizada === false ? 'var(--status-danger)' : v.visita_realizada === true ? 'var(--status-success)' : 'var(--neutral-500)'};">
-          ${v.visita_realizada === false ? 'Não' : v.visita_realizada === true ? 'Sim' : '—'}
-        </span>
+        </div>
+        <div class="report-r1-cell">
+          <div class="report-r1-uplabel">Horário declarado</div>
+          <div style="font-family:var(--font-mono);font-size:13px;font-weight:700;color:var(--brand-navy);">
+            ${v.horario_inicio || '—'} → ${v.horario_termino || '—'}
+            ${(() => {
+              if (!v.horario_inicio || !v.horario_termino) return '';
+              const [h1, m1] = v.horario_inicio.split(':').map(n => parseInt(n,10));
+              const [h2, m2] = v.horario_termino.split(':').map(n => parseInt(n,10));
+              if (isNaN(h1) || isNaN(h2)) return '';
+              const minTot = (h2*60 + m2) - (h1*60 + m1);
+              if (minTot <= 0) return '';
+              return `<span style="color:#3B6D11;font-weight:600;font-size:11px;font-family:var(--font-sans);"> · ${minTot}min</span>`;
+            })()}
+          </div>
+        </div>
+        <div class="report-r1-cell">
+          <div class="report-r1-uplabel">Visita realizada</div>
+          <div style="display:inline-flex;align-items:center;gap:5px;font-size:13px;font-weight:700;color:${v.visita_realizada === false ? 'var(--status-danger)' : v.visita_realizada === true ? '#3B6D11' : 'var(--neutral-500)'};">
+            ${v.visita_realizada === true ? '<span class="material-symbols-rounded" style="font-size:16px;">check_circle</span>Sim' :
+              v.visita_realizada === false ? '<span class="material-symbols-rounded" style="font-size:16px;">cancel</span>Não' :
+              '—'}
+          </div>
+        </div>
+        <div class="report-r1-cell">
+          <div class="report-r1-uplabel">Status</div>
+          <div style="margin-top:2px;">${sbadgeForStatus(v)}</div>
+        </div>
       </div>
       ${v.visita_realizada === false ? `
-        <div class="review-detail__row" style="flex-direction:column;align-items:flex-start;">
-          <span class="review-detail__label">Motivo</span>
-          <span class="review-detail__value review-detail__value--multiline">${(v.motivo_nao_realizada || '—').replace(/</g, '&lt;')}</span>
+        <!-- Motivo da não realização (banner danger) -->
+        <div style="margin-top:14px;padding:12px 14px;background:var(--status-danger-bg,#FCE8E8);border-left:3px solid var(--status-danger);border-radius:0 8px 8px 0;">
+          <div class="report-r1-uplabel" style="margin-bottom:4px;color:#7F1D1D;">Motivo</div>
+          <div style="font-size:12.5px;color:#7F1D1D;line-height:1.5;">${(v.motivo_nao_realizada || '—').replace(/</g, '&lt;')}</div>
         </div>
       ` : `
-        <div class="review-detail__row" style="flex-direction:column;align-items:flex-start;">
-          <span class="review-detail__label">Profissionais conversados (${v.profissionais?.length || 0})</span>
-          <div class="review-detail__value--multiline">
-            ${v.profissionais?.length ? v.profissionais.map(p => `
-              <div style="padding:4px 0;">• ${p.nome} <span style="color:var(--neutral-500);font-size:12px;">(${p.profissao === 'Outro' ? (p.profissao_outro || 'Outro') : p.profissao})</span></div>
-            `).join('') : '<span style="color:var(--neutral-400);font-style:italic;">Nenhum profissional registrado</span>'}
+        <!-- Profissionais conversados como pills com avatar -->
+        <div style="margin-top:14px;">
+          <div class="report-r1-uplabel" style="margin-bottom:8px;">
+            Profissionais conversados
+            <span class="report-r1-count">${v.profissionais?.length || 0}</span>
           </div>
+          ${v.profissionais?.length ? `
+            <div style="display:flex;flex-wrap:wrap;gap:6px;">
+              ${v.profissionais.map(p => {
+                const inits = (p.nome || '?').split(' ').filter(Boolean).slice(0,2).map(s => s[0].toUpperCase()).join('');
+                const profLabel = p.profissao === 'Outro' ? (p.profissao_outro || 'Outro') : (p.profissao || '');
+                return `
+                  <div style="display:inline-flex;align-items:center;gap:8px;padding:6px 11px 6px 6px;background:#fff;border:1px solid var(--brand-lime);border-radius:9999px;">
+                    <div style="width:24px;height:24px;border-radius:50%;background:var(--brand-navy);color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;font-family:var(--font-display);">${inits || '?'}</div>
+                    <span style="font-size:12.5px;font-weight:600;color:var(--brand-navy);">${(p.nome || '').replace(/</g,'&lt;')}</span>
+                    ${profLabel ? `<span style="font-size:10.5px;color:var(--neutral-500);">· ${String(profLabel).replace(/</g,'&lt;')}</span>` : ''}
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          ` : '<div style="color:var(--neutral-400);font-style:italic;font-size:12px;">Nenhum profissional registrado</div>'}
         </div>
-        <div class="review-detail__row" style="flex-direction:column;align-items:flex-start;">
-          <span class="review-detail__label">Objetivos (${v.objetivos?.length || 0})</span>
-          <div class="review-detail__value--multiline">
-            ${v.objetivos?.length ? v.objetivos.map(o => `<div style="padding:4px 0;">• ${o.nome}</div>`).join('') : '<span style="color:var(--neutral-400);font-style:italic;">Nenhum objetivo registrado</span>'}
+
+        <!-- Objetivos como chips lime -->
+        <div style="margin-top:14px;">
+          <div class="report-r1-uplabel" style="margin-bottom:8px;">
+            Objetivos trabalhados
+            <span class="report-r1-count">${v.objetivos?.length || 0}</span>
           </div>
+          ${v.objetivos?.length ? `
+            <div style="display:flex;flex-wrap:wrap;gap:6px;">
+              ${v.objetivos.map(o => `
+                <span style="display:inline-flex;align-items:center;gap:5px;padding:5px 11px;background:#F0F7E1;color:#3B6D11;border-radius:9999px;font-size:11.5px;font-weight:600;">
+                  <span class="material-symbols-rounded" style="font-size:13px;">check</span>
+                  ${(o.nome || '').replace(/</g,'&lt;')}
+                </span>
+              `).join('')}
+            </div>
+          ` : '<div style="color:var(--neutral-400);font-style:italic;font-size:12px;">Nenhum objetivo registrado</div>'}
         </div>
+
         ${renderRelatorioCards(v)}
       `}
     </div>
@@ -27130,6 +27852,102 @@ function renderReviewDetailContent(v) {
     ` : ''}
   `;
 }
+
+// Sprint 9.32.161: Visão consolidada do relatório pro NUTRI (P3 + botão imprimir)
+// Pega a estrutura do renderReviewDetailContent (que o admin usa) e adapta:
+// - Remove blocos só de admin: ações (aprovar/devolver), seção de Flags
+// - Adapta nomes de campos: objetivos_selecionados (IDs) → objetivos (com nomes via lookup)
+// - Adapta profissionais_selecionados → profissionais
+// - Adiciona botão Imprimir e cabeçalho de "Visualização do relatório"
+// - Em visitas TRAVADAS, vira a tela padrão. Em editáveis, é acessível via botão "Ver versão consolidada".
+function renderRelatorioConsolidadoNutri(visita, opts = {}) {
+  const { mostrarBotaoEditar = true, mostrarBotaoImprimir = true } = opts;
+  if (!visita) return '<div style="padding:30px;text-align:center;color:var(--neutral-500);">Visita não encontrada.</div>';
+
+  // Adapta dados pro shape esperado pelo renderReviewDetailContent
+  // Precisamos converter: objetivos_selecionados[ids] → objetivos[{id, nome}]
+  const v = { ...visita };
+
+  // Lookup de objetivos pelos IDs salvos
+  if (Array.isArray(v.objetivos_selecionados) && Array.isArray(ReportState?.objetivos)) {
+    v.objetivos = v.objetivos_selecionados
+      .map(id => ReportState.objetivos.find(o => o.id === id))
+      .filter(Boolean)
+      .map(o => ({ id: o.id, nome: o.nome }));
+  }
+
+  // profissionais_selecionados já vem como objetos {id, nome, profissao, profissao_outro}
+  // basta renomear pra `profissionais` (que é o que renderReviewDetailContent espera)
+  if (Array.isArray(v.profissionais_selecionados)) {
+    v.profissionais = v.profissionais_selecionados;
+  }
+
+  // Sem dados de nutricionista (admin tem via JOIN, nutri não precisa — é ele mesmo)
+  // Mas o renderReviewDetailContent acessa v.nutricionista?.nome; vamos preencher com o user logado
+  const userLogado = getCurrentUser();
+  if (!v.nutricionista && userLogado) {
+    v.nutricionista = { nome: userLogado.nome };
+  }
+
+  // Renderiza o conteúdo principal (mesma estrutura do admin, mas filtramos blocos abaixo)
+  let conteudoAdmin = renderReviewDetailContent(v);
+
+  // Remove o bloco de "Ações admin" (já está vazio se v.status === 'aprovada_pos_revisao',
+  // mas quando ainda tá em rascunho, aparece os botões aprovar/devolver — não queremos isso pro nutri)
+  // Estratégia: marca um wrapper invisível e usa CSS pra esconder esses elementos.
+  // Como o renderReviewDetailContent usa classes específicas (review-actions, review-detail__section),
+  // wrappamos tudo num container e usamos CSS pra esconder o que não é pro nutri.
+
+  // Banner de "visualização" no topo + botões de ação (editar / imprimir)
+  const podeEditar = visitaPodeSerEditada(visita);
+  const visitaTravada = !podeEditar.pode;
+
+  return `
+    <div class="nutri-relatorio-consolidado">
+      <!-- Header com ações -->
+      <div style="background:#fff;border:1px solid var(--neutral-200);border-radius:12px;padding:14px 16px;margin-bottom:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;" class="no-print">
+        <div style="flex:1;min-width:200px;">
+          <div style="display:inline-flex;align-items:center;gap:8px;font-size:11px;font-weight:700;color:var(--brand-navy);text-transform:uppercase;letter-spacing:0.05em;">
+            <span class="material-symbols-rounded" style="font-size:16px;color:var(--brand-lime);">description</span>
+            Visualização do relatório
+          </div>
+          <div style="font-size:12px;color:var(--neutral-500);margin-top:3px;">
+            ${visitaTravada ? 'Visita travada · somente leitura' : 'Versão consolidada · pronta pra revisão ou impressão'}
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          ${mostrarBotaoImprimir ? `
+            <button onclick="window.print()" style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;background:#fff;color:var(--brand-navy);border:1px solid var(--neutral-200);border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;transition:all 140ms;" onmouseover="this.style.borderColor='var(--brand-navy)'" onmouseout="this.style.borderColor='var(--neutral-200)'">
+              <span class="material-symbols-rounded" style="font-size:16px;">print</span>
+              Imprimir
+            </button>
+          ` : ''}
+          ${mostrarBotaoEditar && !visitaTravada ? `
+            <button onclick="window.alternarVisaoRelatorio('formulario')" style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;background:var(--brand-lime);color:#fff;border:0;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">
+              <span class="material-symbols-rounded" style="font-size:16px;">edit</span>
+              Editar
+            </button>
+          ` : ''}
+        </div>
+      </div>
+
+      <!-- Conteúdo consolidado (reusa o mesmo HTML do admin) -->
+      <div class="nutri-relatorio-body">
+        ${conteudoAdmin}
+      </div>
+    </div>
+  `;
+}
+
+// Sprint 9.32.161: alterna entre formulário e visão consolidada do relatório (nutri)
+window.alternarVisaoRelatorio = function(modo) {
+  // modo: 'formulario' ou 'consolidado'
+  window._nutriRelatorioModo = modo;
+  // Re-hidrata o body do relatório com a visão escolhida
+  if (typeof hydrateReportForm === 'function') {
+    hydrateReportForm();
+  }
+};
 
 // Sprint 9.32.111: parser de próximos passos.
 // Detecta padrão (Ação / Responsável / Prazo em grupos de 3 linhas).
@@ -27193,6 +28011,145 @@ function _parseDataBr(s) {
 }
 
 // Renderiza o resumo + próximos passos como cards bonitos (Sprint 9.32.111)
+// Sprint 9.32.163: formatador automático "B" (médio) pro resumo da reunião.
+// Lê o texto bruto que o nutri escreveu e aplica heurísticas pra organizar visualmente:
+// - Linhas em CAIXA ALTA (>= 3 chars, sem números/pontuação predominante) viram TÍTULO de seção
+//   (com border-left lime; vira border-left warning se palavra-gatilho "risco/objeção/atenção")
+// - Linhas curtas (<= 100 chars, sem ponto final no fim) consecutivas viram LISTA com bullets
+// - Linhas longas viram parágrafos prosa, com text-align justify e line-height 1.65
+// - Quebras de linha duplas (\n\n) sempre forçam nova seção/parágrafo
+// Retorna { html, secoes }. Se o texto for muito simples (sem padrões claros), retorna como
+// um único parágrafo justified — é a versão "Mínimo" embutida (fallback seguro).
+function _formatarResumoMedio(texto) {
+  if (!texto || typeof texto !== 'string') return { html: '', secoes: 0 };
+
+  // Sprint 9.32.164: se o texto já vem como HTML (do RTE), renderiza direto após sanitizar.
+  // Detectamos HTML pela presença de tags básicas (b, i, u, p, ul, span, etc).
+  if (/<(b|strong|i|em|u|s|strike|p|div|br|ul|ol|li|span|font)[\s>]/i.test(texto)) {
+    const htmlSanitizado = (typeof _rteSanitizar === 'function') ? _rteSanitizar(texto) : texto;
+    return { html: `<div class="rte-readonly" style="border:0;padding:0;background:transparent;">${htmlSanitizado}</div>`, secoes: 0 };
+  }
+
+  const escapeHtml = (s) => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+  // Detecta se uma linha é provavelmente um TÍTULO em CAIXA ALTA
+  // Critérios: >= 3 chars · maioria letras maiúsculas · não é número puro · termina sem ponto
+  const ehTituloCaps = (linha) => {
+    const t = linha.trim();
+    if (t.length < 3 || t.length > 80) return false;
+    // Conta letras maiúsculas vs minúsculas (ignora dígitos, espaços, pontuação)
+    const letras = t.match(/[a-zA-ZáéíóúâêîôûãõçÁÉÍÓÚÂÊÎÔÛÃÕÇ]/g) || [];
+    if (letras.length < 3) return false;
+    const upper = letras.filter(c => c === c.toUpperCase()).length;
+    if (upper / letras.length < 0.85) return false;
+    // Não pode terminar com ponto/dois-pontos (se termina, é mais provável ser frase)
+    if (/[.;]$/.test(t)) return false;
+    return true;
+  };
+
+  // Detecta se a linha provavelmente é item de lista
+  // - Curta (<= 110 chars) E
+  // - Não termina com ponto OU começa com bullet/hífen/número
+  const ehItemLista = (linha) => {
+    const t = linha.trim();
+    if (!t) return false;
+    if (t.length > 130) return false; // muito longa = parágrafo
+    // Marcadores explícitos sempre = lista
+    if (/^[-•▸*]\s+/.test(t)) return true;
+    if (/^\d+[.)]\s+/.test(t)) return true;
+    // Senão: linha curta e SEM ponto final = provavelmente item
+    if (t.length <= 110 && !/[.!?]$/.test(t)) return true;
+    return false;
+  };
+
+  // Remove marcadores ("- ", "• ", "1. ") do início da linha pra renderizar limpo
+  const limparMarcador = (t) => t.replace(/^[-•▸*]\s+/, '').replace(/^\d+[.)]\s+/, '');
+
+  // Detecta se um título tem palavra-gatilho de RISCO/ATENÇÃO (vira warning amarelo)
+  const ehTituloRisco = (t) => /risc|objeç|objec|atenç|aten|alert|cuidad|problema|impediment/i.test(t);
+
+  // Quebra em linhas
+  const linhas = texto.split(/\r?\n/);
+
+  // Itera linha a linha agrupando em blocos
+  // Cada bloco é { tipo: 'titulo'|'lista'|'paragrafo', conteudo: [linhas] }
+  const blocos = [];
+  let listaBuffer = [];
+  let paragrafoBuffer = [];
+
+  const flushLista = () => {
+    if (listaBuffer.length > 0) {
+      blocos.push({ tipo: 'lista', conteudo: [...listaBuffer] });
+      listaBuffer = [];
+    }
+  };
+  const flushParagrafo = () => {
+    if (paragrafoBuffer.length > 0) {
+      blocos.push({ tipo: 'paragrafo', conteudo: paragrafoBuffer.join(' ').trim() });
+      paragrafoBuffer = [];
+    }
+  };
+  const flushTudo = () => { flushLista(); flushParagrafo(); };
+
+  for (let i = 0; i < linhas.length; i++) {
+    const t = linhas[i].trim();
+    if (!t) {
+      // Linha vazia: termina blocos abertos
+      flushTudo();
+      continue;
+    }
+    if (ehTituloCaps(t)) {
+      flushTudo();
+      blocos.push({ tipo: 'titulo', conteudo: t });
+      continue;
+    }
+    if (ehItemLista(t)) {
+      flushParagrafo();
+      listaBuffer.push(limparMarcador(t));
+      continue;
+    }
+    // Senão: parágrafo
+    flushLista();
+    paragrafoBuffer.push(t);
+  }
+  flushTudo();
+
+  // Conta seções (quantos títulos)
+  const secoes = blocos.filter(b => b.tipo === 'titulo').length;
+
+  // Se não detectou estrutura nenhuma (zero títulos, zero listas), retorna como bloco único
+  // com white-space: pre-wrap pra preservar quebras + justify
+  if (secoes === 0 && !blocos.some(b => b.tipo === 'lista')) {
+    return {
+      html: `<div style="white-space:pre-wrap;text-align:justify;hyphens:auto;">${escapeHtml(texto)}</div>`,
+      secoes: 0,
+    };
+  }
+
+  // Renderiza HTML
+  const partes = blocos.map(b => {
+    if (b.tipo === 'titulo') {
+      const isRisco = ehTituloRisco(b.conteudo);
+      const cor = isRisco ? '#92400E' : '#3B6D11';
+      const bg = isRisco ? '#FEF4E1' : '#F0F7E1';
+      const border = isRisco ? '#F59E0B' : '#8BC63F';
+      // Capitaliza só a primeira letra de cada palavra principal pra não gritar (mantém o tom mas suaviza)
+      // Mantemos o texto original — usuário escreveu CAIXA ALTA de propósito como divisor
+      return `<div style="font-size:10.5px;color:${cor};font-weight:700;text-transform:uppercase;letter-spacing:0.06em;padding:5px 10px;background:${bg};border-left:3px solid ${border};border-radius:0 4px 4px 0;margin:14px 0 8px;">${escapeHtml(b.conteudo)}</div>`;
+    }
+    if (b.tipo === 'lista') {
+      const itens = b.conteudo.map(it => `<li style="margin-bottom:3px;">${escapeHtml(it)}</li>`).join('');
+      return `<ul style="margin:0 0 8px;padding-left:20px;font-size:12.5px;color:var(--neutral-700);line-height:1.55;">${itens}</ul>`;
+    }
+    if (b.tipo === 'paragrafo') {
+      return `<p style="font-size:12.5px;color:var(--neutral-700);line-height:1.65;text-align:justify;hyphens:auto;margin:0 0 8px;">${escapeHtml(b.conteudo)}</p>`;
+    }
+    return '';
+  }).join('');
+
+  return { html: partes, secoes };
+}
+
 function renderRelatorioCards(v) {
   const resumoTxt = (v.resumo || '').trim();
   const ppTxt = (v.proximos_passos || '').trim();
@@ -27204,15 +28161,18 @@ function renderRelatorioCards(v) {
   const corPrazoFg = { vencido: '#A32D2D', proximo: '#854F0B', futuro: '#444441', neutro: '#444441' };
   const lblPrazo = { vencido: 'vencido', proximo: 'próximo', futuro: '', neutro: '' };
 
+  // Sprint 9.32.163: detecta se houve formatação automática (pra mostrar contador de seções)
+  const resumoFormatado = resumoTxt ? _formatarResumoMedio(resumoTxt) : { html: '', secoes: 0 };
+
   return `
     <!-- Card Resumo (cinza neutro) -->
     <div style="margin-top:8px;background:#fff;border:1px solid var(--neutral-200);border-radius:10px;overflow:hidden;">
       <div style="background:#F3F4F6;padding:9px 14px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--neutral-200);">
         <span class="material-symbols-rounded" style="font-size:18px;color:var(--neutral-600);">notes</span>
         <span style="font-size:12.5px;font-weight:700;color:var(--brand-navy);">Resumo da reunião</span>
-        ${resumoTxt ? `<span style="margin-left:auto;font-size:10.5px;color:var(--neutral-500);">${resumoTxt.split(/\s+/).filter(Boolean).length} palavras</span>` : ''}
+        ${resumoTxt ? `<span style="margin-left:auto;font-size:10.5px;color:var(--neutral-500);">${resumoTxt.split(/\s+/).filter(Boolean).length} palavras${resumoFormatado.secoes > 1 ? ` · ${resumoFormatado.secoes} seções` : ''}</span>` : ''}
       </div>
-      <div style="padding:12px 16px;font-size:12.5px;color:var(--neutral-700);line-height:1.65;white-space:pre-wrap;word-wrap:break-word;">${resumoTxt ? escapeHtml(resumoTxt) : '<span style="color:var(--neutral-400);font-style:italic;">Sem resumo registrado.</span>'}</div>
+      <div class="resumo-body-formatado" style="padding:14px 18px;font-size:12.5px;color:var(--neutral-700);line-height:1.65;word-wrap:break-word;">${resumoTxt ? resumoFormatado.html : '<span style="color:var(--neutral-400);font-style:italic;">Sem resumo registrado.</span>'}</div>
     </div>
 
     <!-- Card Próximos passos -->
@@ -27242,7 +28202,7 @@ function renderRelatorioCards(v) {
           </tbody>
         </table>
       ` : `
-        <div style="padding:12px 16px;font-size:12.5px;color:var(--neutral-700);line-height:1.65;white-space:pre-wrap;word-wrap:break-word;">${ppTxt ? escapeHtml(ppTxt) : '<span style="color:var(--neutral-400);font-style:italic;">Sem próximos passos registrados.</span>'}</div>
+        <div class="resumo-body-formatado" style="padding:14px 18px;font-size:12.5px;color:var(--neutral-700);line-height:1.65;word-wrap:break-word;">${ppTxt ? _formatarResumoMedio(ppTxt).html : '<span style="color:var(--neutral-400);font-style:italic;">Sem próximos passos registrados.</span>'}</div>
       `}
     </div>
   `;
