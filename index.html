@@ -4079,6 +4079,9 @@ a {
 .rte-editor {
   padding: 12px 14px;
   min-height: 100px;
+  /* Sprint 9.32.168: scroll vertical + alça customizada (resize:vertical não funciona em contenteditable) */
+  overflow-y: auto;
+  max-height: 800px;
   font-family: var(--font-body);
   font-size: 14px;
   color: var(--brand-navy);
@@ -4086,6 +4089,26 @@ a {
   outline: 0;
   cursor: text;
   word-wrap: break-word;
+}
+/* Sprint 9.32.168: alça de resize manual no canto inferior direito do .rte-wrap */
+.rte-wrap { position: relative; }
+.rte-resize-handle {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 16px;
+  height: 16px;
+  cursor: ns-resize;
+  /* Triângulo no canto, igual textarea nativo */
+  background:
+    linear-gradient(135deg, transparent 0%, transparent 50%, var(--neutral-300) 50%, var(--neutral-300) 60%, transparent 60%, transparent 70%, var(--neutral-300) 70%, var(--neutral-300) 80%, transparent 80%);
+  z-index: 2;
+  user-select: none;
+  border-bottom-right-radius: 9px;
+}
+.rte-resize-handle:hover {
+  background:
+    linear-gradient(135deg, transparent 0%, transparent 50%, var(--brand-navy) 50%, var(--brand-navy) 60%, transparent 60%, transparent 70%, var(--brand-navy) 70%, var(--brand-navy) 80%, transparent 80%);
 }
 /* Placeholder pro contenteditable (HTML não tem nativo) */
 .rte-editor:empty::before {
@@ -6512,7 +6535,7 @@ a {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.165-rte-fix-color-picker-e-mic-status-display-none',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.168-rte-alca-resize-customizada-com-drag',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -21654,6 +21677,8 @@ function hydrateReportForm() {
                    onkeydown="window.rteOnKeydown(event, this)"
                    onblur="window.rteOnBlur(this)"
                    onfocus="window.rteOnFocus(this)">${_rteSanitizar(v.resumo || '')}</div>
+              <!-- Sprint 9.32.168: alça de resize manual no canto inferior direito -->
+              <div class="rte-resize-handle" title="Arrastar pra esticar" onmousedown="window.rteStartResize(event, this)" ontouchstart="window.rteStartResize(event, this)"></div>
               <!-- Mirror invisível: backend continua salvando o conteúdo (HTML) aqui -->
               <textarea id="fResumo" hidden>${(v.resumo || '').replace(/</g,'&lt;')}</textarea>
             </div>
@@ -22237,7 +22262,14 @@ window.handleReportChange = function(campo, valor) {
 // envolvido em <p> se necessário.
 function _rteSanitizar(html) {
   if (!html) return '';
-  const s = String(html);
+  let s = String(html);
+  // Sprint 9.32.167: decodifica entidades HTML soltas (&nbsp;, &amp; etc) ANTES
+  // de qualquer escape — evita o duplo-escape (&nbsp; → &amp;nbsp; → "&nbsp;" literal).
+  if (/&(nbsp|amp|lt|gt|quot|#\d+);/i.test(s)) {
+    const decTmp = document.createElement('textarea');
+    decTmp.innerHTML = s;
+    s = decTmp.value;
+  }
   // Se não tem nenhuma tag, é texto puro: devolve com escape pra segurança
   if (!/<[a-z][\s\S]*>/i.test(s)) {
     return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
@@ -22451,6 +22483,41 @@ document.addEventListener('mouseup', (ev) => {
   if (editor) window._rteUpdateToolbar(editor.closest('.rte-wrap'));
 });
 
+// Sprint 9.32.168: alça customizada de resize vertical no editor RTE.
+// (resize:vertical do CSS não funciona em <div contenteditable>, então fazemos manual.)
+window.rteStartResize = function(ev, handle) {
+  ev.preventDefault();
+  const wrap = handle.closest('.rte-wrap');
+  const editor = wrap?.querySelector('.rte-editor');
+  if (!editor) return;
+
+  // Pega coord inicial (suporta mouse e touch)
+  const startY = ev.touches ? ev.touches[0].clientY : ev.clientY;
+  const startH = editor.offsetHeight;
+
+  document.body.style.cursor = 'ns-resize';
+  document.body.style.userSelect = 'none';
+
+  const onMove = (moveEv) => {
+    const y = moveEv.touches ? moveEv.touches[0].clientY : moveEv.clientY;
+    const novaAltura = Math.max(100, Math.min(800, startH + (y - startY)));
+    editor.style.height = `${novaAltura}px`;
+    editor.style.minHeight = `${novaAltura}px`;
+  };
+  const onUp = () => {
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('touchmove', onMove);
+    document.removeEventListener('mouseup', onUp);
+    document.removeEventListener('touchend', onUp);
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+  };
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('touchmove', onMove, { passive: false });
+  document.addEventListener('mouseup', onUp);
+  document.addEventListener('touchend', onUp);
+};
+
 // ===== Microfone (Web Speech API) =====
 window._rteRecognition = null;
 window.rteToggleMic = function(btn) {
@@ -22470,12 +22537,20 @@ window.rteToggleMic = function(btn) {
     return;
   }
 
-  // Já tá ouvindo: para
-  if (window._rteRecognition && btn.dataset.state === 'on') {
-    try { window._rteRecognition.stop(); } catch (e) {}
+  // Já tá ouvindo: para imediatamente (Sprint 9.32.166: usa abort em vez de stop)
+  // abort() é instantâneo (descarta áudio pendente). stop() espera processar a última frase.
+  if (btn.dataset.state === 'on') {
+    const recAtual = window._rteRecognition;
+    // Limpa ANTES de abortar pra prevenir race condition
+    window._rteRecognition = null;
     btn.dataset.state = 'off';
     btn.classList.remove('rte-mic-btn--on');
     if (status) status.style.display = 'none';
+    if (recAtual) {
+      try { recAtual.abort(); } catch (e1) {
+        try { recAtual.stop(); } catch (e2) {}
+      }
+    }
     return;
   }
 
