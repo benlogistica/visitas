@@ -6599,7 +6599,7 @@ a {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.176-mic-reverte-getusermedia-conflitando',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.177-mic-volta-modo-simples-tempo-real-opcao-A',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -22698,63 +22698,29 @@ window.rteToggleMic = function(btn) {
   // - Mostra waveform animado + texto provisório (interim) abaixo do botão enquanto grava
   // - Quando o usuário clica pra parar, processa TUDO de uma vez e insere no editor
 
-  // Já tá ouvindo: PARA + processa tudo acumulado
+  // ===== Sprint 9.32.177: VOLTA PRA OPÇÃO A — modo simples (texto em tempo real) =====
+  // Insere o texto direto no editor enquanto fala. Sem buffer, sem painel de gravação,
+  // sem complicação. Auto-restart silencioso quando o navegador encerrar por silêncio.
+  // O usuário SÓ controla com cliques: clica liga, clica de novo desliga.
+
+  // Já tá ouvindo: PARA imediatamente
   if (btn.dataset.state === 'on') {
     window._rteUserWantsMic = false;
     const recAtual = window._rteRecognition;
-    const bufferFinal = window._rteMicBuffer || '';
     window._rteRecognition = null;
-    window._rteMicBuffer = '';
     btn.dataset.state = 'off';
     btn.classList.remove('rte-mic-btn--on');
     if (status) status.style.display = 'none';
-    // Esconde waveform/interim
-    const waveform = wrap.querySelector('.rte-mic-waveform');
-    if (waveform) waveform.style.display = 'none';
     if (recAtual) {
       try { recAtual.abort(); } catch (e1) {
         try { recAtual.stop(); } catch (e2) {}
       }
     }
-    // Sprint 9.32.175: libera o MediaStream agora que terminou
-    window._rteLiberarMicStream && window._rteLiberarMicStream();
-    // Insere o buffer acumulado no editor (de uma vez só)
-    if (bufferFinal.trim()) {
-      const substituicoes = window._rteSubstituicoes;
-      let processado = bufferFinal;
-      if (substituicoes) substituicoes.forEach(([re, rep]) => { processado = processado.replace(re, rep); });
-      processado = processado.trim();
-      if (processado) {
-        editor.focus();
-        // Coloca cursor no fim do conteúdo
-        const range = document.createRange();
-        range.selectNodeContents(editor);
-        range.collapse(false);
-        const sel = window.getSelection();
-        sel.removeAllRanges();
-        sel.addRange(range);
-        // Adiciona espaço antes se editor não tá vazio e não termina com whitespace
-        const conteudo = editor.innerText || '';
-        const prefixo = (conteudo && !/\s$/.test(conteudo)) ? ' ' : '';
-        const html = (prefixo + processado + ' ').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
-        try {
-          document.execCommand('insertHTML', false, html);
-        } catch (e) {
-          editor.innerHTML += html;
-        }
-        window._rteSyncMirror(wrap);
-      }
-    }
     return;
   }
 
-  // ===== Sprint 9.32.175: Mic robusto =====
-  // Estratégia: manter o MediaStream do microfone ABERTO via getUserMedia o tempo todo,
-  // enquanto recriamos o SpeechRecognition a cada restart. Isso impede o navegador de
-  // "soltar" o microfone entre sessões — o que estava causando perda de captura no restart.
-
-  // Comandos de pontuação (guardamos em window pra reusar no stop)
-  window._rteSubstituicoes = [
+  // Comandos de pontuação por voz
+  const substituicoes = [
     [/\b(ponto final|ponto)\b/gi, '.'],
     [/\bv[ií]rgula\b/gi, ','],
     [/\bdois pontos\b/gi, ':'],
@@ -22768,159 +22734,101 @@ window.rteToggleMic = function(btn) {
     [/\b(fecha par[êe]nteses|fechar par[êe]nteses)\b/gi, ')'],
   ];
 
-  // Buffer acumula resultados finais (NÃO insere no editor durante a gravação)
-  window._rteMicBuffer = '';
-  window._rteUltimoOnEnd = 0;
-  window._rteRestartFalhasSeguidas = 0;
-
-  // Sprint 9.32.175: pega o MediaStream do mic ANTES de iniciar reconhecimento
-  // pra manter o mic aberto continuamente e evitar perda no restart.
-  // Se já tem stream guardado de antes (caso o user tenha clicado e reaberto rapidamente), reusa.
-
-  // Cria/acha o painel de gravação — SEM transcrição provisória (só waveform + parar)
-  let waveform = wrap.querySelector('.rte-mic-waveform');
-  if (!waveform) {
-    waveform = document.createElement('div');
-    waveform.className = 'rte-mic-waveform';
-    waveform.innerHTML = `
-      <div class="rte-mic-wave-bars">
-        <span></span><span></span><span></span><span></span><span></span>
-        <span></span><span></span><span></span><span></span><span></span>
-      </div>
-      <div class="rte-mic-label">Gravando — fale à vontade</div>
-      <button type="button" class="rte-mic-stop" onclick="window.rteToggleMic(document.querySelector('.rte-mic-btn'))">
-        <span class="material-symbols-rounded" style="font-size:16px;">stop_circle</span>
-        Parar e inserir
-      </button>
-    `;
-    const toolbar = wrap.querySelector('.rte-toolbar');
-    if (toolbar && toolbar.nextSibling) {
-      wrap.insertBefore(waveform, toolbar.nextSibling);
-    } else {
-      wrap.appendChild(waveform);
-    }
-  }
-  waveform.style.display = 'flex';
-
-  // Função que cria UMA NOVA instância de rec e a inicia. Pode ser chamada várias vezes (no auto-restart).
+  // Função que cria nova instância e inicia. Reusada pelo auto-restart.
   const _criarERodarRec = () => {
-    if (!window._rteUserWantsMic) {
-      console.log('[mic] _criarERodarRec abortado: usuário não quer mais ouvir');
-      return;
-    }
+    if (!window._rteUserWantsMic) return;
     const novaRec = new SR();
     novaRec.lang = 'pt-BR';
     novaRec.continuous = true;
     novaRec.interimResults = false;
 
-    // Cada nova rec tem seu próprio tracking de índice (começa do 0)
-    let _proximoIdxLocal = 0;
+    let _proximoIdx = 0;
 
     novaRec.onresult = (event) => {
-      let textoFinalNovo = '';
-      for (let i = _proximoIdxLocal; i < event.results.length; i++) {
+      // Pega só os results NOVOS desta sessão
+      let textoNovo = '';
+      for (let i = _proximoIdx; i < event.results.length; i++) {
         const res = event.results[i];
         if (res.isFinal) {
-          textoFinalNovo += res[0].transcript + ' ';
+          textoNovo += res[0].transcript;
         }
       }
-      _proximoIdxLocal = event.results.length;
-      if (textoFinalNovo) {
-        window._rteMicBuffer = (window._rteMicBuffer || '') + textoFinalNovo;
+      _proximoIdx = event.results.length;
+      if (!textoNovo.trim()) return;
+
+      // Aplica pontuação por voz
+      let processado = textoNovo;
+      substituicoes.forEach(([re, rep]) => { processado = processado.replace(re, rep); });
+      // Adiciona espaço antes se editor não termina com whitespace
+      if (!/^[.,;:!?\n)]/.test(processado.trim())) {
+        processado = ' ' + processado.trim() + ' ';
+      } else {
+        processado = processado.trim() + ' ';
       }
+      // Insere DIRETO no editor (modo Opção A — tempo real)
+      editor.focus();
+      const html = processado.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+      try {
+        document.execCommand('insertHTML', false, html);
+      } catch (e) {
+        editor.innerHTML += html;
+      }
+      window._rteSyncMirror(wrap);
     };
 
     novaRec.onerror = (event) => {
-      console.warn('[mic onerror]', event.error);
-      // 'no-speech' e 'aborted' são esperados. Deixa o onend lidar.
+      console.warn('[mic]', event.error);
+      // 'no-speech' e 'aborted' são esperados — onend cuida do restart
       if (event.error === 'no-speech' || event.error === 'aborted') return;
-      // Erros reais: desliga e avisa
+      // Erros reais
       window._rteUserWantsMic = false;
       btn.dataset.state = 'off';
       btn.classList.remove('rte-mic-btn--on');
       if (status) status.style.display = 'none';
-      if (waveform) waveform.style.display = 'none';
       window._rteRecognition = null;
       if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
         window.rteMostrarAjudaPermissao && window.rteMostrarAjudaPermissao();
       } else if (event.error === 'audio-capture') {
-        if (typeof setFlash === 'function') setFlash('warning', 'Sem acesso ao microfone. Verifique se está conectado.');
+        if (typeof setFlash === 'function') setFlash('warning', 'Sem acesso ao microfone.');
       } else {
         if (typeof setFlash === 'function') setFlash('warning', `Erro: ${event.error}`);
       }
     };
 
     novaRec.onend = () => {
-      const agora = Date.now();
-      const tempoDesdeUltimo = agora - window._rteUltimoOnEnd;
-      window._rteUltimoOnEnd = agora;
-
-      // Detecta restart loop: se onend dispara em <500ms, algo tá errado
-      if (tempoDesdeUltimo < 500) {
-        window._rteRestartFalhasSeguidas++;
-      } else {
-        window._rteRestartFalhasSeguidas = 0;
-      }
-
-      // Limite: 5 falhas seguidas → desliga (evita loop infinito travando o browser)
-      if (window._rteRestartFalhasSeguidas >= 5) {
-        console.warn('[mic] muitas falhas seguidas, desligando');
-        window._rteUserWantsMic = false;
-        if (typeof setFlash === 'function') setFlash('warning', 'Microfone desligado: muitas tentativas de reconexão falharam. Tente novamente.');
-      }
-
-      // Se o usuário ainda quer ouvir → cria NOVA instância (não reusa) com cooldown
+      // Auto-restart se o usuário ainda quer ouvir
       if (window._rteUserWantsMic) {
-        console.log('[mic] auto-restart em 250ms (criando nova instância)');
         setTimeout(() => {
-          if (window._rteUserWantsMic) {
-            _criarERodarRec();
-          }
-        }, 250); // pequeno cooldown pra dar tempo do navegador liberar a rec antiga
+          if (window._rteUserWantsMic) _criarERodarRec();
+        }, 100);
         return;
       }
-
-      // Para de verdade: reseta UI
+      // Para de verdade
       btn.dataset.state = 'off';
       btn.classList.remove('rte-mic-btn--on');
       if (status) status.style.display = 'none';
-      if (waveform) waveform.style.display = 'none';
       window._rteRecognition = null;
     };
 
     try {
       novaRec.start();
       window._rteRecognition = novaRec;
-      console.log('[mic] sessão iniciada');
     } catch (e) {
-      console.warn('[mic start failed]', e);
-      // Se falhou em iniciar (já tá rodando, etc), tenta de novo após cooldown
-      window._rteRestartFalhasSeguidas++;
-      if (window._rteUserWantsMic && window._rteRestartFalhasSeguidas < 5) {
+      console.warn('[mic start]', e);
+      // Tenta de novo após cooldown maior se foi InvalidStateError
+      if (window._rteUserWantsMic) {
         setTimeout(() => {
           if (window._rteUserWantsMic) _criarERodarRec();
         }, 500);
-      } else {
-        window._rteUserWantsMic = false;
-        btn.dataset.state = 'off';
-        btn.classList.remove('rte-mic-btn--on');
-        if (status) status.style.display = 'none';
-        if (waveform) waveform.style.display = 'none';
-        if (typeof setFlash === 'function') setFlash('warning', 'Erro ao iniciar microfone.');
       }
     }
   };
 
-  // Marca como ATIVO antes de iniciar (pro _criarERodarRec não abortar)
+  // Marca como ATIVO e inicia
   window._rteUserWantsMic = true;
-  window._rteRestartFalhasSeguidas = 0;
-  window._rteUltimoOnEnd = 0;
   btn.dataset.state = 'on';
   btn.classList.add('rte-mic-btn--on');
   if (status) status.style.display = 'inline-flex';
-
-  // Sprint 9.32.176: REVERTIDO o getUserMedia (estava conflitando com SpeechRecognition).
-  // Volta pra abordagem direta: SpeechRecognition gerencia o mic sozinho.
   _criarERodarRec();
 };
 
