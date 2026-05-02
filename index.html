@@ -6599,7 +6599,7 @@ a {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.175-mic-mantem-mediastream-aberto-sem-perder-captura',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.176-mic-reverte-getusermedia-conflitando',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -22919,35 +22919,17 @@ window.rteToggleMic = function(btn) {
   btn.classList.add('rte-mic-btn--on');
   if (status) status.style.display = 'inline-flex';
 
-  // Sprint 9.32.175: pede acesso ao mic via getUserMedia ANTES de iniciar a transcrição.
-  // Isso mantém o stream aberto durante toda a sessão de gravação, evitando que o
-  // navegador "solte" o mic entre os restarts do SpeechRecognition.
-  if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia && !window._rteMicStream) {
-    navigator.mediaDevices.getUserMedia({ audio: true })
-      .then(stream => {
-        window._rteMicStream = stream;
-        console.log('[mic] MediaStream obtido — mic permanecerá aberto');
-        _criarERodarRec();
-      })
-      .catch(err => {
-        console.warn('[mic getUserMedia]', err);
-        // Mesmo se falhar, tenta o SpeechRecognition direto (alguns browsers gerenciam mic só pelo SR)
-        _criarERodarRec();
-      });
-  } else {
-    // Já tem stream guardado ou browser não suporta getUserMedia
-    _criarERodarRec();
-  }
+  // Sprint 9.32.176: REVERTIDO o getUserMedia (estava conflitando com SpeechRecognition).
+  // Volta pra abordagem direta: SpeechRecognition gerencia o mic sozinho.
+  _criarERodarRec();
 };
 
-// Sprint 9.32.175: helper pra liberar o MediaStream do mic quando o usuário PARAR
+// Helper noop (mantido pra compatibilidade caso seja chamado em algum lugar)
 window._rteLiberarMicStream = function() {
+  // 9.32.176: noop — não usamos mais MediaStream separado
   if (window._rteMicStream) {
-    try {
-      window._rteMicStream.getTracks().forEach(t => t.stop());
-    } catch (e) {}
+    try { window._rteMicStream.getTracks().forEach(t => t.stop()); } catch (e) {}
     window._rteMicStream = null;
-    console.log('[mic] MediaStream liberado');
   }
 };
 
