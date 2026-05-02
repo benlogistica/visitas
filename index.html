@@ -6133,6 +6133,106 @@ a {
   margin-top: 2px;
 }
 
+/* Sprint 9.32.150: Dashboard mobile reestruturado — adapta os mesmos cards do desktop pra tela pequena */
+.dsd-mobile .ds-chart-card { padding: 16px; border-radius: 12px; }
+.dsd-mobile .ds-chart-card__title { font-size: 14px; }
+.dsd-mobile .ds-chart-card__subtitle { font-size: 11px; }
+.dsd-mobile .ds-chart-card__header { margin-bottom: 12px; }
+
+/* KPIs em grid 2x3 no mobile (vs 6x1 no desktop) */
+.dsd-kpi-row-mobile {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+/* Stack vertical pra cards que no desktop ficam lado a lado */
+.dsd-stack-mobile {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Mapa um pouco menor no mobile (300px no desktop → 240px no mobile) */
+.dsd-mobile #dsdMapa > div:first-child { height: 240px !important; }
+
+/* Pílulas do mapa: empilha verticalmente quando o líder não cabe na linha */
+.dsd-mobile #dsdMapa > div:nth-child(2) { gap: 6px !important; }
+.dsd-mobile #dsdMapa > div:nth-child(2) > span:last-child { margin-left: 0 !important; }
+
+/* Sprint 9.32.151: comprime Distribuição por objetivo (Billboard) no mobile
+   Desktop usa grid 36px / 1fr / 60px / 70px / 60px com fontes 14-18px.
+   No mobile: posição menor, valor menor, % e diff menores, padding reduzido. */
+.dsd-mobile #dsdDonutObj > div:nth-child(2) > div {
+  /* cada linha do billboard: aperta colunas e padding */
+  grid-template-columns: 22px 1fr 38px 46px 42px !important;
+  padding: 6px 8px !important;
+  gap: 4px;
+}
+.dsd-mobile #dsdDonutObj > div:nth-child(2) > div > span:nth-child(1) {
+  font-size: 13px !important; /* posição (era 16-18) */
+}
+.dsd-mobile #dsdDonutObj > div:nth-child(2) > div > span:nth-child(2) {
+  font-size: 12px !important; /* nome (era 13.5-14) */
+  padding-left: 4px !important;
+  line-height: 1.25 !important;
+}
+.dsd-mobile #dsdDonutObj > div:nth-child(2) > div > span:nth-child(3) {
+  font-size: 14px !important; /* valor (era 16-18) */
+}
+.dsd-mobile #dsdDonutObj > div:nth-child(2) > div > span:nth-child(4) {
+  font-size: 10px !important; /* % (era 11-12) */
+}
+.dsd-mobile #dsdDonutObj > div:nth-child(2) > div > span:nth-child(5) {
+  font-size: 10px !important; /* tendência ↑ +13 (era 11) */
+}
+
+/* Sprint 9.32.152: Qualidade do check-in (P2) — aperta os 3 KPI cards no mobile pra caber em ~380px */
+.dsd-mobile #dsdPieCheckin > div { gap: 7px !important; }
+.dsd-mobile #dsdPieCheckin > div > div { padding: 11px 9px !important; gap: 7px !important; }
+.dsd-mobile #dsdPieCheckin > div > div > div[style*="border-radius:50%"] { width: 28px !important; height: 28px !important; }
+.dsd-mobile #dsdPieCheckin > div > div > div[style*="border-radius:50%"] span { font-size: 15px !important; }
+.dsd-mobile #dsdPieCheckin > div > div > div:last-child > div:first-child { font-size: 22px !important; }
+.dsd-mobile #dsdPieCheckin > div > div > div:last-child > div:nth-child(2) { font-size: 11px !important; margin-top: 4px !important; }
+.dsd-mobile #dsdPieCheckin > div > div > div:last-child > div:last-child { font-size: 9.5px !important; }
+.dsd-mobile #dsdPieCheckin > div > div > span[style*="position:absolute"] { font-size: 8.5px !important; padding: 2px 5px !important; top: 7px !important; right: 7px !important; }
+
+/* Sprint 9.32.151: comprime Heatmap dias × horários no mobile
+   Desktop usa células 38px com font 13px e gap 4px — ocupa muito espaço.
+   No mobile: célula 22px, font 10px, label dia menor → cabe tudo SEM scroll horizontal. */
+.dsd-mobile #dsdHeatmap { overflow-x: visible !important; }
+.dsd-mobile #dsdHeatmap > div { min-width: 0 !important; width: 100% !important; }
+/* Header (linha de horas) e cada linha de dia: reduz coluna do label de 42px → 28px */
+.dsd-mobile #dsdHeatmap > div > div > div[style*="grid-template-columns:42px"],
+.dsd-mobile #dsdHeatmap > div > div > div {
+  grid-template-columns: 28px repeat(12, minmax(0, 1fr)) !important;
+  gap: 3px !important;
+}
+/* Célula do horário (8h, 9h, ...) menor */
+.dsd-mobile #dsdHeatmap div[style*="font-family:'JetBrains Mono"][style*="text-align:center"] {
+  font-size: 9px !important;
+}
+/* Label do dia (Seg, Ter, ...) menor */
+.dsd-mobile #dsdHeatmap div[style*="color:var(--neutral-500)"][style*="font-weight:600"] {
+  font-size: 10px !important;
+}
+/* Célula do heatmap: altura 38 → 22, font 13 → 10 */
+.dsd-mobile #dsdHeatmap div[style*="border-radius:6px"][style*="height:38px"] {
+  height: 22px !important;
+  font-size: 10px !important;
+  border-radius: 4px !important;
+}
+/* Legenda menor */
+.dsd-mobile #dsdHeatmap div[style*="margin-top:14px"] {
+  margin-top: 8px !important;
+  font-size: 9.5px !important;
+  gap: 4px !important;
+}
+.dsd-mobile #dsdHeatmap div[style*="margin-top:14px"] span[style*="width:18px"] {
+  width: 14px !important;
+  height: 11px !important;
+}
+
 /* Tabelas desktop (Instituições, Equipe, Profissionais, etc.) */
 .ds-table__row {
   display: flex;
@@ -6200,7 +6300,7 @@ a {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.119-fix-fontes-esticadas-grafico-visitas-realizadas',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.157-status-kpi-hero-taxa-aprovacao-s3-com-sparkline',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -9821,6 +9921,9 @@ function renderAdminDashboardDesktop() {
       <!-- COLUNA PRINCIPAL -->
       <div id="dsdMainContent" style="flex:1;display:flex;flex-direction:column;gap:20px;min-width:0;">
 
+        <!-- Sprint 9.32.145: banner de filtro ativo por profissional -->
+        <div id="dsdFiltroNutriBanner" style="display:none;"></div>
+
         <!-- 6 KPIs em linha (grid responsivo) -->
         <div data-dash-section="kpis" style="display:grid;grid-template-columns:repeat(6,1fr);gap:12px;" id="dsdKpiRow">
           <div style="background:#fff;border-radius:12px;padding:40px 16px;border:1px solid var(--neutral-200);text-align:center;color:var(--neutral-400);font-size:12px;">Carregando KPIs...</div>
@@ -10153,6 +10256,7 @@ window.dashResetLayout = function() {
 
 // Handler do seletor de período do dashboard desktop
 // Sprint 9.20.7: reescrito pra suportar o atalho 'mes-atalho' (vira mês vigente no formato mes:YYYY-MM)
+// Sprint 9.32.150: detecta mobile vs desktop e usa o renderer apropriado
 window.trocarPeriodoDashDesktop = function(periodo) {
   if (periodo === 'mes-atalho') {
     // Atalho "Mês" → seleciona mês atual no formato mes:YYYY-MM
@@ -10162,13 +10266,17 @@ window.trocarPeriodoDashDesktop = function(periodo) {
     window._dashDesktopPeriodo = periodo;
   }
   // Re-renderiza a view inteira pra atualizar dropdown e botões corretamente
-  document.getElementById('app').innerHTML = renderAdminDashboardDesktop();
+  const ehMobile = typeof isDesktop === 'function' ? !isDesktop() : window.innerWidth < 1024;
+  const renderer = ehMobile ? renderAdminDashboard : renderAdminDashboardDesktop;
+  document.getElementById('app').innerHTML = renderer();
 };
 
 // Sprint 9.20.7: trocar via dropdown de mês/ano (formato YYYY-MM)
 window.trocarMesDashDesktop = function(valorMes) {
   window._dashDesktopPeriodo = `mes:${valorMes}`;
-  document.getElementById('app').innerHTML = renderAdminDashboardDesktop();
+  const ehMobile = typeof isDesktop === 'function' ? !isDesktop() : window.innerWidth < 1024;
+  const renderer = ehMobile ? renderAdminDashboard : renderAdminDashboardDesktop;
+  document.getElementById('app').innerHTML = renderer();
 };
 
 // Carrega dados do dashboard desktop e popula todos os gráficos
@@ -10179,16 +10287,47 @@ async function carregarAdminDashboardDesktop() {
   const periodoAnt = calcularPeriodoAnterior(periodo);
 
   try {
+    // Sprint 9.32.145: filtro global por profissional (clique no card de ranking)
+    const filtroNutriId = window._dashFiltroNutri || null;
+    const filtroNutriNome = window._dashFiltroNutriNome || '';
+    // Atualiza banner visual de filtro ativo
+    const bannerEl = document.getElementById('dsdFiltroNutriBanner');
+    if (bannerEl) {
+      if (filtroNutriId) {
+        bannerEl.style.display = 'flex';
+        bannerEl.style.alignItems = 'center';
+        bannerEl.style.gap = '12px';
+        bannerEl.style.padding = '11px 16px';
+        bannerEl.style.background = '#F0F7E1';
+        bannerEl.style.border = '1px solid var(--brand-lime)';
+        bannerEl.style.borderRadius = '12px';
+        bannerEl.innerHTML = `
+          <span class="material-symbols-rounded" style="font-size:20px;color:#3B6D11;">person_search</span>
+          <div style="flex:1;font-size:13px;color:#27500A;">
+            Mostrando dados <strong>somente de ${(filtroNutriNome || 'um profissional').replace(/</g,'&lt;')}</strong>. Os outros gráficos do dashboard estão filtrados.
+          </div>
+          <button onclick="window.dsdLimparFiltroNutri()" style="background:var(--brand-navy);color:#fff;border:0;padding:7px 14px;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:5px;">
+            <span class="material-symbols-rounded" style="font-size:14px;">close</span>
+            Limpar filtro
+          </button>
+        `;
+      } else {
+        bannerEl.style.display = 'none';
+        bannerEl.innerHTML = '';
+      }
+    }
+
     // Query principal de visitas no período
     let query = db.from('visitas').select(`
       id, status, data_visita, checkin_timestamp, checkout_timestamp, checkin_manual,
       flag_gps_divergente, visita_realizada,
       nutricionista_id, instituicao_id,
       usuarios:nutricionista_id(nome, foto_url),
-      instituicoes(nome)
+      instituicoes(nome, cidade, estado, latitude, longitude)
     `);
     if (dataInicio) query = query.gte('checkin_timestamp', dataInicio);
     if (dataFim) query = query.lte('checkin_timestamp', dataFim);
+    if (filtroNutriId) query = query.eq('nutricionista_id', filtroNutriId);
 
     // Query período anterior (pra comparações dos KPIs)
     let queryAnt = null;
@@ -10196,6 +10335,7 @@ async function carregarAdminDashboardDesktop() {
       queryAnt = db.from('visitas').select('id', { count: 'exact', head: true })
         .gte('checkin_timestamp', periodoAnt.inicio)
         .lte('checkin_timestamp', periodoAnt.fim);
+      if (filtroNutriId) queryAnt = queryAnt.eq('nutricionista_id', filtroNutriId);
     }
 
     // Query de nutris ativos (pra KPI "Nutricionistas ativos")
@@ -10579,27 +10719,75 @@ function renderDsdRankingNutri(visitas) {
   container.style.overflowY = ranking.length > 5 ? 'auto' : 'visible';
   container.style.paddingRight = ranking.length > 5 ? '12px' : '0';
 
+  // Sprint 9.32.145: clique no nome filtra dashboard inteiro por aquele profissional (toggle)
+  // Sprint 9.32.147: usa data-attributes + listener delegado (corrige bug do JSON.stringify quebrando o onclick)
+  const filtroAtivo = window._dashFiltroNutri || null;
+  const escAttr = (s) => String(s || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
   container.innerHTML = ranking.map((n, idx) => {
     const pos = idx + 1;
     const avatar = n.foto
       ? `<div style="width:26px;height:26px;border-radius:50%;background-image:url('${n.foto}');background-size:cover;background-position:center;flex-shrink:0;"></div>`
       : `<div style="width:26px;height:26px;border-radius:50%;background:var(--brand-navy);color:#fff;display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:700;font-family:'Poppins',sans-serif;flex-shrink:0;">${iniciais(n.nome)}</div>`;
     const primeiroNome = n.nome.split(' ').slice(0, 2).join(' ');
+    const isAtivo = filtroAtivo === n.id;
     return `
-      <div style="display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:${idx < ranking.length - 1 ? '1px solid var(--neutral-100)' : 'none'};">
+      <div class="dsd-nutri-row" data-nutri-id="${escAttr(n.id)}" data-nutri-nome="${escAttr(n.nome)}" title="Clique pra filtrar todo o dashboard por ${escAttr(n.nome)}" style="display:flex;align-items:center;gap:12px;padding:8px 10px;margin:0 -10px;border-bottom:${idx < ranking.length - 1 ? '1px solid var(--neutral-100)' : 'none'};cursor:pointer;border-radius:6px;transition:background 120ms;${isAtivo ? 'background:#F0F7E1;' : ''}" data-ativo="${isAtivo ? '1' : ''}">
         <span style="font-family:'JetBrains Mono',monospace;font-size:11.5px;font-weight:600;color:var(--neutral-400);min-width:16px;text-align:right;">${pos}</span>
         ${avatar}
         <div style="flex:1;min-width:0;">
-          <div style="font-size:12.5px;color:var(--brand-navy);font-weight:600;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${primeiroNome.replace(/</g,'&lt;')}</div>
+          <div style="font-size:12.5px;color:var(--brand-navy);font-weight:${isAtivo ? 700 : 600};margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:5px;">${primeiroNome.replace(/</g,'&lt;')}${isAtivo ? '<span style="background:var(--brand-lime);color:#fff;font-size:9px;font-weight:800;padding:1px 6px;border-radius:3px;text-transform:uppercase;letter-spacing:0.3px;">filtrado</span>' : ''}</div>
           <div style="height:5px;background:var(--neutral-100);border-radius:3px;overflow:hidden;">
-            <div style="height:100%;width:${(n.count / max * 100).toFixed(1)}%;background:var(--brand-navy);border-radius:3px;transition:width 600ms ease-out;"></div>
+            <div style="height:100%;width:${(n.count / max * 100).toFixed(1)}%;background:${isAtivo ? 'var(--brand-lime)' : 'var(--brand-navy)'};border-radius:3px;transition:width 600ms ease-out;"></div>
           </div>
         </div>
         <span style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:var(--brand-navy);min-width:28px;text-align:right;">${n.count}</span>
       </div>
     `;
   }).join('');
+
+  // Listener delegado (resolve clique sem depender de onclick inline)
+  container.onclick = (e) => {
+    const row = e.target.closest('.dsd-nutri-row');
+    if (!row) return;
+    const id = row.dataset.nutriId;
+    const nome = row.dataset.nutriNome;
+    if (id) window.dsdFiltrarPorNutri(id, nome);
+  };
+  // Hover effect via mouseover/leave delegados
+  container.onmouseover = (e) => {
+    const row = e.target.closest('.dsd-nutri-row');
+    if (!row || row.dataset.ativo === '1') return;
+    row.style.background = 'var(--neutral-50, #F9FAFB)';
+  };
+  container.onmouseout = (e) => {
+    const row = e.target.closest('.dsd-nutri-row');
+    if (!row || row.dataset.ativo === '1') return;
+    row.style.background = 'transparent';
+  };
 }
+
+// Sprint 9.32.145: handler do filtro global por profissional (toggle)
+window.dsdFiltrarPorNutri = function(id, nome) {
+  if (window._dashFiltroNutri === id) {
+    // Já tá filtrado por esse — desfiltra
+    window._dashFiltroNutri = null;
+    window._dashFiltroNutriNome = null;
+    setFlash && setFlash('info', 'Filtro removido — mostrando todos os profissionais.');
+  } else {
+    window._dashFiltroNutri = id;
+    window._dashFiltroNutriNome = nome;
+    setFlash && setFlash('success', `Dashboard filtrado por ${nome}.`);
+  }
+  // Re-renderiza tudo
+  if (typeof carregarAdminDashboardDesktop === 'function') carregarAdminDashboardDesktop();
+};
+
+window.dsdLimparFiltroNutri = function() {
+  window._dashFiltroNutri = null;
+  window._dashFiltroNutriNome = null;
+  setFlash && setFlash('info', 'Filtro removido.');
+  if (typeof carregarAdminDashboardDesktop === 'function') carregarAdminDashboardDesktop();
+};
 
 // Renderiza gráfico de linha: visitas por semana (últimas 12 semanas)
 // Sprint 9.20.6: gráfico com granularidade selecionável (dia/semana/mês)
@@ -10838,27 +11026,32 @@ function renderGraficoVisitasTemporal() {
   const tooltipCount = document.getElementById('dsdSemanaTooltipCount');
   const tooltipLabel = document.getElementById('dsdSemanaTooltipLabel');
   const tooltipMeta = document.getElementById('dsdSemanaTooltipMeta');
-  const wrapper = container.querySelector('div:nth-child(2)');
+  // Sprint 9.32.130: posiciona tooltip via getBoundingClientRect direto da barra
+  // procurando o wrapper position:relative mais próximo (mais robusto que :nth-child)
+  const wrapper = tooltip ? tooltip.parentElement : null;
   container.querySelectorAll('.dsd-bar-grp').forEach(g => {
     g.addEventListener('mouseenter', () => {
+      if (!tooltip || !wrapper) return;
       const count = parseInt(g.dataset.count, 10);
       const label = g.dataset.label;
       const meta = parseInt(g.dataset.meta, 10);
       tooltipCount.textContent = `${count} ${count === 1 ? 'visita' : 'visitas'}`;
       tooltipLabel.textContent = label;
       tooltipMeta.textContent = count >= meta ? `✓ acima da meta (${meta})` : `↓ ${meta - count} abaixo da meta`;
-      const rect = g.querySelector('rect:last-child').getBoundingClientRect();
+      const barEl = g.querySelector('rect.dsd-bar') || g.querySelector('rect:last-child');
+      const rect = barEl.getBoundingClientRect();
       const rectWrap = wrapper.getBoundingClientRect();
+      // Posição relativa ao wrapper (que tem position:relative)
       tooltip.style.left = `${rect.left - rectWrap.left + rect.width / 2}px`;
       tooltip.style.top = `${rect.top - rectWrap.top}px`;
       tooltip.style.display = 'block';
       const bar = g.querySelector('rect.dsd-bar');
-      bar.style.opacity = '0.85';
+      if (bar) bar.style.opacity = '0.85';
     });
     g.addEventListener('mouseleave', () => {
-      tooltip.style.display = 'none';
+      if (tooltip) tooltip.style.display = 'none';
       const bar = g.querySelector('rect.dsd-bar');
-      bar.style.opacity = '1';
+      if (bar) bar.style.opacity = '1';
     });
   });
 }
@@ -11014,17 +11207,51 @@ async function renderDsdDonutObjetivos(dataInicio) {
   const container = document.getElementById('dsdDonutObj');
   if (!container) return;
   try {
-    let query = db.from('visitas_objetivos').select('objetivo_id, objetivos_visita(nome), visitas!inner(checkin_timestamp)');
-    if (dataInicio) query = query.gte('visitas.checkin_timestamp', dataInicio);
-    const { data, error } = await query;
-    if (error) throw new Error(error.message);
-    if (!data || data.length === 0) {
+    // Sprint 9.32.144: ranking Billboard V1 — comparativo com período anterior
+    // Calcula período anterior do mesmo tamanho pra setas de tendência
+    let dataAnteriorIni = null, dataAnteriorFim = null;
+    if (dataInicio) {
+      const ini = new Date(dataInicio);
+      const agora = new Date();
+      const intervaloMs = agora.getTime() - ini.getTime();
+      dataAnteriorFim = ini.toISOString();
+      dataAnteriorIni = new Date(ini.getTime() - intervaloMs).toISOString();
+    }
+
+    // Sprint 9.32.146: respeita filtro global por profissional
+    const filtroNutriIdObj = window._dashFiltroNutri || null;
+    const selectStr = 'objetivo_id, objetivos_visita(nome), visitas!inner(checkin_timestamp, nutricionista_id)';
+
+    // Query atual
+    let queryAtual = db.from('visitas_objetivos').select(selectStr);
+    if (dataInicio) queryAtual = queryAtual.gte('visitas.checkin_timestamp', dataInicio);
+    if (filtroNutriIdObj) queryAtual = queryAtual.eq('visitas.nutricionista_id', filtroNutriIdObj);
+    const { data: dataAtual, error: errAtual } = await queryAtual;
+    if (errAtual) throw new Error(errAtual.message);
+
+    // Query do período anterior (pra setas de tendência)
+    let contagemAnterior = {};
+    if (dataAnteriorIni && dataAnteriorFim) {
+      try {
+        let qAnt = db.from('visitas_objetivos').select(selectStr)
+          .gte('visitas.checkin_timestamp', dataAnteriorIni)
+          .lt('visitas.checkin_timestamp', dataAnteriorFim);
+        if (filtroNutriIdObj) qAnt = qAnt.eq('visitas.nutricionista_id', filtroNutriIdObj);
+        const { data: dataAnt } = await qAnt;
+        (dataAnt || []).forEach(vo => {
+          const nome = vo.objetivos_visita?.nome || '(sem nome)';
+          contagemAnterior[nome] = (contagemAnterior[nome] || 0) + 1;
+        });
+      } catch (_) {}
+    }
+
+    if (!dataAtual || dataAtual.length === 0) {
       container.style.display = 'flex';
       container.innerHTML = '<div style="padding:40px 0;text-align:center;color:var(--neutral-400);font-size:12px;">Sem dados no período.</div>';
       return;
     }
     const contagem = {};
-    data.forEach(vo => {
+    dataAtual.forEach(vo => {
       const nome = vo.objetivos_visita?.nome || '(sem nome)';
       contagem[nome] = (contagem[nome] || 0) + 1;
     });
@@ -11035,41 +11262,41 @@ async function renderDsdDonutObjetivos(dataInicio) {
     const outros = ordenado.slice(7).reduce((s, [, n]) => s + n, 0);
     if (outros > 0) slices.push(['Outros', outros]);
 
-    const cores = ['#0A1F5C', '#1E3A8A', '#0891B2', '#14B8A6', '#22C55E', '#8BC63F', '#BEF264', '#D1D5DB'];
+    // Sprint 9.32.144: layout Ranking Billboard V1 — dentro do design system (navy + lime + neutrals)
+    // Sem donut, sem barras coloridas. Tabela com posição, nome, valor, % e tendência vs período anterior.
+    const items = slices.map(([label, value], i) => ({
+      pos: i + 1,
+      label,
+      value,
+      pct: (value / total) * 100,
+      diff: value - (contagemAnterior[label] || 0),
+    }));
 
-    // SVG donut
-    const R = 58, r = 38, cx = 80, cy = 80;
-    let acc = -Math.PI / 2;
-    const paths = slices.map(([label, value], i) => {
-      const ang = (value / total) * Math.PI * 2;
-      const a0 = acc, a1 = acc + ang;
-      acc = a1;
-      const x0 = cx + R * Math.cos(a0), y0 = cy + R * Math.sin(a0);
-      const x1 = cx + R * Math.cos(a1), y1 = cy + R * Math.sin(a1);
-      const xi1 = cx + r * Math.cos(a1), yi1 = cy + r * Math.sin(a1);
-      const xi0 = cx + r * Math.cos(a0), yi0 = cy + r * Math.sin(a0);
-      const large = ang > Math.PI ? 1 : 0;
-      const d = `M ${x0} ${y0} A ${R} ${R} 0 ${large} 1 ${x1} ${y1} L ${xi1} ${yi1} A ${r} ${r} 0 ${large} 0 ${xi0} ${yi0} Z`;
-      return { d, color: cores[i] || '#D1D5DB', label, value };
-    });
-
-    container.style.display = 'flex';
-    container.style.alignItems = 'center';
-    container.style.gap = '20px';
+    container.style.display = 'block';
+    container.style.gridTemplateColumns = '';
+    container.style.gap = '';
+    container.style.alignItems = '';
     container.innerHTML = `
-      <svg width="160" height="160" viewBox="0 0 160 160" style="flex-shrink:0;">
-        ${paths.map(p => `<path d="${p.d}" fill="${p.color}" stroke="#fff" stroke-width="1.5" />`).join('')}
-        <text x="80" y="76" font-size="10" fill="var(--neutral-500)" text-anchor="middle" font-family="Inter" font-weight="600">TOTAL</text>
-        <text x="80" y="94" font-size="20" fill="var(--brand-navy)" text-anchor="middle" font-family="Poppins" font-weight="700">${total}</text>
-      </svg>
-      <div style="flex:1;display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;min-width:0;">
-        ${paths.map(p => `
-          <div style="display:flex;align-items:center;gap:7px;font-size:11.5px;color:var(--neutral-700);min-width:0;">
-            <span style="width:9px;height:9px;border-radius:3px;background:${p.color};flex-shrink:0;"></span>
-            <span style="flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${p.label.replace(/"/g,'&quot;')}">${p.label}</span>
-            <span style="font-family:'JetBrains Mono',monospace;font-weight:600;color:var(--brand-navy);font-size:11px;">${p.value}</span>
-          </div>
-        `).join('')}
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;font-size:11px;color:var(--neutral-500);">
+        <span><strong style="color:var(--brand-navy);font-family:var(--font-display);font-size:14px;">${total}</strong> visita${total !== 1 ? 's' : ''} · ${items.length} ${items.length === 1 ? 'objetivo' : 'objetivos'}</span>
+        ${dataAnteriorIni ? '<span style="font-style:italic;">vs período anterior</span>' : ''}
+      </div>
+      <div>
+        ${items.map(it => {
+          const isLider = it.pos === 1;
+          const semDiff = !dataAnteriorIni;
+          const diffStr = semDiff ? '' : (it.diff > 0 ? `↑ +${it.diff}` : (it.diff < 0 ? `↓ ${it.diff}` : '— 0'));
+          const diffCor = it.diff > 0 ? 'var(--status-success)' : (it.diff < 0 ? 'var(--status-danger)' : 'var(--neutral-400)');
+          return `
+            <div style="display:grid;grid-template-columns:36px 1fr 60px 70px 60px;align-items:center;padding:9px 12px;${isLider ? 'background:#F0F7E1;border-radius:6px;border-left:3px solid var(--brand-lime);margin-bottom:4px;' : 'border-bottom:1px solid var(--neutral-100);'}">
+              <span style="font-family:var(--font-display);font-size:${isLider ? 18 : 16}px;font-weight:700;color:${isLider ? '#3B6D11' : 'var(--brand-navy)'};text-align:center;">${it.pos}</span>
+              <span style="font-size:${isLider ? 14 : 13.5}px;color:var(--brand-navy);font-weight:${isLider ? 700 : 600};padding-left:8px;line-height:1.3;" title="${it.label.replace(/"/g,'&quot;')}">${it.label}</span>
+              <span style="font-family:var(--font-mono);font-size:${isLider ? 18 : 16}px;font-weight:700;color:${isLider ? '#3B6D11' : 'var(--brand-navy)'};text-align:right;">${it.value}</span>
+              <span style="font-family:var(--font-mono);font-size:${isLider ? 12 : 11}px;color:${isLider ? '#3B6D11' : 'var(--neutral-500)'};font-weight:700;text-align:right;">${it.pct.toFixed(1)}%</span>
+              <span style="font-size:11px;color:${diffCor};font-weight:700;text-align:right;">${diffStr}</span>
+            </div>
+          `;
+        }).join('')}
       </div>
     `;
   } catch (err) {
@@ -11088,9 +11315,12 @@ async function renderDsdHeatmap() {
     inicio.setDate(inicio.getDate() - 90);
     inicio.setHours(0,0,0,0);
 
-    const { data, error } = await db.from('visitas')
+    // Sprint 9.32.146: respeita filtro global por profissional
+    let q = db.from('visitas')
       .select('checkin_timestamp')
       .gte('checkin_timestamp', inicio.toISOString());
+    if (window._dashFiltroNutri) q = q.eq('nutricionista_id', window._dashFiltroNutri);
+    const { data, error } = await q;
     if (error) throw new Error(error.message);
 
     const visitas = data || [];
@@ -11107,34 +11337,35 @@ async function renderDsdHeatmap() {
     });
     const max = Math.max(1, ...matrix.flat());
     const nomes = ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'];
-    const cellW = 28, cellH = 22, gap = 3;
+    // Sprint 9.32.131: células flexíveis (1fr) + altura maior pra aproveitar todo o espaço do card
+    const cellH = 38, gap = 4;
 
     if (subtitle) subtitle.textContent = `Heatmap · últimos 90 dias · ${visitas.length} visitas`;
 
     container.style.display = 'block';
     container.innerHTML = `
-      <div style="overflow-x:hidden;">
+      <div style="width:100%;">
         <div style="display:flex;flex-direction:column;gap:${gap}px;">
-          <div style="display:grid;grid-template-columns:32px repeat(${horas.length}, ${cellW}px);gap:${gap}px;align-items:center;">
+          <div style="display:grid;grid-template-columns:42px repeat(${horas.length}, minmax(0, 1fr));gap:${gap}px;align-items:center;">
             <div></div>
-            ${horas.map(h => `<div style="font-size:9px;color:var(--neutral-400);text-align:center;font-family:'JetBrains Mono',monospace;">${h}h</div>`).join('')}
+            ${horas.map(h => `<div style="font-size:11px;color:var(--neutral-400);text-align:center;font-family:'JetBrains Mono',monospace;">${h}h</div>`).join('')}
           </div>
           ${nomes.map((dn, d) => `
-            <div style="display:grid;grid-template-columns:32px repeat(${horas.length}, ${cellW}px);gap:${gap}px;align-items:center;">
-              <div style="font-size:10.5px;color:var(--neutral-500);font-weight:600;">${dn}</div>
+            <div style="display:grid;grid-template-columns:42px repeat(${horas.length}, minmax(0, 1fr));gap:${gap}px;align-items:center;">
+              <div style="font-size:12px;color:var(--neutral-500);font-weight:600;">${dn}</div>
               ${horas.map((h, hi) => {
                 const v = matrix[d][hi];
                 const t = v / max;
                 const bg = v === 0 ? 'var(--neutral-100)' : `rgba(139, 198, 63, ${0.15 + t * 0.85})`;
-                const fg = t > 0.55 ? '#fff' : 'var(--neutral-500)';
-                return `<div title="${dn} ${h}h · ${v} visitas" style="height:${cellH}px;border-radius:4px;background:${bg};display:flex;align-items:center;justify-content:center;font-size:9px;font-family:'JetBrains Mono',monospace;font-weight:600;color:${fg};">${v > 0 ? v : ''}</div>`;
+                const fg = t > 0.55 ? '#fff' : 'var(--neutral-600)';
+                return `<div title="${dn} ${h}h · ${v} visitas" style="height:${cellH}px;border-radius:6px;background:${bg};display:flex;align-items:center;justify-content:center;font-size:13px;font-family:'JetBrains Mono',monospace;font-weight:700;color:${fg};">${v > 0 ? v : ''}</div>`;
               }).join('')}
             </div>
           `).join('')}
         </div>
-        <div style="display:flex;align-items:center;gap:6px;margin-top:10px;font-size:10px;color:var(--neutral-500);">
+        <div style="display:flex;align-items:center;gap:6px;margin-top:14px;font-size:11px;color:var(--neutral-500);justify-content:flex-end;">
           <span>Menos</span>
-          ${[0.1, 0.3, 0.5, 0.7, 0.95].map(t => `<span style="width:14px;height:12px;border-radius:3px;background:${t === 0.1 ? 'var(--neutral-100)' : `rgba(139, 198, 63, ${t})`};display:inline-block;"></span>`).join('')}
+          ${[0.1, 0.3, 0.5, 0.7, 0.95].map(t => `<span style="width:18px;height:14px;border-radius:3px;background:${t === 0.1 ? 'var(--neutral-100)' : `rgba(139, 198, 63, ${t})`};display:inline-block;"></span>`).join('')}
           <span>Mais</span>
         </div>
       </div>
@@ -11258,11 +11489,24 @@ async function renderDsdMapaVisitas(visitas) {
     };
     const tamPino = (count) => 5 + (count / maxCount) * 9;  // 5px a 14px
 
-    // Agrupa por cidade pra mostrar labels limpos
+    // Sprint 9.32.140: normaliza cidade (trim + Title Case) pra unificar variações como "Santos", "santos", "SANTOS", "Santos "
+    // Também ignora cidades inválidas (números puros, vazias)
+    const _normCidade = (raw) => {
+      if (!raw) return null;
+      const s = String(raw).trim();
+      if (!s) return null;
+      // Rejeita se for só dígitos (provável CEP ou ID errado preenchido no campo cidade)
+      if (/^\d+$/.test(s)) return null;
+      // Title case: cada palavra com a 1ª letra maiúscula, resto minúscula
+      return s.toLowerCase().split(/\s+/).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+    };
     const porCidade = {};
     pontos.forEach(p => {
-      const k = `${p.cidade}/${p.estado}`;
-      if (!porCidade[k]) porCidade[k] = { cidade: p.cidade, estado: p.estado, count: 0, _pontos: [] };
+      const cidadeNorm = _normCidade(p.cidade);
+      if (!cidadeNorm) return; // pula instituições sem cidade válida
+      const estadoNorm = (p.estado || '').trim().toUpperCase();
+      const k = `${cidadeNorm}/${estadoNorm}`;
+      if (!porCidade[k]) porCidade[k] = { cidade: cidadeNorm, estado: estadoNorm, count: 0, _pontos: [] };
       porCidade[k].count += p.count;
       porCidade[k]._pontos.push(p);
     });
@@ -11271,147 +11515,527 @@ async function renderDsdMapaVisitas(visitas) {
     const topCidades = Object.values(porCidade).sort((a, b) => b.count - a.count).slice(0, 6);
     const labelsCidade = new Set(topCidades.map(c => `${c.cidade}/${c.estado}`));
 
+    // Sprint 9.32.138: layout E — mapa full + pílulas coloridas embaixo
+    // Sprint 9.32.139: pílula "X cidades" é clicável e abre ranking
+    const mapId = `dsdMapaLeaflet_${Date.now()}`;
+    const totalVisitas = (visitas || []).length;
+    const cidadeLider = topCidades[0];
+    const liderPct = cidadeLider && totalVisitas > 0 ? Math.round((cidadeLider.count / totalVisitas) * 100) : 0;
+
+    // Guarda dados das cidades pra abrir no modal
+    window._dsdMapaCidades = Object.values(porCidade)
+      .map(c => ({ cidade: c.cidade || '—', count: c.count, hospitais: c._pontos.length }))
+      .sort((a, b) => b.count - a.count);
+
+    container.style.display = 'block';
+    container.style.gridTemplateColumns = '';
+    container.style.gap = '';
+    container.style.alignItems = '';
     container.innerHTML = `
-      <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block;">
-        <rect x="0" y="0" width="${W}" height="${H}" fill="#FAFAF5" rx="6"/>
-        ${pontos.map(p => {
-          const { x, y } = proj(Number(p.latitude), Number(p.longitude));
-          const r = tamPino(p.count);
-          const cor = corPino(p.count);
-          return `
-            <g class="dsd-pin" style="cursor:pointer;" onclick="window.location.hash='#/admin/visitas?inst=${p.id}'">
-              <title>${(p.nome || '').replace(/</g,'&lt;')} · ${p.count} visita${p.count > 1 ? 's' : ''}</title>
-              <circle cx="${x}" cy="${y}" r="${r + 4}" fill="${cor}" opacity="0.25"/>
-              <circle cx="${x}" cy="${y}" r="${r}" fill="${cor}"/>
-              ${p.count >= 3 ? `<text x="${x}" y="${y + 3}" text-anchor="middle" font-size="${r > 9 ? 9 : 8}" fill="#fff" font-weight="700" style="pointer-events:none;">${p.count}</text>` : ''}
-            </g>
-          `;
-        }).join('')}
-        ${topCidades.map(c => {
-          const p = c._pontos[0];
-          const { x, y } = proj(Number(p.latitude), Number(p.longitude));
-          return `<text x="${x}" y="${Math.max(12, y - tamPino(p.count) - 4)}" text-anchor="middle" font-size="9.5" fill="#5F5E5A" font-weight="500" style="pointer-events:none;">${c.cidade}</text>`;
-        }).join('')}
-      </svg>
-      <div style="display:flex;align-items:center;gap:14px;padding:8px 4px 0;font-size:11px;color:var(--neutral-600);flex-wrap:wrap;">
-        <span><strong style="color:var(--brand-navy);">${(visitas || []).length}</strong> visitas em <strong>${Object.keys(porCidade).length}</strong> cidade${Object.keys(porCidade).length !== 1 ? 's' : ''}</span>
-        <span style="margin-left:auto;color:#3B6D11;font-weight:600;">${topCidades[0].cidade} lidera 🏆</span>
+      <div id="${mapId}" style="width:100%;height:300px;border-radius:8px;border:1px solid var(--neutral-200);overflow:hidden;background:var(--neutral-100);"></div>
+      <div style="display:flex;flex-wrap:wrap;gap:7px;margin-top:11px;">
+        <span style="background:#E4ECFD;color:#0C447C;padding:5px 12px;border-radius:6px;font-size:11.5px;font-weight:700;display:inline-flex;align-items:center;gap:5px;">📍 ${totalVisitas} visita${totalVisitas !== 1 ? 's' : ''}</span>
+        <span style="background:#E4ECFD;color:#0C447C;padding:5px 12px;border-radius:6px;font-size:11.5px;font-weight:700;display:inline-flex;align-items:center;gap:5px;">🏥 ${pontos.length} hospitai${pontos.length !== 1 ? 's' : 'l'}</span>
+        <button type="button" onclick="window.abrirRankingCidadesMapa && window.abrirRankingCidadesMapa()" title="Ver ranking completo de cidades" style="background:#E4ECFD;color:#0C447C;padding:5px 12px;border:0;border-radius:6px;font-size:11.5px;font-weight:700;display:inline-flex;align-items:center;gap:5px;cursor:pointer;font-family:inherit;transition:background 120ms;" onmouseover="this.style.background='#D2DDFA'" onmouseout="this.style.background='#E4ECFD'">🌆 ${Object.keys(porCidade).length} cidade${Object.keys(porCidade).length !== 1 ? 's' : ''} <span style="font-size:9px;opacity:0.7;">▾</span></button>
+        ${cidadeLider ? `<span style="background:#F0F7E1;color:#27500A;padding:5px 12px;border-radius:6px;font-size:11.5px;font-weight:700;display:inline-flex;align-items:center;gap:5px;margin-left:auto;">🏆 ${cidadeLider.cidade} lidera · ${cidadeLider.count} visita${cidadeLider.count !== 1 ? 's' : ''} (${liderPct}%)</span>` : ''}
       </div>
     `;
     if (subtitle) subtitle.textContent = `${pontos.length} hospitais · ${Object.keys(porCidade).length} cidades`;
+
+    // Inicializa Leaflet (após o div estar no DOM)
+    setTimeout(() => {
+      if (typeof L === 'undefined') return;
+      const mapEl = document.getElementById(mapId);
+      if (!mapEl) return;
+      try {
+        const map = L.map(mapId, { zoomControl: true, scrollWheelZoom: false }).setView([pontos[0].latitude, pontos[0].longitude], 12);
+        // Sprint 9.32.136: tile Esri World Street Map (visual estilo Google Maps clássico, gratuito)
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+          attribution: 'Tiles © Esri',
+          maxZoom: 19,
+        }).addTo(map);
+        const bounds = [];
+        pontos.forEach(p => {
+          const cor = corPino(p.count);
+          const r = Math.round(tamPino(p.count) + 6); // 11..20
+          const icon = L.divIcon({
+            html: `<div style="width:${r*2}px;height:${r*2}px;border-radius:50%;background:${cor};border:3px solid #fff;box-shadow:0 0 0 1.5px ${cor},0 2px 6px rgba(0,0,0,0.25);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:${r > 13 ? 12 : 10}px;font-family:'JetBrains Mono',monospace;">${p.count >= 2 ? p.count : ''}</div>`,
+            className: '',
+            iconSize: [r*2, r*2],
+            iconAnchor: [r, r],
+          });
+          L.marker([Number(p.latitude), Number(p.longitude)], { icon })
+            .addTo(map)
+            .bindPopup(`<strong>${(p.nome || '').replace(/</g,'&lt;')}</strong><br><span style="color:#6B7280;font-size:11px;">${p.cidade || ''}${p.estado ? ` · ${p.estado}` : ''}</span><br><span style="color:${cor};font-weight:700;">${p.count} visita${p.count > 1 ? 's' : ''}</span>`);
+          bounds.push([Number(p.latitude), Number(p.longitude)]);
+        });
+        // Sprint 9.32.141: começa focado nos pinos da CIDADE LÍDER (não em todos)
+        // Assim o mapa abre já com zoom bom mostrando os hospitais principais.
+        // Pra ver o resto, é só dar zoom out manualmente.
+        const cidadeLiderNome = topCidades[0]?.cidade;
+        const pontosLider = cidadeLiderNome
+          ? pontos.filter(p => (p.cidade || '').trim().toLowerCase() === cidadeLiderNome.toLowerCase())
+          : [];
+        const pontosFocus = pontosLider.length > 0 ? pontosLider : pontos;
+        if (pontosFocus.length > 1) {
+          map.fitBounds(pontosFocus.map(p => [Number(p.latitude), Number(p.longitude)]), { padding: [40, 40], maxZoom: 14 });
+        } else if (pontosFocus.length === 1) {
+          map.setView([Number(pontosFocus[0].latitude), Number(pontosFocus[0].longitude)], 14);
+        }
+      } catch (e) {
+        console.warn('[dash mapa leaflet]', e);
+      }
+    }, 100);
   } catch (err) {
     console.warn('[dash mapa]', err);
     container.innerHTML = `<div style="text-align:center;color:var(--status-danger);font-size:12px;padding:20px;">Erro ao carregar mapa: ${(err.message || err).replace(/</g,'&lt;')}</div>`;
   }
 }
 
-// Sprint 9.20: 3 mini-pizzas (Status, Check-in, Tipo de instituição)
-// Reutiliza o renderDashPie do mobile que já é bem polido
-async function renderDsdPiesStatusCheckinTipo(visitas) {
-  // === Status: BARRAS HORIZONTAIS (Sprint 9.20.8) ===
-  const mapStatus = {
-    'completa':              { label: 'Completa',   color: 'var(--status-success)' },
-    'aprovada_pos_revisao':  { label: 'Aprovada',   color: 'var(--brand-lime)' },
-    'em_revisao':            { label: 'Em revisão', color: 'var(--status-warning)' },
-    'rascunho':              { label: 'Rascunho',   color: 'var(--neutral-400)' },
+// Sprint 9.32.139: modal com ranking completo das cidades visitadas
+window.abrirRankingCidadesMapa = function() {
+  const cidades = window._dsdMapaCidades || [];
+  if (cidades.length === 0) {
+    setFlash && setFlash('warning', 'Nenhuma cidade com visitas no período.');
+    return;
+  }
+  const total = cidades.reduce((s, c) => s + c.count, 0);
+  const maxCount = cidades[0].count;
+  const corBarra = (count) => {
+    const r = count / maxCount;
+    if (r > 0.7) return '#3B6D11';
+    if (r > 0.4) return '#639922';
+    if (r > 0.2) return '#97C459';
+    return '#C0DD97';
   };
-  const countsStatus = {};
-  visitas.forEach(v => {
-    const s = v.status === 'rascunho' && v.revisao_motivo && !v.revisao_resolvida_em ? 'em_revisao' : v.status;
-    if (!mapStatus[s]) return;
-    countsStatus[s] = (countsStatus[s] || 0) + 1;
-  });
-  const dadosStatus = Object.entries(countsStatus).map(([k, v]) => ({
-    label: mapStatus[k].label,
-    count: v,
-    color: mapStatus[k].color,
-  })).sort((a, b) => b.count - a.count);
-
-  const statusEl = document.getElementById('dsdPieStatus');
-  if (statusEl) {
-    const totalStatus = dadosStatus.reduce((s, d) => s + d.count, 0);
-    if (totalStatus === 0) {
-      statusEl.innerHTML = '<div style="padding:30px;text-align:center;color:var(--neutral-400);font-size:12px;">Sem dados no período</div>';
-    } else {
-      const maxStatus = Math.max(...dadosStatus.map(d => d.count));
-      statusEl.innerHTML = `
-        <div style="display:flex;flex-direction:column;gap:14px;padding:4px 0;">
-          ${dadosStatus.map(d => {
-            const pct = Math.round((d.count / totalStatus) * 100);
-            const barPct = (d.count / maxStatus) * 100;
+  const id = 'rankCidadesModal_' + Date.now();
+  const html = `
+    <div id="${id}" style="position:fixed;inset:0;background:rgba(10,31,92,0.5);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;font-family:inherit;" onclick="if(event.target===this) document.getElementById('${id}').remove()">
+      <div style="background:var(--neutral-0);border-radius:14px;max-width:500px;width:100%;max-height:80vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.3);overflow:hidden;">
+        <div style="padding:18px 20px;border-bottom:1px solid var(--neutral-200);display:flex;align-items:center;gap:12px;">
+          <div style="width:40px;height:40px;border-radius:10px;background:#E4ECFD;color:#0C447C;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:20px;">🌆</div>
+          <div style="flex:1;">
+            <div style="font-family:var(--font-display);font-weight:700;font-size:16px;color:var(--brand-navy);">Ranking de cidades</div>
+            <div style="font-size:12px;color:var(--neutral-500);margin-top:2px;">${cidades.length} cidade${cidades.length !== 1 ? 's' : ''} · ${total} visita${total !== 1 ? 's' : ''} no período</div>
+          </div>
+          <button onclick="document.getElementById('${id}').remove()" aria-label="Fechar" style="background:transparent;border:0;width:32px;height:32px;border-radius:50%;cursor:pointer;color:var(--neutral-500);display:flex;align-items:center;justify-content:center;font-size:0;" onmouseover="this.style.background='var(--neutral-100)'" onmouseout="this.style.background='transparent'">
+            <span class="material-symbols-rounded" style="font-size:20px;">close</span>
+          </button>
+        </div>
+        <div style="overflow-y:auto;padding:14px 20px;flex:1;">
+          ${cidades.map((c, i) => {
+            const pct = (c.count / maxCount * 100).toFixed(1);
+            const pctTotal = total > 0 ? (c.count / total * 100).toFixed(1) : '0.0';
+            const cor = corBarra(c.count);
+            const medalhas = ['🥇','🥈','🥉'];
+            const med = i < 3 ? medalhas[i] : `${i + 1}º`;
             return `
-              <div>
-                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
-                  <div style="display:flex;align-items:center;gap:7px;min-width:0;">
-                    <span style="width:10px;height:10px;border-radius:3px;background:${d.color};flex-shrink:0;"></span>
-                    <span style="font-size:12px;color:var(--neutral-700);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${d.label}</span>
-                  </div>
-                  <div style="display:flex;align-items:baseline;gap:6px;flex-shrink:0;">
-                    <span style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:var(--brand-navy);">${d.count}</span>
-                    <span style="font-size:11px;color:var(--neutral-500);font-weight:600;">${pct}%</span>
-                  </div>
+              <div style="padding:10px 0;${i < cidades.length - 1 ? 'border-bottom:1px solid var(--neutral-100);' : ''}">
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+                  <span style="font-size:${i < 3 ? 18 : 12}px;color:var(--neutral-500);font-weight:700;font-family:'JetBrains Mono',monospace;min-width:24px;text-align:center;">${med}</span>
+                  <span style="font-size:13.5px;color:var(--brand-navy);font-weight:600;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${(c.cidade || '').replace(/"/g,'&quot;')}">${c.cidade || '—'}</span>
+                  <span style="font-size:11px;color:var(--neutral-500);font-weight:500;">${c.hospitais} hospitai${c.hospitais !== 1 ? 's' : 'l'}</span>
+                  <span style="font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:800;color:${cor};min-width:36px;text-align:right;">${c.count}</span>
+                  <span style="font-size:11px;color:var(--neutral-500);font-weight:500;font-family:'JetBrains Mono',monospace;min-width:46px;text-align:right;">${pctTotal}%</span>
                 </div>
-                <div style="height:8px;background:var(--neutral-100);border-radius:4px;overflow:hidden;">
-                  <div style="height:100%;width:${barPct.toFixed(1)}%;background:${d.color};border-radius:4px;transition:width 600ms ease-out;"></div>
+                <div style="height:6px;background:var(--neutral-100);border-radius:3px;overflow:hidden;margin-left:34px;">
+                  <div style="height:100%;width:${pct}%;background:${cor};border-radius:3px;transition:width 600ms ease-out;"></div>
                 </div>
               </div>
             `;
           }).join('')}
-          <div style="margin-top:4px;padding-top:10px;border-top:1px solid var(--neutral-100);display:flex;justify-content:space-between;align-items:center;">
-            <span style="font-size:11px;color:var(--neutral-500);font-weight:600;text-transform:uppercase;letter-spacing:0.05em;">Total</span>
-            <span style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:var(--brand-navy);">${totalStatus}</span>
-          </div>
         </div>
-      `;
-    }
+        <div style="padding:12px 20px;border-top:1px solid var(--neutral-200);display:flex;justify-content:flex-end;">
+          <button onclick="document.getElementById('${id}').remove()" style="background:var(--brand-navy);color:#fff;border:0;padding:8px 18px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">Fechar</button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.insertAdjacentHTML('beforeend', html);
+};
+
+// Sprint 9.20: 3 mini-pizzas (Status, Check-in, Tipo de instituição)
+// Reutiliza o renderDashPie do mobile que já é bem polido
+async function renderDsdPiesStatusCheckinTipo(visitas) {
+  // === Status: SANKEY S5 (Sprint 9.32.154) ===
+  // Substituiu barras horizontais por fluxo Sankey:
+  // - Coluna esquerda: total de visitas que ENTRARAM no período
+  // - Paths SVG curvos com grossura proporcional ao volume
+  // - Coluna direita: ramificação por status atual (Aprovada/Completa/Em revisão/Rascunho)
+  // - Aviso embaixo destacando "X em fluxo · Y finalizadas"
+  renderDsdStatusSankey(visitas);
+
+  // === Check-in: P2 KPI cards (Sprint 9.32.152) ===
+  // Substituiu pizza por 3 mini-cards no padrão dos KPIs do dashboard:
+  // ícone circular colorido + número Poppins gigante + label + % com cor semântica.
+  // Card Divergente fica destacado (border vermelho + badge "Alto/Crítico") quando ultrapassa o threshold.
+  renderDsdCheckinKpis(visitas);
+
+  // === Tipo de Instituição: Billboard + aviso de qualidade (T1, Sprint 9.32.153) ===
+  // Substituiu pizza por Billboard (mesmo padrão de "Distribuição por objetivo"):
+  // - Banner amarelo no topo destacando "% sem tipo cadastrado" como problema de qualidade de dados
+  // - Billboard limpo embaixo só com tipos válidos (Privada/Pública/etc)
+  // - Setas de tendência ↑/↓ vs período anterior
+  renderDsdTipoInstBillboard(visitas).catch(err => {
+    console.warn('[tipo inst billboard]', err);
+    const el = document.getElementById('dsdPieTipoInst');
+    if (el) el.innerHTML = `<div style="padding:30px;text-align:center;color:var(--neutral-400);font-size:12px;">Sem dados disponíveis</div>`;
+  });
+}
+
+// Sprint 9.32.157: Status das visitas — KPI hero "Taxa de aprovação" (S3)
+// Substitui o funil pelo S3: foco no KPI principal (taxa de aprovação) em fonte gigante,
+// com sparkline de tendência + 3 cards menores embaixo mostrando contagem de cada status.
+// Foco operacional: a métrica que importa é "%". Distribuição vira suporte.
+function renderDsdStatusSankey(visitas) {
+  const container = document.getElementById('dsdPieStatus');
+  if (!container) return;
+
+  const mapStatus = {
+    'aprovada_pos_revisao':  { label: 'Aprovada',   hex: '#8BC63F', textHex: '#3B6D11', finalizada: true },
+    'completa':              { label: 'Completa',   hex: '#1D9E75', textHex: '#0F6E56', finalizada: true },
+    'em_revisao':            { label: 'Em revisão', hex: '#F59E0B', textHex: '#92400E', finalizada: false },
+    'rascunho':              { label: 'Rascunho',   hex: '#9CA3AF', textHex: '#6B7280', finalizada: false },
+  };
+
+  // Conta visitas por status (rascunho-com-revisão vira em_revisao)
+  const counts = {};
+  (visitas || []).forEach(v => {
+    const s = v.status === 'rascunho' && v.revisao_motivo && !v.revisao_resolvida_em ? 'em_revisao' : v.status;
+    if (!mapStatus[s]) return;
+    counts[s] = (counts[s] || 0) + 1;
+  });
+  const total = Object.values(counts).reduce((a, b) => a + b, 0);
+
+  if (total === 0) {
+    container.innerHTML = '<div style="padding:30px;text-align:center;color:var(--neutral-400);font-size:12px;">Sem dados no período</div>';
+    return;
   }
 
-  // === Pizza Check-in ===
+  const finalizadas = (counts['aprovada_pos_revisao'] || 0) + (counts['completa'] || 0);
+  const aprovadas = counts['aprovada_pos_revisao'] || 0;
+  const emFluxo = total - finalizadas;
+  // Taxa de aprovação = aprovadas / total (NÃO finalizadas/total, pra ser específico)
+  const taxaApr = total > 0 ? Math.round((aprovadas / total) * 100) : 0;
+
+  // Cor do KPI baseada na "saúde" da taxa
+  // ≥80% = lime, 60-79% = warning, <60% = danger
+  const corHex = taxaApr >= 80 ? '#3B6D11' : taxaApr >= 60 ? '#92400E' : '#B91C1C';
+  const corAccentBg = taxaApr >= 80 ? 'var(--brand-lime)' : taxaApr >= 60 ? 'var(--status-warning)' : 'var(--status-danger)';
+  const corShadow = taxaApr >= 80 ? '0 3px 8px rgba(139,198,63,0.2)' : taxaApr >= 60 ? '0 3px 8px rgba(245,158,11,0.2)' : '0 3px 8px rgba(239,68,68,0.2)';
+  const corBadge = taxaApr >= 80 ? { bg: '#F0F7E1', text: '#3B6D11', label: 'Excelente' }
+                  : taxaApr >= 60 ? { bg: '#FEF4E1', text: '#92400E', label: 'Atenção' }
+                  : { bg: '#FCE8E8', text: '#B91C1C', label: 'Crítico' };
+
+  // ----- Sparkline (últimos 30 dias de aprovações) -----
+  // Por simplicidade usamos os checkin_timestamps das visitas pra fazer um sparkline
+  // baseado em volume de visitas aprovadas por dia (não taxa por dia, que ficaria ruidoso).
+  // Se quiser ser mais preciso depois, dá pra agrupar por semana e calcular taxa.
+  const sparkBuckets = 14; // 14 pontos
+  const agora = Date.now();
+  const janelaTotal = 30 * 24 * 60 * 60 * 1000; // 30 dias
+  const bucketMs = janelaTotal / sparkBuckets;
+  const buckets = Array(sparkBuckets).fill(0);
+
+  (visitas || []).forEach(v => {
+    if (v.status !== 'aprovada_pos_revisao') return;
+    const ts = v.checkin_timestamp ? new Date(v.checkin_timestamp).getTime() : null;
+    if (!ts) return;
+    const idx = Math.floor((ts - (agora - janelaTotal)) / bucketMs);
+    if (idx >= 0 && idx < sparkBuckets) buckets[idx]++;
+  });
+
+  // Gera path do sparkline
+  const sparkW = 140, sparkH = 38;
+  const maxBucket = Math.max(1, ...buckets);
+  const sparkPoints = buckets.map((v, i) => {
+    const x = (i / (sparkBuckets - 1)) * sparkW;
+    const y = sparkH - 4 - (v / maxBucket) * (sparkH - 8);
+    return `${x.toFixed(1)} ${y.toFixed(1)}`;
+  });
+  const sparkPath = 'M ' + sparkPoints.join(' L ');
+  const sparkArea = sparkPath + ` L ${sparkW} ${sparkH} L 0 ${sparkH} Z`;
+  const sparkColor = corHex;
+  const sparkFill = taxaApr >= 80 ? 'rgba(139,198,63,0.32)' : taxaApr >= 60 ? 'rgba(245,158,11,0.28)' : 'rgba(239,68,68,0.25)';
+
+  const escAttr = (s) => String(s || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+
+  // Mini cards embaixo (uma por status com count > 0)
+  const ordem = ['aprovada_pos_revisao', 'completa', 'em_revisao', 'rascunho'];
+  const miniCards = ordem
+    .filter(k => (counts[k] || 0) > 0)
+    .map(k => ({ key: k, ...mapStatus[k], count: counts[k] }));
+
+  // Layout do mini-cards: até 4, em colunas auto-fit
+  const miniCardsHtml = miniCards.map((m, i) => {
+    const last = i === miniCards.length - 1;
+    return `
+      <div style="text-align:center;${!last ? 'border-right:1px solid var(--neutral-100);' : ''}padding:0 6px;">
+        <div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:5px;">
+          <span style="width:8px;height:8px;border-radius:2px;background:${m.hex};flex-shrink:0;"></span>
+          <span style="font-size:10.5px;color:var(--neutral-600);font-weight:600;">${escAttr(m.label)}</span>
+        </div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:17px;font-weight:700;color:var(--brand-navy);font-variant-numeric:tabular-nums;">${m.count}</div>
+      </div>
+    `;
+  }).join('');
+
+  container.innerHTML = `
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;">
+      <div style="width:40px;height:40px;border-radius:50%;background:${corAccentBg};display:flex;align-items:center;justify-content:center;box-shadow:${corShadow};flex-shrink:0;">
+        <span class="material-symbols-rounded" style="font-size:20px;color:#fff;">verified</span>
+      </div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-family:'Poppins',sans-serif;font-size:14px;font-weight:600;color:var(--brand-navy);line-height:1.2;">Taxa de aprovação</div>
+        <div style="font-size:11px;color:var(--neutral-500);margin-top:2px;">Saúde do fluxo de aprovação</div>
+      </div>
+      <span style="background:${corBadge.bg};color:${corBadge.text};font-size:9.5px;font-weight:700;padding:3px 9px;border-radius:9999px;text-transform:uppercase;letter-spacing:0.04em;flex-shrink:0;">${corBadge.label}</span>
+    </div>
+
+    <div style="display:flex;align-items:flex-end;gap:16px;margin-bottom:18px;">
+      <div style="min-width:0;">
+        <div style="font-family:'Poppins',sans-serif;font-size:46px;font-weight:700;color:${corHex};line-height:1;letter-spacing:-0.025em;font-variant-numeric:tabular-nums;">${taxaApr}<span style="font-size:26px;color:var(--neutral-500);font-weight:600;">%</span></div>
+        <div style="font-size:11px;color:var(--neutral-500);margin-top:6px;font-weight:600;">${aprovadas} de ${total} ${total === 1 ? 'visita aprovada' : 'visitas aprovadas'}</div>
+      </div>
+
+      <div style="flex:1;min-width:0;padding-bottom:8px;">
+        <svg viewBox="0 0 ${sparkW} ${sparkH}" width="100%" height="${sparkH}" preserveAspectRatio="none" style="display:block;">
+          <path d="${sparkArea}" fill="${sparkFill}" />
+          <path d="${sparkPath}" stroke="${sparkColor}" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--neutral-400);margin-top:2px;">
+          <span>30d atrás</span>
+          <span>hoje</span>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(${miniCards.length},1fr);padding-top:14px;border-top:1px solid var(--neutral-100);">
+      ${miniCardsHtml}
+    </div>
+
+    ${emFluxo > 0 ? `
+      <div style="margin-top:14px;padding:10px 14px;background:#F0F7E1;border-radius:8px;display:flex;align-items:center;gap:10px;">
+        <span class="material-symbols-rounded" style="font-size:18px;color:#3B6D11;flex-shrink:0;">pending</span>
+        <div style="font-size:11.5px;color:#27500A;line-height:1.4;">
+          <strong>${emFluxo} ${emFluxo === 1 ? 'visita aguardando' : 'visitas aguardando'}</strong> ainda no fluxo (não aprovadas)
+        </div>
+      </div>
+    ` : ''}
+  `;
+}
+
+// Sprint 9.32.152: Qualidade do check-in — Protótipo P2 (3 KPI cards)
+// Substituiu a pizza por 3 mini-cards no padrão dos KPIs do dashboard:
+// - Ícone circular colorido + número Poppins gigante + label + % com cor semântica
+// - Card Divergente fica destacado (border + badge "Alto/Crítico") quando ultrapassa threshold
+// Usa o design system: var(--font-display), var(--font-mono), var(--status-*).
+function renderDsdCheckinKpis(visitas) {
+  const container = document.getElementById('dsdPieCheckin');
+  if (!container) return;
+
+  const total = visitas.length;
   const validados = visitas.filter(v => !v.checkin_manual && !v.flag_gps_divergente).length;
   const divergs   = visitas.filter(v => v.flag_gps_divergente).length;
   const manuais   = visitas.filter(v => v.checkin_manual).length;
-  const dadosCheckin = [
-    { label: 'GPS validado', count: validados, color: 'var(--status-success)' },
-    { label: 'Divergente',   count: divergs,   color: 'var(--status-danger)' },
-    { label: 'Manual',       count: manuais,   color: 'var(--status-warning)' },
-  ].filter(d => d.count > 0);
-  if (typeof renderDashPie === 'function') {
-    renderDashPie('dsdPieCheckin', dadosCheckin, { large: true });
+
+  if (total === 0) {
+    container.innerHTML = '<div style="padding:30px;text-align:center;color:var(--neutral-400);font-size:12px;">Sem dados no período</div>';
+    return;
   }
 
-  // === Pizza Tipo de Instituição ===
+  const pctValid  = Math.round((validados / total) * 100);
+  const pctDiverg = Math.round((divergs   / total) * 100);
+  const pctManual = Math.round((manuais   / total) * 100);
+
+  // Severidade do card "Divergente": >50% = crítico, 30-50% = alto, <30% = neutro
+  const sev = pctDiverg > 50 ? 'critico' : pctDiverg >= 30 ? 'alto' : 'normal';
+  const divergBorder = sev === 'critico' ? 'var(--status-danger)'
+                     : sev === 'alto'    ? '#FCA5A5'
+                                         : 'var(--neutral-200)';
+  const divergBadge = sev === 'critico' ? 'Crítico'
+                    : sev === 'alto'    ? 'Alto'
+                                        : '';
+
+  // Cards no padrão dos KPIs do topo: ícone circular + Poppins gigante + label + %
+  const card = ({ icon, accentBg, accentShadow, value, label, pct, pctColor, borderColor, badge }) => `
+    <div style="background:#fff;border:1px solid ${borderColor || 'var(--neutral-200)'};border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:10px;position:relative;min-width:0;">
+      ${badge ? `<span style="position:absolute;top:10px;right:10px;background:var(--status-danger-bg,#FCE8E8);color:var(--status-danger);font-size:9.5px;font-weight:700;padding:2px 7px;border-radius:9999px;text-transform:uppercase;letter-spacing:0.04em;">${badge}</span>` : ''}
+      <div style="width:36px;height:36px;border-radius:50%;background:${accentBg};display:flex;align-items:center;justify-content:center;${accentShadow ? `box-shadow:${accentShadow};` : ''}flex-shrink:0;">
+        <span class="material-symbols-rounded" style="font-size:18px;color:#fff;">${icon}</span>
+      </div>
+      <div style="min-width:0;">
+        <div style="font-family:'Poppins',sans-serif;font-size:26px;font-weight:700;color:var(--brand-navy);line-height:1;letter-spacing:-0.02em;font-variant-numeric:tabular-nums;">${value}</div>
+        <div style="font-size:11.5px;font-weight:600;color:var(--neutral-600);margin-top:6px;line-height:1.3;">${label}</div>
+        <div style="font-size:10.5px;color:${pctColor};font-weight:700;margin-top:5px;font-family:'JetBrains Mono',monospace;">${pct}% do total</div>
+      </div>
+    </div>
+  `;
+
+  container.innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
+      ${card({
+        icon: 'check_circle',
+        accentBg: 'var(--brand-lime)',
+        accentShadow: '0 3px 8px rgba(139,198,63,0.2)',
+        value: validados,
+        label: 'Validado',
+        pct: pctValid,
+        pctColor: '#3B6D11',
+      })}
+      ${card({
+        icon: 'error',
+        accentBg: 'var(--status-danger)',
+        value: divergs,
+        label: 'Divergente',
+        pct: pctDiverg,
+        pctColor: 'var(--status-danger)',
+        borderColor: divergBorder,
+        badge: divergBadge,
+      })}
+      ${card({
+        icon: 'edit',
+        accentBg: 'var(--status-warning)',
+        value: manuais,
+        label: 'Manual',
+        pct: pctManual,
+        pctColor: '#92400E',
+      })}
+    </div>
+  `;
+}
+
+// Sprint 9.32.153: Tipo de instituição — Protótipo T1 (Billboard + aviso de qualidade)
+// Mesmo padrão do "Distribuição por objetivo" (Sprint 9.32.144) mas com twist:
+// - Banner amarelo no TOPO destacando "% sem tipo cadastrado" como problema de qualidade
+//   de dados (com link clicável pra Instituições filtrado por tipo IS NULL).
+// - Billboard limpo embaixo só com os tipos VÁLIDOS (Privada/Pública/etc) ranqueados.
+// - Líder destacado em lime + setas de tendência vs período anterior.
+async function renderDsdTipoInstBillboard(visitas) {
+  const container = document.getElementById('dsdPieTipoInst');
+  if (!container) return;
+
+  const total = (visitas || []).length;
+  if (total === 0) {
+    container.innerHTML = '<div style="padding:30px;text-align:center;color:var(--neutral-400);font-size:12px;">Sem dados no período</div>';
+    return;
+  }
+
+  // Busca os tipos das instituições visitadas
+  const instIds = [...new Set(visitas.map(v => v.instituicao_id).filter(Boolean))];
+  let mapTipo = {};
+  if (instIds.length > 0) {
+    const { data: insts, error } = await db.from('instituicoes')
+      .select('id, tipo')
+      .in('id', instIds);
+    if (error) throw new Error(error.message);
+    mapTipo = Object.fromEntries((insts || []).map(i => [i.id, i.tipo || null]));
+  }
+
+  // Conta visitas por tipo (separa "Sem tipo" das categorias válidas)
+  const contagem = {};
+  let semTipo = 0;
+  visitas.forEach(v => {
+    const tipo = mapTipo[v.instituicao_id];
+    if (tipo) {
+      contagem[tipo] = (contagem[tipo] || 0) + 1;
+    } else {
+      semTipo++;
+    }
+  });
+  const totalComTipo = total - semTipo;
+  const pctSemTipo = Math.round((semTipo / total) * 100);
+
+  // Conta INSTITUIÇÕES distintas sem tipo (pra mostrar no banner)
+  const instsSemTipo = new Set();
+  visitas.forEach(v => {
+    if (v.instituicao_id && !mapTipo[v.instituicao_id]) instsSemTipo.add(v.instituicao_id);
+  });
+  const qtdInstsSemTipo = instsSemTipo.size;
+
+  // ----- Período anterior pra setas de tendência -----
+  // Calcula intervalo do período atual a partir das visitas (min/max checkin)
+  let contagemAnterior = {};
   try {
-    const instIds = [...new Set(visitas.map(v => v.instituicao_id).filter(Boolean))];
-    let contagemTipo = {};
-    if (instIds.length > 0) {
-      const { data: insts } = await db.from('instituicoes')
-        .select('id, tipo')
-        .in('id', instIds);
-      const mapTipo = Object.fromEntries((insts || []).map(i => [i.id, i.tipo || 'Não informado']));
-      visitas.forEach(v => {
-        const tipo = mapTipo[v.instituicao_id] || 'Não informado';
-        contagemTipo[tipo] = (contagemTipo[tipo] || 0) + 1;
+    const ts = visitas.map(v => v.checkin_timestamp).filter(Boolean).sort();
+    if (ts.length >= 2) {
+      const ini = new Date(ts[0]);
+      const fim = new Date(ts[ts.length - 1]);
+      const span = fim.getTime() - ini.getTime();
+      const antIni = new Date(ini.getTime() - span - 24*60*60*1000).toISOString();
+      const antFim = ini.toISOString();
+      let qAnt = db.from('visitas')
+        .select('instituicao_id, instituicoes(tipo)')
+        .gte('checkin_timestamp', antIni)
+        .lt('checkin_timestamp', antFim);
+      if (window._dashFiltroNutri) qAnt = qAnt.eq('nutricionista_id', window._dashFiltroNutri);
+      const { data: dataAnt } = await qAnt;
+      (dataAnt || []).forEach(v => {
+        const t = v.instituicoes?.tipo;
+        if (t) contagemAnterior[t] = (contagemAnterior[t] || 0) + 1;
       });
     }
-    const coresTipo = [
-      'var(--brand-lime)', 'var(--brand-navy)', 'var(--status-info)',
-      'var(--status-warning)', '#7C3AED', 'var(--neutral-400)',
-    ];
-    const dadosTipo = Object.entries(contagemTipo)
-      .sort(([,a], [,b]) => b - a)
-      .map(([tipo, valor], idx) => ({
-        label: tipo,
-        count: valor,
-        color: coresTipo[idx % coresTipo.length],
-      }));
-    if (typeof renderDashPie === 'function') {
-      renderDashPie('dsdPieTipoInst', dadosTipo, { large: true });
-    }
-  } catch (err) {
-    console.warn('[pie tipo inst]', err);
-    const el = document.getElementById('dsdPieTipoInst');
-    if (el) el.innerHTML = `<div style="padding:30px;text-align:center;color:var(--neutral-400);font-size:12px;">Sem dados disponíveis</div>`;
-  }
+  } catch (_) { /* sem comparação se der erro */ }
+
+  // Ranking dos tipos válidos
+  const escAttr = (s) => String(s || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+  const ordenado = Object.entries(contagem).sort((a,b) => b[1] - a[1]);
+  const items = ordenado.map(([label, value], i) => ({
+    pos: i + 1,
+    label,
+    value,
+    pct: totalComTipo > 0 ? (value / totalComTipo) * 100 : 0,
+    diff: value - (contagemAnterior[label] || 0),
+  }));
+
+  const temComparacao = Object.keys(contagemAnterior).length > 0;
+
+  // Banner amarelo de aviso (só aparece se tem >0% sem tipo)
+  const bannerHtml = semTipo > 0 ? `
+    <a href="#/admin/instituicoes" style="display:flex; align-items:center; gap:11px; padding:11px 14px; background:#FEF4E1; border-left:3px solid var(--status-warning); border-radius:0 8px 8px 0; margin-bottom:14px; text-decoration:none; color:inherit; transition:background 140ms;" onmouseover="this.style.background='#FCEFD3'" onmouseout="this.style.background='#FEF4E1'">
+      <div style="width:32px;height:32px;border-radius:8px;background:var(--status-warning);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+        <span class="material-symbols-rounded" style="font-size:18px;color:#fff;">warning</span>
+      </div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:13px;line-height:1.3;">${pctSemTipo}% sem tipo cadastrado</div>
+        <div style="font-size:11px;color:#92400E;margin-top:2px;">${qtdInstsSemTipo} ${qtdInstsSemTipo === 1 ? 'instituição com cadastro incompleto' : 'instituições com cadastro incompleto'}</div>
+      </div>
+      <span class="material-symbols-rounded" style="font-size:18px;color:#92400E;flex-shrink:0;">arrow_forward</span>
+    </a>
+  ` : '';
+
+  // Subtitle do billboard (XX com tipo · N categorias)
+  const subtitle = items.length === 0
+    ? `<span>Nenhum tipo identificado nas ${total} visitas</span>`
+    : `<span><strong style="color:var(--brand-navy);font-family:var(--font-display);font-size:14px;">${totalComTipo}</strong> com tipo · ${items.length} ${items.length === 1 ? 'categoria' : 'categorias'}</span>${temComparacao ? '<span style="font-style:italic;">vs período anterior</span>' : ''}`;
+
+  // Linhas do billboard
+  const linhasHtml = items.length === 0 ? '' : items.map(it => {
+    const isLider = it.pos === 1;
+    const semDiff = !temComparacao;
+    const diffStr = semDiff ? '' : (it.diff > 0 ? `↑ +${it.diff}` : (it.diff < 0 ? `↓ ${it.diff}` : '— 0'));
+    const diffCor = it.diff > 0 ? 'var(--status-success)' : (it.diff < 0 ? 'var(--status-danger)' : 'var(--neutral-400)');
+    return `
+      <div style="display:grid;grid-template-columns:36px 1fr 60px 70px 60px;align-items:center;padding:9px 12px;${isLider ? 'background:#F0F7E1;border-radius:6px;border-left:3px solid var(--brand-lime);margin-bottom:4px;' : 'border-bottom:1px solid var(--neutral-100);'}">
+        <span style="font-family:var(--font-display);font-size:${isLider ? 18 : 16}px;font-weight:700;color:${isLider ? '#3B6D11' : 'var(--brand-navy)'};text-align:center;">${it.pos}</span>
+        <span style="font-size:${isLider ? 14 : 13.5}px;color:var(--brand-navy);font-weight:${isLider ? 700 : 600};padding-left:8px;line-height:1.3;" title="${escAttr(it.label)}">${escAttr(it.label)}</span>
+        <span style="font-family:var(--font-mono);font-size:${isLider ? 18 : 16}px;font-weight:700;color:${isLider ? '#3B6D11' : 'var(--brand-navy)'};text-align:right;">${it.value}</span>
+        <span style="font-family:var(--font-mono);font-size:${isLider ? 12 : 11}px;color:${isLider ? '#3B6D11' : 'var(--neutral-500)'};font-weight:700;text-align:right;">${it.pct.toFixed(1)}%</span>
+        <span style="font-size:11px;color:${diffCor};font-weight:700;text-align:right;">${diffStr}</span>
+      </div>
+    `;
+  }).join('');
+
+  container.style.display = 'block';
+  container.innerHTML = `
+    ${bannerHtml}
+    ${items.length > 0 ? `
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;font-size:11px;color:var(--neutral-500);">
+        ${subtitle}
+      </div>
+      <div>${linhasHtml}</div>
+    ` : ''}
+  `;
 }
 
 // Sprint 9.20: lista de nutris sem visitas no período (insight operacional)
@@ -24139,11 +24763,23 @@ async function carregarIndicadoresNutri() {
   }
 }
 
+// Sprint 9.32.150: Dashboard mobile reestruturado — alinhado com o desktop.
+// Reusa as MESMAS funções de render (renderDsdKpis, renderDsdRankingNutri, renderDsdMapaVisitas, etc.)
+// que populam IDs específicos (dsdKpiRow, dsdRankingNutri, dsdMapa, etc.) — assim o mobile
+// herda automaticamente: filtro global por nutri, billboard de objetivos, mapa Leaflet com Esri tiles,
+// heatmap dias × horários, ranking de cidades, etc.
+// Layout adapta-se com CSS media-query (.dsd-mobile) pra que grids virem coluna única.
 function renderAdminDashboard() {
   const user = requireAdmin();
   if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
 
-  // Carrega contagens de pendências async
+  // Período default = mês atual (formato mes:YYYY-MM) — mesmo do desktop
+  if (!window._dashDesktopPeriodo) {
+    const hoje = new Date();
+    window._dashDesktopPeriodo = `mes:${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2,'0')}`;
+  }
+
+  // Carrega contagens de pendências async (banner topo do mobile)
   setTimeout(async () => {
     try {
       const [instPend, objPend, eqCnts, reabPend] = await Promise.all([
@@ -24164,40 +24800,28 @@ function renderAdminDashboard() {
       }
       const bannersHtml = [];
 
-      // Banner 1: Cadastros de profissionais pendentes (leva pra #/admin/equipe)
       if (totalEquipe > 0) {
         bannersHtml.push(`
-          <a href="#/admin/equipe" style="
-            display:flex;align-items:center;gap:12px;padding:14px 16px;margin-bottom:10px;
-            background:linear-gradient(135deg,#E4ECFD 0%,#EFF3FC 100%);
-            border:1.5px solid rgba(37,99,235,0.35);border-radius:12px;
-            text-decoration:none;color:inherit;transition:all 140ms;position:relative;
-          " onmouseover="this.style.transform='translateY(-1px)';this.style.boxShadow='0 4px 12px rgba(37,99,235,0.15)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
+          <a href="#/admin/equipe" style="display:flex;align-items:center;gap:12px;padding:14px 16px;margin-bottom:10px;background:linear-gradient(135deg,#E4ECFD 0%,#EFF3FC 100%);border:1.5px solid rgba(37,99,235,0.35);border-radius:12px;text-decoration:none;color:inherit;">
             <div style="position:relative;width:40px;height:40px;border-radius:10px;background:var(--status-info);color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
               <span class="material-symbols-rounded" style="font-size:22px;">person_add</span>
               <span style="position:absolute;top:-4px;right:-4px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--status-danger);color:#fff;font-size:10.5px;font-weight:800;display:flex;align-items:center;justify-content:center;border:2px solid #fff;">${totalEquipe}</span>
             </div>
             <div style="flex:1;">
               <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:14px;line-height:1.3;">Novos cadastros de profissionais</div>
-              <div style="font-size:11.5px;color:#1E40AF;margin-top:2px;"><strong>${totalEquipe}</strong> ${totalEquipe === 1 ? 'profissional aguarda' : 'profissionais aguardam'} sua aprovação.</div>
+              <div style="font-size:11.5px;color:#1E40AF;margin-top:2px;"><strong>${totalEquipe}</strong> ${totalEquipe === 1 ? 'profissional aguarda' : 'profissionais aguardam'} aprovação.</div>
             </div>
             <span class="material-symbols-rounded" style="font-size:18px;color:var(--status-info);">arrow_forward</span>
           </a>
         `);
       }
 
-      // Banner 2: Dados pendentes (instituições / objetivos — leva pra #/admin/pendentes)
       if (totalDados > 0) {
         const partes = [];
         if (instPend.length > 0) partes.push(`<strong>${instPend.length}</strong> ${instPend.length === 1 ? 'instituição' : 'instituições'}`);
         if (objPend.length > 0) partes.push(`<strong>${objPend.length}</strong> ${objPend.length === 1 ? 'objetivo' : 'objetivos'}`);
         bannersHtml.push(`
-          <a href="#/admin/pendentes" style="
-            display:flex;align-items:center;gap:12px;padding:14px 16px;margin-bottom:10px;
-            background:linear-gradient(135deg,#FEF4E1 0%,#FFF9EB 100%);
-            border:1.5px solid rgba(245,158,11,0.35);border-radius:12px;
-            text-decoration:none;color:inherit;transition:all 140ms;position:relative;
-          " onmouseover="this.style.transform='translateY(-1px)';this.style.boxShadow='0 4px 12px rgba(245,158,11,0.15)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
+          <a href="#/admin/pendentes" style="display:flex;align-items:center;gap:12px;padding:14px 16px;margin-bottom:10px;background:linear-gradient(135deg,#FEF4E1 0%,#FFF9EB 100%);border:1.5px solid rgba(245,158,11,0.35);border-radius:12px;text-decoration:none;color:inherit;">
             <div style="position:relative;width:40px;height:40px;border-radius:10px;background:var(--status-warning);color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
               <span class="material-symbols-rounded" style="font-size:22px;">notifications_active</span>
               <span style="position:absolute;top:-4px;right:-4px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--status-danger);color:#fff;font-size:10.5px;font-weight:800;display:flex;align-items:center;justify-content:center;border:2px solid #fff;">${totalDados}</span>
@@ -24211,24 +24835,17 @@ function renderAdminDashboard() {
         `);
       }
 
-      // Banner 3: Solicitações de reabertura de visita (Sprint 8.11)
       if (totalReab > 0) {
-        // Leva pra visita da solicitação mais recente (admin vai ver o banner + botões lá)
         const primeiraVisitaId = reabPend[0].visita_id;
         bannersHtml.push(`
-          <a href="#/visitas/relatorio?id=${primeiraVisitaId}" style="
-            display:flex;align-items:center;gap:12px;padding:14px 16px;margin-bottom:10px;
-            background:linear-gradient(135deg,#E4ECFD 0%,#EFF3FC 100%);
-            border:1.5px solid rgba(37,99,235,0.35);border-radius:12px;
-            text-decoration:none;color:inherit;transition:all 140ms;position:relative;
-          " onmouseover="this.style.transform='translateY(-1px)';this.style.boxShadow='0 4px 12px rgba(37,99,235,0.15)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
+          <a href="#/visitas/relatorio?id=${primeiraVisitaId}" style="display:flex;align-items:center;gap:12px;padding:14px 16px;margin-bottom:10px;background:linear-gradient(135deg,#E4ECFD 0%,#EFF3FC 100%);border:1.5px solid rgba(37,99,235,0.35);border-radius:12px;text-decoration:none;color:inherit;">
             <div style="position:relative;width:40px;height:40px;border-radius:10px;background:var(--status-info);color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
               <span class="material-symbols-rounded" style="font-size:22px;">lock_open</span>
               <span style="position:absolute;top:-4px;right:-4px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--status-danger);color:#fff;font-size:10.5px;font-weight:800;display:flex;align-items:center;justify-content:center;border:2px solid #fff;">${totalReab}</span>
             </div>
             <div style="flex:1;">
               <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:14px;line-height:1.3;">Solicitações de reabertura</div>
-              <div style="font-size:11.5px;color:#1E40AF;margin-top:2px;"><strong>${totalReab}</strong> ${totalReab === 1 ? 'profissional quer reabrir uma visita' : 'profissionais querem reabrir visitas'}.</div>
+              <div style="font-size:11.5px;color:#1E40AF;margin-top:2px;"><strong>${totalReab}</strong> ${totalReab === 1 ? 'profissional quer reabrir' : 'profissionais querem reabrir'}.</div>
             </div>
             <span class="material-symbols-rounded" style="font-size:18px;color:var(--status-info);">arrow_forward</span>
           </a>
@@ -24242,205 +24859,208 @@ function renderAdminDashboard() {
     }
   }, 0);
 
-  // Dispara carregamento dos dados do dashboard
+  // Dispara o MESMO carregador do desktop — popula todos os IDs com dados reais
   setTimeout(() => {
-    carregarDashboardData(30);
-    // Liga seletor de período
-    document.querySelectorAll('#dashPeriodSelector .dash-period-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('#dashPeriodSelector .dash-period-btn').forEach(b => b.classList.remove('is-active'));
-        btn.classList.add('is-active');
-        carregarDashboardData(btn.dataset.period);
-      });
-    });
+    if (typeof carregarAdminDashboardDesktop === 'function') {
+      carregarAdminDashboardDesktop();
+    }
   }, 0);
+
+  // ----- Period selector idêntico ao desktop (botões + dropdown mês) -----
+  const periodos = [
+    { id: '7',          label: '7 dias' },
+    { id: '30',         label: '30 dias' },
+    { id: 'mes-atalho', label: 'Mês' },
+    { id: 'tri',        label: 'Tri' },
+    { id: 'all',        label: 'Tudo' },
+  ];
+  const periodoAtual = window._dashDesktopPeriodo;
+  const ehMesEspecifico = typeof periodoAtual === 'string' && periodoAtual.startsWith('mes:');
+  const isAtivo = (id) => id === 'mes-atalho' ? ehMesEspecifico : periodoAtual === id;
+
+  const hoje = new Date();
+  const mesVigente = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2,'0')}`;
+  const valorDropdown = ehMesEspecifico ? periodoAtual.slice(4) : mesVigente;
+  const mesNomes = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  const opcoesMes = [];
+  for (let off = 0; off >= -23; off--) {
+    const m = new Date(hoje.getFullYear(), hoje.getMonth() + off, 1);
+    const valor = `${m.getFullYear()}-${String(m.getMonth() + 1).padStart(2,'0')}`;
+    const label = `${mesNomes[m.getMonth()]}/${m.getFullYear()}`;
+    opcoesMes.push(`<option value="${valor}"${valor === valorDropdown ? ' selected' : ''}>${label}</option>`);
+  }
 
   return `
     <div class="mobile-app">
-      ${mobileTopBar({ showLogo: true, showNotification: true, showAvatar: true, showMenu: true })}
-      <main class="mcontent">
-        <div class="home__greeting">
-          <div class="home__greeting-title">Painel Administrador</div>
-          <div class="home__greeting-date">${user.nome} · ${formatarDataPtBr(new Date())}</div>
+      ${mobileTopBar({ title: 'Dashboard', showNotification: true, showAvatar: true, showMenu: true })}
+      <main class="mcontent dsd-mobile">
+
+        <!-- Saudação -->
+        <div style="margin:-4px 0 14px;">
+          <div style="font-family:var(--font-display);font-weight:700;font-size:20px;color:var(--brand-navy);line-height:1.2;">Painel Administrador</div>
+          <div style="font-size:12px;color:var(--neutral-500);margin-top:3px;">${user.nome} · ${formatarDataPtBr(new Date())}</div>
         </div>
 
+        <!-- Period selector horizontal scrollável + dropdown de mês + tune -->
+        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px;">
+          <div style="display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding:3px;background:var(--neutral-100);border-radius:9999px;scrollbar-width:none;">
+            ${periodos.map(p => `
+              <button onclick="trocarPeriodoDashDesktop('${p.id}')" style="flex-shrink:0;padding:7px 14px;border:0;background:${isAtivo(p.id) ? 'var(--brand-navy)' : 'transparent'};color:${isAtivo(p.id) ? '#fff' : 'var(--neutral-600)'};border-radius:9999px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;">${p.label}</button>
+            `).join('')}
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <select onchange="trocarMesDashDesktop(this.value)" title="Escolher mês" style="flex:1;height:36px;padding:0 12px;border:1px solid ${ehMesEspecifico ? 'var(--brand-navy)' : 'var(--neutral-200)'};border-radius:9999px;background:${ehMesEspecifico ? 'var(--brand-navy)' : '#fff'};color:${ehMesEspecifico ? '#fff' : 'var(--neutral-600)'};font-family:inherit;font-size:12.5px;font-weight:600;cursor:pointer;outline:none;-webkit-appearance:none;appearance:none;background-image:url(&quot;data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='${ehMesEspecifico ? 'white' : '%236B7280'}'%3e%3cpath d='M7 10l5 5 5-5z'/%3e%3c/svg%3e&quot;);background-repeat:no-repeat;background-position:right 8px center;background-size:18px;padding-right:32px;">
+              ${opcoesMes.join('')}
+            </select>
+            <button onclick="abrirCustomizarDashDesktop()" title="Personalizar indicadores" style="width:36px;height:36px;border-radius:9999px;border:1px solid var(--neutral-200);background:#fff;color:var(--neutral-600);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;">
+              <span class="material-symbols-rounded" style="font-size:18px;">tune</span>
+            </button>
+            <button onclick="exportarRelatorioDashboard()" title="Exportar PDF" style="width:36px;height:36px;border-radius:9999px;border:1px solid var(--neutral-200);background:#fff;color:var(--neutral-600);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;">
+              <span class="material-symbols-rounded" style="font-size:18px;">print</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Banners de pendências (carregados async) -->
         <div id="pendingAprovacoesBanner" style="display:none;"></div>
 
-        <button onclick="entrarModoSimulacaoNutri()" style="
-          width:100%;margin-bottom:16px;padding:12px 14px;
-          background:linear-gradient(135deg,#FEF4E1 0%,#FFF8E5 100%);
-          border:1.5px dashed var(--status-warning);border-radius:12px;
-          display:flex;align-items:center;gap:10px;cursor:pointer;
-          color:#92400E;font-family:var(--font-sans);font-size:13px;font-weight:600;
-          transition:all 140ms;
-        " onmouseover="this.style.background='#FDE9C3'" onmouseout="this.style.background='linear-gradient(135deg,#FEF4E1 0%,#FFF8E5 100%)'">
-          <span class="material-symbols-rounded" style="font-size:20px;color:var(--status-warning);">visibility</span>
-          <div style="flex:1;text-align:left;">
-            <div style="font-weight:700;color:#B45309;">Simular como nutricionista</div>
-            <div style="font-size:11.5px;font-weight:500;color:#92400E;margin-top:2px;">Teste o fluxo do nutri sem sair da sua conta.</div>
-          </div>
-          <span class="material-symbols-rounded" style="font-size:20px;color:var(--status-warning);">arrow_forward</span>
-        </button>
+        <!-- Container principal (mesmo ID do desktop pra que aplicarDashLayout funcione) -->
+        <div id="dsdMainContent" style="display:flex;flex-direction:column;gap:16px;">
 
-        <!-- Seletor de período + botão exportar -->
-        <div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:14px;flex-wrap:wrap;">
-          <div class="dash-period-selector" id="dashPeriodSelector" style="margin-bottom:0;flex:1;min-width:0;">
-            <button class="dash-period-btn" data-period="7">7 dias</button>
-            <button class="dash-period-btn is-active" data-period="30">30 dias</button>
-            <button class="dash-period-btn" data-period="mes">Mês</button>
-            <button class="dash-period-btn" data-period="tri">Trimestre</button>
-            <button class="dash-period-btn" data-period="all">Tudo</button>
+          <!-- Banner de filtro ativo por profissional (Sprint 9.32.145) -->
+          <div id="dsdFiltroNutriBanner" style="display:none;"></div>
+
+          <!-- KPIs em grid 2x3 (mobile) — SEM CSS inline pra que media query funcione -->
+          <div data-dash-section="kpis" class="dsd-kpi-row-mobile" id="dsdKpiRow">
+            <div style="background:#fff;border-radius:12px;padding:30px 14px;border:1px solid var(--neutral-200);text-align:center;color:var(--neutral-400);font-size:12px;grid-column:span 2;">Carregando KPIs...</div>
           </div>
-          <button onclick="exportarRelatorioDashboard()" class="relatorio-btn relatorio-btn--primary" style="padding:7px 14px;font-size:12px;flex-shrink:0;" title="Gera uma versão imprimível / PDF do dashboard">
-            <span class="material-symbols-rounded" style="font-size:16px;">print</span>
-            Exportar PDF
-          </button>
+
+          <!-- Rankings (Nutris + Instituições) — em coluna no mobile -->
+          <div data-dash-section="rankings" class="dsd-stack-mobile">
+            <div class="ds-chart-card">
+              <div class="ds-chart-card__header">
+                <div>
+                  <div class="ds-chart-card__title">Visitas por nutricionista</div>
+                  <div class="ds-chart-card__subtitle" id="dsdRankingSubtitle">—</div>
+                </div>
+              </div>
+              <div id="dsdRankingNutri" style="min-height:100px;">Carregando...</div>
+            </div>
+            <div class="ds-chart-card">
+              <div class="ds-chart-card__header">
+                <div>
+                  <div class="ds-chart-card__title">Visitas por instituição</div>
+                  <div class="ds-chart-card__subtitle" id="dsdRankingInstSubtitle">—</div>
+                </div>
+              </div>
+              <div id="dsdRankingInst" style="min-height:100px;">Carregando...</div>
+            </div>
+          </div>
+
+          <!-- Visitas por semana + Distribuição por objetivo -->
+          <div data-dash-section="semana-objetivo" class="dsd-stack-mobile">
+            <div class="ds-chart-card">
+              <div class="ds-chart-card__header" style="flex-wrap:wrap;gap:8px;">
+                <div>
+                  <div class="ds-chart-card__title">Visitas realizadas</div>
+                  <div class="ds-chart-card__subtitle">Por período · meta diária configurável</div>
+                </div>
+                <button onclick="window.editarMetaVisitasDia()" title="Ajustar meta" style="background:transparent;border:1px solid var(--neutral-200);width:32px;height:32px;border-radius:7px;cursor:pointer;color:var(--neutral-600);display:flex;align-items:center;justify-content:center;font-family:inherit;flex-shrink:0;">
+                  <span class="material-symbols-rounded" style="font-size:16px;">tune</span>
+                </button>
+              </div>
+              <div id="dsdVisitasSemana" style="min-height:200px;display:flex;align-items:center;justify-content:center;color:var(--neutral-400);font-size:12px;">Carregando...</div>
+            </div>
+            <div class="ds-chart-card">
+              <div class="ds-chart-card__header">
+                <div>
+                  <div class="ds-chart-card__title">Distribuição por objetivo</div>
+                  <div class="ds-chart-card__subtitle">Tipo declarado em cada visita</div>
+                </div>
+              </div>
+              <div id="dsdDonutObj" style="min-height:180px;display:flex;align-items:center;justify-content:center;color:var(--neutral-400);font-size:12px;">Carregando...</div>
+            </div>
+          </div>
+
+          <!-- Heatmap + Mapa + Status/Checkin/Tipo + Inativos -->
+          <div data-dash-section="heatmap-pies" style="display:flex;flex-direction:column;gap:16px;">
+
+            <!-- Heatmap (com scroll horizontal se precisar) -->
+            <div class="ds-chart-card">
+              <div class="ds-chart-card__header">
+                <div>
+                  <div class="ds-chart-card__title">Dias × horários</div>
+                  <div class="ds-chart-card__subtitle" id="dsdHeatSubtitle">Heatmap · últimos 90 dias</div>
+                </div>
+              </div>
+              <div id="dsdHeatmap" style="min-height:200px;display:flex;align-items:center;justify-content:center;color:var(--neutral-400);font-size:12px;">Carregando...</div>
+            </div>
+
+            <!-- Mapa de visitas -->
+            <div class="ds-chart-card">
+              <div class="ds-chart-card__header">
+                <div>
+                  <div class="ds-chart-card__title">Mapa de visitas</div>
+                  <div class="ds-chart-card__subtitle" id="dsdMapaSubtitle">Onde a equipe esteve</div>
+                </div>
+              </div>
+              <div id="dsdMapa" style="min-height:220px;display:flex;align-items:center;justify-content:center;color:var(--neutral-400);font-size:12px;">Carregando...</div>
+            </div>
+
+            <!-- Status + Check-in + Tipo de instituição (3 cards stacked) -->
+            <div class="dsd-stack-mobile">
+              <div class="ds-chart-card">
+                <div class="ds-chart-card__header">
+                  <div>
+                    <div class="ds-chart-card__title">Status das visitas</div>
+                    <div class="ds-chart-card__subtitle">Distribuição no período</div>
+                  </div>
+                </div>
+                <div id="dsdPieStatus" style="min-height:200px;">Carregando...</div>
+              </div>
+              <div class="ds-chart-card">
+                <div class="ds-chart-card__header">
+                  <div>
+                    <div class="ds-chart-card__title">Qualidade do check-in</div>
+                    <div class="ds-chart-card__subtitle">GPS validado vs manual</div>
+                  </div>
+                </div>
+                <div id="dsdPieCheckin" style="min-height:200px;">Carregando...</div>
+              </div>
+              <div class="ds-chart-card">
+                <div class="ds-chart-card__header">
+                  <div>
+                    <div class="ds-chart-card__title">Tipo de instituição</div>
+                    <div class="ds-chart-card__subtitle">Privada / pública / etc</div>
+                  </div>
+                </div>
+                <div id="dsdPieTipoInst" style="min-height:200px;">Carregando...</div>
+              </div>
+            </div>
+
+            <!-- Nutricionistas sem atividade -->
+            <div class="ds-chart-card" id="dsdNutrisInativosCard">
+              <div class="ds-chart-card__header">
+                <div>
+                  <div class="ds-chart-card__title">Nutricionistas sem atividade</div>
+                  <div class="ds-chart-card__subtitle" id="dsdInativosSubtitle">—</div>
+                </div>
+              </div>
+              <div id="dsdNutrisInativos" style="min-height:200px;">Carregando...</div>
+            </div>
+          </div>
+
         </div>
 
-        <!-- Seção 1: KPIs Gerais (6 cards em grid 2x3) -->
-        <div class="dash-kpi-grid" id="dashKpiGrid">
-          <a href="#" onclick="irParaVisitasComPeriodoAtual(); return false;" class="dash-kpi-card dash-kpi-card--clickable" title="Ver lista completa de visitas">
-            <div class="dash-kpi-card__label">
-              Total de visitas
-              <span class="material-symbols-rounded" style="font-size:13px;color:var(--neutral-400);vertical-align:middle;margin-left:3px;">arrow_forward</span>
-            </div>
-            <div style="display:flex;align-items:baseline;justify-content:space-between;gap:6px;">
-              <div class="dash-kpi-card__value" id="kpiTotalVisitas">—</div>
-              <span id="kpiTotalDiff" style="font-size:11px;font-weight:700;display:inline-flex;align-items:center;gap:2px;"></span>
-            </div>
-            <div class="dash-kpi-card__hint" id="kpiTotalHint">&nbsp;</div>
-          </a>
-          <a href="#" onclick="irParaVisitasRealizadas(); return false;" class="dash-kpi-card dash-kpi-card--clickable" title="Ver apenas visitas realizadas">
-            <div class="dash-kpi-card__label">
-              Taxa de realização
-              <span class="material-symbols-rounded" style="font-size:13px;color:var(--neutral-400);vertical-align:middle;margin-left:3px;">arrow_forward</span>
-            </div>
-            <div style="display:flex;align-items:baseline;justify-content:space-between;gap:6px;">
-              <div class="dash-kpi-card__value" id="kpiTaxaRealiz">—</div>
-              <span id="kpiTaxaDiff" style="font-size:11px;font-weight:700;display:inline-flex;align-items:center;gap:2px;"></span>
-            </div>
-            <div class="dash-kpi-card__hint" id="kpiTaxaHint">&nbsp;</div>
-          </a>
-          <a href="#" onclick="irParaPendenciasInteligente(); return false;" class="dash-kpi-card dash-kpi-card--clickable" title="Ver itens aguardando aprovação">
-            <div class="dash-kpi-card__label">
-              Pendências
-              <span class="material-symbols-rounded" style="font-size:13px;color:var(--neutral-400);vertical-align:middle;margin-left:3px;">arrow_forward</span>
-            </div>
-            <div class="dash-kpi-card__value" id="kpiPendencias">—</div>
-            <div class="dash-kpi-card__hint" id="kpiPendHint">&nbsp;</div>
-          </a>
-          <a href="#" onclick="irParaVisitasComDivergencia(); return false;" class="dash-kpi-card dash-kpi-card--clickable" title="Ver visitas com GPS divergente ou check-in manual">
-            <div class="dash-kpi-card__label">
-              Qualidade GPS
-              <span class="material-symbols-rounded" style="font-size:13px;color:var(--neutral-400);vertical-align:middle;margin-left:3px;">arrow_forward</span>
-            </div>
-            <div style="display:flex;align-items:baseline;justify-content:space-between;gap:6px;">
-              <div class="dash-kpi-card__value" id="kpiQualidadeGps">—</div>
-              <span id="kpiGpsDiff" style="font-size:11px;font-weight:700;display:inline-flex;align-items:center;gap:2px;"></span>
-            </div>
-            <div class="dash-kpi-card__hint" id="kpiGpsHint">&nbsp;</div>
-          </a>
-          <div class="dash-kpi-card" title="Tempo médio efetivo por visita realizada">
-            <div class="dash-kpi-card__label">Tempo médio</div>
-            <div style="display:flex;align-items:baseline;justify-content:space-between;gap:6px;">
-              <div class="dash-kpi-card__value" id="kpiTempoMedio">—</div>
-              <span id="kpiTempoDiff" style="font-size:11px;font-weight:700;display:inline-flex;align-items:center;gap:2px;"></span>
-            </div>
-            <div class="dash-kpi-card__hint" id="kpiTempoHint">&nbsp;</div>
+        <!-- Ações pendentes (sidebar do desktop vira card no fim do mobile) -->
+        <div class="ds-chart-card" style="margin-top:16px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+            <div style="font-family:var(--font-display);font-weight:600;font-size:15px;color:var(--brand-navy);">Ações pendentes</div>
+            <span id="dsdPendCount" style="background:var(--brand-navy);color:#fff;font-size:11px;font-weight:700;padding:2px 9px;border-radius:9999px;min-width:24px;text-align:center;">—</span>
           </div>
-          <div class="dash-kpi-card" title="Média de visitas por dia no período">
-            <div class="dash-kpi-card__label">Visitas/dia</div>
-            <div style="display:flex;align-items:baseline;justify-content:space-between;gap:6px;">
-              <div class="dash-kpi-card__value" id="kpiVisitasDia">—</div>
-              <span id="kpiVisitasDiaDiff" style="font-size:11px;font-weight:700;display:inline-flex;align-items:center;gap:2px;"></span>
-            </div>
-            <div class="dash-kpi-card__hint" id="kpiVisitasDiaHint">&nbsp;</div>
-          </div>
-        </div>
-
-        <!-- Seção 2: Gráfico de linha - visitas no tempo -->
-        <div class="dash-card">
-          <div class="dash-card__title">
-            <span class="material-symbols-rounded" style="font-size:18px;color:var(--status-info);">trending_up</span>
-            Visitas no período
-          </div>
-          <div id="dashChartLine" style="min-height:150px;display:flex;align-items:center;justify-content:center;color:var(--neutral-400);font-size:12px;">
-            Carregando...
-          </div>
-        </div>
-
-        <!-- Sprint 9.12 Parte B: padrões semanais e de horário -->
-        <div class="dash-pies-grid">
-          <div class="dash-card">
-            <div class="dash-card__title">
-              <span class="material-symbols-rounded" style="font-size:18px;color:var(--status-info);">calendar_view_week</span>
-              Padrão semanal
-            </div>
-            <div id="dashBarsWeekday" style="min-height:120px;font-size:12px;color:var(--neutral-400);">—</div>
-          </div>
-          <div class="dash-card">
-            <div class="dash-card__title">
-              <span class="material-symbols-rounded" style="font-size:18px;color:var(--status-info);">schedule</span>
-              Padrão de horário
-            </div>
-            <div id="dashBarsHora" style="min-height:120px;font-size:12px;color:var(--neutral-400);">—</div>
-          </div>
-        </div>
-
-        <!-- Seção 3: Rankings (profissionais + instituições) -->
-        <div class="dash-rankings-grid">
-          <div class="dash-card">
-            <div class="dash-card__title">
-              <span class="material-symbols-rounded" style="font-size:18px;color:var(--brand-lime);">stethoscope</span>
-              Top profissionais
-            </div>
-            <div id="dashRankProf" style="min-height:120px;font-size:12px;color:var(--neutral-400);">Carregando...</div>
-          </div>
-          <div class="dash-card">
-            <div class="dash-card__title">
-              <span class="material-symbols-rounded" style="font-size:18px;color:var(--brand-navy);">local_hospital</span>
-              Top instituições
-            </div>
-            <div id="dashRankInst" style="min-height:120px;font-size:12px;color:var(--neutral-400);">Carregando...</div>
-          </div>
-        </div>
-
-        <!-- Seção 4: Distribuições -->
-        <!-- Linha 1: Status + Check-in lado a lado -->
-        <div class="dash-pies-grid">
-          <div class="dash-card">
-            <div class="dash-card__title" style="font-size:12px;">Status das visitas</div>
-            <div id="dashPieStatus" style="min-height:100px;font-size:11px;color:var(--neutral-400);">—</div>
-          </div>
-          <div class="dash-card">
-            <div class="dash-card__title" style="font-size:12px;">Tipo de check-in</div>
-            <div id="dashPieCheckin" style="min-height:100px;font-size:11px;color:var(--neutral-400);">—</div>
-          </div>
-        </div>
-        <!-- Linha 2: Top objetivos sozinho, com mais espaço -->
-        <div class="dash-card">
-          <div class="dash-card__title">
-            <span class="material-symbols-rounded" style="font-size:18px;color:var(--brand-lime);">flag</span>
-            Top objetivos
-          </div>
-          <div id="dashPieObj" style="min-height:120px;font-size:12px;color:var(--neutral-400);">—</div>
-        </div>
-
-        <!-- Sprint 9.12 Parte C: insights operacionais -->
-        <div class="dash-rankings-grid">
-          <div class="dash-card">
-            <div class="dash-card__title">
-              <span class="material-symbols-rounded" style="font-size:18px;color:var(--status-warning);">person_off</span>
-              Nutris inativos
-            </div>
-            <div id="dashNutrisInativos" style="min-height:120px;font-size:12px;color:var(--neutral-400);">Carregando...</div>
-          </div>
-          <div class="dash-card">
-            <div class="dash-card__title">
-              <span class="material-symbols-rounded" style="font-size:18px;color:var(--brand-navy);">domain</span>
-              Tipo de instituição
-            </div>
-            <div id="dashPieTipoInst" style="min-height:120px;font-size:12px;color:var(--neutral-400);">Carregando...</div>
+          <div style="font-size:11.5px;color:var(--neutral-500);margin-bottom:14px;">Requerem sua atenção</div>
+          <div id="dsdAcoesPendentes" style="display:flex;flex-direction:column;gap:10px;">
+            <div style="padding:20px;text-align:center;color:var(--neutral-400);font-size:12px;">Carregando...</div>
           </div>
         </div>
 
@@ -26697,8 +27317,9 @@ function _initMapaLeafletVisita(v) {
   const map = L.map(containerId, { zoomControl: true, scrollWheelZoom: false }).setView([pontos[0].lat, pontos[0].lng], 16);
   container._leaflet_map = map;
 
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '© OpenStreetMap',
+  // Sprint 9.32.136: tile Esri World Street Map (visual estilo Google Maps clássico, gratuito)
+  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+    attribution: 'Tiles © Esri',
     maxZoom: 19,
   }).addTo(map);
 
@@ -34949,7 +35570,7 @@ async function listarItensPadronizados({ apenasMeus = false } = {}) {
       id, instituicao_id, descricao_produto, marca, categoria, observacao,
       status, convertido_em, convertido_em_descricao, convertido_em_marca, convertido_em_catalogo_id,
       registrado_por, criado_em, atualizado_em,
-      origem, profissional_conversao_id, conversao_iniciada_em,
+      origem, eh_propria, profissional_conversao_id, conversao_iniciada_em,
       revisado_admin, revisado_por, revisado_em,
       instituicoes(id, nome, cidade),
       usuarios:registrado_por(id, nome, foto_url)
@@ -35070,12 +35691,13 @@ async function showModalItemPadronizado({ modo = 'cadastro', itemExistente = nul
     const valNhscDesc = ehEdicao ? (itemExistente.convertido_em_descricao || '') : '';
     const valNhscMarca = ehEdicao ? (itemExistente.convertido_em_marca || '') : '';
     const mostrarSecaoNhsc = ehEdicao && (valStatus === 'em_negociacao' || valStatus === 'convertido');
+    // Sprint 9.32.124: flag "produto da nossa empresa" — colore o card e muda fluxo de iniciar negociação
+    const valEhPropria = ehEdicao ? !!itemExistente.eh_propria : false;
 
     // Sprint 9.32.94: regras de transição de status por etapa
-    // Cadastro novo → só padronizado (etapa inicial)
-    // Edição → mostra só transições válidas a partir do status atual
+    // Sprint 9.32.124: removido 'em_negociacao' do modal — só dá pra iniciar pelo ícone da swimlane
     const TRANSICOES_VALIDAS = {
-      padronizado:    ['padronizado', 'em_negociacao', 'perdido'],
+      padronizado:    ['padronizado', 'perdido'],
       em_negociacao:  ['em_negociacao', 'padronizado', 'convertido'],   // padronizado = "cancelar negociação"
       convertido:     ['convertido', 'padronizado'],                     // padronizado = "reverter conversão"
       perdido:        ['perdido', 'padronizado'],                        // recupera item antes perdido
@@ -35153,6 +35775,29 @@ async function showModalItemPadronizado({ modo = 'cadastro', itemExistente = nul
           <div class="report-field">
             <label for="mipObs">Observações <span style="color:var(--neutral-400);font-weight:normal;">(opcional)</span></label>
             <textarea id="mipObs" rows="2" placeholder="Ex: Volume mensal ~200kg, comprador Sr. José" style="width:100%;padding:10px 12px;border:1.5px solid var(--neutral-200);border-radius:10px;font-size:14px;font-family:inherit;resize:vertical;">${escAttr(valObs)}</textarea>
+          </div>
+
+          <!-- Sprint 9.32.124: toggle "produto da nossa empresa" -->
+          <div class="report-field">
+            <label>Origem do produto</label>
+            <div style="display:flex;gap:8px;">
+              <label style="flex:1;display:inline-flex;align-items:center;gap:8px;padding:10px 12px;border:1.5px solid ${!valEhPropria ? 'var(--status-danger)' : 'var(--neutral-200)'};border-radius:10px;cursor:pointer;font-size:13px;${!valEhPropria ? 'background:#FCEBEB;color:#A32D2D;font-weight:600;' : 'color:var(--neutral-600);'}">
+                <input type="radio" name="mipEhPropria" value="false" ${!valEhPropria ? 'checked' : ''} style="display:none;" />
+                <span style="font-size:16px;">⚠</span>
+                <div style="flex:1;">
+                  <div style="font-weight:700;">Concorrente</div>
+                  <div style="font-size:10.5px;font-weight:500;opacity:0.8;">Oportunidade — vale converter</div>
+                </div>
+              </label>
+              <label style="flex:1;display:inline-flex;align-items:center;gap:8px;padding:10px 12px;border:1.5px solid ${valEhPropria ? 'var(--brand-lime)' : 'var(--neutral-200)'};border-radius:10px;cursor:pointer;font-size:13px;${valEhPropria ? 'background:#F0F7E1;color:#27500A;font-weight:600;' : 'color:var(--neutral-600);'}">
+                <input type="radio" name="mipEhPropria" value="true" ${valEhPropria ? 'checked' : ''} style="display:none;" />
+                <span style="font-size:16px;">✓</span>
+                <div style="flex:1;">
+                  <div style="font-weight:700;">Nossa empresa</div>
+                  <div style="font-size:10.5px;font-weight:500;opacity:0.8;">Já é seu — proteger</div>
+                </div>
+              </label>
+            </div>
           </div>
 
           <div class="report-field">
@@ -35309,6 +35954,9 @@ async function showModalItemPadronizado({ modo = 'cadastro', itemExistente = nul
       if (!instId) { setFlash('warning', 'Selecione a instituição.'); return; }
       if (!desc) { setFlash('warning', 'Informe a descrição do produto.'); return; }
       if (!marca) { setFlash('warning', 'Informe a marca.'); return; }
+      // Sprint 9.32.124: lê toggle "produto da nossa empresa"
+      const ehPropriaRadio = backdrop.querySelector('input[name="mipEhPropria"]:checked');
+      const ehPropria = ehPropriaRadio ? ehPropriaRadio.value === 'true' : false;
       cleanup();
       resolve({
         instituicao_id: instId,
@@ -35317,6 +35965,7 @@ async function showModalItemPadronizado({ modo = 'cadastro', itemExistente = nul
         categoria: cat || null,
         observacao: obs || null,
         status,
+        eh_propria: ehPropria,
         origem: origemSelecionada,
         // Só passa NHSC se o status faz sentido (evita lixo no banco)
         convertido_em_descricao: incluirNhsc ? (nhscDesc || null) : null,
@@ -35351,6 +36000,27 @@ async function showModalItemPadronizado({ modo = 'cadastro', itemExistente = nul
         if (sec) {
           sec.style.display = (novoStatus === 'em_negociacao' || novoStatus === 'convertido') ? 'flex' : 'none';
         }
+      });
+    });
+
+    // Sprint 9.32.125: listener pra re-renderizar visual dos radios "Origem do produto"
+    backdrop.querySelectorAll('input[name="mipEhPropria"]').forEach(r => {
+      r.addEventListener('change', () => {
+        backdrop.querySelectorAll('input[name="mipEhPropria"]').forEach(inp => {
+          const lbl = inp.closest('label');
+          if (!lbl) return;
+          const ehPropria = inp.value === 'true';
+          const ativo = inp.checked;
+          if (ativo) {
+            if (ehPropria) {
+              lbl.style.cssText = `flex:1;display:inline-flex;align-items:center;gap:8px;padding:10px 12px;border:1.5px solid var(--brand-lime);border-radius:10px;cursor:pointer;font-size:13px;background:#F0F7E1;color:#27500A;font-weight:600;`;
+            } else {
+              lbl.style.cssText = `flex:1;display:inline-flex;align-items:center;gap:8px;padding:10px 12px;border:1.5px solid var(--status-danger);border-radius:10px;cursor:pointer;font-size:13px;background:#FCEBEB;color:#A32D2D;font-weight:600;`;
+            }
+          } else {
+            lbl.style.cssText = `flex:1;display:inline-flex;align-items:center;gap:8px;padding:10px 12px;border:1.5px solid var(--neutral-200);border-radius:10px;cursor:pointer;font-size:13px;color:var(--neutral-600);`;
+          }
+        });
       });
     });
   });
@@ -35412,6 +36082,7 @@ window.handleEditarItemPadronizado = async function(id) {
       observacao: novos.observacao,
       status: novos.status,
       origem: novos.origem,
+      eh_propria: novos.eh_propria, // Sprint 9.32.124
       // Sprint 9.32.76: salva troca do produto NHSC (em negociação/convertido)
       convertido_em_descricao: novos.convertido_em_descricao,
       convertido_em_marca: novos.convertido_em_marca,
@@ -35830,18 +36501,38 @@ window.handleAssumirConversao = async function(id) {
     // Sprint 9.32.17: detecta se é troca de alvo (eu já estou negociando, troca produto)
     const ehTrocaDeAlvo = antes.profissional_conversao_id === user.id && antes.status === 'em_negociacao';
 
-    // Se OUTRO está convertendo, pergunta antes de assumir
-    if (antes.profissional_conversao_id && antes.profissional_conversao_id !== user.id) {
+    // Sprint 9.32.124: produto da nossa empresa exige confirmação extra (proteção contra mudança acidental)
+    if (antes.eh_propria && !ehTrocaDeAlvo) {
+      const okPropria = await showModalConfirmacao({
+        icone: 'shield',
+        iconeCor: 'warning',
+        titulo: 'Iniciar negociação em produto próprio?',
+        subtitulo: `<strong>${(antes.descricao_produto || 'Este produto').replace(/</g,'&lt;')}</strong> está marcado como <strong>produto da nossa empresa</strong> nesta instituição.<br><br>Tem certeza que quer iniciar uma nova negociação? Isso pode indicar que o cliente está considerando trocar pra concorrência.`,
+        btnConfirmar: 'Sim, iniciar',
+        btnCancelar: 'Cancelar',
+      });
+      if (!okPropria) return;
+    }
+
+    // Sprint 9.32.123 FIX: só pergunta "assumir" se a negociação está ATIVA (status='em_negociacao').
+    // Antes considerava qualquer profissional_conversao_id preenchido — mas itens convertidos
+    // mantêm esse campo preenchido mesmo após 7d (quando voltam visualmente pra 'padronizado'),
+    // o que fazia o sistema falsamente avisar que "tinha alguém em negociação".
+    if (antes.status === 'em_negociacao' && antes.profissional_conversao_id && antes.profissional_conversao_id !== user.id) {
       const dt = antes.conversao_iniciada_em ? new Date(antes.conversao_iniciada_em) : null;
       const dataLabel = dt ? dt.toLocaleDateString('pt-BR') : '—';
       const dias = dt ? Math.floor((Date.now() - dt.getTime()) / 86400000) : null;
       const tempoLabel = dias === null ? '' : (dias === 0 ? ' (hoje)' : (dias === 1 ? ' (ontem)' : ` (há ${dias} dias)`));
 
-      const ok = confirm(
-        `Esse item já está em negociação por ${convAnterior?.nome || 'outro profissional'} desde ${dataLabel}${tempoLabel}.\n\n` +
-        `Você quer ASSUMIR a negociação? Em casos comuns como férias do colega, isso é esperado.\n\n` +
-        `O histórico ficará registrado.`
-      );
+      // Sprint 9.32.122: substitui confirm() nativo pelo modal customizado padrão do app
+      const ok = await showModalConfirmacao({
+        icone: 'swap_horiz',
+        iconeCor: 'warning',
+        titulo: 'Assumir negociação?',
+        subtitulo: `Esse item já está em negociação por <strong>${(convAnterior?.nome || 'outro profissional').replace(/</g,'&lt;')}</strong> desde <strong>${dataLabel}${tempoLabel}</strong>.<br><br>Em casos comuns (como férias do colega) é esperado assumir. O histórico ficará registrado.`,
+        btnConfirmar: 'Sim, assumir',
+        btnCancelar: 'Cancelar',
+      });
       if (!ok) return;
     }
 
@@ -36879,6 +37570,16 @@ function renderItensPadronizadosSwimlane() {
       .ip-swim-card.col-padronizado { border-left-color: var(--neutral-400); }
       .ip-swim-card.col-em_negociacao { border-left-color: #F59E0B; background:#FFF8EE; }
       .ip-swim-card.col-convertido { border-left-color: var(--status-success); background:#EAF5EE; }
+      /* Sprint 9.32.124: cores por origem (sobrescrevem as de coluna no padronizado) */
+      .ip-swim-card.col-padronizado.is-propria { border-left-color: #22A06B; border-left-width: 4px; background: #F0F7E1; }
+      .ip-swim-card.col-padronizado.is-concorrente { border-left-color: #DC2626; border-left-width: 4px; background: #FEF5F5; }
+      .ip-origem-badge {
+        display:inline-flex; align-items:center; gap:3px;
+        font-size:9px; font-weight:800; padding:1px 5px; border-radius:3px;
+        text-transform:uppercase; letter-spacing:0.3px; margin-left:4px;
+      }
+      .ip-origem-badge.is-propria { background:#DCFCE7; color:#166534; }
+      .ip-origem-badge.is-concorrente { background:#FEE2E2; color:#991B1B; }
       .ip-swim-card--origem {
         border: 1px dashed #F59E0B;
         background: #FFFBF0;
@@ -37114,7 +37815,8 @@ function _ipSwimRender() {
   }
 
   // Sprint 9.32.96: Insights agregados de TODOS os hospitais
-  _ipSwimRenderInsights(Object.values(gruposTodos));
+  // Sprint 9.32.126 FIX: era gruposTodos (variável de outro escopo) — correto é 'grupos'
+  _ipSwimRenderInsights(Object.values(grupos));
 }
 
 // Calcula insights agregados pra todos os hospitais e renderiza no sidebar
@@ -37270,9 +37972,18 @@ function _ipSwimCard(it, colVisual) {
     `;
   }
 
+  // Sprint 9.32.125: classe e badge — null/false = concorrente (default), true = nosso
+  const origemClass = colVisual === 'padronizado'
+    ? (it.eh_propria === true ? ' is-propria' : ' is-concorrente')
+    : '';
+  const origemBadge = colVisual === 'padronizado'
+    ? (it.eh_propria === true
+        ? `<span class="ip-origem-badge is-propria" title="Produto da nossa empresa">✓ Nosso</span>`
+        : `<span class="ip-origem-badge is-concorrente" title="Produto concorrente — oportunidade de conversão">⚠ Concorrente</span>`)
+    : '';
   return `
-    <div class="ip-swim-card col-${colVisual}" data-item-id="${it.id}" data-col-atual="${colVisual}" draggable="true" onclick="handleVerDetalheItemSwim('${it.id}')" title="Clique pra editar · Arraste pra mudar status">
-      <div class="prod">${prod.length > 36 ? prod.slice(0,36) + '…' : prod}</div>
+    <div class="ip-swim-card col-${colVisual}${origemClass}" data-item-id="${it.id}" data-col-atual="${colVisual}" draggable="true" onclick="handleVerDetalheItemSwim('${it.id}')" title="Clique pra editar · Arraste pra mudar status">
+      <div class="prod">${prod.length > 36 ? prod.slice(0,36) + '…' : prod}${origemBadge}</div>
       ${marca || cad ? `<div class="meta">${marca}${marca && cad ? ' · ' : ''}${cad ? cad : ''}</div>` : ''}
       ${targetHtml}
       ${seloHtml}
@@ -37439,19 +38150,25 @@ window.handleVerDetalheItemSwim = function(itemId) {
 //   - "Iniciar negociação" → escolhe um padronizado, dispara handleAssumirConversao
 //   - "Marcar conversão" → escolhe um em_negociacao, dispara handleMudarStatusItem
 window._ipSwimAbrirSeletor = function(hospitalId, statusOrigem) {
-  const itens = (window._ipItens || []).filter(it =>
-    it.instituicao_id === hospitalId &&
-    it.status === statusOrigem
-  );
+  // Sprint 9.32.128: ao iniciar negociação, só lista itens CONCORRENTES (eh_propria != true).
+  // Itens nossos ficam fora — pra mexer neles, clica direto no card padronizado.
+  const ehParaNegociar = statusOrigem === 'padronizado';
+  const itens = (window._ipItens || []).filter(it => {
+    if (it.instituicao_id !== hospitalId) return false;
+    if (it.status !== statusOrigem) return false;
+    if (ehParaNegociar && it.eh_propria === true) return false; // nossos não entram no seletor
+    return true;
+  });
   if (itens.length === 0) {
-    setFlash && setFlash('warning', 'Nenhum item disponível.');
+    setFlash && setFlash('warning', ehParaNegociar
+      ? 'Nenhum item concorrente disponível pra negociar. Itens da nossa empresa não aparecem aqui — pra editá-los, clique direto no card.'
+      : 'Nenhum item disponível.');
     return;
   }
 
-  const ehParaNegociar = statusOrigem === 'padronizado';
   const titulo = ehParaNegociar ? 'Iniciar negociação' : 'Marcar conversão';
   const subtitulo = ehParaNegociar
-    ? 'Escolha qual item padronizado você quer começar a negociar.'
+    ? 'Escolha qual item concorrente você quer começar a negociar. (Itens da nossa empresa não aparecem — clique direto neles pra editar.)'
     : 'Escolha qual item em negociação foi convertido.';
   const cor = ehParaNegociar ? '#F59E0B' : 'var(--status-success)';
   const corBg = ehParaNegociar ? '#FFF8EE' : '#EAF5EE';
@@ -37638,6 +38355,17 @@ function renderItensPadronizadosCarrossel() {
         border: 1px solid var(--neutral-200);
       }
       .ipc-card:active { background: var(--neutral-50); }
+      /* Sprint 9.32.129: cores por origem no mobile (espelha desktop) */
+      .ipc-card.is-propria { border-left: 4px solid #22A06B; background: #F0F7E1; }
+      .ipc-card.is-concorrente { border-left: 4px solid #DC2626; background: #FEF5F5; }
+      .ipc-origem-badge {
+        display:inline-flex; align-items:center; gap:2px;
+        font-size:9px; font-weight:800; padding:1px 5px; border-radius:3px;
+        text-transform:uppercase; letter-spacing:0.3px; margin-left:5px;
+        vertical-align:middle;
+      }
+      .ipc-origem-badge.is-propria { background:#DCFCE7; color:#166534; }
+      .ipc-origem-badge.is-concorrente { background:#FEE2E2; color:#991B1B; }
       .ipc-card .meta { font-size: 10.5px; color: var(--neutral-500); margin-top: 2px; font-weight: 400; }
       .ipc-card .selo {
         display:inline-flex; align-items:center; gap:3px;
@@ -38104,12 +38832,17 @@ function _ipCarCardHtml(it, colVisual) {
   }
 
   // Ações inline (depende do status atual)
+  // Sprint 9.32.129: produto nosso (eh_propria=true) NÃO tem botão "Negociar" — só edita
   let acoesInline = '';
   if (it.status === 'padronizado') {
-    acoesInline = `
-      <button class="ipc-btn-act ipc-btn-neg" onclick="event.stopPropagation();handleAssumirConversao('${it.id}')">↪ Negociar</button>
-      <button class="ipc-btn-act ipc-btn-edit" onclick="event.stopPropagation();handleEditarItemPadronizado('${it.id}')">✏️ Editar</button>
-    `;
+    if (it.eh_propria === true) {
+      acoesInline = `<button class="ipc-btn-act ipc-btn-edit" onclick="event.stopPropagation();handleEditarItemPadronizado('${it.id}')">✏️ Editar</button>`;
+    } else {
+      acoesInline = `
+        <button class="ipc-btn-act ipc-btn-neg" onclick="event.stopPropagation();handleAssumirConversao('${it.id}')">↪ Negociar</button>
+        <button class="ipc-btn-act ipc-btn-edit" onclick="event.stopPropagation();handleEditarItemPadronizado('${it.id}')">✏️ Editar</button>
+      `;
+    }
   } else if (it.status === 'em_negociacao') {
     acoesInline = `
       <button class="ipc-btn-act ipc-btn-conv" onclick="event.stopPropagation();handleMudarStatusItem('${it.id}','convertido')">🏆 Converteu</button>
@@ -38123,10 +38856,19 @@ function _ipCarCardHtml(it, colVisual) {
     `;
   }
 
+  // Sprint 9.32.129: cores e badge por origem (só padronizado)
+  const origemClass = colVisual === 'padronizado'
+    ? (it.eh_propria === true ? ' is-propria' : ' is-concorrente')
+    : '';
+  const origemBadge = colVisual === 'padronizado'
+    ? (it.eh_propria === true
+        ? `<span class="ipc-origem-badge is-propria" title="Produto da nossa empresa">✓ Nosso</span>`
+        : `<span class="ipc-origem-badge is-concorrente" title="Produto concorrente — oportunidade">⚠ Concorrente</span>`)
+    : '';
   return `
-    <div class="ipc-card${expandido ? ' is-expanded' : ''}" onclick="window.ipCarToggleExpand('${it.id}')">
+    <div class="ipc-card${expandido ? ' is-expanded' : ''}${origemClass}" onclick="window.ipCarToggleExpand('${it.id}')">
       <div style="flex:1;min-width:0;">
-        <div>${prod.length > 40 ? prod.slice(0, 40) + '…' : prod}</div>
+        <div>${prod.length > 40 ? prod.slice(0, 40) + '…' : prod}${origemBadge}</div>
         ${marca || cad ? `<div class="meta">${marca}${marca && cad ? ' · ' : ''}${cad}</div>` : ''}
         ${targetHtml}
         ${seloHtml}
