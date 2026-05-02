@@ -6535,7 +6535,7 @@ a {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.168-rte-alca-resize-customizada-com-drag',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.169-rte-mic-auto-restart-so-para-no-clique',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -22537,11 +22537,12 @@ window.rteToggleMic = function(btn) {
     return;
   }
 
-  // Já tá ouvindo: para imediatamente (Sprint 9.32.166: usa abort em vez de stop)
+  // Já tá ouvindo: para imediatamente (Sprint 9.32.166 + 9.32.169)
   // abort() é instantâneo (descarta áudio pendente). stop() espera processar a última frase.
+  // 9.32.169: marca _rteUserWantsMic = false PRIMEIRO pra que o auto-restart no onend não dispare.
   if (btn.dataset.state === 'on') {
+    window._rteUserWantsMic = false; // sinaliza intenção de parar — onend não vai reiniciar
     const recAtual = window._rteRecognition;
-    // Limpa ANTES de abortar pra prevenir race condition
     window._rteRecognition = null;
     btn.dataset.state = 'off';
     btn.classList.remove('rte-mic-btn--on');
@@ -22606,6 +22607,13 @@ window.rteToggleMic = function(btn) {
 
   rec.onerror = (event) => {
     console.warn('[rte mic]', event.error);
+    // Sprint 9.32.169: 'no-speech' é silêncio normal — NÃO desliga o mic.
+    // Deixa o onend cuidar do reinício automático.
+    if (event.error === 'no-speech' || event.error === 'aborted') {
+      return;
+    }
+    // Erro real: desliga.
+    window._rteUserWantsMic = false;
     btn.dataset.state = 'off';
     btn.classList.remove('rte-mic-btn--on');
     if (status) status.style.display = 'none';
@@ -22613,9 +22621,9 @@ window.rteToggleMic = function(btn) {
       if (typeof setFlash === 'function') {
         setFlash('warning', 'Permissão de microfone negada. Habilite nas configurações do navegador.');
       }
-    } else if (event.error === 'no-speech') {
+    } else if (event.error === 'audio-capture') {
       if (typeof setFlash === 'function') {
-        setFlash('info', 'Nada foi falado. Tente novamente.');
+        setFlash('warning', 'Sem acesso ao microfone. Verifique se está conectado.');
       }
     } else {
       if (typeof setFlash === 'function') {
@@ -22624,7 +22632,20 @@ window.rteToggleMic = function(btn) {
     }
   };
 
+  // Sprint 9.32.169: auto-restart quando o navegador fecha a sessão por timeout/silêncio.
+  // Só reinicia se o usuário ainda QUER estar ouvindo (clicou pra ligar e não pra parar).
   rec.onend = () => {
+    if (window._rteUserWantsMic && window._rteRecognition === rec) {
+      // Reinicia mesma instância pra continuar ouvindo
+      try {
+        rec.start();
+        return; // mantém UI como está (vermelho/pulsando)
+      } catch (e) {
+        console.warn('[rte mic auto-restart]', e);
+        // Se falhou (browser realmente parou), cai pro reset abaixo
+      }
+    }
+    // Para de verdade: reseta UI
     btn.dataset.state = 'off';
     btn.classList.remove('rte-mic-btn--on');
     if (status) status.style.display = 'none';
@@ -22634,6 +22655,7 @@ window.rteToggleMic = function(btn) {
   try {
     rec.start();
     window._rteRecognition = rec;
+    window._rteUserWantsMic = true; // 9.32.169: usuário quer ouvir
     btn.dataset.state = 'on';
     btn.classList.add('rte-mic-btn--on');
     if (status) status.style.display = 'inline-flex';
