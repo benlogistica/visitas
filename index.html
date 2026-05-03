@@ -6683,7 +6683,7 @@ a {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.204-email-base64-fix',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.205-emails-onboarding',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -7106,6 +7106,30 @@ async function cadastrar(dados) {
   });
 
   if (error) throw new Error(`Erro ao criar conta: ${error.message}`);
+
+  // 9.32.205: e-mail "Cadastro recebido" — não bloqueia o cadastro se falhar
+  try {
+    const primeiroNome = (nome || '').trim().split(' ')[0] || 'Profissional';
+    const htmlEmail = _emailTemplateBN({
+      titulo: 'Cadastro recebido',
+      corpoHtml: `
+        <p>Olá, <strong>${primeiroNome}</strong>!</p>
+        <p>Recebemos seu cadastro na plataforma <strong>B&amp;N Logística</strong>. Sua conta está aguardando aprovação do administrador.</p>
+        <p>Você receberá um novo e-mail assim que for aprovado e poderá começar a usar o sistema.</p>
+        <p style="font-size:13px;color:#6b7280;margin-top:24px;">Se você não fez esse cadastro, ignore este e-mail.</p>
+      `,
+      rodape: 'Você está recebendo este e-mail porque alguém usou este endereço para se cadastrar no sistema B&N Logística.',
+    });
+    sendEmailViaEdge(
+      email.trim().toLowerCase(),
+      '[B&N Logística] Cadastro recebido — aguardando aprovação',
+      htmlEmail,
+      `Olá, ${primeiroNome}!\n\nRecebemos seu cadastro na B&N Logística. Sua conta está aguardando aprovação do administrador.\n\nVocê receberá outro e-mail assim que for aprovado.`
+    ).catch(err => console.error('[cadastrar] falha ao enviar e-mail:', err));
+  } catch (err) {
+    console.error('[cadastrar] erro ao montar e-mail:', err);
+  }
+
   return true;
 }
 
@@ -43473,11 +43497,43 @@ window.aprovarProfissional = async function(id) {
     btnCancelar: 'Cancelar',
   });
   if (!ok) return;
-  const { error } = await db.from('usuarios').update({ status: 'ativo' }).eq('id', id);
+  // 9.32.205: usa .select() pra recuperar email/nome e enviar e-mail "Cadastro aprovado"
+  const { data: aprovado, error } = await db
+    .from('usuarios')
+    .update({ status: 'ativo' })
+    .eq('id', id)
+    .select('id, email, nome')
+    .single();
   if (error) {
     setFlash('error', 'Erro ao aprovar: ' + error.message);
   } else {
     setFlash('success', 'Profissional aprovado. Acesso liberado.');
+
+    // E-mail "Cadastro aprovado" — não bloqueia o fluxo se SMTP falhar
+    if (aprovado?.email) {
+      try {
+        const primeiroNome = (aprovado.nome || '').trim().split(' ')[0] || 'Profissional';
+        const htmlEmail = _emailTemplateBN({
+          titulo: 'Cadastro aprovado!',
+          corpoHtml: `
+            <p>Olá, <strong>${primeiroNome}</strong>!</p>
+            <p>Boas-vindas à <strong>B&amp;N Logística</strong>! Seu cadastro foi aprovado e sua conta já está liberada.</p>
+            <p>Faça login com seu CPF e senha para começar a registrar visitas.</p>
+          `,
+          btnTexto: 'Acessar plataforma',
+          btnUrl: 'https://benlogistica.github.io/visitas',
+          rodape: 'Se você não esperava este e-mail, ignore esta mensagem.',
+        });
+        sendEmailViaEdge(
+          aprovado.email,
+          '[B&N Logística] Seu cadastro foi aprovado',
+          htmlEmail,
+          `Olá, ${primeiroNome}!\n\nBoas-vindas à B&N Logística! Seu cadastro foi aprovado e sua conta está liberada.\n\nAcesse: https://benlogistica.github.io/visitas`
+        ).catch(err => console.error('[aprovarProfissional] falha ao enviar e-mail:', err));
+      } catch (err) {
+        console.error('[aprovarProfissional] erro ao montar e-mail:', err);
+      }
+    }
   }
   recarregarEquipeUI();
 };
