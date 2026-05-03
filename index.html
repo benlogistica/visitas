@@ -6683,7 +6683,7 @@ a {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.207-debug-emails',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.208-subject-rfc5322',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -7120,9 +7120,12 @@ async function cadastrar(dados) {
       `,
       rodape: 'Você está recebendo este e-mail porque alguém usou este endereço para se cadastrar no sistema B&N Logística.',
     });
+    // 9.32.208: Subject curto e sem em-dash. Em-dash + Subject longo + acentos
+    // fazem o denomailer quebrar o encoded-word RFC 2047 errado, e o Gmail rejeita
+    // com 550-5.7.1 'From' header is missing.
     sendEmailViaEdge(
       email.trim().toLowerCase(),
-      '[B&N Logística] Cadastro recebido — aguardando aprovação',
+      '[B&N Logistica] Cadastro recebido',
       htmlEmail,
       `Olá, ${primeiroNome}!\n\nRecebemos seu cadastro na B&N Logística. Sua conta está aguardando aprovação do administrador.\n\nVocê receberá outro e-mail assim que for aprovado.`
     ).then(r => {
@@ -43527,9 +43530,10 @@ window.aprovarProfissional = async function(id) {
           btnUrl: 'https://www.benlogistica.com.br',
           rodape: 'Se você não esperava este e-mail, ignore esta mensagem.',
         });
+        // 9.32.208: Subject sem acentos pra evitar bug do denomailer com encoded-word
         sendEmailViaEdge(
           aprovado.email,
-          '[B&N Logística] Seu cadastro foi aprovado',
+          '[B&N Logistica] Cadastro aprovado',
           htmlEmail,
           `Olá, ${primeiroNome}!\n\nBoas-vindas à B&N Logística! Seu cadastro foi aprovado e sua conta está liberada.\n\nAcesse: https://www.benlogistica.com.br`
         ).then(r => {
