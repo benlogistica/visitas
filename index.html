@@ -6683,7 +6683,7 @@ a {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.201-fix-config-upsert',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.202-groq-link-dashboard',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -16243,7 +16243,7 @@ const ConfigMeta = {
   },
   groq_api_key: {
     titulo: 'Chave da Groq (ditado por voz)',
-    descricao: 'Necessária para o ditado por voz no relatório de visita usar Whisper Large v3. Crie uma chave gratuita em <a href="https://console.groq.com/keys" target="_blank" style="color:var(--brand-lime);text-decoration:underline;">console.groq.com/keys</a> (free tier ~4h/dia). A chave começa com <code>gsk_</code> e fica salva apenas neste sistema.',
+    descricao: 'Necessária para o ditado por voz no relatório de visita usar Whisper Large v3. A chave começa com <code>gsk_</code> e fica salva apenas neste sistema.<br><br><strong>Atalhos úteis:</strong><br>• <a href="https://console.groq.com/keys" target="_blank" rel="noopener" style="color:var(--brand-lime);text-decoration:underline;">🔑 Criar/gerenciar chaves</a><br>• <a href="https://console.groq.com/dashboard/usage" target="_blank" rel="noopener" style="color:var(--brand-lime);text-decoration:underline;">📊 Ver consumo da API (dashboard)</a><br>• <a href="https://console.groq.com/settings/limits" target="_blank" rel="noopener" style="color:var(--brand-lime);text-decoration:underline;">⚡ Limites do free tier</a>',
     categoria: 'voz',
     tipo: 'text',
     placeholder: 'gsk_...',
