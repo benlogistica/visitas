@@ -6599,7 +6599,7 @@ a {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.185-mic-stop-robusto-sem-travar-em-processando',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.186-mic-stop-brutal-keep-alive-intensificado',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -22765,26 +22765,32 @@ const _MIC_SUBSTITUICOES = [
   [/\b(fecha par[êe]nteses|fechar par[êe]nteses)\b/gi, ')'],
 ];
 
-// ===== Sprint 9.32.183: "Keep-alive" via tom inaudível =====
-// O navegador encerra o SpeechRecognition após ~3s de silêncio (no-speech timeout).
-// Truque: tocamos um tom super baixo (inaudível pro humano) o tempo todo, fazendo
-// o navegador pensar que sempre há áudio. Isso PREVINE o timeout de inatividade.
-// Resultado: o usuário pode ficar 20s, 1min, ou mais em silêncio sem o mic morrer.
+// ===== Sprint 9.32.186: "Keep-alive" INTENSIFICADO =====
+// O tom inaudível pelo speaker não chega ao MICROFONE (porque mic e speaker são canais
+// separados). A solução real é injetar áudio direto no mic via getUserMedia + Web Audio,
+// mas isso é hostil ao usuário.
+//
+// MELHOR ABORDAGEM: aumentar o volume pra algo levemente perceptível (ainda discreto)
+// E em paralelo MONITORAR ativamente — se a sessão morrer por silêncio, recriamos
+// imediatamente sem cooldown (mais agressivo).
 function _micIniciarKeepAlive() {
   if (window._micKeepAliveCtx) return; // já rodando
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
     const oscillator = ctx.createOscillator();
     const gainNode = ctx.createGain();
-    // Volume EXTREMAMENTE baixo (inaudível) — só pra ter "atividade"
-    gainNode.gain.value = 0.0001;
-    oscillator.frequency.value = 200; // tom grave, abaixo do limiar de percepção nesse volume
+    // Volume audível MAS BAIXO — quase imperceptível mas ajuda o navegador detectar
+    // (se for muito baixo, navegador ignora; se for muito alto, atrapalha o user)
+    gainNode.gain.value = 0.005; // ~0.5% volume — quase silêncio
+    // Frequência ALTA fora da banda da fala humana (não interfere na transcrição)
+    oscillator.frequency.value = 8000; // 8kHz — fora da banda 300-3400Hz da fala
+    oscillator.type = 'sine';
     oscillator.connect(gainNode);
     gainNode.connect(ctx.destination);
     oscillator.start();
     window._micKeepAliveCtx = ctx;
     window._micKeepAliveOsc = oscillator;
-    console.log('[mic] keep-alive iniciado (tom inaudível pra evitar timeout)');
+    console.log('[mic] keep-alive ATIVO (tom 8kHz vol 0.005)');
   } catch (e) {
     console.warn('[mic] keep-alive falhou', e);
   }
@@ -22799,6 +22805,7 @@ function _micPararKeepAlive() {
     try { window._micKeepAliveCtx.close(); } catch (e) {}
     window._micKeepAliveCtx = null;
   }
+  console.log('[mic] keep-alive desligado');
 }
 
 // ===== Sprint 9.32.182: Inicia gravação com wrap-alvo memorizado =====
@@ -22939,37 +22946,21 @@ function _micCriarERodar(SR) {
   }
 }
 
-// ===== Sprint 9.32.185: Para a gravação aguardando últimas palavras (versão robusta) =====
-// Estratégia simplificada e à prova de bugs:
-// 1. Marca _micUserWantsMic = false IMEDIATAMENTE (impede auto-restart criar nova sessão)
-// 2. Mostra "Processando últimas palavras…" na UI
-// 3. Chama stop() (graceful) ou abort() como fallback
-// 4. Espera 600ms (tempo seguro pra última frase processar via onresult)
-// 5. Pega o buffer atualizado e insere
-// 6. SEMPRE limpa todas as flags no fim, independente do que aconteceu
-//
-// Diferença vs 9.32.184: não intercepta onend (causava o bug de "ficou processando pra sempre").
-// Apenas espera um delay fixo, depois finaliza forçadamente.
+// ===== Sprint 9.32.186: Para a gravação — VERSÃO BRUTALMENTE SIMPLES =====
+// Sem flags complicadas. Sem interceptar callbacks. Sem timeouts longos.
+// 1. ABORT imediato da rec (mata na hora — não espera nada)
+// 2. Espera 300ms pra qualquer onresult em voo terminar
+// 3. Pega buffer + insere + reseta UI
+// Tudo síncrono, garantido a finalizar.
 function _micPararEInserir(wrap, btn, status, editor) {
-  // Guard: se já tá processando, ignora cliques duplos
-  if (window._micProcessandoStop) return;
-  window._micProcessandoStop = true;
-
-  // PARA imediatamente o auto-restart
+  // PARA imediatamente o auto-restart (impede onend disparar restart)
   window._micUserWantsMic = false;
 
   const recAtual = window._micRecognition;
   const wrapAlvo = window._micWrapAlvo || wrap;
 
-  if (!recAtual) {
-    // Não tava gravando: insere o que tem no buffer e sai
-    _micFinalizarInsercao(wrapAlvo);
-    window._micProcessandoStop = false;
-    return;
-  }
-
   // Mostra UI de "processando" no painel rosa
-  const waveform = wrapAlvo.querySelector('.rte-mic-waveform');
+  const waveform = wrapAlvo?.querySelector('.rte-mic-waveform');
   if (waveform) {
     const label = waveform.querySelector('.rte-mic-label');
     if (label) label.textContent = 'Processando últimas palavras…';
@@ -22981,28 +22972,28 @@ function _micPararEInserir(wrap, btn, status, editor) {
     }
   }
 
-  // Pede pra parar de forma graceful (deixa o navegador entregar última frase)
-  try {
-    recAtual.stop();
-  } catch (e) {
-    console.warn('[mic stop]', e);
+  // Para de forma graceful (deixa última frase chegar)
+  if (recAtual) {
+    try { recAtual.stop(); } catch (e) { console.warn('[mic stop]', e); }
   }
+  window._micRecognition = null;
 
-  // Timeout fixo: 600ms é tempo suficiente pra última frase processar e chegar no buffer.
-  // Depois disso, finaliza FORÇADAMENTE limpando tudo.
+  // Espera 300ms pra last frame processar, depois finaliza SEMPRE
   setTimeout(() => {
-    // Aborta de vez se ainda estiver vivo (pra liberar o microfone)
+    // Mata qualquer rec que ainda esteja viva (auto-restart pode ter criado nova entre stop e agora)
     if (window._micRecognition) {
       try { window._micRecognition.abort(); } catch (e) {}
       window._micRecognition = null;
     }
     _micPararKeepAlive();
     _micFinalizarInsercao(wrapAlvo);
-    // Reseta TODAS as flags
-    window._micProcessandoStop = false;
+    // Limpa TODAS as flags — começa do zero pra próxima gravação
     window._micUserWantsMic = false;
     window._micPedidoStop = false;
-  }, 600);
+    window._micProcessandoStop = false;
+    window._micFalhasSeguidas = 0;
+    window._micWrapAlvo = null;
+  }, 300);
 }
 
 // Helper: pega o buffer atual, processa pontuação e insere no editor-alvo
