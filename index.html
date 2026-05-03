@@ -2673,6 +2673,370 @@ a {
   font-style: italic;
 }
 
+/* ========================================================================
+   Sprint 9.32.215 — Relatório v2 (design system aplicado)
+   Classes prefixadas com r2- pra coexistir com .relatorio-* legado
+   ======================================================================== */
+.r2-paper {
+  max-width: 920px; margin: 0 auto;
+  background: #fff; padding: 48px 56px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(10,31,92,0.08);
+  font-family: var(--font-body);
+  color: var(--brand-navy);
+}
+.r2-head {
+  display: flex; align-items: flex-start; gap: 18px;
+  border-bottom: 3px solid var(--brand-navy);
+  padding-bottom: 20px; margin-bottom: 32px;
+}
+.r2-head__logo {
+  width: 56px; height: 56px; border-radius: 50%;
+  background: var(--brand-lime);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.r2-head__logo .material-symbols-rounded { font-size: 30px; color: #fff; }
+.r2-head__title {
+  font-family: var(--font-display);
+  font-size: 28px; font-weight: 700; line-height: 1.15;
+  letter-spacing: -0.01em; color: var(--brand-navy);
+}
+.r2-head__subtitle {
+  font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--neutral-500); font-weight: 600; margin-top: 4px;
+}
+.r2-head__meta {
+  margin-top: 14px; display: flex; gap: 28px; flex-wrap: wrap;
+  font-size: 13px; color: var(--neutral-700);
+}
+.r2-head__meta strong { color: var(--brand-navy); font-weight: 600; }
+.r2-head__meta-mono {
+  font-family: var(--font-mono); color: var(--brand-navy); font-weight: 500;
+}
+.r2-section { margin-bottom: 40px; page-break-inside: avoid; }
+.r2-section-label {
+  display: flex; align-items: center; gap: 12px; margin-bottom: 18px;
+}
+.r2-section-label__num {
+  width: 30px; height: 30px; border-radius: 50%;
+  background: var(--brand-lime); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display); font-size: 13px; font-weight: 700;
+  flex-shrink: 0;
+}
+.r2-section-label__title {
+  font-family: var(--font-display);
+  font-size: 20px; font-weight: 700; color: var(--brand-navy);
+  line-height: 1.2; letter-spacing: -0.01em;
+}
+.r2-section-label__hint {
+  font-size: 12px; color: var(--neutral-500); margin-top: 2px; font-weight: 500;
+}
+.r2-h3 {
+  font-family: var(--font-display);
+  font-size: 12px; font-weight: 700; color: var(--neutral-500);
+  text-transform: uppercase; letter-spacing: 0.08em;
+  margin: 0 0 12px;
+}
+.r2-resumo {
+  background: #F3F5FA; border-left: 4px solid var(--brand-lime);
+  border-radius: 0 12px 12px 0; padding: 22px 26px;
+}
+.r2-resumo p { font-size: 14.5px; line-height: 1.7; color: var(--neutral-700); margin: 0 0 12px; }
+.r2-resumo p:last-child { margin: 0; }
+.r2-resumo strong { color: var(--brand-navy); font-weight: 700; }
+.r2-resumo em {
+  font-style: normal; background: #E7F3D4;
+  padding: 1px 8px; border-radius: 6px;
+  color: var(--brand-navy); font-weight: 600;
+  font-family: var(--font-mono); font-size: 13px;
+}
+.r2-kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+.r2-kpi-card {
+  background: #fff; border: 1px solid var(--neutral-200);
+  border-radius: 14px; padding: 18px 20px;
+  box-shadow: 0 4px 12px rgba(10,31,92,0.06), 0 1px 2px rgba(10,31,92,0.04);
+  position: relative; overflow: hidden;
+}
+.r2-kpi-card__label {
+  font-size: 11px; letter-spacing: 0.08em;
+  color: var(--neutral-500); text-transform: uppercase; font-weight: 600;
+}
+.r2-kpi-card__value {
+  font-family: var(--font-display);
+  font-size: 36px; font-weight: 700;
+  color: var(--brand-navy); line-height: 1; margin: 8px 0 6px;
+  font-variant-numeric: tabular-nums; letter-spacing: -0.02em;
+  display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;
+}
+.r2-kpi-card__value-unit {
+  font-family: var(--font-display); font-size: 16px; font-weight: 600;
+  color: var(--neutral-500);
+}
+.r2-kpi-card__hint { font-size: 12px; color: var(--neutral-500); line-height: 1.4; }
+.r2-kpi-card__icon {
+  position: absolute; top: 16px; right: 16px;
+  width: 36px; height: 36px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+}
+.r2-kpi-card__icon .material-symbols-rounded { font-size: 20px; }
+.r2-delta {
+  display: inline-flex; align-items: center; gap: 3px;
+  font-size: 12px; font-weight: 700;
+  padding: 3px 9px; border-radius: 9999px;
+  font-variant-numeric: tabular-nums;
+}
+.r2-delta--up { background: #E6F6EF; color: #15803d; }
+.r2-delta--down { background: #FCE8E8; color: #B91C1C; }
+.r2-delta--warn { background: #FEF4E1; color: #B45309; }
+.r2-status-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 22px; padding: 0 9px; border-radius: 9999px;
+  font-size: 11px; font-weight: 600;
+}
+.r2-status-badge__dot { width: 6px; height: 6px; border-radius: 50%; }
+.r2-status-badge--success { background: #E6F6EF; color: #166534; }
+.r2-status-badge--success .r2-status-badge__dot { background: #22A06B; }
+.r2-status-badge--warning { background: #FEF4E1; color: #B45309; }
+.r2-status-badge--warning .r2-status-badge__dot { background: #F59E0B; }
+.r2-status-badge--danger { background: #FCE8E8; color: #B91C1C; }
+.r2-status-badge--danger .r2-status-badge__dot { background: #DC2626; }
+.r2-chart-card {
+  background: #fff; border: 1px solid var(--neutral-200);
+  border-radius: 14px; padding: 22px 24px;
+  box-shadow: 0 4px 12px rgba(10,31,92,0.06), 0 1px 2px rgba(10,31,92,0.04);
+}
+.r2-chart-card__caption {
+  margin-top: 12px; font-size: 12px; color: var(--neutral-500);
+  display: flex; gap: 24px; flex-wrap: wrap;
+}
+.r2-chart-card__caption-num { font-family: var(--font-mono); color: var(--brand-navy); font-weight: 600; }
+.r2-rankings { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+.r2-ranking-card {
+  background: #fff; border: 1px solid var(--neutral-200);
+  border-radius: 14px; padding: 20px 22px;
+  box-shadow: 0 4px 12px rgba(10,31,92,0.06), 0 1px 2px rgba(10,31,92,0.04);
+}
+.r2-ranking-row {
+  display: grid; grid-template-columns: 22px 1fr auto; gap: 12px;
+  align-items: center; padding: 10px 0;
+  border-bottom: 1px solid var(--neutral-100);
+}
+.r2-ranking-row:last-child { border-bottom: 0; }
+.r2-ranking-row__pos {
+  font-family: var(--font-display); font-size: 14px; font-weight: 700;
+  color: var(--neutral-400); text-align: center;
+}
+.r2-ranking-row:nth-child(1) .r2-ranking-row__pos,
+.r2-ranking-row:nth-child(2) .r2-ranking-row__pos { color: #689628; }
+.r2-ranking-row__name {
+  font-size: 13.5px; font-weight: 600; color: var(--brand-navy); line-height: 1.3;
+}
+.r2-ranking-row__bar {
+  grid-column: 2 / 3; grid-row: 2;
+  height: 4px; background: var(--brand-lime); border-radius: 2px; margin-top: 4px;
+}
+.r2-ranking-row__count {
+  font-family: var(--font-display); font-size: 16px; font-weight: 700;
+  color: var(--brand-navy); font-variant-numeric: tabular-nums;
+}
+.r2-dist-cards { display: flex; flex-direction: column; gap: 16px; }
+.r2-dist-card {
+  background: #fff; border: 1px solid var(--neutral-200);
+  border-radius: 14px; padding: 20px 22px;
+  box-shadow: 0 4px 12px rgba(10,31,92,0.06), 0 1px 2px rgba(10,31,92,0.04);
+}
+.r2-dist-card__title {
+  display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px;
+}
+.r2-dist-card__title-text {
+  font-family: var(--font-display); font-size: 14px; font-weight: 700; color: var(--brand-navy);
+}
+.r2-dist-card__title-meta { font-family: var(--font-mono); font-size: 11px; color: var(--neutral-500); }
+.r2-dist-bar {
+  width: 100%; height: 32px; background: var(--neutral-100);
+  border-radius: 10px; overflow: hidden; display: flex;
+}
+.r2-dist-bar__seg {
+  height: 100%; display: flex; align-items: center; justify-content: center;
+  color: #fff; font-family: var(--font-display); font-size: 12px; font-weight: 700;
+  font-variant-numeric: tabular-nums; border-right: 2px solid #fff; overflow: hidden;
+}
+.r2-dist-bar__seg:last-child { border-right: 0; }
+.r2-dist-legend {
+  display: flex; gap: 24px; flex-wrap: wrap; margin-top: 12px; font-size: 12.5px;
+}
+.r2-dist-legend__item { display: flex; align-items: center; gap: 7px; color: var(--neutral-700); }
+.r2-dist-legend__dot { width: 11px; height: 11px; border-radius: 3px; flex-shrink: 0; }
+.r2-dist-legend__pct { color: var(--brand-navy); font-weight: 700; font-variant-numeric: tabular-nums; }
+.r2-objetivos-card {
+  background: #fff; border: 1px solid var(--neutral-200);
+  border-radius: 14px; padding: 20px 22px; margin-top: 16px;
+  box-shadow: 0 4px 12px rgba(10,31,92,0.06), 0 1px 2px rgba(10,31,92,0.04);
+}
+.r2-objetivo-row {
+  display: grid; grid-template-columns: 1fr auto auto; gap: 10px;
+  align-items: center; margin-bottom: 10px;
+}
+.r2-objetivo-row:last-child { margin: 0; }
+.r2-objetivo-row__label { font-size: 13px; font-weight: 600; color: var(--brand-navy); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.r2-objetivo-row__bar-wrap {
+  grid-column: 1 / -1; height: 6px; background: var(--neutral-100);
+  border-radius: 3px; overflow: hidden; margin-top: -4px;
+}
+.r2-objetivo-row__bar { height: 100%; background: var(--brand-lime); border-radius: 3px; }
+.r2-objetivo-row__count {
+  font-family: var(--font-display); font-size: 14px; font-weight: 700;
+  color: var(--brand-navy); font-variant-numeric: tabular-nums;
+}
+.r2-objetivo-row__pct { font-family: var(--font-mono); font-size: 11px; color: var(--neutral-500); }
+.r2-equipe { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: stretch; }
+.r2-equipe-stats { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 12px; }
+.r2-equipe-stat {
+  background: #fff; border: 1px solid var(--neutral-200);
+  border-radius: 12px; padding: 16px;
+  display: flex; align-items: center; gap: 14px; min-height: 88px;
+  box-shadow: 0 1px 2px rgba(10,31,92,0.04);
+}
+.r2-equipe-stat__icon {
+  width: 38px; height: 38px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; background: #F4F9EA;
+}
+.r2-equipe-stat__icon .material-symbols-rounded { font-size: 22px; color: #689628; }
+.r2-equipe-stat--warn { background: #FEF4E1; border-color: #FCD9A4; }
+.r2-equipe-stat--warn .r2-equipe-stat__icon { background: #fff; }
+.r2-equipe-stat--warn .r2-equipe-stat__icon .material-symbols-rounded { color: #F59E0B; }
+.r2-equipe-stat__num {
+  font-family: var(--font-display); font-size: 24px; font-weight: 700;
+  color: var(--brand-navy); line-height: 1; font-variant-numeric: tabular-nums;
+}
+.r2-equipe-stat--warn .r2-equipe-stat__num { color: #B45309; }
+.r2-equipe-stat__label { font-size: 11px; color: var(--neutral-600); line-height: 1.3; margin-top: 4px; }
+.r2-inativos-card {
+  background: #fff; border: 1px solid var(--neutral-200);
+  border-radius: 14px; padding: 20px 22px;
+  box-shadow: 0 4px 12px rgba(10,31,92,0.06), 0 1px 2px rgba(10,31,92,0.04);
+}
+.r2-inativos-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }
+.r2-inativo-row {
+  background: var(--neutral-50); border: 1px solid var(--neutral-200);
+  border-radius: 10px; padding: 12px 14px;
+  display: grid; grid-template-columns: 36px 1fr auto; gap: 12px; align-items: center;
+}
+.r2-inativo-row__avatar {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: var(--brand-lime); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display); font-size: 13px; font-weight: 700;
+  flex-shrink: 0;
+}
+.r2-inativo-row__name { font-size: 13.5px; font-weight: 600; color: var(--brand-navy); line-height: 1.3; }
+.r2-inativo-row__meta { font-size: 11.5px; color: var(--neutral-500); margin-top: 2px; }
+.r2-padroes-grid { display: grid; grid-template-columns: 1.7fr 1fr; gap: 20px; align-items: stretch; }
+.r2-heatmap-card, .r2-freq-card {
+  background: #fff; border: 1px solid var(--neutral-200);
+  border-radius: 14px; padding: 20px 22px;
+  box-shadow: 0 4px 12px rgba(10,31,92,0.06), 0 1px 2px rgba(10,31,92,0.04);
+}
+.r2-heatmap { width: 100%; border-collapse: separate; border-spacing: 4px; font-family: var(--font-mono); font-size: 11.5px; }
+.r2-heatmap th { color: var(--neutral-500); font-weight: 500; padding: 4px 0; font-family: var(--font-body); font-size: 11px; }
+.r2-heatmap td {
+  text-align: center; padding: 7px 0; border-radius: 4px;
+  font-weight: 600; color: var(--brand-navy); font-variant-numeric: tabular-nums;
+}
+.r2-heatmap td.h-0 { background: var(--neutral-50); color: var(--neutral-300); }
+.r2-heatmap td.h-1 { background: #EAF3DA; }
+.r2-heatmap td.h-2 { background: #D6E9B6; }
+.r2-heatmap td.h-3 { background: #B7D982; }
+.r2-heatmap td.h-4 { background: var(--brand-lime); color: #fff; }
+.r2-heatmap__row-label {
+  color: var(--neutral-500) !important; font-weight: 600 !important;
+  text-align: right !important; padding-right: 8px !important; background: transparent !important;
+  font-family: var(--font-body) !important;
+}
+.r2-heatmap__caption { margin-top: 10px; font-size: 11.5px; color: var(--neutral-500); }
+.r2-heatmap__caption strong { color: var(--brand-navy); }
+.r2-freq-week { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
+.r2-freq-row { display: grid; grid-template-columns: 36px 1fr 38px; gap: 10px; align-items: center; }
+.r2-freq-row__day { font-size: 12px; color: var(--neutral-500); font-weight: 600; }
+.r2-freq-row__bar-wrap { height: 8px; background: var(--neutral-100); border-radius: 4px; overflow: hidden; }
+.r2-freq-row__bar { height: 100%; background: var(--brand-navy); border-radius: 4px; }
+.r2-freq-row__count {
+  font-family: var(--font-display); font-size: 13px; font-weight: 700;
+  color: var(--brand-navy); text-align: right; font-variant-numeric: tabular-nums;
+}
+.r2-atencao-card {
+  background: #FEF4E1; border: 1px solid #FCD9A4;
+  border-left: 4px solid #F59E0B; border-radius: 12px; padding: 22px 24px;
+}
+.r2-atencao-card__title { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+.r2-atencao-card__title-icon {
+  width: 32px; height: 32px; border-radius: 8px;
+  background: #F59E0B; color: #fff;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.r2-atencao-card__title-icon .material-symbols-rounded { font-size: 20px; }
+.r2-atencao-card__title-text { font-family: var(--font-display); font-size: 15px; font-weight: 700; color: #B45309; }
+.r2-atencao-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }
+.r2-atencao-item {
+  background: #fff; border-radius: 10px; padding: 12px 14px;
+  display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center;
+  border: 1px solid #FCE7B0;
+}
+.r2-atencao-item__title { font-size: 13px; font-weight: 700; color: var(--brand-navy); line-height: 1.3; }
+.r2-atencao-item__meta { font-family: var(--font-mono); font-size: 11px; color: var(--neutral-500); margin-top: 3px; }
+.r2-atencao-pendencias { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 16px; }
+.r2-atencao-pend-card {
+  background: #fff; border-radius: 10px; padding: 14px;
+  text-align: center; border: 1px solid #FCE7B0;
+}
+.r2-atencao-pend-card__num {
+  font-family: var(--font-display); font-size: 28px; font-weight: 700;
+  color: #F59E0B; line-height: 1; font-variant-numeric: tabular-nums;
+}
+.r2-atencao-pend-card__label { font-size: 11.5px; color: var(--neutral-700); margin-top: 6px; line-height: 1.3; }
+.r2-foot {
+  margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--neutral-200);
+  display: flex; justify-content: space-between; font-size: 11px; color: var(--neutral-500);
+}
+.r2-foot__page { font-family: var(--font-mono); }
+
+/* Responsivo mobile do relatório v2 */
+@media screen and (max-width: 768px) {
+  .r2-paper { padding: 24px 18px; }
+  .r2-head { gap: 12px; padding-bottom: 14px; margin-bottom: 22px; }
+  .r2-head__logo { width: 44px; height: 44px; }
+  .r2-head__logo .material-symbols-rounded { font-size: 24px; }
+  .r2-head__title { font-size: 22px; }
+  .r2-head__meta { gap: 8px 16px; flex-direction: column; font-size: 12px; }
+  .r2-section { margin-bottom: 28px; }
+  .r2-section-label__title { font-size: 17px; }
+  .r2-section-label__hint { font-size: 11.5px; }
+  .r2-resumo { padding: 16px 18px; }
+  .r2-resumo p { font-size: 13.5px; }
+  .r2-kpis { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .r2-kpi-card { padding: 14px 16px; }
+  .r2-kpi-card__value { font-size: 26px; }
+  .r2-kpi-card__icon { width: 28px; height: 28px; top: 12px; right: 12px; }
+  .r2-kpi-card__icon .material-symbols-rounded { font-size: 16px; }
+  .r2-rankings { grid-template-columns: 1fr; }
+  .r2-equipe { grid-template-columns: 1fr; }
+  .r2-equipe-stats { grid-template-columns: 1fr 1fr; }
+  .r2-padroes-grid { grid-template-columns: 1fr; }
+  .r2-atencao-pendencias { grid-template-columns: 1fr; }
+}
+
+/* Print */
+@media print {
+  .r2-paper { box-shadow: none; padding: 24px 28px; max-width: 100%; }
+  .r2-section { page-break-inside: avoid; }
+  .r2-kpi-card, .r2-ranking-card, .r2-dist-card, .r2-objetivos-card,
+  .r2-equipe-stat, .r2-inativos-card, .r2-heatmap-card, .r2-freq-card,
+  .r2-atencao-card, .r2-chart-card { box-shadow: none; }
+}
+
 /* Impressão */
 .no-print { /* default visível */ }
 .page-break-before { page-break-before: always; }
@@ -6783,7 +7147,7 @@ a {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.213-icone-impressora-dashboard-desktop',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.215-relatorio-v2-design-system',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -27141,109 +27505,259 @@ function renderAdminDashboardRelatorio() {
       <div class="relatorio-dica no-print">
         <span class="material-symbols-rounded" style="font-size:18px;color:var(--status-info);flex-shrink:0;">tips_and_updates</span>
         <div>
-          <strong>Dica:</strong> no diálogo de impressão, escolha <strong>"Salvar como PDF"</strong> no campo "Destino". Para um PDF mais limpo, abra <strong>"Mais configurações"</strong> e <strong>desmarque "Cabeçalhos e rodapés"</strong> — isso remove a URL e data que o navegador adiciona em cada página.
+          <strong>Dica:</strong> no diálogo de impressão, escolha <strong>"Salvar como PDF"</strong> no campo "Destino". Para um PDF mais limpo, abra <strong>"Mais configurações"</strong> e <strong>desmarque "Cabeçalhos e rodapés"</strong>.
         </div>
       </div>
 
-      <!-- Conteúdo imprimível -->
-      <div class="relatorio-paper">
-        <!-- Cabeçalho oficial -->
-        <header class="relatorio-header">
-          <div class="relatorio-header__brand">
-            <svg viewBox="0 0 64 52" style="height:32px;width:auto;fill:#0A1F5C;">
-              <path d="M32 8 C28 8 25 11 25 15 C25 10 22 8 18 8 C13 8 10 12 10 17 C10 28 32 44 32 44 C32 44 54 28 54 17 C54 12 51 8 46 8 C42 8 39 11 39 15 C39 11 36 8 32 8 Z"/>
-            </svg>
-            <div>
-              <div class="relatorio-header__title">Relatório de visitas</div>
-              <div class="relatorio-header__subtitle">B&N Logística · Sistema de visitas comerciais</div>
-            </div>
+      <!-- Sprint 9.32.215 — Relatório v2 (design system aplicado) -->
+      <div class="r2-paper">
+        <!-- CABEÇALHO -->
+        <header class="r2-head">
+          <div class="r2-head__logo">
+            <span class="material-symbols-rounded">favorite</span>
           </div>
-          <div class="relatorio-header__meta">
-            <div><strong>Período:</strong> ${labelPeriodo}</div>
-            <div><strong>Gerado em:</strong> ${dataGer} às ${horaGer}</div>
-            <div><strong>Por:</strong> ${user.nome}</div>
+          <div style="flex:1;">
+            <div class="r2-head__title">Relatório de visitas</div>
+            <div class="r2-head__subtitle">B&amp;N Logística · Sistema de visitas comerciais</div>
+            <div class="r2-head__meta">
+              <div><strong>Período:</strong> <span class="r2-head__meta-mono">${labelPeriodo}</span></div>
+              <div><strong>Gerado em:</strong> <span class="r2-head__meta-mono">${dataGer} ${horaGer}</span></div>
+              <div><strong>Por:</strong> ${user.nome}</div>
+            </div>
           </div>
         </header>
 
-        <!-- Resumo textual em prosa -->
-        <section class="relatorio-section">
-          <h2 class="relatorio-section__title">Resumo executivo</h2>
-          <div id="relProsa" class="relatorio-prosa">Carregando...</div>
+        <!-- 1. RESUMO EXECUTIVO -->
+        <section class="r2-section">
+          <div class="r2-section-label">
+            <span class="r2-section-label__num">1</span>
+            <div>
+              <div class="r2-section-label__title">Resumo executivo</div>
+              <div class="r2-section-label__hint">Síntese do período em prosa</div>
+            </div>
+          </div>
+          <div class="r2-resumo" id="relProsa">Carregando...</div>
         </section>
 
-        <!-- KPIs principais -->
-        <section class="relatorio-section">
-          <h2 class="relatorio-section__title">Indicadores gerais</h2>
-          <div class="relatorio-kpis" id="relKpis">
-            <div class="relatorio-kpi">
-              <div class="relatorio-kpi__label">Total de visitas</div>
-              <div class="relatorio-kpi__value" id="relKpiTotal">—</div>
-              <div class="relatorio-kpi__hint" id="relKpiTotalHint">&nbsp;</div>
+        <!-- 2. INDICADORES GERAIS — 6 KPIs -->
+        <section class="r2-section">
+          <div class="r2-section-label">
+            <span class="r2-section-label__num">2</span>
+            <div>
+              <div class="r2-section-label__title">Indicadores gerais</div>
+              <div class="r2-section-label__hint">6 KPIs principais do período</div>
             </div>
-            <div class="relatorio-kpi">
-              <div class="relatorio-kpi__label">Taxa de realização</div>
-              <div class="relatorio-kpi__value" id="relKpiTaxa">—</div>
-              <div class="relatorio-kpi__hint" id="relKpiTaxaHint">&nbsp;</div>
+          </div>
+          <div class="r2-kpis">
+            <div class="r2-kpi-card">
+              <div class="r2-kpi-card__icon" style="background:#F4F9EA;"><span class="material-symbols-rounded" style="color:#689628;">flag</span></div>
+              <div class="r2-kpi-card__label">Total de visitas</div>
+              <div class="r2-kpi-card__value"><span id="relKpiTotal">—</span><span id="relKpiTotalDelta"></span></div>
+              <div class="r2-kpi-card__hint" id="relKpiTotalHint">&nbsp;</div>
             </div>
-            <div class="relatorio-kpi">
-              <div class="relatorio-kpi__label">Qualidade GPS</div>
-              <div class="relatorio-kpi__value" id="relKpiGps">—</div>
-              <div class="relatorio-kpi__hint" id="relKpiGpsHint">&nbsp;</div>
+            <div class="r2-kpi-card">
+              <div class="r2-kpi-card__icon" style="background:#E6F6EF;"><span class="material-symbols-rounded" style="color:#22A06B;">task_alt</span></div>
+              <div class="r2-kpi-card__label">Taxa de realização</div>
+              <div class="r2-kpi-card__value" id="relKpiTaxa">—</div>
+              <div class="r2-kpi-card__hint" id="relKpiTaxaHint">&nbsp;</div>
             </div>
-            <div class="relatorio-kpi">
-              <div class="relatorio-kpi__label">Pendências</div>
-              <div class="relatorio-kpi__value" id="relKpiPend">—</div>
-              <div class="relatorio-kpi__hint" id="relKpiPendHint">&nbsp;</div>
+            <div class="r2-kpi-card">
+              <div class="r2-kpi-card__icon" style="background:#E4ECFD;"><span class="material-symbols-rounded" style="color:#2563EB;">timer</span></div>
+              <div class="r2-kpi-card__label">Tempo médio</div>
+              <div class="r2-kpi-card__value" id="relKpiTempoMedio">—</div>
+              <div class="r2-kpi-card__hint" id="relKpiTempoMedioHint">&nbsp;</div>
+            </div>
+            <div class="r2-kpi-card">
+              <div class="r2-kpi-card__icon" style="background:#FEF4E1;"><span class="material-symbols-rounded" style="color:#F59E0B;">gps_off</span></div>
+              <div class="r2-kpi-card__label">Qualidade GPS</div>
+              <div class="r2-kpi-card__value" id="relKpiGps">—</div>
+              <div class="r2-kpi-card__hint" id="relKpiGpsHint">&nbsp;</div>
+            </div>
+            <div class="r2-kpi-card">
+              <div class="r2-kpi-card__icon" style="background:#FCE8E8;"><span class="material-symbols-rounded" style="color:#DC2626;">rule</span></div>
+              <div class="r2-kpi-card__label">Em revisão</div>
+              <div class="r2-kpi-card__value" id="relKpiRevisao">—</div>
+              <div class="r2-kpi-card__hint" id="relKpiRevisaoHint">&nbsp;</div>
+            </div>
+            <div class="r2-kpi-card">
+              <div class="r2-kpi-card__icon" style="background:#E3E7F1;"><span class="material-symbols-rounded" style="color:#0A1F5C;">hourglass_top</span></div>
+              <div class="r2-kpi-card__label">Pendências de cadastro</div>
+              <div class="r2-kpi-card__value" id="relKpiPend">—</div>
+              <div class="r2-kpi-card__hint" id="relKpiPendHint">&nbsp;</div>
             </div>
           </div>
         </section>
 
-        <!-- Gráfico de linha -->
-        <section class="relatorio-section avoid-break">
-          <h2 class="relatorio-section__title">Visitas no tempo</h2>
-          <div id="relChartLine" style="min-height:160px;"></div>
+        <!-- 3. EVOLUÇÃO NO TEMPO -->
+        <section class="r2-section">
+          <div class="r2-section-label">
+            <span class="r2-section-label__num">3</span>
+            <div>
+              <div class="r2-section-label__title">Evolução no tempo</div>
+              <div class="r2-section-label__hint">Visitas registradas por dia · período inteiro</div>
+            </div>
+          </div>
+          <div class="r2-chart-card">
+            <div id="relChartLine" style="min-height:180px;"></div>
+            <div class="r2-chart-card__caption" id="relChartCaption"></div>
+          </div>
         </section>
 
-        <!-- Rankings -->
-        <section class="relatorio-section avoid-break">
-          <div class="relatorio-two-col">
+        <!-- 4. RANKINGS -->
+        <section class="r2-section">
+          <div class="r2-section-label">
+            <span class="r2-section-label__num">4</span>
             <div>
-              <h3 class="relatorio-subtitle">Top profissionais</h3>
-              <div id="relRankProf"></div>
+              <div class="r2-section-label__title">Rankings</div>
+              <div class="r2-section-label__hint">Profissionais e instituições mais ativas no período</div>
             </div>
-            <div>
-              <h3 class="relatorio-subtitle">Top instituições</h3>
-              <div id="relRankInst"></div>
+          </div>
+          <div class="r2-rankings">
+            <div class="r2-ranking-card">
+              <h3 class="r2-h3">Top profissionais</h3>
+              <div id="relRankProf">Carregando...</div>
+            </div>
+            <div class="r2-ranking-card">
+              <h3 class="r2-h3">Top instituições</h3>
+              <div id="relRankInst">Carregando...</div>
             </div>
           </div>
         </section>
 
-        <!-- Distribuições -->
-        <section class="relatorio-section avoid-break">
-          <h2 class="relatorio-section__title">Distribuições</h2>
-          <div class="relatorio-two-col">
+        <!-- 5. DISTRIBUIÇÕES -->
+        <section class="r2-section">
+          <div class="r2-section-label">
+            <span class="r2-section-label__num">5</span>
             <div>
-              <h3 class="relatorio-subtitle">Status das visitas</h3>
-              <div id="relPieStatus"></div>
-            </div>
-            <div>
-              <h3 class="relatorio-subtitle">Tipo de check-in</h3>
-              <div id="relPieCheckin"></div>
+              <div class="r2-section-label__title">Distribuições</div>
+              <div class="r2-section-label__hint">Como as visitas se distribuem por status, qualidade e tipo</div>
             </div>
           </div>
-          <h3 class="relatorio-subtitle" style="margin-top:20px;">Top objetivos</h3>
-          <div id="relBarsObj"></div>
+          <div class="r2-dist-cards">
+            <div class="r2-dist-card" id="relBarStatus">Carregando...</div>
+            <div class="r2-dist-card" id="relBarCheckin">Carregando...</div>
+            <div class="r2-dist-card" id="relBarTipoInst">Carregando...</div>
+          </div>
+          <div class="r2-objetivos-card">
+            <h3 class="r2-h3">Top objetivos das visitas</h3>
+            <div id="relBarsObj">Carregando...</div>
+          </div>
         </section>
 
-        <!-- Lista completa de visitas (quebra página antes) -->
-        <section class="relatorio-section page-break-before">
-          <h2 class="relatorio-section__title">Lista completa de visitas</h2>
-          <div id="relListaVisitas">Carregando...</div>
+        <!-- 6. COBERTURA DA EQUIPE -->
+        <section class="r2-section">
+          <div class="r2-section-label">
+            <span class="r2-section-label__num">6</span>
+            <div>
+              <div class="r2-section-label__title">Cobertura da equipe</div>
+              <div class="r2-section-label__hint">Quem está atuando e quem está parado no período</div>
+            </div>
+          </div>
+          <div class="r2-equipe">
+            <div class="r2-equipe-stats">
+              <div class="r2-equipe-stat">
+                <div class="r2-equipe-stat__icon"><span class="material-symbols-rounded">group</span></div>
+                <div>
+                  <div class="r2-equipe-stat__num" id="relEquipeAtivos">—</div>
+                  <div class="r2-equipe-stat__label">Profissionais ativos</div>
+                </div>
+              </div>
+              <div class="r2-equipe-stat">
+                <div class="r2-equipe-stat__icon"><span class="material-symbols-rounded">trending_up</span></div>
+                <div>
+                  <div class="r2-equipe-stat__num" id="relEquipeAtuaram">—</div>
+                  <div class="r2-equipe-stat__label">Atuaram no período</div>
+                </div>
+              </div>
+              <div class="r2-equipe-stat r2-equipe-stat--warn">
+                <div class="r2-equipe-stat__icon"><span class="material-symbols-rounded">person_off</span></div>
+                <div>
+                  <div class="r2-equipe-stat__num" id="relEquipeInativos">—</div>
+                  <div class="r2-equipe-stat__label">Sem atividade no período</div>
+                </div>
+              </div>
+              <div class="r2-equipe-stat">
+                <div class="r2-equipe-stat__icon"><span class="material-symbols-rounded">local_hospital</span></div>
+                <div>
+                  <div class="r2-equipe-stat__num" id="relEquipeInstituicoes">—</div>
+                  <div class="r2-equipe-stat__label">Instituições ativas</div>
+                </div>
+              </div>
+            </div>
+            <div class="r2-inativos-card">
+              <h3 class="r2-h3">Nutricionistas sem atividade</h3>
+              <div id="relInativosList">Carregando...</div>
+              <div style="margin-top:14px;font-size:11px;color:var(--neutral-500);">
+                Considera-se sem atividade quem não fez check-in nos últimos 30 dias.
+              </div>
+            </div>
+          </div>
         </section>
 
-        <footer class="relatorio-footer">
-          Documento gerado automaticamente pelo sistema B&N Logística em ${dataGer}. Dados sujeitos a conferência.
-        </footer>
+        <!-- 7. PADRÕES OPERACIONAIS -->
+        <section class="r2-section">
+          <div class="r2-section-label">
+            <span class="r2-section-label__num">7</span>
+            <div>
+              <div class="r2-section-label__title">Padrões operacionais</div>
+              <div class="r2-section-label__hint">Quando e como a equipe está operando</div>
+            </div>
+          </div>
+          <div class="r2-padroes-grid">
+            <div class="r2-heatmap-card">
+              <h3 class="r2-h3">Dias × horários mais frequentes</h3>
+              <div style="font-size:11.5px;color:var(--neutral-500);margin-bottom:12px;" id="relHeatmapSubtitle">Heatmap dos últimos 90 dias</div>
+              <div id="relHeatmap">Carregando...</div>
+              <div class="r2-heatmap__caption" id="relHeatmapCaption">&nbsp;</div>
+            </div>
+            <div class="r2-freq-card">
+              <h3 class="r2-h3">Frequência por dia</h3>
+              <div style="font-size:11.5px;color:var(--neutral-500);margin-bottom:12px;">Média do período</div>
+              <div id="relFreqWeek">Carregando...</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 8. ATENÇÃO REQUERIDA -->
+        <section class="r2-section">
+          <div class="r2-section-label">
+            <span class="r2-section-label__num">8</span>
+            <div>
+              <div class="r2-section-label__title">Atenção requerida</div>
+              <div class="r2-section-label__hint">Itens que precisam de decisão administrativa</div>
+            </div>
+          </div>
+          <div class="r2-atencao-card">
+            <div class="r2-atencao-card__title">
+              <div class="r2-atencao-card__title-icon"><span class="material-symbols-rounded">priority_high</span></div>
+              <div class="r2-atencao-card__title-text" id="relAtencaoTitle">Visitas em revisão</div>
+            </div>
+            <ul class="r2-atencao-list" id="relAtencaoVisitas">
+              <li style="padding:14px;text-align:center;color:var(--neutral-500);font-size:12px;">Carregando...</li>
+            </ul>
+            <div style="margin-top:12px;font-size:12px;color:var(--neutral-700);text-align:right;" id="relAtencaoTotal">&nbsp;</div>
+            <div class="r2-atencao-pendencias">
+              <div class="r2-atencao-pend-card">
+                <div class="r2-atencao-pend-card__num" id="relAtencaoPendInst">—</div>
+                <div class="r2-atencao-pend-card__label">Instituições aguardando aprovação</div>
+              </div>
+              <div class="r2-atencao-pend-card">
+                <div class="r2-atencao-pend-card__num" id="relAtencaoPendObj">—</div>
+                <div class="r2-atencao-pend-card__label">Objetivos sugeridos</div>
+              </div>
+              <div class="r2-atencao-pend-card">
+                <div class="r2-atencao-pend-card__num" id="relAtencaoPendProf">—</div>
+                <div class="r2-atencao-pend-card__label">Profissionais para aprovar</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- RODAPÉ -->
+        <div class="r2-foot">
+          <div>B&amp;N Logística · Relatório de visitas · Confidencial</div>
+          <div class="r2-foot__page">Gerado em ${dataGer}</div>
+        </div>
       </div>
     </div>
   `;
@@ -27254,7 +27768,7 @@ async function carregarRelatorio(periodo, user) {
   if (!db) return;
   const dataInicio = calcularDataInicio(periodo);
 
-  // Busca visitas do período
+  // Busca visitas do período (9.32.215: incluir tipo da instituição)
   let query = db.from('visitas').select(`
     id, status, data_visita, checkin_timestamp, checkout_timestamp,
     checkin_manual, flag_gps_divergente, flag_horario_fora_margem,
@@ -27262,7 +27776,7 @@ async function carregarRelatorio(periodo, user) {
     visita_realizada, revisao_motivo,
     nutricionista_id, instituicao_id,
     usuarios:nutricionista_id(nome),
-    instituicoes(nome)
+    instituicoes(nome, tipo)
   `);
   if (dataInicio) query = query.gte('checkin_timestamp', dataInicio);
   query = query.order('checkin_timestamp', { ascending: false });
@@ -27299,6 +27813,73 @@ async function carregarRelatorio(periodo, user) {
   set('relKpiGpsHint', total > 0 ? `${divergentes} ${divergentes === 1 ? 'divergente' : 'divergentes'} · ${manuais} ${manuais === 1 ? 'manual' : 'manuais'}` : 'sem dados');
   set('relKpiPend', pendTotal);
   set('relKpiPendHint', pendTotal === 0 ? 'nenhuma' : `${pendInst} inst · ${pendObj} obj · ${pendProf} prof`);
+
+  // ============ Sprint 9.32.215: KPIs novos (Tempo médio, Em revisão, Delta) ============
+
+  // Tempo médio: média de duração das visitas realizadas com check-in/out
+  const visitasComDuracao = visitas.filter(v => v.checkin_timestamp && v.checkout_timestamp && v.visita_realizada === true);
+  let tempoMedioMin = 0;
+  if (visitasComDuracao.length > 0) {
+    const totalMs = visitasComDuracao.reduce((sum, v) => {
+      const dur = new Date(v.checkout_timestamp) - new Date(v.checkin_timestamp);
+      return sum + (dur > 0 ? dur : 0);
+    }, 0);
+    tempoMedioMin = Math.round(totalMs / visitasComDuracao.length / 60000);
+  }
+  const tempoMedioHoras = Math.floor(tempoMedioMin / 60);
+  const tempoMedioRestoMin = tempoMedioMin % 60;
+  const tempoMedioStr = tempoMedioMin > 0
+    ? (tempoMedioHoras > 0
+        ? `${tempoMedioHoras}<span class="r2-kpi-card__value-unit">h</span> ${tempoMedioRestoMin}<span class="r2-kpi-card__value-unit">min</span>`
+        : `${tempoMedioRestoMin}<span class="r2-kpi-card__value-unit">min</span>`)
+    : '—';
+  set('relKpiTempoMedio', tempoMedioStr);
+  set('relKpiTempoMedioHint', visitasComDuracao.length > 0
+    ? `base: ${visitasComDuracao.length} ${visitasComDuracao.length === 1 ? 'visita concluída' : 'visitas concluídas'}`
+    : 'sem dados');
+
+  // Em revisão: visitas com flags pendentes que ainda não foram aprovadas
+  const visitasRevisao = visitas.filter(v =>
+    (v.flag_sem_checkin || v.flag_sem_checkout || v.flag_gps_divergente || v.flag_horario_fora_margem || v.checkin_manual) &&
+    v.status !== 'aprovada_pos_revisao'
+  );
+  set('relKpiRevisao', visitasRevisao.length);
+  set('relKpiRevisaoHint', visitasRevisao.length === 0 ? 'tudo ok' : 'aguardando decisão');
+
+  // Delta vs período anterior (só se houver dataInicio definido)
+  if (dataInicio && total >= 0) {
+    try {
+      const inicioDate = new Date(dataInicio);
+      const periodoMs = Date.now() - inicioDate.getTime();
+      const inicioAnterior = new Date(inicioDate.getTime() - periodoMs);
+      const { count: totalAnterior } = await db.from('visitas')
+        .select('*', { count: 'exact', head: true })
+        .gte('checkin_timestamp', inicioAnterior.toISOString())
+        .lt('checkin_timestamp', inicioDate.toISOString());
+      if (typeof totalAnterior === 'number' && totalAnterior > 0) {
+        const delta = Math.round(((total - totalAnterior) / totalAnterior) * 100);
+        const cls = delta > 0 ? 'r2-delta--up' : delta < 0 ? 'r2-delta--down' : '';
+        const arrow = delta > 0 ? '↑' : delta < 0 ? '↓' : '';
+        if (delta !== 0) {
+          set('relKpiTotalDelta', `<span class="r2-delta ${cls}">${arrow} ${Math.abs(delta)}%</span>`);
+        }
+      } else if (totalAnterior === 0 && total > 0) {
+        set('relKpiTotalDelta', `<span class="r2-delta r2-delta--up">novo</span>`);
+      }
+    } catch (e) {
+      console.warn('[carregarRelatorio] erro no comparativo período anterior:', e?.message);
+    }
+  }
+
+  // Aviso "crítico" no GPS quando qualidade muito baixa
+  if (qualidadeGps < 60 && total > 0) {
+    set('relKpiGpsHint', `${divergentes} ${divergentes === 1 ? 'divergente' : 'divergentes'} · ${manuais} ${manuais === 1 ? 'manual' : 'manuais'} <span class="r2-status-badge r2-status-badge--warning" style="margin-left:4px;"><span class="r2-status-badge__dot"></span>crítico</span>`);
+  }
+
+  // Pendências cards na seção Atenção
+  set('relAtencaoPendInst', pendInst);
+  set('relAtencaoPendObj', pendObj);
+  set('relAtencaoPendProf', pendProf);
 
   // ============ Prosa ============
   const labelPeriodo = {
@@ -27351,35 +27932,388 @@ async function carregarRelatorio(periodo, user) {
   set('relProsa', partes.join(''));
 
   // ============ Gráfico de linha ============
-  // Injeta no container do relatório (reusa a função existente fazendo swap do id temporariamente)
   const chartEl = document.getElementById('relChartLine');
   if (chartEl) {
     chartEl.id = 'dashChartLine';
     renderDashChartLine(visitas, dataInicio);
     chartEl.id = 'relChartLine';
   }
-
-  // ============ Rankings ============
-  renderRankRelatorio('relRankProf', visitas, 'nutricionista_id', 'usuarios', 8);
-  renderRankRelatorio('relRankInst', visitas, 'instituicao_id', 'instituicoes', 8);
-
-  // ============ Pizzas ============
-  // Swap de IDs pra reusar renderDashPieStatus / renderDashPieCheckin
-  const swapIds = [
-    ['relPieStatus', 'dashPieStatus', () => renderDashPieStatus(visitas)],
-    ['relPieCheckin', 'dashPieCheckin', () => renderDashPieCheckin(visitas)],
-    ['relBarsObj', 'dashPieObj', () => renderDashBarsObjetivos(dataInicio)],
-  ];
-  for (const [originalId, tempId, fn] of swapIds) {
-    const el = document.getElementById(originalId);
-    if (!el) continue;
-    el.id = tempId;
-    await Promise.resolve(fn());
-    el.id = originalId;
+  // Caption do gráfico
+  if (total > 0) {
+    const dias = dataInicio ? Math.max(1, Math.ceil((Date.now() - new Date(dataInicio).getTime()) / 86400000)) : 1;
+    const mediaPorDia = (total / dias).toFixed(1);
+    const contagemPorDia = {};
+    visitas.forEach(v => {
+      if (!v.checkin_timestamp) return;
+      const dia = v.checkin_timestamp.slice(0, 10);
+      contagemPorDia[dia] = (contagemPorDia[dia] || 0) + 1;
+    });
+    const picoEntry = Object.entries(contagemPorDia).sort((a, b) => b[1] - a[1])[0];
+    const picoStr = picoEntry ? `<span class="r2-chart-card__caption-num">${picoEntry[1]}</span> em <span class="r2-chart-card__caption-num">${picoEntry[0].split('-').reverse().slice(0,2).join('/')}</span>` : '—';
+    set('relChartCaption', `
+      <span><span class="r2-chart-card__caption-num">${total}</span> visitas no total</span>
+      <span>média <span class="r2-chart-card__caption-num">${mediaPorDia}</span>/dia</span>
+      <span>pico ${picoStr}</span>
+    `);
+  } else {
+    set('relChartCaption', '');
   }
 
-  // ============ Lista completa de visitas ============
-  renderListaVisitasRelatorio(visitas);
+  // ============ Rankings (novo padrão R2) ============
+  renderR2Ranking('relRankProf', visitas, 'nutricionista_id', 'usuarios', 8);
+  renderR2Ranking('relRankInst', visitas, 'instituicao_id', 'instituicoes', 10);
+
+  // ============ Distribuições em barras horizontais ============
+  renderR2DistStatus('relBarStatus', visitas);
+  renderR2DistCheckin('relBarCheckin', visitas);
+  renderR2DistTipoInst('relBarTipoInst', visitas);
+
+  // Top objetivos — reusa função do dashboard via swap
+  const objEl = document.getElementById('relBarsObj');
+  if (objEl) {
+    objEl.id = 'dashPieObj';
+    await Promise.resolve(renderDashBarsObjetivos(dataInicio));
+    objEl.id = 'relBarsObj';
+  }
+
+  // ============ Cobertura da equipe ============
+  await renderR2Equipe(visitas);
+
+  // ============ Padrões operacionais ============
+  await renderR2Heatmap(); // últimos 90 dias (independente do período)
+  renderR2FrequenciaSemanal(visitas);
+
+  // ============ Atenção — visitas em revisão ============
+  renderR2AtencaoVisitas(visitasRevisao);
+}
+
+// ===== Sprint 9.32.215: helpers de renderização do relatório v2 =====
+
+// Ranking com classes r2-*
+function renderR2Ranking(containerId, visitas, foreignKey, joinKey, topN) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  const contagem = {};
+  const nomes = {};
+  visitas.forEach(v => {
+    const id = v[foreignKey];
+    if (!id) return;
+    contagem[id] = (contagem[id] || 0) + 1;
+    if (v[joinKey]?.nome) nomes[id] = v[joinKey].nome;
+  });
+  const ranked = Object.entries(contagem)
+    .map(([id, count]) => ({ id, count, nome: nomes[id] || '(sem nome)' }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, topN);
+  if (ranked.length === 0) {
+    container.innerHTML = '<div style="padding:14px 0;color:var(--neutral-400);font-size:12px;text-align:center;">Sem dados no período.</div>';
+    return;
+  }
+  const maxCount = ranked[0].count;
+  container.innerHTML = ranked.map((r, i) => `
+    <div class="r2-ranking-row">
+      <span class="r2-ranking-row__pos">${i + 1}</span>
+      <span class="r2-ranking-row__name">${(r.nome || '').replace(/</g, '&lt;')}</span>
+      <span class="r2-ranking-row__count">${r.count}</span>
+      <span class="r2-ranking-row__bar" style="width:${(r.count / maxCount * 100).toFixed(1)}%;"></span>
+    </div>
+  `).join('');
+}
+
+// Helper genérico que renderiza um dist-card (barra empilhada + legenda)
+function _renderR2DistCard(containerId, titulo, meta, segmentos) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  const total = segmentos.reduce((s, x) => s + x.count, 0);
+  if (total === 0) {
+    container.innerHTML = `
+      <div class="r2-dist-card__title"><span class="r2-dist-card__title-text">${titulo}</span><span class="r2-dist-card__title-meta">${meta || ''}</span></div>
+      <div style="padding:12px 0;color:var(--neutral-400);font-size:12px;">Sem dados no período.</div>
+    `;
+    return;
+  }
+  const segs = segmentos.map(s => ({ ...s, pct: Math.round((s.count / total) * 100) }));
+  // Garante soma exata 100% ajustando o maior segmento
+  const somaPct = segs.reduce((s, x) => s + x.pct, 0);
+  if (somaPct !== 100 && segs.length > 0) {
+    const maior = segs.reduce((m, x) => x.count > m.count ? x : m, segs[0]);
+    maior.pct += (100 - somaPct);
+  }
+  const barHtml = segs.filter(s => s.pct > 0).map(s => `
+    <div class="r2-dist-bar__seg" style="width:${s.pct}%;background:${s.cor};color:${s.corTexto || '#fff'};">${s.pct >= 4 ? s.pct + '%' : ''}</div>
+  `).join('');
+  const legendHtml = segs.map(s => `
+    <div class="r2-dist-legend__item"><span class="r2-dist-legend__dot" style="background:${s.cor};"></span>${s.label} <span class="r2-dist-legend__pct">${s.pct}%</span></div>
+  `).join('');
+  container.innerHTML = `
+    <div class="r2-dist-card__title">
+      <span class="r2-dist-card__title-text">${titulo}</span>
+      <span class="r2-dist-card__title-meta">${meta || ''}</span>
+    </div>
+    <div class="r2-dist-bar">${barHtml}</div>
+    <div class="r2-dist-legend">${legendHtml}</div>
+  `;
+}
+
+function renderR2DistStatus(containerId, visitas) {
+  const cnt = { aprovada: 0, completa: 0, rascunho: 0, outros: 0 };
+  visitas.forEach(v => {
+    if (v.status === 'aprovada_pos_revisao') cnt.aprovada++;
+    else if (v.status === 'completa') cnt.completa++;
+    else if (v.status === 'rascunho') cnt.rascunho++;
+    else cnt.outros++;
+  });
+  const segs = [
+    { label: 'Aprovada pós-revisão', count: cnt.aprovada, cor: '#0A1F5C' },
+    { label: 'Completa', count: cnt.completa, cor: '#22A06B' },
+    { label: 'Rascunho', count: cnt.rascunho, cor: '#9CA3AF' },
+  ];
+  if (cnt.outros > 0) segs.push({ label: 'Outros', count: cnt.outros, cor: '#D1D5DB' });
+  _renderR2DistCard(containerId, 'Status das visitas', `${visitas.length} ${visitas.length === 1 ? 'visita' : 'visitas'}`, segs);
+}
+
+function renderR2DistCheckin(containerId, visitas) {
+  let valido = 0, divergente = 0, manual = 0;
+  visitas.forEach(v => {
+    if (v.checkin_manual) manual++;
+    else if (v.flag_gps_divergente) divergente++;
+    else valido++;
+  });
+  _renderR2DistCard(containerId, 'Qualidade do check-in', 'GPS validado vs manual', [
+    { label: 'GPS válido', count: valido, cor: '#22A06B' },
+    { label: 'GPS divergente', count: divergente, cor: '#F59E0B' },
+    { label: 'Manual', count: manual, cor: '#9CA3AF' },
+  ]);
+}
+
+function renderR2DistTipoInst(containerId, visitas) {
+  const cnt = { privada: 0, publica: 0, outros: 0 };
+  visitas.forEach(v => {
+    const tipo = (v.instituicoes?.tipo || '').toLowerCase();
+    if (tipo === 'privada' || tipo === 'private') cnt.privada++;
+    else if (tipo === 'publica' || tipo === 'pública' || tipo === 'public') cnt.publica++;
+    else cnt.outros++;
+  });
+  _renderR2DistCard(containerId, 'Tipo de instituição', 'Privada / pública / outros', [
+    { label: 'Privada', count: cnt.privada, cor: '#0A1F5C' },
+    { label: 'Pública', count: cnt.publica, cor: '#8BC63F', corTexto: '#0A1F5C' },
+    { label: 'Outros / sem tipo', count: cnt.outros, cor: '#9CA3AF' },
+  ]);
+}
+
+// Cobertura da equipe — popula 4 stats + lista de inativos
+async function renderR2Equipe(visitas) {
+  if (!db) return;
+  // Profissionais ativos (nutris) e instituições ativas — queries paralelas
+  const [profsAtivosRes, instAtivasRes, todosNutrisRes] = await Promise.all([
+    db.from('usuarios').select('*', { count: 'exact', head: true }).eq('status', 'ativo').eq('perfil', 'nutricionista'),
+    db.from('instituicoes').select('*', { count: 'exact', head: true }).eq('ativo', true),
+    db.from('usuarios').select('id, nome').eq('status', 'ativo').eq('perfil', 'nutricionista'),
+  ]);
+
+  const profsAtivos = profsAtivosRes.count || 0;
+  const instAtivas = instAtivasRes.count || 0;
+
+  // Atuaram no período: distinct nutricionista_id em visitas
+  const idsAtuaram = new Set(visitas.map(v => v.nutricionista_id).filter(Boolean));
+  const atuaram = idsAtuaram.size;
+
+  // Sem atividade no período: ativos - atuaram
+  const semAtividade = Math.max(0, profsAtivos - atuaram);
+
+  const set = (id, html) => { const el = document.getElementById(id); if (el) el.innerHTML = html; };
+  set('relEquipeAtivos', profsAtivos);
+  set('relEquipeAtuaram', atuaram);
+  set('relEquipeInativos', semAtividade);
+  set('relEquipeInstituicoes', instAtivas);
+
+  // Lista de inativos: nutris ativos que NÃO atuaram
+  const todosNutris = (todosNutrisRes.data || []).filter(u => !idsAtuaram.has(u.id));
+  const listEl = document.getElementById('relInativosList');
+  if (!listEl) return;
+  if (todosNutris.length === 0) {
+    listEl.innerHTML = '<div style="padding:12px;text-align:center;color:var(--status-success);font-size:12.5px;"><span class="material-symbols-rounded" style="font-size:16px;vertical-align:-3px;">check_circle</span> Toda a equipe atuou no período.</div>';
+    return;
+  }
+
+  // Pra cada inativo, busca última visita (em paralelo)
+  const ultimas = await Promise.all(todosNutris.map(async (u) => {
+    const { data } = await db.from('visitas')
+      .select('checkin_timestamp, instituicoes(nome)')
+      .eq('nutricionista_id', u.id)
+      .order('checkin_timestamp', { ascending: false })
+      .limit(1);
+    return { user: u, ultima: (data || [])[0] };
+  }));
+
+  listEl.innerHTML = `
+    <ul class="r2-inativos-list">
+      ${ultimas.slice(0, 6).map(({ user, ultima }) => {
+        const iniciais = (user.nome || '?').split(' ').slice(0, 2).map(p => p[0] || '').join('').toUpperCase();
+        const dias = ultima?.checkin_timestamp
+          ? Math.floor((Date.now() - new Date(ultima.checkin_timestamp).getTime()) / 86400000)
+          : null;
+        const meta = dias !== null
+          ? `Última visita há ${dias} ${dias === 1 ? 'dia' : 'dias'}${ultima.instituicoes?.nome ? ` · ${ultima.instituicoes.nome.replace(/</g,'&lt;')}` : ''}`
+          : 'Sem visitas registradas';
+        const tagClass = dias === null ? 'r2-status-badge--danger' : (dias > 30 ? 'r2-status-badge--warning' : 'r2-status-badge--warning');
+        const tagText = dias === null ? 'sem dados' : `${dias} ${dias === 1 ? 'dia' : 'dias'}`;
+        return `
+          <li class="r2-inativo-row">
+            <div class="r2-inativo-row__avatar">${iniciais}</div>
+            <div>
+              <div class="r2-inativo-row__name">${(user.nome || '').replace(/</g,'&lt;')}</div>
+              <div class="r2-inativo-row__meta">${meta}</div>
+            </div>
+            <span class="r2-status-badge ${tagClass}"><span class="r2-status-badge__dot"></span>${tagText}</span>
+          </li>
+        `;
+      }).join('')}
+    </ul>
+    ${ultimas.length > 6 ? `<div style="margin-top:10px;font-size:11.5px;color:var(--neutral-500);">+ ${ultimas.length - 6} ${ultimas.length - 6 === 1 ? 'outro nutricionista' : 'outros nutricionistas'} sem atividade</div>` : ''}
+  `;
+}
+
+// Heatmap dias × horários (últimos 90 dias)
+async function renderR2Heatmap() {
+  const heatmapEl = document.getElementById('relHeatmap');
+  if (!heatmapEl || !db) return;
+  const inicio90 = new Date(Date.now() - 90 * 86400000).toISOString();
+  const { data: visitas90 = [] } = await db.from('visitas')
+    .select('checkin_timestamp')
+    .gte('checkin_timestamp', inicio90)
+    .not('checkin_timestamp', 'is', null);
+
+  // Matriz 7 (Seg-Dom) × 10 (8h-17h)
+  const matriz = Array(7).fill(null).map(() => Array(10).fill(0));
+  visitas90.forEach(v => {
+    const d = new Date(v.checkin_timestamp);
+    const dow = (d.getDay() + 6) % 7; // Seg=0, Dom=6
+    const h = d.getHours() - 8; // 8h = col 0
+    if (h >= 0 && h <= 9 && dow >= 0 && dow <= 5) matriz[dow][h]++;
+  });
+
+  // Determina escala (max para classificar h-1, h-2, h-3, h-4)
+  const maxVal = Math.max(...matriz.flat(), 1);
+  const classFor = (n) => {
+    if (n === 0) return 'h-0';
+    const ratio = n / maxVal;
+    if (ratio >= 0.75) return 'h-4';
+    if (ratio >= 0.5) return 'h-3';
+    if (ratio >= 0.25) return 'h-2';
+    return 'h-1';
+  };
+
+  const dias = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+  heatmapEl.innerHTML = `
+    <table class="r2-heatmap">
+      <thead>
+        <tr><th></th>${[8,9,10,11,12,13,14,15,16,17].map(h => `<th>${h}h</th>`).join('')}</tr>
+      </thead>
+      <tbody>
+        ${dias.map((nome, i) => `
+          <tr>
+            <td class="r2-heatmap__row-label">${nome}</td>
+            ${matriz[i].map(n => `<td class="${classFor(n)}">${n === 0 ? '·' : n}</td>`).join('')}
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+
+  // Encontra pico
+  let picoVal = 0, picoDow = -1, picoHora = -1;
+  for (let i = 0; i < 6; i++) {
+    for (let j = 0; j < 10; j++) {
+      if (matriz[i][j] > picoVal) { picoVal = matriz[i][j]; picoDow = i; picoHora = j; }
+    }
+  }
+  const set = (id, html) => { const el = document.getElementById(id); if (el) el.innerHTML = html; };
+  set('relHeatmapSubtitle', `Heatmap dos últimos 90 dias · ${visitas90.length} ${visitas90.length === 1 ? 'visita' : 'visitas'}`);
+  if (picoVal > 0) {
+    const nomesCompletos = ['segunda-feira','terça-feira','quarta-feira','quinta-feira','sexta-feira','sábado'];
+    set('relHeatmapCaption', `Pico: <strong>${nomesCompletos[picoDow]}</strong> às <strong>${picoHora + 8}h</strong> · ${picoVal} ${picoVal === 1 ? 'visita' : 'visitas'}.`);
+  } else {
+    set('relHeatmapCaption', '');
+  }
+}
+
+// Frequência por dia da semana (do período do relatório, não 90 dias)
+function renderR2FrequenciaSemanal(visitas) {
+  const el = document.getElementById('relFreqWeek');
+  if (!el) return;
+  const cnt = [0,0,0,0,0,0,0]; // Seg=0..Sab=5, Dom=6
+  visitas.forEach(v => {
+    if (!v.checkin_timestamp) return;
+    const dow = (new Date(v.checkin_timestamp).getDay() + 6) % 7;
+    cnt[dow]++;
+  });
+  const dias = ['Seg','Ter','Qua','Qui','Sex','Sáb'];
+  const max = Math.max(...cnt.slice(0, 6), 1);
+  el.innerHTML = `
+    <div class="r2-freq-week">
+      ${dias.map((nome, i) => `
+        <div class="r2-freq-row">
+          <span class="r2-freq-row__day">${nome}</span>
+          <div class="r2-freq-row__bar-wrap"><div class="r2-freq-row__bar" style="width:${(cnt[i] / max * 100).toFixed(1)}%;"></div></div>
+          <span class="r2-freq-row__count">${cnt[i]}</span>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+// Lista de visitas em revisão (top 5)
+function renderR2AtencaoVisitas(visitasRevisao) {
+  const el = document.getElementById('relAtencaoVisitas');
+  if (!el) return;
+  const total = visitasRevisao.length;
+  if (total === 0) {
+    el.innerHTML = `
+      <li style="padding:14px;text-align:center;color:var(--status-success);font-size:12.5px;background:#fff;border-radius:8px;border:1px solid #FCE7B0;">
+        <span class="material-symbols-rounded" style="font-size:16px;vertical-align:-3px;">check_circle</span>
+        Nenhuma visita pendente de decisão.
+      </li>`;
+    document.getElementById('relAtencaoTotal').textContent = '';
+    document.getElementById('relAtencaoTitle').textContent = 'Nenhuma visita em revisão';
+    return;
+  }
+
+  const top5 = visitasRevisao.slice(0, 5);
+  document.getElementById('relAtencaoTitle').textContent =
+    total <= 5 ? `Visitas em revisão (${total})` : `Visitas em revisão · top 5 de ${total}`;
+
+  el.innerHTML = top5.map(v => {
+    const flags = [];
+    if (v.flag_sem_checkin) flags.push('sem check-in');
+    if (v.flag_sem_checkout) flags.push('sem check-out');
+    if (v.flag_gps_divergente) flags.push('GPS divergente');
+    if (v.flag_horario_fora_margem) flags.push('horário fora da margem');
+    if (v.checkin_manual) flags.push('check-in manual');
+    const flagsLabel = flags.length === 1 ? '1 flag' : `${flags.length} flags`;
+    const flagsTxt = flags.join(' + ');
+    const dt = v.checkin_timestamp
+      ? new Date(v.checkin_timestamp).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' })
+      : 'sem data';
+    const hosp = (v.instituicoes?.nome || 'Hospital').replace(/</g,'&lt;');
+    const nutri = (v.usuarios?.nome || 'Nutricionista').replace(/</g,'&lt;');
+    return `
+      <li class="r2-atencao-item">
+        <div>
+          <div class="r2-atencao-item__title">${hosp} · ${nutri}</div>
+          <div class="r2-atencao-item__meta">${dt} · ${flagsTxt}</div>
+        </div>
+        <span class="r2-status-badge r2-status-badge--danger"><span class="r2-status-badge__dot"></span>${flagsLabel}</span>
+      </li>
+    `;
+  }).join('');
+
+  if (total > 5) {
+    document.getElementById('relAtencaoTotal').innerHTML =
+      `+ ${total - 5} ${total - 5 === 1 ? 'outra visita' : 'outras visitas'} em revisão · total <strong style="color:var(--brand-navy);">${total}</strong>`;
+  } else {
+    document.getElementById('relAtencaoTotal').innerHTML = '';
+  }
 }
 
 // Ranking sem animações de barra (melhor pra impressão)
