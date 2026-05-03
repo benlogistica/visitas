@@ -4049,6 +4049,85 @@ a {
   color: #fff !important;
   animation: rte-mic-pulse 1.2s ease-in-out infinite;
 }
+/* 9.32.198: barra estilo WhatsApp durante gravação */
+.wa-rec-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  margin: 6px 0;
+  background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+  border: 1px solid #fecaca;
+  border-radius: 12px;
+  font-family: 'Inter', -apple-system, sans-serif;
+  font-size: 14px;
+  color: #7f1d1d;
+  user-select: none;
+}
+.wa-rec-bar--processing {
+  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+  border-color: #bfdbfe;
+  color: #1e40af;
+}
+.wa-rec-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: #ef4444;
+  animation: wa-rec-pulse 1s ease-in-out infinite;
+  flex-shrink: 0;
+}
+@keyframes wa-rec-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: .4; transform: scale(.85); }
+}
+.wa-rec-wave {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: 18px;
+  flex-shrink: 0;
+}
+.wa-rec-wave > span {
+  display: inline-block;
+  width: 3px;
+  background: #ef4444;
+  border-radius: 2px;
+  animation: wa-rec-wave 1.1s ease-in-out infinite;
+}
+.wa-rec-wave > span:nth-child(1) { height: 35%; animation-delay: 0s; }
+.wa-rec-wave > span:nth-child(2) { height: 70%; animation-delay: .12s; }
+.wa-rec-wave > span:nth-child(3) { height: 100%; animation-delay: .24s; }
+.wa-rec-wave > span:nth-child(4) { height: 60%; animation-delay: .36s; }
+.wa-rec-wave > span:nth-child(5) { height: 85%; animation-delay: .48s; }
+.wa-rec-wave > span:nth-child(6) { height: 45%; animation-delay: .6s; }
+.wa-rec-wave > span:nth-child(7) { height: 75%; animation-delay: .72s; }
+@keyframes wa-rec-wave {
+  0%, 100% { transform: scaleY(.4); }
+  50% { transform: scaleY(1); }
+}
+.wa-rec-time {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+.wa-rec-hint {
+  font-size: 12px;
+  color: inherit;
+  opacity: .75;
+  margin-left: auto;
+}
+.wa-rec-spinner {
+  width: 16px; height: 16px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: wa-rec-spin .8s linear infinite;
+  flex-shrink: 0;
+}
+@keyframes wa-rec-spin {
+  to { transform: rotate(360deg); }
+}
+
 .rte-mic-btn--on {
   background: var(--status-danger, #DC2626) !important;
   color: #fff !important;
@@ -6604,7 +6683,7 @@ a {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.197-mic-audiotrack-phrases-vocabulario',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.199-mic-groq-key-configuravel',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -16162,6 +16241,14 @@ const ConfigMeta = {
       { valor: 'claude-haiku-4-5', label: 'Claude Haiku 4.5 (mais rápido)' },
     ],
   },
+  groq_api_key: {
+    titulo: 'Chave da Groq (ditado por voz)',
+    descricao: 'Necessária para o ditado por voz no relatório de visita usar Whisper Large v3. Crie uma chave gratuita em <a href="https://console.groq.com/keys" target="_blank" style="color:var(--brand-lime);text-decoration:underline;">console.groq.com/keys</a> (free tier ~4h/dia). A chave começa com <code>gsk_</code> e fica salva apenas neste sistema.',
+    categoria: 'voz',
+    tipo: 'text',
+    placeholder: 'gsk_...',
+    sensitive: true,
+  },
 };
 
 const ConfigCategorias = {
@@ -16169,6 +16256,7 @@ const ConfigCategorias = {
   tolerancia: { titulo: 'Margens & Tolerâncias', icone: 'schedule',  cor: 'navy' },
   admin:      { titulo: 'Fluxo Administrativo', icone: 'admin_panel_settings', cor: 'info' },
   ia:         { titulo: 'Inteligência Artificial', icone: 'smart_toy', cor: 'warning' },
+  voz:        { titulo: 'Ditado por voz', icone: 'mic', cor: 'brand-lime' },
 };
 
 // Carrega todas as configs (com cache)
@@ -22722,11 +22810,231 @@ function _whisperInserirTexto(wrap, texto) {
   }
 }
 
-// ===== Sprint 9.32.181: rteToggleMic HÍBRIDO (Web Speech + buffer + UI Whisper) =====
+// ===== Sprint 9.32.198: MODO WHATSAPP — MediaRecorder + Groq Whisper Large v3 =====
+// Substitui Web Speech API por gravação contínua sem beep.
+// Aperta = grava (até apertar de novo). Aperta de novo = manda áudio pra Groq = texto cai no editor.
+
+// 9.32.199: chave fica em CONFIG (admin → Configurações → Ditado por voz)
+// Use getConfigSync('groq_api_key') no momento do uso. NÃO commitar a chave aqui!
+function _waGetGroqKey() {
+  try { return (getConfigSync('groq_api_key', '') || '').trim(); } catch (e) { return ''; }
+}
+const _GROQ_MODEL = 'whisper-large-v3';
+const _GROQ_ENDPOINT = 'https://api.groq.com/openai/v1/audio/transcriptions';
+
+// Estado da gravação
+window._waMediaRecorder = null;
+window._waChunks = [];
+window._waStream = null;
+window._waStartTime = 0;
+window._waTimerInterval = null;
+window._waWrapAlvo = null;
+
+// Inicia gravação WhatsApp-style
+async function _waIniciarGravacao(wrap, btn) {
+  try {
+    window._waWrapAlvo = wrap;
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+    });
+    window._waStream = stream;
+    window._waChunks = [];
+
+    // Detecta o melhor formato suportado
+    const mimes = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg'];
+    let mime = '';
+    for (const m of mimes) {
+      if (window.MediaRecorder && MediaRecorder.isTypeSupported(m)) { mime = m; break; }
+    }
+    const opts = mime ? { mimeType: mime } : {};
+    const mr = new MediaRecorder(stream, opts);
+    window._waMediaRecorder = mr;
+
+    mr.ondataavailable = (ev) => {
+      if (ev.data && ev.data.size > 0) window._waChunks.push(ev.data);
+    };
+    mr.onstop = () => {
+      _waProcessarAudio(wrap, btn);
+    };
+    mr.onerror = (ev) => {
+      console.error('[wa] MediaRecorder erro', ev);
+      _waResetUI(wrap, btn);
+      if (typeof setFlash === 'function') setFlash('warning', 'Erro na gravação. Tente novamente.');
+    };
+
+    mr.start(1000); // chunk a cada 1s pra não travar buffer
+    window._waStartTime = Date.now();
+    btn.dataset.state = 'on';
+    btn.classList.add('rte-mic-btn--on');
+    _waMostrarUiGravando(wrap);
+    _waIniciarTimer(wrap);
+    console.log('[wa] gravação iniciada — formato:', mime || 'default');
+  } catch (e) {
+    console.error('[wa] erro ao iniciar:', e);
+    if (e && (e.name === 'NotAllowedError' || e.name === 'PermissionDeniedError')) {
+      if (typeof window.rteMostrarAjudaPermissao === 'function') window.rteMostrarAjudaPermissao();
+      else if (typeof setFlash === 'function') setFlash('warning', 'Permissão de microfone negada.');
+    } else {
+      if (typeof setFlash === 'function') setFlash('warning', 'Não foi possível acessar o microfone.');
+    }
+    _waResetUI(wrap, btn);
+  }
+}
+
+// Para gravação (dispara onstop -> _waProcessarAudio)
+function _waPararGravacao(wrap, btn) {
+  _waPararTimer();
+  if (window._waMediaRecorder && window._waMediaRecorder.state !== 'inactive') {
+    try { window._waMediaRecorder.stop(); } catch (e) { console.warn('[wa] stop erro', e); }
+  } else {
+    _waResetUI(wrap, btn);
+  }
+}
+
+// Recebe os chunks, monta blob, manda pra Groq
+async function _waProcessarAudio(wrap, btn) {
+  // Libera o microfone imediatamente
+  if (window._waStream) {
+    try { window._waStream.getTracks().forEach(t => t.stop()); } catch (e) {}
+    window._waStream = null;
+  }
+
+  const chunks = window._waChunks || [];
+  window._waChunks = [];
+
+  if (chunks.length === 0) {
+    _waResetUI(wrap, btn);
+    if (typeof setFlash === 'function') setFlash('info', 'Nada foi gravado.');
+    return;
+  }
+
+  const mime = (window._waMediaRecorder && window._waMediaRecorder.mimeType) || 'audio/webm';
+  const blob = new Blob(chunks, { type: mime });
+  console.log('[wa] áudio capturado:', (blob.size/1024).toFixed(1), 'KB / mime:', mime);
+
+  // 9.32.199: pega a chave da config (admin precisa ter cadastrado)
+  const apiKey = _waGetGroqKey();
+  if (!apiKey) {
+    _waResetUI(wrap, btn);
+    if (typeof setFlash === 'function') {
+      setFlash('warning', 'Ditado por voz não configurado. Admin: vá em Configurações → Ditado por voz e cadastre a chave da Groq.');
+    }
+    return;
+  }
+
+  // UI: mostra spinner de transcrevendo
+  _waMostrarUiTranscrevendo(wrap);
+
+  try {
+    const ext = mime.includes('mp4') ? 'mp4' : mime.includes('ogg') ? 'ogg' : 'webm';
+    const fd = new FormData();
+    fd.append('file', blob, 'audio.' + ext);
+    fd.append('model', _GROQ_MODEL);
+    fd.append('language', 'pt');
+    fd.append('response_format', 'json');
+
+    const t0 = Date.now();
+    const resp = await fetch(_GROQ_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + apiKey },
+      body: fd,
+    });
+    const ms = Date.now() - t0;
+
+    if (!resp.ok) {
+      const errText = await resp.text();
+      console.error('[wa] Groq erro', resp.status, errText);
+      throw new Error('Groq HTTP ' + resp.status);
+    }
+    const json = await resp.json();
+    const texto = (json && json.text || '').trim();
+    console.log('[wa] Groq respondeu em', ms, 'ms — texto:', texto.length, 'chars');
+
+    if (texto && window._waWrapAlvo) {
+      _whisperInserirTexto(window._waWrapAlvo, texto);
+    } else if (!texto) {
+      if (typeof setFlash === 'function') setFlash('info', 'Nada foi captado. Tente falar mais alto.');
+    }
+  } catch (e) {
+    console.error('[wa] erro Groq:', e);
+    if (typeof setFlash === 'function') setFlash('warning', 'Erro ao transcrever: ' + (e.message || e));
+  } finally {
+    _waResetUI(wrap, btn);
+    window._waWrapAlvo = null;
+  }
+}
+
+// UI helpers
+function _waMostrarUiGravando(wrap) {
+  if (!wrap) return;
+  let bar = wrap.querySelector('.wa-rec-bar');
+  if (!bar) {
+    bar = document.createElement('div');
+    bar.className = 'wa-rec-bar';
+    bar.innerHTML = `
+      <span class="wa-rec-dot"></span>
+      <span class="wa-rec-wave">
+        <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+      </span>
+      <span class="wa-rec-time">0:00</span>
+      <span class="wa-rec-hint">Toque no mic novamente para enviar</span>
+    `;
+    const tb = wrap.querySelector('.rte-toolbar') || wrap.firstElementChild;
+    if (tb && tb.parentNode) tb.parentNode.insertBefore(bar, tb.nextSibling);
+    else wrap.appendChild(bar);
+  }
+  bar.style.display = 'flex';
+  bar.classList.remove('wa-rec-bar--processing');
+}
+
+function _waMostrarUiTranscrevendo(wrap) {
+  if (!wrap) return;
+  const bar = wrap.querySelector('.wa-rec-bar');
+  if (!bar) return;
+  bar.classList.add('wa-rec-bar--processing');
+  bar.innerHTML = `
+    <span class="wa-rec-spinner"></span>
+    <span class="wa-rec-time">Transcrevendo…</span>
+  `;
+}
+
+function _waResetUI(wrap, btn) {
+  _waPararTimer();
+  if (btn) {
+    btn.dataset.state = 'off';
+    btn.classList.remove('rte-mic-btn--on', 'rte-mic-btn--reconnect');
+  }
+  if (wrap) {
+    const bar = wrap.querySelector('.wa-rec-bar');
+    if (bar) bar.remove();
+  }
+}
+
+function _waIniciarTimer(wrap) {
+  if (window._waTimerInterval) clearInterval(window._waTimerInterval);
+  window._waTimerInterval = setInterval(() => {
+    const sec = Math.floor((Date.now() - window._waStartTime) / 1000);
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    const time = m + ':' + (s < 10 ? '0' + s : s);
+    if (wrap) {
+      const t = wrap.querySelector('.wa-rec-time');
+      if (t && !t.textContent.includes('…')) t.textContent = time;
+    }
+  }, 250);
+}
+
+function _waPararTimer() {
+  if (window._waTimerInterval) {
+    clearInterval(window._waTimerInterval);
+    window._waTimerInterval = null;
+  }
+}
+
+// ===== Sprint 9.32.198: rteToggleMic — MODO WHATSAPP (MediaRecorder + Groq) =====
 window.rteToggleMic = function(btn) {
   const wrap = btn.closest('.rte-wrap');
-  const editor = wrap?.querySelector('.rte-editor');
-  const status = wrap?.querySelector('.rte-mic-status');
+  const editor = wrap && wrap.querySelector('.rte-editor');
   if (!editor) return;
 
   const ehHttps = location.protocol === 'https:' || location.hostname === 'localhost';
@@ -22735,88 +23043,18 @@ window.rteToggleMic = function(btn) {
     return;
   }
 
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SR) {
-    const ehFirefox = /Firefox/i.test(navigator.userAgent);
-    const msg = ehFirefox
-      ? 'Firefox não suporta ditado por voz. Use Chrome, Edge ou Safari.'
-      : 'Seu navegador não suporta ditado por voz. Use Chrome, Edge ou Safari.';
-    if (typeof setFlash === 'function') setFlash('warning', msg);
+  if (!window.MediaRecorder || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    if (typeof setFlash === 'function') setFlash('warning', 'Seu navegador não suporta gravação de áudio.');
     return;
   }
 
-  // Já está gravando? Para e insere o buffer no editor
+  // Toggle: aperta = grava, aperta de novo = para e transcreve
   if (btn.dataset.state === 'on') {
-    _micPararEInserir(wrap, btn, status, editor);
+    _waPararGravacao(wrap, btn);
     return;
   }
-
-  // Inicia gravação
-  _micIniciar(wrap, btn, status, SR);
+  _waIniciarGravacao(wrap, btn);
 };
-
-// ===== Sprint 9.32.197: vocabulário personalizado pra biasing =====
-// SpeechRecognitionPhrase permite dar peso maior a termos que o reconhecedor costuma errar.
-// Funciona em Chrome novo (139+). Se o navegador não suportar, ignora silenciosamente.
-const _MIC_VOCABULARIO = [
-  // Estruturas hospitalares
-  'Hospital', 'UTI', 'Centro Cirúrgico', 'Pronto Socorro',
-  // Termos administrativos
-  'convênio', 'autorização', 'OPME',
-  // Profissionais e prescrição
-  'nutricionista', 'prescrição', 'dieta',
-  // Produtos nutricionais
-  'sonda enteral', 'NPT', 'suplementação',
-  // Marca da empresa
-  'Nestlé Health Science', 'NHSC',
-  // Produtos NHSC mais comuns
-  'Resource', 'Optifibre', 'Fortini',
-  // Termos do sistema
-  'padronizado', 'devolução', 'faturamento',
-];
-
-function _micAplicarVocabulario(rec) {
-  try {
-    if (typeof window.SpeechRecognitionPhrase === 'undefined') return false;
-    if (!('phrases' in rec)) return false;
-    const phrases = _MIC_VOCABULARIO.map(termo => new window.SpeechRecognitionPhrase(termo, 5.0));
-    rec.phrases = phrases;
-    console.log('[mic] vocabulário aplicado:', phrases.length, 'termos');
-    return true;
-  } catch (e) {
-    console.warn('[mic] phrases não suportadas:', e);
-    return false;
-  }
-}
-
-// ===== Sprint 9.32.197: stream pre-warm pra start(audioTrack) =====
-// Mantém um getUserMedia ativo durante toda a gravação. Permite passar o
-// MediaStreamTrack pro recognition.start(track) (Chrome 135+ desktop).
-// Em navegadores que não suportam, a gente chama start() sem track normalmente.
-window._micStream = null;
-
-async function _micAbrirStream() {
-  if (window._micStream && window._micStream.active) return window._micStream;
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({
-      audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
-    });
-    window._micStream = stream;
-    console.log('[mic] stream aberto pra start(audioTrack)');
-    return stream;
-  } catch (e) {
-    console.warn('[mic] não foi possível abrir stream:', e);
-    return null;
-  }
-}
-
-function _micFecharStream() {
-  if (window._micStream) {
-    try { window._micStream.getTracks().forEach(t => t.stop()); } catch (e) {}
-    window._micStream = null;
-    console.log('[mic] stream fechado');
-  }
-}
 
 // ===== Sprint 9.32.194: helper pra reconhecimento ON-DEVICE (Chrome novo) =====
 // Verifica se navegador suporta processLocally (Web Speech on-device).
@@ -22897,15 +23135,13 @@ function _micIniciar(wrap, btn, status, SR) {
   if (status) status.style.display = 'inline-flex';
 
   // 9.32.194: dispara o check do processLocally em background (não bloqueia)
+  // Se o navegador suportar e instalar o pacote pt-BR, próximas sessões serão on-device (sem beep)
   _micPrepararProcessLocally().then(ok => {
     if (ok) console.log('[mic] usando reconhecimento ON-DEVICE');
   });
 
-  // 9.32.197: abre stream do mic UMA VEZ. Vamos passar pra cada recognition.start(track).
-  // Se o navegador não suportar start(track), o recognition abre o próprio mic normalmente.
-  _micAbrirStream().then(() => {
-    _micCriarERodar(SR);
-  });
+  // Inicia o SpeechRecognition (com auto-restart curto)
+  _micCriarERodar(SR);
 }
 
 // 9.32.194: helper pra mudar cor do ícone do mic indicando estado
@@ -23009,24 +23245,8 @@ function _micCriarERodar(SR) {
     }, cooldown);
   };
 
-  // 9.32.197: aplica vocabulário ANTES do start (phrases biasing)
-  _micAplicarVocabulario(rec);
-
   try {
-    // 9.32.197: tenta start(audioTrack) — Chrome 135+ desktop. Mais limpo que abrir mic toda hora.
-    const track = window._micStream && window._micStream.getAudioTracks && window._micStream.getAudioTracks()[0];
-    if (track && track.readyState === 'live') {
-      try {
-        rec.start(track);
-        console.log('[mic] start(audioTrack) — usando stream pre-warm');
-      } catch (eTrack) {
-        // Browser não suporta start(track). Cai pro start() normal.
-        console.log('[mic] start(track) não suportado, usando start() normal');
-        rec.start();
-      }
-    } else {
-      rec.start();
-    }
+    rec.start();
     window._micRecognition = rec;
   } catch (e) {
     console.warn('[mic start]', e);
@@ -23070,7 +23290,6 @@ function _micPararEInserir(wrap, btn, status, editor) {
       window._micRecognition = null;
     }
     _micPararKeepAlive();
-    _micFecharStream(); // 9.32.197: libera o stream pre-warm
     _micFinalizarInsercao(wrapAlvo);
     // Limpa TODAS as flags — começa do zero pra próxima gravação
     window._micUserWantsMic = false;
@@ -45259,6 +45478,32 @@ function renderConfigItem({ chave, meta, atual }) {
       <span class="config-saved-badge" id="cfgSaved_${chave}">
         <span class="material-symbols-rounded">check</span>Salvo
       </span>
+    `;
+  } else if (meta.tipo === 'text') {
+    // 9.32.199: input de texto (com mask de password se sensitive=true)
+    const inputType = meta.sensitive ? 'password' : 'text';
+    const valSafe = (valor !== null && valor !== undefined ? String(valor) : '').replace(/"/g, '&quot;');
+    const placeholder = (meta.placeholder || '').replace(/"/g, '&quot;');
+    controlHtml = `
+      <div class="config-text-group" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <input
+          type="${inputType}"
+          class="config-text"
+          id="cfg_${chave}"
+          value="${valSafe}"
+          placeholder="${placeholder}"
+          autocomplete="off"
+          spellcheck="false"
+          style="font-family:'JetBrains Mono',monospace;font-size:13px;padding:8px 12px;border:1px solid var(--border-color,#e5e7eb);border-radius:8px;min-width:280px;"
+          onchange="handleConfigChange('${chave}', this.value, 'string')"
+        />
+        ${meta.sensitive ? `
+          <button type="button" onclick="(function(b){var i=document.getElementById('cfg_${chave}');i.type=i.type==='password'?'text':'password';b.textContent=i.type==='password'?'Mostrar':'Esconder';})(this)" style="padding:8px 12px;border:1px solid var(--border-color,#e5e7eb);border-radius:8px;background:#fff;cursor:pointer;font-size:12px;">Mostrar</button>
+        ` : ''}
+        <span class="config-saved-badge" id="cfgSaved_${chave}">
+          <span class="material-symbols-rounded">check</span>Salvo
+        </span>
+      </div>
     `;
   }
 
