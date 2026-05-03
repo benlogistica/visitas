@@ -6683,7 +6683,7 @@ a {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.200-mic-groq-key-ux-melhorada',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.201-fix-config-upsert',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -16311,14 +16311,17 @@ async function atualizarConfig(chave, novoValor) {
   const user = getCurrentUser();
   if (!user || user.perfil !== 'admin') throw new Error('Apenas admin pode alterar configurações');
 
+  // 9.32.201: UPSERT em vez de UPDATE.
+  // UPDATE em chave que ainda não existe na tabela é no-op silencioso (não dá erro,
+  // mas não salva). Isso quebrou o cadastro de chaves novas (ex.: groq_api_key).
   const { error } = await db
     .from('configuracoes_sistema')
-    .update({
-      valor: novoValor,
+    .upsert({
+      chave,
+      valor: typeof novoValor === 'object' ? JSON.stringify(novoValor) : String(novoValor),
       atualizado_em: new Date().toISOString(),
       atualizado_por: user.id,
-    })
-    .eq('chave', chave);
+    }, { onConflict: 'chave' });
 
   if (error) throw new Error(error.message);
 
