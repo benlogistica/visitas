@@ -6683,7 +6683,7 @@ a {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.208-subject-rfc5322',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.209-toggles-email',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -7108,7 +7108,13 @@ async function cadastrar(dados) {
   if (error) throw new Error(`Erro ao criar conta: ${error.message}`);
 
   // 9.32.205: e-mail "Cadastro recebido" — não bloqueia o cadastro se falhar
+  // 9.32.209: respeita toggle do admin em Configurações
   try {
+    const ativo = await getEmailEventoAtivo('email_cadastro_recebido_ativo');
+    if (!ativo) {
+      console.log('[cadastrar] e-mail "Cadastro recebido" desativado pelo admin — pulando envio');
+      return true;
+    }
     const primeiroNome = (nome || '').trim().split(' ')[0] || 'Profissional';
     const htmlEmail = _emailTemplateBN({
       titulo: 'Cadastro recebido',
@@ -16286,6 +16292,25 @@ const ConfigMeta = {
     tipo: 'email_test',
     placeholder: 'seu-email@exemplo.com',
   },
+  // 9.32.209: toggles por evento — admin pode ligar/desligar cada tipo de e-mail
+  email_recuperacao_senha_ativo: {
+    titulo: 'E-mail de recuperação de senha',
+    descricao: '<strong style="color:var(--status-danger,#dc2626);">Crítico:</strong> envia o código OTP de 6 dígitos quando o usuário clica em "Esqueci minha senha". <strong>Desativar isso impede qualquer recuperação de senha por e-mail</strong> — só admin conseguirá redefinir senha manualmente. Mantenha ativado a menos que o SMTP esteja em manutenção.',
+    categoria: 'email',
+    tipo: 'boolean',
+  },
+  email_cadastro_recebido_ativo: {
+    titulo: 'E-mail "Cadastro recebido"',
+    descricao: 'Envia confirmação automática quando um novo profissional se cadastra na plataforma (status pendente). Não bloqueia o cadastro se desativado.',
+    categoria: 'email',
+    tipo: 'boolean',
+  },
+  email_cadastro_aprovado_ativo: {
+    titulo: 'E-mail "Cadastro aprovado"',
+    descricao: 'Envia notificação de boas-vindas quando o admin aprova um cadastro pendente, com botão de acesso à plataforma. Não bloqueia a aprovação se desativado.',
+    categoria: 'email',
+    tipo: 'boolean',
+  },
 };
 
 const ConfigCategorias = {
@@ -17574,6 +17599,19 @@ function renderRecuperarEmail() {
 // ===== Sprint 9.32.203: helper pra enviar email via Edge Function send-email =====
 // Chama a Edge Function que tem o SMTP do emailemnuvem configurado.
 // Retorna { ok: true } ou { ok: false, error: '...' }
+// 9.32.209: Lê o toggle de evento de e-mail (admin liga/desliga em Configurações).
+// Default true (ativo) — se a chave nunca foi salva na tabela, assume ligado.
+// Failsafe: erros de rede também caem em true pra não silenciar e-mails críticos.
+async function getEmailEventoAtivo(chaveEvento) {
+  try {
+    const v = await getConfig(chaveEvento, 'true');
+    return v === true || v === 'true';
+  } catch (e) {
+    console.warn('[email-toggle] erro ao ler', chaveEvento, '— assumindo ativo:', e?.message);
+    return true;
+  }
+}
+
 async function sendEmailViaEdge(to, subject, html, text) {
   try {
     const url = CONFIG.SUPABASE_URL.replace(/\/$/, '') + '/functions/v1/send-email';
@@ -17647,6 +17685,13 @@ window.handleRecuperarEmail = async function(ev) {
     if (error) throw new Error(error.message);
     if (!user) throw new Error('Não encontramos conta com esse CPF');
     if (!user.email) throw new Error('Sua conta não tem e-mail cadastrado. Entre em contato com o admin.');
+
+    // 9.32.209: respeita toggle do admin. Recuperação por e-mail é crítica —
+    // se desativada, mostra mensagem clara em vez de gerar OTP que ninguém recebe.
+    const ativo = await getEmailEventoAtivo('email_recuperacao_senha_ativo');
+    if (!ativo) {
+      throw new Error('A recuperação de senha por e-mail está temporariamente indisponível. Entre em contato com o administrador para redefinir sua senha.');
+    }
 
     // Gera código OTP de 6 dígitos
     const code = String(Math.floor(100000 + Math.random() * 900000));
@@ -43516,7 +43561,13 @@ window.aprovarProfissional = async function(id) {
     setFlash('success', 'Profissional aprovado. Acesso liberado.');
 
     // E-mail "Cadastro aprovado" — não bloqueia o fluxo se SMTP falhar
-    if (aprovado?.email) {
+    // 9.32.209: respeita toggle do admin em Configurações
+    const ativoEmail = aprovado?.email
+      ? await getEmailEventoAtivo('email_cadastro_aprovado_ativo')
+      : false;
+    if (aprovado?.email && !ativoEmail) {
+      console.log('[aprovarProfissional] e-mail "Cadastro aprovado" desativado pelo admin — pulando envio');
+    } else if (aprovado?.email && ativoEmail) {
       try {
         const primeiroNome = (aprovado.nome || '').trim().split(' ')[0] || 'Profissional';
         const htmlEmail = _emailTemplateBN({
