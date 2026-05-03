@@ -6599,7 +6599,7 @@ a {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.184-mic-aguarda-ultimas-palavras-antes-de-inserir',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.185-mic-stop-robusto-sem-travar-em-processando',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -22810,8 +22810,9 @@ function _micIniciar(wrap, btn, status, SR) {
   window._micBuffer = '';
   window._micUserWantsMic = true;
   window._micFalhasSeguidas = 0;
-  // Sprint 9.32.184: reseta flag de "pedido de stop" pra nova gravação
+  // Sprint 9.32.185: reseta TODAS as flags de stop pra nova gravação (nada residual)
   window._micPedidoStop = false;
+  window._micProcessandoStop = false;
 
   // Sprint 9.32.183: liga o keep-alive ANTES de iniciar a recognition
   _micIniciarKeepAlive();
@@ -22904,30 +22905,23 @@ function _micCriarERodar(SR) {
   };
 
   rec.onend = () => {
-    // Sprint 9.32.184: se o usuário PEDIU pra parar, NÃO faz auto-restart
-    // (deixa o _micPararEInserir cuidar do reset da UI)
-    if (window._micPedidoStop) return;
-
+    // Sprint 9.32.185: única checagem é _micUserWantsMic.
+    // Se o user clicou em parar/inserir, _micPararEInserir já setou pra false.
     if (window._micUserWantsMic) {
-      // Sprint 9.32.182: detecção de falha silenciosa
-      // Se a sessão terminou SEM nenhum resultado (sem captar som), conta como falha.
-      // Após 10 falhas seguidas (cada uma ~3s = ~30s sem captar nada), aumenta cooldown
-      // pra dar mais chance do mic "voltar" (talvez problema temporário do navegador).
+      // Detecção de falha silenciosa
       if (!_sessaoTeveResultado) {
         window._micFalhasSeguidas = (window._micFalhasSeguidas || 0) + 1;
       }
       const cooldown = window._micFalhasSeguidas > 10 ? 800 :
                        window._micFalhasSeguidas > 5  ? 300 :
                                                         50;
-      console.log(`[mic] auto-restart em ${cooldown}ms (falhas seguidas: ${window._micFalhasSeguidas})`);
+      console.log(`[mic] auto-restart em ${cooldown}ms (falhas: ${window._micFalhasSeguidas})`);
       setTimeout(() => {
-        if (window._micUserWantsMic && !window._micPedidoStop) _micCriarERodar(SR);
+        if (window._micUserWantsMic) _micCriarERodar(SR);
       }, cooldown);
       return;
     }
-    // Para de verdade: reseta UI
-    _whisperResetUI(wrap);
-    window._micRecognition = null;
+    // Não quer mais ouvir: deixa o _micPararEInserir cuidar do reset (não mexer aqui)
   };
 
   try {
@@ -22945,14 +22939,24 @@ function _micCriarERodar(SR) {
   }
 }
 
-// ===== Sprint 9.32.184: Para a gravação aguardando últimas palavras processarem =====
-// Antes: usava abort() → matava tudo na hora, perdia palavras finais.
-// Agora: usa stop() → o navegador finaliza a frase em andamento e dispara onresult.
-// Esperamos até 1.5s pra captar tudo, mostrando "Processando últimas palavras..." na UI.
+// ===== Sprint 9.32.185: Para a gravação aguardando últimas palavras (versão robusta) =====
+// Estratégia simplificada e à prova de bugs:
+// 1. Marca _micUserWantsMic = false IMEDIATAMENTE (impede auto-restart criar nova sessão)
+// 2. Mostra "Processando últimas palavras…" na UI
+// 3. Chama stop() (graceful) ou abort() como fallback
+// 4. Espera 600ms (tempo seguro pra última frase processar via onresult)
+// 5. Pega o buffer atualizado e insere
+// 6. SEMPRE limpa todas as flags no fim, independente do que aconteceu
+//
+// Diferença vs 9.32.184: não intercepta onend (causava o bug de "ficou processando pra sempre").
+// Apenas espera um delay fixo, depois finaliza forçadamente.
 function _micPararEInserir(wrap, btn, status, editor) {
-  // Sprint 9.32.184: marca que o usuário PEDIU pra parar — mas NÃO seta _micUserWantsMic
-  // como false ainda (senão o onend vai resetar a UI antes de processarmos)
-  window._micPedidoStop = true;
+  // Guard: se já tá processando, ignora cliques duplos
+  if (window._micProcessandoStop) return;
+  window._micProcessandoStop = true;
+
+  // PARA imediatamente o auto-restart
+  window._micUserWantsMic = false;
 
   const recAtual = window._micRecognition;
   const wrapAlvo = window._micWrapAlvo || wrap;
@@ -22960,6 +22964,7 @@ function _micPararEInserir(wrap, btn, status, editor) {
   if (!recAtual) {
     // Não tava gravando: insere o que tem no buffer e sai
     _micFinalizarInsercao(wrapAlvo);
+    window._micProcessandoStop = false;
     return;
   }
 
@@ -22976,45 +22981,28 @@ function _micPararEInserir(wrap, btn, status, editor) {
     }
   }
 
-  // Pede pra parar — dispara onresult final + onend
-  // stop() (em vez de abort()) deixa o navegador entregar a última frase
-  let onendDisparou = false;
-  const onendOriginal = recAtual.onend;
-  recAtual.onend = function(...args) {
-    onendDisparou = true;
-    if (typeof onendOriginal === 'function') {
-      try { onendOriginal.apply(this, args); } catch (e) {}
-    }
-    // Espera mais 100ms pra o último onresult propagar (caso ainda tá processando)
-    setTimeout(() => {
-      window._micUserWantsMic = false;
-      window._micPedidoStop = false;
-      window._micRecognition = null;
-      _micPararKeepAlive();
-      _micFinalizarInsercao(wrapAlvo);
-    }, 100);
-  };
-
+  // Pede pra parar de forma graceful (deixa o navegador entregar última frase)
   try {
-    recAtual.stop(); // graceful — espera última frase processar
+    recAtual.stop();
   } catch (e) {
     console.warn('[mic stop]', e);
   }
 
-  // Timeout de segurança: se onend não disparar em 1.5s, força reset
+  // Timeout fixo: 600ms é tempo suficiente pra última frase processar e chegar no buffer.
+  // Depois disso, finaliza FORÇADAMENTE limpando tudo.
   setTimeout(() => {
-    if (!onendDisparou) {
-      console.warn('[mic] onend não disparou em 1.5s, forçando reset');
-      window._micUserWantsMic = false;
-      window._micPedidoStop = false;
-      if (window._micRecognition) {
-        try { window._micRecognition.abort(); } catch (e) {}
-        window._micRecognition = null;
-      }
-      _micPararKeepAlive();
-      _micFinalizarInsercao(wrapAlvo);
+    // Aborta de vez se ainda estiver vivo (pra liberar o microfone)
+    if (window._micRecognition) {
+      try { window._micRecognition.abort(); } catch (e) {}
+      window._micRecognition = null;
     }
-  }, 1500);
+    _micPararKeepAlive();
+    _micFinalizarInsercao(wrapAlvo);
+    // Reseta TODAS as flags
+    window._micProcessandoStop = false;
+    window._micUserWantsMic = false;
+    window._micPedidoStop = false;
+  }, 600);
 }
 
 // Helper: pega o buffer atual, processa pontuação e insere no editor-alvo
