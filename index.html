@@ -6683,7 +6683,7 @@ a {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.205-emails-onboarding',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.206-termos-uso',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -17212,9 +17212,9 @@ function renderLogin() {
         <div class="auth__brand-footer">
           <span>© 2026 B&N Logística · v${CONFIG.APP_VERSION}</span>
           <span class="auth__brand-footer-links">
-            <span>Termos</span>
-            <span>Privacidade</span>
-            <span>Suporte</span>
+            <a href="termos.html" target="_blank" rel="noopener" style="color:inherit;text-decoration:none">Termos</a>
+            <a href="termos.html#5-privacidade-e-protecao-de-dados-lgpd" target="_blank" rel="noopener" style="color:inherit;text-decoration:none">Privacidade</a>
+            <a href="mailto:atendimento@benlogistica.com.br" style="color:inherit;text-decoration:none">Suporte</a>
           </span>
         </div>
       </aside>
@@ -17414,7 +17414,7 @@ function renderCadastro() {
                 <span class="material-symbols-rounded" style="display:none">check</span>
               </div>
               <span class="cbx__label">
-                Li e aceito os <a href="#" onclick="event.stopPropagation()">termos de uso</a>
+                Li e aceito os <a href="termos.html" target="_blank" rel="noopener" onclick="event.stopPropagation()">termos de uso</a>
               </span>
             </label>
 
