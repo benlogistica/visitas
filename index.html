@@ -43521,14 +43521,14 @@ window.aprovarProfissional = async function(id) {
             <p>Faça login com seu CPF e senha para começar a registrar visitas.</p>
           `,
           btnTexto: 'Acessar plataforma',
-          btnUrl: 'https://benlogistica.github.io/visitas',
+          btnUrl: 'https://www.benlogistica.com.br',
           rodape: 'Se você não esperava este e-mail, ignore esta mensagem.',
         });
         sendEmailViaEdge(
           aprovado.email,
           '[B&N Logística] Seu cadastro foi aprovado',
           htmlEmail,
-          `Olá, ${primeiroNome}!\n\nBoas-vindas à B&N Logística! Seu cadastro foi aprovado e sua conta está liberada.\n\nAcesse: https://benlogistica.github.io/visitas`
+          `Olá, ${primeiroNome}!\n\nBoas-vindas à B&N Logística! Seu cadastro foi aprovado e sua conta está liberada.\n\nAcesse: https://www.benlogistica.com.br`
         ).catch(err => console.error('[aprovarProfissional] falha ao enviar e-mail:', err));
       } catch (err) {
         console.error('[aprovarProfissional] erro ao montar e-mail:', err);
