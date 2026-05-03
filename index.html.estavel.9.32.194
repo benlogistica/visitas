@@ -6604,7 +6604,7 @@ a {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.195-mic-pre-warm-stream',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.194-mic-process-locally-ditado-realista',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -22755,35 +22755,6 @@ window.rteToggleMic = function(btn) {
   _micIniciar(wrap, btn, status, SR);
 };
 
-// ===== Sprint 9.32.195: pre-warm do stream do microfone =====
-// Mantém um getUserMedia ativo enquanto o usuário quer gravar. Isso evita o
-// "warm-up" do microfone a cada restart do SpeechRecognition (que é o que causa
-// perda de palavras nas transições). O stream fica vivo até _micPararEInserir.
-window._micPreWarmStream = null;
-
-async function _micPreWarmIniciar() {
-  if (window._micPreWarmStream) return true;
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({
-      audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
-    });
-    window._micPreWarmStream = stream;
-    console.log('[mic] pre-warm stream ativo');
-    return true;
-  } catch (e) {
-    console.warn('[mic] pre-warm falhou:', e);
-    return false;
-  }
-}
-
-function _micPreWarmParar() {
-  if (window._micPreWarmStream) {
-    try { window._micPreWarmStream.getTracks().forEach(t => t.stop()); } catch (e) {}
-    window._micPreWarmStream = null;
-    console.log('[mic] pre-warm stream liberado');
-  }
-}
-
 // ===== Sprint 9.32.194: helper pra reconhecimento ON-DEVICE (Chrome novo) =====
 // Verifica se navegador suporta processLocally (Web Speech on-device).
 // Se suporta e PT-BR está disponível, tenta instalar o pacote.
@@ -22868,11 +22839,8 @@ function _micIniciar(wrap, btn, status, SR) {
     if (ok) console.log('[mic] usando reconhecimento ON-DEVICE');
   });
 
-  // 9.32.195: abre stream do mic ANTES e mantém vivo durante toda a gravação
-  // Isso evita o warm-up entre restarts (causa raiz da perda de palavras na transição)
-  _micPreWarmIniciar().then(() => {
-    _micCriarERodar(SR);
-  });
+  // Inicia o SpeechRecognition (com auto-restart curto)
+  _micCriarERodar(SR);
 }
 
 // 9.32.194: helper pra mudar cor do ícone do mic indicando estado
@@ -23021,7 +22989,6 @@ function _micPararEInserir(wrap, btn, status, editor) {
       window._micRecognition = null;
     }
     _micPararKeepAlive();
-    _micPreWarmParar(); // 9.32.195: libera o stream pre-warm
     _micFinalizarInsercao(wrapAlvo);
     // Limpa TODAS as flags — começa do zero pra próxima gravação
     window._micUserWantsMic = false;
