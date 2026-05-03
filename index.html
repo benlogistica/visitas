@@ -6783,7 +6783,7 @@ a {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.211-anexos-relatorio',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.212-icone-relatorio-desktop',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -18906,8 +18906,9 @@ function renderRelatorioDesktopNutri() {
     </div>
   `;
 
+  // 9.32.212: ícone edit_note ao lado do título no desktop
   return desktopShellNutri({
-    title: 'Relatório',
+    title: '<span class="material-symbols-rounded" style="font-size:24px;color:var(--brand-lime,#8BC63F);vertical-align:-5px;margin-right:6px;">edit_note</span>Relatório',
     breadcrumb: ['Nutri', 'Minhas visitas', 'Relatório'],
     titleExtra,
     content,
@@ -19012,8 +19013,9 @@ function renderRelatorioDesktop() {
     </div>
   `;
 
+  // 9.32.212: ícone edit_note ao lado do título no desktop
   return desktopShell({
-    title: 'Relatório da visita',
+    title: '<span class="material-symbols-rounded" style="font-size:24px;color:var(--brand-lime,#8BC63F);vertical-align:-5px;margin-right:6px;">edit_note</span>Relatório da visita',
     breadcrumb: ['Admin', 'Visitas', 'Relatório'],
     titleExtra,
     content,
