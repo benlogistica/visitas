@@ -3151,16 +3151,24 @@ a {
 }
 
 @media print {
-  /* Sprint 9.21.11: SOLUÇÃO CIRÚRGICA — esconder TUDO no print exceto o relatório
-     Isso elimina qualquer elemento órfão (splash, sidebar, topbar, etc) que possa estar
-     renderizando indevidamente no PDF gerado pelo navegador. */
+  /* Sprint 9.21.11 + 9.32.221: SOLUÇÃO CIRÚRGICA — esconder TUDO no print exceto:
+     - .relatorio-page (relatório imprimível do dashboard admin)
+     - .mobile-app (relatório de visita pelo mobile)
+     - .ds-shell (relatório de visita pelo desktop nutri/admin) */
   body > *:not(#app),
-  body > #app > *:not(.relatorio-page) {
+  body > #app > *:not(.relatorio-page):not(.mobile-app):not(.ds-shell) {
     display: none !important;
   }
+  /* Dentro do mobile-app, mostra só o mcontent (esconde mbar/bnav) */
+  .mobile-app > *:not(.mcontent) { display: none !important; }
+  /* Dentro do ds-shell (desktop), mostra só o conteúdo principal */
+  .ds-shell > *:not(.ds-main) { display: none !important; }
+  .ds-main > *:not(.ds-content) { display: none !important; }
+  .ds-content { padding: 0 !important; margin: 0 !important; }
 
-  /* Esconde também elementos fixed que podem persistir */
-  .splash, .ds-sidebar, .mbar, .bnav, .perfil-dropdown, .admin-drawer {
+  /* Esconde elementos fixed que podem persistir */
+  .splash, .ds-sidebar, .mbar, .bnav, .perfil-dropdown, .admin-drawer,
+  .ds-topbar, .ds-shell__backdrop {
     display: none !important;
   }
 
@@ -6314,8 +6322,28 @@ a {
     border: 1px solid #ccc !important;
     page-break-inside: avoid;
   }
-  /* Esconde mapa Leaflet (interativo, não imprime bem) */
-  .leaflet-container { display: none !important; }
+  /* 9.32.222: mapa Leaflet AGORA imprime — é informação importante da divergência GPS.
+     Garante cores corretas e evita scroll/handlers visuais no print. */
+  .leaflet-container {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    page-break-inside: avoid !important;
+  }
+  .leaflet-control-zoom,
+  .leaflet-control-attribution { display: none !important; }
+
+  /* 9.32.228: evita quebra de cards/gráficos entre páginas no print dos Indicadores do nutri */
+  #indicNutriContent > div {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+  /* Cobre os SVGs e canvas dos gráficos diretamente também */
+  #indicNutriContent svg,
+  #indicNutriContent canvas {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    max-height: 100vh !important;
+  }
 }
 
 /* ==========================================================================
@@ -7280,7 +7308,7 @@ a {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.220-anexos-thumbs-grid',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.228-fix-quebra-cards-print',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -20021,19 +20049,69 @@ function renderNutriProfissionaisDesktop() {
 
 // Sprint 9.26 Fase 3: Indicadores no desktop nutri.
 // Reusa carregarIndicadoresNutri (popula #indicNutriContent).
+// Sprint 9.32.227: barra de filtros + botão print no header (alinhado com admin)
 function renderNutriIndicadoresDesktop() {
   const user = requireAuth();
   if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
+
+  // Mesmo estado global do mobile (window._nutriPeriodoAtual)
+  if (!window._nutriPeriodoAtual) {
+    const hoje = new Date();
+    window._nutriPeriodoAtual = `mes:${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
+  }
 
   setTimeout(async () => {
     await carregarIndicadoresNutri();
   }, 0);
 
+  // Barra de filtros (mesmo padrão do dashboard admin desktop)
+  const periodos = [
+    { id: '7',          label: '7 dias' },
+    { id: '30',         label: '30 dias' },
+    { id: 'mes-atalho', label: 'Mês' },
+    { id: 'tri',        label: 'Trimestre' },
+    { id: 'all',        label: 'Tudo' },
+  ];
+  const periodoAtual = window._nutriPeriodoAtual;
+  const ehMesEspecifico = typeof periodoAtual === 'string' && periodoAtual.startsWith('mes:');
+  const isAtivo = (id) => id === 'mes-atalho' ? ehMesEspecifico : periodoAtual === id;
+  const hoje = new Date();
+  const mesVigente = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
+  const valorDropdown = ehMesEspecifico ? periodoAtual.slice(4) : mesVigente;
+  const mesNomes = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  const opcoesMes = [];
+  for (let off = 0; off >= -23; off--) {
+    const m = new Date(hoje.getFullYear(), hoje.getMonth() + off, 1);
+    const valor = `${m.getFullYear()}-${String(m.getMonth() + 1).padStart(2, '0')}`;
+    const label = `${mesNomes[m.getMonth()]}/${m.getFullYear()}`;
+    opcoesMes.push(`<option value="${valor}"${valor === valorDropdown ? ' selected' : ''}>${label}</option>`);
+  }
+
+  const titleExtra = `
+    <div class="no-print" style="display:inline-flex;gap:4px;background:var(--neutral-100);border-radius:9999px;padding:3px;">
+      ${periodos.map(p => `
+        <button onclick="window.trocarPeriodoNutri('${p.id}')" style="padding:5px 12px;border:0;background:${isAtivo(p.id) ? 'var(--brand-navy)' : 'transparent'};color:${isAtivo(p.id) ? '#fff' : 'var(--neutral-600)'};border-radius:9999px;font-size:11.5px;font-weight:600;cursor:pointer;font-family:inherit;">${p.label}</button>
+      `).join('')}
+    </div>
+    <select onchange="window.trocarMesNutri(this.value)" title="Escolher mês específico"
+      class="no-print"
+      style="height:32px;padding:0 10px;border:1px solid ${ehMesEspecifico ? 'var(--brand-navy)' : 'var(--neutral-200)'};border-radius:9999px;background:${ehMesEspecifico ? 'var(--brand-navy)' : '#fff'};color:${ehMesEspecifico ? '#fff' : 'var(--neutral-600)'};font-family:inherit;font-size:11.5px;font-weight:600;cursor:pointer;margin-left:6px;outline:none;">
+      ${opcoesMes.join('')}
+    </select>
+    <button onclick="window.imprimirIndicadoresNutri()" title="Imprimir / Salvar PDF"
+      class="no-print"
+      style="width:38px;height:38px;border-radius:10px;border:1px solid var(--neutral-200);background:#fff;color:var(--neutral-600);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;margin-left:8px;transition:all 120ms;"
+      onmouseover="this.style.borderColor='var(--brand-navy)';this.style.color='var(--brand-navy)'"
+      onmouseout="this.style.borderColor='var(--neutral-200)';this.style.color='var(--neutral-600)'">
+      <span class="material-symbols-rounded" style="font-size:20px;">print</span>
+    </button>
+  `;
+
   const content = `
     <div style="max-width:1280px;margin:0 auto;">
       <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:14px;padding:18px 20px;margin-bottom:14px;">
         <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:16px;">Seus indicadores</div>
-        <div style="font-size:12.5px;color:var(--neutral-600);margin-top:2px;">Sua produção do mês comparada à equipe, frequência diária, insights e evolução.</div>
+        <div style="font-size:12.5px;color:var(--neutral-600);margin-top:2px;">Sua produção, frequência diária, insights e evolução.</div>
       </div>
       <div id="indicNutriContent">
         <div style="padding:60px;text-align:center;color:var(--neutral-500);font-size:13px;background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:14px;">
@@ -20047,6 +20125,7 @@ function renderNutriIndicadoresDesktop() {
   return desktopShellNutri({
     title: 'Indicadores',
     breadcrumb: ['Nutri', 'Indicadores'],
+    titleExtra,
     content,
     activeId: 'indicators',
   });
@@ -26908,18 +26987,68 @@ window.editarProfissionalNutri = async function(id) {
 
 // Sprint 9.10 Parte D: tela de Indicadores do nutri
 // KPIs + gráficos simples (barras CSS, sem libs)
+// Sprint 9.32.226: barra de filtros + botão print
 function renderNutriIndicadores() {
   const user = requireAuth();
   if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
+
+  // Período default: mês atual no formato 'mes:YYYY-MM'
+  if (!window._nutriPeriodoAtual) {
+    const hoje = new Date();
+    window._nutriPeriodoAtual = `mes:${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
+  }
 
   setTimeout(async () => {
     await carregarIndicadoresNutri();
   }, 0);
 
+  // Barra de filtros (mesmo estilo do dashboard admin mobile)
+  const periodos = [
+    { id: '7',          label: '7 dias' },
+    { id: '30',         label: '30 dias' },
+    { id: 'mes-atalho', label: 'Mês' },
+    { id: 'tri',        label: 'Tri' },
+    { id: 'all',        label: 'Tudo' },
+  ];
+  const periodoAtual = window._nutriPeriodoAtual;
+  const ehMesEspecifico = typeof periodoAtual === 'string' && periodoAtual.startsWith('mes:');
+  const isAtivo = (id) => id === 'mes-atalho' ? ehMesEspecifico : periodoAtual === id;
+
+  const hoje = new Date();
+  const mesVigente = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
+  const valorDropdown = ehMesEspecifico ? periodoAtual.slice(4) : mesVigente;
+  const mesNomes = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  const opcoesMes = [];
+  for (let off = 0; off >= -23; off--) {
+    const m = new Date(hoje.getFullYear(), hoje.getMonth() + off, 1);
+    const valor = `${m.getFullYear()}-${String(m.getMonth() + 1).padStart(2, '0')}`;
+    const label = `${mesNomes[m.getMonth()]}/${m.getFullYear()}`;
+    opcoesMes.push(`<option value="${valor}"${valor === valorDropdown ? ' selected' : ''}>${label}</option>`);
+  }
+
   return `
     <div class="mobile-app">
       ${mobileTopBar({ title: 'Indicadores', showBack: true })}
       <main class="mcontent">
+        <!-- Barra de filtros (some no print) -->
+        <div class="no-print" style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px;">
+          <div style="display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding:3px;background:var(--neutral-100);border-radius:9999px;scrollbar-width:none;">
+            ${periodos.map(p => `
+              <button onclick="window.trocarPeriodoNutri('${p.id}')" style="flex-shrink:0;padding:7px 14px;border:0;background:${isAtivo(p.id) ? 'var(--brand-navy)' : 'transparent'};color:${isAtivo(p.id) ? '#fff' : 'var(--neutral-600)'};border-radius:9999px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;">${p.label}</button>
+            `).join('')}
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <select onchange="window.trocarMesNutri(this.value)" title="Escolher mês"
+              style="flex:1;height:36px;padding:0 12px;border:1px solid ${ehMesEspecifico ? 'var(--brand-navy)' : 'var(--neutral-200)'};border-radius:9999px;background:${ehMesEspecifico ? 'var(--brand-navy)' : '#fff'};color:${ehMesEspecifico ? '#fff' : 'var(--neutral-600)'};font-family:inherit;font-size:12.5px;font-weight:600;cursor:pointer;outline:none;-webkit-appearance:none;appearance:none;background-image:url(&quot;data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='${ehMesEspecifico ? 'white' : '%236B7280'}'%3e%3cpath d='M7 10l5 5 5-5z'/%3e%3c/svg%3e&quot;);background-repeat:no-repeat;background-position:right 8px center;background-size:18px;padding-right:32px;">
+              ${opcoesMes.join('')}
+            </select>
+            <button onclick="window.imprimirIndicadoresNutri()" title="Imprimir / Salvar PDF"
+              style="width:36px;height:36px;border-radius:9999px;border:1px solid var(--neutral-200);background:#fff;color:var(--neutral-600);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;">
+              <span class="material-symbols-rounded" style="font-size:18px;">print</span>
+            </button>
+          </div>
+        </div>
+
         <div id="indicNutriContent">
           <div style="padding:40px;text-align:center;color:var(--neutral-500);font-size:13px;">
             <div class="splash__spinner" style="margin:0 auto 12px;"></div>
@@ -26931,6 +27060,34 @@ function renderNutriIndicadores() {
     </div>
   `;
 }
+
+// 9.32.226 + 9.32.227: handlers de filtro de período da tela Indicadores do nutri
+// Detecta mobile vs desktop pra usar o renderer correto (mesmo padrão do admin dashboard)
+function _renderIndicadoresNutriCorretamente() {
+  const ehMobile = typeof isDesktop === 'function' ? !isDesktop() : window.innerWidth < 1024;
+  const renderer = ehMobile ? renderNutriIndicadores : renderNutriIndicadoresDesktop;
+  const appEl = document.getElementById('app');
+  if (appEl) appEl.innerHTML = renderer();
+}
+
+window.trocarPeriodoNutri = function(periodo) {
+  if (periodo === 'mes-atalho') {
+    const hoje = new Date();
+    window._nutriPeriodoAtual = `mes:${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
+  } else {
+    window._nutriPeriodoAtual = periodo;
+  }
+  _renderIndicadoresNutriCorretamente();
+};
+
+window.trocarMesNutri = function(mes) {
+  window._nutriPeriodoAtual = `mes:${mes}`;
+  _renderIndicadoresNutriCorretamente();
+};
+
+window.imprimirIndicadoresNutri = function() {
+  window.print();
+};
 
 async function carregarIndicadoresNutri() {
   const container = document.getElementById('indicNutriContent');
@@ -26958,12 +27115,48 @@ async function carregarIndicadoresNutri() {
     // 6 meses atrás (pra gráfico mensal)
     const inicio6Meses = new Date(agora.getFullYear(), agora.getMonth() - 5, 1);
 
+    // 9.32.226: período selecionado pelos filtros (default = mês atual)
+    const periodoSel = window._nutriPeriodoAtual || `mes:${agora.getFullYear()}-${String(agora.getMonth() + 1).padStart(2,'0')}`;
+    let inicioPeriodo, fimPeriodo, labelPeriodo, ehMesEspecificoSel = false;
+    if (periodoSel === '7') {
+      inicioPeriodo = new Date(agora.getTime() - 7 * 86400000);
+      fimPeriodo = agora;
+      labelPeriodo = 'últimos 7 dias';
+    } else if (periodoSel === '30') {
+      inicioPeriodo = new Date(agora.getTime() - 30 * 86400000);
+      fimPeriodo = agora;
+      labelPeriodo = 'últimos 30 dias';
+    } else if (periodoSel === 'tri') {
+      inicioPeriodo = new Date(agora.getFullYear(), agora.getMonth() - 2, 1);
+      fimPeriodo = agora;
+      labelPeriodo = 'trimestre atual';
+    } else if (periodoSel === 'all') {
+      inicioPeriodo = new Date(2020, 0, 1);
+      fimPeriodo = agora;
+      labelPeriodo = 'todo o histórico';
+    } else if (typeof periodoSel === 'string' && periodoSel.startsWith('mes:')) {
+      const [yr, mo] = periodoSel.slice(4).split('-').map(Number);
+      inicioPeriodo = new Date(yr, mo - 1, 1);
+      fimPeriodo = new Date(yr, mo, 0, 23, 59, 59);
+      const mesNomesPt = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+      labelPeriodo = `${mesNomesPt[mo - 1]}/${String(yr).slice(-2)}`;
+      ehMesEspecificoSel = true;
+    } else {
+      // Fallback = mês atual
+      inicioPeriodo = inicioMes;
+      fimPeriodo = agora;
+      labelPeriodo = 'mês atual';
+    }
+
+    // Garante que a query cubra desde o início do período (mesmo se for mais antigo que 6 meses)
+    const inicioQuery = inicioPeriodo < inicio6Meses ? inicioPeriodo : inicio6Meses;
+
     // Busca TODAS as visitas do user no ano (uma query só)
     const { data: visitasAno, error: errAno } = await db
       .from('visitas')
       .select('id, checkin_timestamp, checkout_timestamp, data_visita, horario_inicio, status, revisao_motivo, revisao_solicitada_em, revisao_resolvida_em, reabertura_expira_em, instituicao_id, instituicoes(nome)')
       .eq('nutricionista_id', user.id)
-      .gte('checkin_timestamp', inicio6Meses.toISOString())
+      .gte('checkin_timestamp', inicioQuery.toISOString())
       .order('checkin_timestamp', { ascending: false });
     if (errAno) throw new Error(errAno.message);
 
@@ -26973,8 +27166,10 @@ async function carregarIndicadoresNutri() {
     const inMesAtual = v => v.checkin_timestamp && new Date(v.checkin_timestamp) >= inicioMes;
     const inMesAnterior = v => v.checkin_timestamp && new Date(v.checkin_timestamp) >= inicioMesAnterior && new Date(v.checkin_timestamp) <= fimMesAnterior;
     const inSemana = v => v.checkin_timestamp && new Date(v.checkin_timestamp) >= inicioSemana;
+    // 9.32.226: filtro do período selecionado pelos botões/dropdown
+    const inPeriodoSel = v => v.checkin_timestamp && new Date(v.checkin_timestamp) >= inicioPeriodo && new Date(v.checkin_timestamp) <= fimPeriodo;
 
-    const kpiMes = visitas.filter(inMesAtual).length;
+    const kpiMes = visitas.filter(inPeriodoSel).length; // 9.32.226: agora reflete o período selecionado
     const kpiMesAnterior = visitas.filter(inMesAnterior).length;
     const kpiSemana = visitas.filter(inSemana).length;
 
@@ -26988,15 +27183,8 @@ async function carregarIndicadoresNutri() {
     // Hospitais distintos no ano
     const hospitaisDistinct = new Set(visitas.filter(v => v.instituicao_id).map(v => v.instituicao_id)).size;
 
-    // Variação vs mês anterior
-    const diff_ = kpiMes - kpiMesAnterior;
-    const pctStr = kpiMesAnterior === 0
-      ? (kpiMes > 0 ? '+100%' : '—')
-      : `${diff_ >= 0 ? '+' : ''}${Math.round((diff_ / kpiMesAnterior) * 100)}%`;
-    const pctColor = diff_ > 0 ? 'var(--status-success)'
-                   : diff_ < 0 ? 'var(--status-danger)'
-                   : 'var(--neutral-500)';
-    const pctIcon = diff_ > 0 ? 'trending_up' : diff_ < 0 ? 'trending_down' : 'trending_flat';
+    // 9.32.225: variação vs mês anterior agora vive no badge da home (pctAnteriorStr).
+    // Variáveis pctStr/pctColor/pctIcon/diff_ removidas (dead code).
 
     // Visitas por mês (últimos 6 meses) — pra gráfico de barras
     const mesesMap = {}; // { 'YYYY-MM': count }
@@ -27049,6 +27237,19 @@ async function carregarIndicadoresNutri() {
     const tempoMedio = duracoes.length > 0
       ? Math.round(duracoes.reduce((s, n) => s + n, 0) / duracoes.length)
       : null;
+    // 9.32.225: formatação compacta pro card da home ("1h 12min" ou "45min")
+    const tempoMedioStr = tempoMedio !== null
+      ? (tempoMedio >= 60
+          ? `${Math.floor(tempoMedio / 60)}h ${tempoMedio % 60}min`
+          : `${tempoMedio}min`)
+      : '—';
+
+    // 9.32.227: % da meta mensal (substitui o card "tempo médio" duplicado).
+    // Comparação: visitas do período (kpiMes) vs meta mensal (do admin via configurações).
+    const metaMensal = window._metaMensalEfetiva || 20;
+    const pctMetaNum = metaMensal > 0 ? Math.round((kpiMes / metaMensal) * 100) : 0;
+    const pctMetaStr = `${pctMetaNum}%`;
+    const metaLabel = ehMesEspecificoSel ? 'da meta' : 'da meta/mês';
 
     // Pendentes de ação (reusa helpers da Sprint 9.6)
     const pendentesAcao = visitas.filter(v => visitaPendenteDeAcaoNutri(v)).length;
@@ -27062,42 +27263,30 @@ async function carregarIndicadoresNutri() {
     const nomesMesPt = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
     const mesAtualLabel = nomesMesPt[agora.getMonth()];
 
-    // === Sprint 9.32.106: comparativo com equipe (todos nutris no mês) ===
-    let equipeMesPorNutri = {};
-    let equipeMesTotal = 0;
-    let equipeNumNutris = 0;
-    try {
-      const { data: equipeMes } = await db
-        .from('visitas')
-        .select('nutricionista_id')
-        .gte('checkin_timestamp', inicioMes.toISOString())
-        .not('checkin_timestamp', 'is', null)
-        .not('nutricionista_id', 'is', null);
-      (equipeMes || []).forEach(v => {
-        if (v.nutricionista_id) {
-          equipeMesPorNutri[v.nutricionista_id] = (equipeMesPorNutri[v.nutricionista_id] || 0) + 1;
-          equipeMesTotal++;
-        }
-      });
-      equipeNumNutris = Object.keys(equipeMesPorNutri).length;
-    } catch (e) {
-      console.warn('[indicadores] equipe:', e);
+    // 9.32.224: comparativo com PRÓPRIO mês anterior (em vez de "% vs equipe")
+    // Decisão de gestão: reduzir indicadores competitivos entre nutris.
+    // Usa kpiMes e kpiMesAnterior já calculados acima.
+    const diffAnterior = kpiMes - kpiMesAnterior;
+    let pctAnteriorStr;
+    let pctAnteriorPositivo;
+    if (kpiMesAnterior === 0 && kpiMes === 0) {
+      pctAnteriorStr = 'Sem visitas registradas ainda';
+      pctAnteriorPositivo = true;
+    } else if (kpiMesAnterior === 0 && kpiMes > 0) {
+      pctAnteriorStr = `↑ ${kpiMes} ${kpiMes === 1 ? 'visita' : 'visitas'} este mês · primeiro mês com atividade`;
+      pctAnteriorPositivo = true;
+    } else if (diffAnterior === 0) {
+      pctAnteriorStr = `→ Mesmo nível do mês anterior (${kpiMesAnterior})`;
+      pctAnteriorPositivo = true;
+    } else {
+      const pct = Math.round((diffAnterior / kpiMesAnterior) * 100);
+      const arrow = diffAnterior > 0 ? '↑' : '↓';
+      const adverbio = diffAnterior > 0 ? 'a mais' : 'a menos';
+      pctAnteriorStr = `${arrow} ${Math.abs(pct)}% ${adverbio} que o mês anterior (${kpiMesAnterior})`;
+      pctAnteriorPositivo = diffAnterior > 0;
     }
-    const mediaEquipeMes = equipeNumNutris > 0 ? equipeMesTotal / equipeNumNutris : 0;
-    const diffEquipe = kpiMes - mediaEquipeMes;
-    const pctEquipeNum = mediaEquipeMes > 0
-      ? Math.round((diffEquipe / mediaEquipeMes) * 100)
-      : (kpiMes > 0 ? 100 : 0);
-    const pctEquipeStr = (mediaEquipeMes > 0 || kpiMes > 0)
-      ? `${pctEquipeNum >= 0 ? '↑' : '↓'} ${Math.abs(pctEquipeNum)}% ${pctEquipeNum >= 0 ? 'acima' : 'abaixo'} da média da equipe (${mediaEquipeMes.toFixed(1)})`
-      : 'Sem dados da equipe ainda';
 
-    // Ranking
-    const sortedRanking = Object.entries(equipeMesPorNutri).sort((a,b) => b[1] - a[1]);
-    const posicaoRanking = sortedRanking.findIndex(([id]) => id === user.id) + 1;
-    const totalRanking = sortedRanking.length;
-    const medalhas = ['🥇','🥈','🥉'];
-    const medalha = posicaoRanking >= 1 && posicaoRanking <= 3 ? medalhas[posicaoRanking - 1] : '';
+    // 9.32.223 + 9.32.224: ranking entre nutris removido — só admin vê.
 
     // Streak (dias consecutivos com pelo menos 1 visita, contando de hoje pra trás)
     const datasUnicasSet = new Set();
@@ -27248,19 +27437,15 @@ async function carregarIndicadoresNutri() {
 
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;position:relative;z-index:1;">
           <div style="min-width:0;flex:1;">
-            <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.6px;font-weight:600;opacity:0.78;">Sua produção · ${mesAtualLabel}/${String(agora.getFullYear()).slice(-2)}</div>
+            <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.6px;font-weight:600;opacity:0.78;">Sua produção · ${labelPeriodo}</div>
             <div style="font-family:var(--font-display);font-weight:800;font-size:42px;line-height:1.05;margin-top:4px;">${kpiMes} <span style="font-size:14px;font-weight:600;opacity:0.85;">visita${kpiMes !== 1 ? 's' : ''}</span></div>
           </div>
-          ${posicaoRanking > 0 ? `
-            <div style="background:rgba(255,255,255,0.13);border:1px solid rgba(255,255,255,0.18);border-radius:10px;padding:8px 10px;text-align:center;flex-shrink:0;min-width:62px;">
-              ${medalha ? `<div style="font-size:22px;line-height:1;">${medalha}</div>` : `<div style="font-family:var(--font-display);font-weight:800;font-size:20px;line-height:1;">${posicaoRanking}º</div>`}
-              <div style="font-size:10px;font-weight:700;margin-top:3px;opacity:0.88;">${medalha ? `${posicaoRanking}º` : ''} de ${totalRanking}</div>
-            </div>
-          ` : ''}
+          ${'' /* 9.32.223: medalha/ranking removida da home do nutri pra reduzir competitividade entre a equipe.
+                   A posição entre nutris só é exposta pro admin (no dashboard admin → Top profissionais). */}
         </div>
 
-        <div style="display:inline-flex;align-items:center;gap:6px;background:${diffEquipe >= 0 ? 'rgba(139,198,63,0.22)' : 'rgba(255,255,255,0.12)'};border:1px solid ${diffEquipe >= 0 ? 'rgba(139,198,63,0.35)' : 'rgba(255,255,255,0.18)'};border-radius:8px;padding:5px 10px;font-size:11.5px;font-weight:700;margin-top:10px;position:relative;z-index:1;">
-          ${pctEquipeStr}
+        <div style="display:inline-flex;align-items:center;gap:6px;background:${pctAnteriorPositivo ? 'rgba(139,198,63,0.22)' : 'rgba(255,255,255,0.12)'};border:1px solid ${pctAnteriorPositivo ? 'rgba(139,198,63,0.35)' : 'rgba(255,255,255,0.18)'};border-radius:8px;padding:5px 10px;font-size:11.5px;font-weight:700;margin-top:10px;position:relative;z-index:1;">
+          ${pctAnteriorStr}
         </div>
 
         <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px;position:relative;z-index:1;">
@@ -27269,10 +27454,10 @@ async function carregarIndicadoresNutri() {
             <div style="font-family:var(--font-display);font-weight:800;font-size:18px;margin-top:3px;">${streak}</div>
             <div style="font-size:9.5px;font-weight:600;opacity:0.78;text-transform:uppercase;letter-spacing:0.3px;margin-top:1px;">${streak === 1 ? 'dia ativo' : 'dias ativos'}</div>
           </div>
-          <div style="background:rgba(255,255,255,0.09);border-radius:10px;padding:9px 8px;text-align:center;">
-            <div style="font-size:18px;line-height:1;">${diff_ >= 0 ? '📈' : '📉'}</div>
-            <div style="font-family:var(--font-display);font-weight:800;font-size:18px;margin-top:3px;">${pctStr}</div>
-            <div style="font-size:9.5px;font-weight:600;opacity:0.78;text-transform:uppercase;letter-spacing:0.3px;margin-top:1px;">vs mês anterior</div>
+          <div style="background:rgba(255,255,255,0.09);border-radius:10px;padding:9px 8px;text-align:center;" title="${metaMensal} visitas é a meta definida pelo admin">
+            <div style="font-size:18px;line-height:1;">🎯</div>
+            <div style="font-family:var(--font-display);font-weight:800;font-size:18px;margin-top:3px;">${pctMetaStr}</div>
+            <div style="font-size:9.5px;font-weight:600;opacity:0.78;text-transform:uppercase;letter-spacing:0.3px;margin-top:1px;">${metaLabel}</div>
           </div>
           <div style="background:rgba(255,255,255,0.09);border-radius:10px;padding:9px 8px;text-align:center;">
             <div style="font-size:18px;line-height:1;">✓</div>
