@@ -6683,7 +6683,7 @@ a {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.206-termos-uso',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.207-debug-emails',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -7125,7 +7125,10 @@ async function cadastrar(dados) {
       '[B&N Logística] Cadastro recebido — aguardando aprovação',
       htmlEmail,
       `Olá, ${primeiroNome}!\n\nRecebemos seu cadastro na B&N Logística. Sua conta está aguardando aprovação do administrador.\n\nVocê receberá outro e-mail assim que for aprovado.`
-    ).catch(err => console.error('[cadastrar] falha ao enviar e-mail:', err));
+    ).then(r => {
+      if (r?.ok) console.log('[cadastrar] e-mail "Cadastro recebido" enviado para', email);
+      else console.error('[cadastrar] falha ao enviar e-mail "Cadastro recebido":', r?.error);
+    }).catch(err => console.error('[cadastrar] erro inesperado no e-mail:', err));
   } catch (err) {
     console.error('[cadastrar] erro ao montar e-mail:', err);
   }
@@ -43529,7 +43532,10 @@ window.aprovarProfissional = async function(id) {
           '[B&N Logística] Seu cadastro foi aprovado',
           htmlEmail,
           `Olá, ${primeiroNome}!\n\nBoas-vindas à B&N Logística! Seu cadastro foi aprovado e sua conta está liberada.\n\nAcesse: https://www.benlogistica.com.br`
-        ).catch(err => console.error('[aprovarProfissional] falha ao enviar e-mail:', err));
+        ).then(r => {
+          if (r?.ok) console.log('[aprovarProfissional] e-mail "Cadastro aprovado" enviado para', aprovado.email);
+          else console.error('[aprovarProfissional] falha ao enviar e-mail "Cadastro aprovado":', r?.error);
+        }).catch(err => console.error('[aprovarProfissional] erro inesperado no e-mail:', err));
       } catch (err) {
         console.error('[aprovarProfissional] erro ao montar e-mail:', err);
       }
