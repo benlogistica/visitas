@@ -16298,18 +16298,21 @@ const ConfigMeta = {
     descricao: '<strong style="color:var(--status-danger,#dc2626);">Crítico:</strong> envia o código OTP de 6 dígitos quando o usuário clica em "Esqueci minha senha". <strong>Desativar isso impede qualquer recuperação de senha por e-mail</strong> — só admin conseguirá redefinir senha manualmente. Mantenha ativado a menos que o SMTP esteja em manutenção.',
     categoria: 'email',
     tipo: 'boolean',
+    defaultValue: true,
   },
   email_cadastro_recebido_ativo: {
     titulo: 'E-mail "Cadastro recebido"',
     descricao: 'Envia confirmação automática quando um novo profissional se cadastra na plataforma (status pendente). Não bloqueia o cadastro se desativado.',
     categoria: 'email',
     tipo: 'boolean',
+    defaultValue: true,
   },
   email_cadastro_aprovado_ativo: {
     titulo: 'E-mail "Cadastro aprovado"',
     descricao: 'Envia notificação de boas-vindas quando o admin aprova um cadastro pendente, com botão de acesso à plataforma. Não bloqueia a aprovação se desativado.',
     categoria: 'email',
     tipo: 'boolean',
+    defaultValue: true,
   },
 };
 
@@ -45660,7 +45663,10 @@ function renderConfigItem({ chave, meta, atual }) {
       </span>
     `;
   } else if (meta.tipo === 'boolean') {
-    const isOn = valor === true || valor === 'true';
+    // 9.32.209: respeita meta.defaultValue quando a chave nunca foi salva no banco.
+    // Sem isso, todo toggle aparecia OFF mesmo quando o comportamento runtime era "ativo".
+    const valOuDefault = (valor !== null && valor !== undefined) ? valor : meta.defaultValue;
+    const isOn = valOuDefault === true || valOuDefault === 'true';
     controlHtml = `
       <span class="config-saved-badge" id="cfgSaved_${chave}">
         <span class="material-symbols-rounded">check</span>Salvo
