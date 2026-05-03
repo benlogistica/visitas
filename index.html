@@ -6683,7 +6683,7 @@ a {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.202-groq-link-dashboard',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.203-email-recuperacao-real',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -16249,6 +16249,13 @@ const ConfigMeta = {
     placeholder: 'gsk_...',
     sensitive: true,
   },
+  email_teste_destinatario: {
+    titulo: 'Testar envio de e-mail',
+    descricao: 'Digite um e-mail abaixo e clique em <strong>Enviar teste</strong> pra confirmar que o SMTP está funcionando. O e-mail enviado tem o template oficial B&N (navy + lime).',
+    categoria: 'email',
+    tipo: 'email_test',
+    placeholder: 'seu-email@exemplo.com',
+  },
 };
 
 const ConfigCategorias = {
@@ -16257,6 +16264,7 @@ const ConfigCategorias = {
   admin:      { titulo: 'Fluxo Administrativo', icone: 'admin_panel_settings', cor: 'info' },
   ia:         { titulo: 'Inteligência Artificial', icone: 'smart_toy', cor: 'warning' },
   voz:        { titulo: 'Ditado por voz', icone: 'mic', cor: 'brand-lime' },
+  email:      { titulo: 'E-mail (testar envio)', icone: 'mail', cor: 'navy' },
 };
 
 // Carrega todas as configs (com cache)
@@ -17239,7 +17247,7 @@ function renderLogin() {
 
           <div class="auth__panel-footer">
             Problemas para entrar? Fale com
-            <span class="auth__panel-footer-email">suporte@nutricionais.com.br</span>
+            <span class="auth__panel-footer-email">atendimento@benlogistica.com.br</span>
           </div>
         </div>
       </main>
@@ -17533,6 +17541,56 @@ function renderRecuperarEmail() {
   `;
 }
 
+// ===== Sprint 9.32.203: helper pra enviar email via Edge Function send-email =====
+// Chama a Edge Function que tem o SMTP do emailemnuvem configurado.
+// Retorna { ok: true } ou { ok: false, error: '...' }
+async function sendEmailViaEdge(to, subject, html, text) {
+  try {
+    const url = CONFIG.SUPABASE_URL.replace(/\/$/, '') + '/functions/v1/send-email';
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + CONFIG.SUPABASE_ANON_KEY,
+      },
+      body: JSON.stringify({ to, subject, html, text }),
+    });
+    const json = await resp.json().catch(() => ({}));
+    if (!resp.ok || !json.ok) {
+      return { ok: false, error: json.error || ('HTTP ' + resp.status) };
+    }
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: String(e?.message || e) };
+  }
+}
+
+// Template HTML padrão de email B&N (header navy, botão lime, footer)
+function _emailTemplateBN({ titulo, corpoHtml, btnTexto, btnUrl, rodape }) {
+  return `<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${titulo}</title></head>
+<body style="margin:0;padding:0;background:#f3f4f6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#0A1F5C;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6;padding:32px 16px;">
+    <tr><td align="center">
+      <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 6px 24px rgba(10,31,92,0.08);">
+        <tr><td style="background:#0A1F5C;padding:24px 32px;text-align:left;">
+          <div style="font-size:13px;letter-spacing:1.4px;color:#8BC63F;font-weight:700;text-transform:uppercase;">B&amp;N Logística</div>
+          <div style="font-size:22px;font-weight:700;color:#fff;margin-top:6px;">${titulo}</div>
+        </td></tr>
+        <tr><td style="padding:32px;font-size:15px;line-height:1.6;color:#0A1F5C;">
+          ${corpoHtml}
+          ${btnTexto && btnUrl ? `<div style="margin:28px 0;text-align:center;"><a href="${btnUrl}" style="display:inline-block;background:#8BC63F;color:#0A1F5C;font-weight:700;padding:14px 32px;border-radius:10px;text-decoration:none;font-size:15px;">${btnTexto}</a></div>` : ''}
+        </td></tr>
+        <tr><td style="padding:20px 32px;background:#f9fafb;border-top:1px solid #e5e7eb;font-size:12px;color:#6b7280;line-height:1.5;">
+          ${rodape || 'Este email foi enviado automaticamente pelo sistema B&N Logística.<br>Se você não solicitou esta ação, ignore esta mensagem.'}
+          <br><br>Em caso de dúvidas, entre em contato: <a href="mailto:atendimento@benlogistica.com.br" style="color:#0A1F5C;">atendimento@benlogistica.com.br</a>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>`;
+}
+
 window.handleRecuperarEmail = async function(ev) {
   ev.preventDefault();
   const cpf = document.getElementById('fCpf').value;
@@ -17558,20 +17616,49 @@ window.handleRecuperarEmail = async function(ev) {
 
     if (error) throw new Error(error.message);
     if (!user) throw new Error('Não encontramos conta com esse CPF');
+    if (!user.email) throw new Error('Sua conta não tem e-mail cadastrado. Entre em contato com o admin.');
 
-    // Gera código OTP (simulado — na V2 enviamos via EmailJS)
+    // Gera código OTP de 6 dígitos
     const code = String(Math.floor(100000 + Math.random() * 900000));
+    const validade = '15 minutos';
 
     ForgotState.step = 'otp';
     ForgotState.email = user.email;
     ForgotState.cpf = cpfFmt;
     ForgotState.userId = user.id;
     ForgotState.expectedCode = code;
+    ForgotState.codeGeneratedAt = Date.now();
 
-    // Enquanto o EmailJS não está configurado, mostra o código via alert
-    alert(`[MODO DEMO — SEM EMAIL AINDA]\n\nO código enviado seria:\n${code}\n\nUse esse código na próxima tela. Na versão final, o código chegará no e-mail: ${user.email}`);
+    // 9.32.203: envia código real via Edge Function send-email
+    const primeiroNome = (user.nome || '').split(' ')[0] || 'Usuário';
+    const html = _emailTemplateBN({
+      titulo: 'Código de recuperação de senha',
+      corpoHtml: `
+        <p>Olá, <strong>${primeiroNome}</strong>!</p>
+        <p>Recebemos uma solicitação para redefinir a senha da sua conta. Use o código abaixo para continuar:</p>
+        <div style="margin:24px 0;text-align:center;">
+          <div style="display:inline-block;background:#f3f4f6;border:2px solid #8BC63F;border-radius:12px;padding:18px 36px;font-family:'JetBrains Mono','Courier New',monospace;font-size:32px;font-weight:700;letter-spacing:0.4em;color:#0A1F5C;">${code}</div>
+        </div>
+        <p style="font-size:13px;color:#6b7280;text-align:center;">Este código expira em <strong>${validade}</strong>.</p>
+        <p>Se você não solicitou a redefinição da senha, ignore este e-mail e sua senha continuará a mesma.</p>
+      `,
+      rodape: 'Por segurança, nunca compartilhe esse código com ninguém. A B&N Logística nunca pedirá seu código por telefone, WhatsApp ou outro canal.',
+    });
 
-    router(); // re-renderiza na nova step
+    const result = await sendEmailViaEdge(
+      user.email,
+      `[B&N Logística] Código de recuperação: ${code}`,
+      html,
+      `Olá, ${primeiroNome}!\n\nSeu código de recuperação de senha é: ${code}\n\nEle expira em ${validade}.\n\nSe você não solicitou, ignore este email.`
+    );
+
+    if (!result.ok) {
+      console.error('[recuperar] erro ao enviar email:', result.error);
+      throw new Error('Não conseguimos enviar o e-mail agora. Tente novamente em alguns minutos.');
+    }
+
+    console.log('[recuperar] email enviado pra', maskEmail(user.email));
+    router();
   } catch (err) {
     flashEl.innerHTML = `<div class="flash flash--error"><span class="material-symbols-rounded" style="font-size:18px">error</span>${err.message}</div>`;
     btn.disabled = false;
@@ -45523,6 +45610,28 @@ function renderConfigItem({ chave, meta, atual }) {
         ` : ''}
       </div>
     `;
+  } else if (meta.tipo === 'email_test') {
+    // 9.32.203: input de e-mail + botão "Enviar teste"
+    controlHtml = `
+      <div style="display:flex;flex-direction:column;gap:8px;width:100%;max-width:520px;">
+        <div style="display:flex;align-items:center;gap:8px;width:100%;flex-wrap:wrap;">
+          <input
+            type="email"
+            id="cfg_${chave}"
+            placeholder="${(meta.placeholder || '').replace(/"/g, '&quot;')}"
+            autocomplete="email"
+            style="flex:1;min-width:240px;font-family:-apple-system,sans-serif;font-size:14px;padding:10px 14px;border:2px solid var(--border-color,#e5e7eb);border-radius:10px;background:#fff;"
+            onfocus="this.style.borderColor='var(--brand-lime,#8BC63F)'"
+            onblur="this.style.borderColor='var(--border-color,#e5e7eb)'"
+          />
+          <button type="button" id="cfgEmailTestBtn_${chave}" onclick="window.handleConfigEmailTest('${chave}')"
+            style="display:inline-flex;align-items:center;gap:6px;padding:10px 18px;background:var(--brand-navy,#0A1F5C);color:#fff;border:0;border-radius:10px;cursor:pointer;font-weight:600;font-size:14px;">
+            <span class="material-symbols-rounded" style="font-size:18px;">send</span> Enviar teste
+          </button>
+        </div>
+        <div id="cfgEmailTestStatus_${chave}" style="font-size:13px;color:#6b7280;min-height:18px;"></div>
+      </div>
+    `;
   }
 
   return `
@@ -45536,6 +45645,45 @@ function renderConfigItem({ chave, meta, atual }) {
     </div>
   `;
 }
+
+// 9.32.203: handler do botão de teste de email
+window.handleConfigEmailTest = async function(chave) {
+  const inp = document.getElementById('cfg_' + chave);
+  const btn = document.getElementById('cfgEmailTestBtn_' + chave);
+  const st = document.getElementById('cfgEmailTestStatus_' + chave);
+  const dest = (inp && inp.value || '').trim();
+  if (!dest || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(dest)) {
+    if (st) st.innerHTML = '<span style="color:var(--status-warning,#d97706);">Digite um e-mail válido primeiro.</span>';
+    return;
+  }
+  if (btn) { btn.disabled = true; btn.style.opacity = '.6'; btn.innerHTML = '<span class="material-symbols-rounded" style="font-size:18px;">hourglass_empty</span> Enviando...'; }
+  if (st) st.innerHTML = '<span style="color:#6b7280;">Enviando e-mail de teste...</span>';
+
+  try {
+    const html = _emailTemplateBN({
+      titulo: 'E-mail de teste',
+      corpoHtml: `
+        <p>Olá! 👋</p>
+        <p>Este é um <strong>e-mail de teste</strong> enviado pelo sistema B&N Logística pra confirmar que a configuração de SMTP está funcionando corretamente.</p>
+        <p>Se você está vendo essa mensagem, significa que:</p>
+        <ul style="line-height:1.8;">
+          <li>✅ O SMTP está autenticado</li>
+          <li>✅ O domínio está autorizado</li>
+          <li>✅ Os e-mails do sistema vão chegar normalmente</li>
+        </ul>
+        <p><strong>Enviado em:</strong> ${new Date().toLocaleString('pt-BR')}</p>
+      `,
+      rodape: 'Este é um teste técnico disparado a partir do painel de Configurações por um administrador.',
+    });
+    const result = await sendEmailViaEdge(dest, '[B&N Logística] E-mail de teste', html, 'Teste do SMTP B&N Logística. Se chegou, está funcionando!');
+    if (!result.ok) throw new Error(result.error || 'Falha desconhecida');
+    if (st) st.innerHTML = '<span style="color:var(--status-success,#16a34a);">✓ E-mail enviado! Verifique sua caixa de entrada (e a pasta Spam).</span>';
+  } catch (e) {
+    if (st) st.innerHTML = '<span style="color:var(--status-warning,#d97706);">✗ Erro: ' + (e.message || e) + '</span>';
+  } finally {
+    if (btn) { btn.disabled = false; btn.style.opacity = '1'; btn.innerHTML = '<span class="material-symbols-rounded" style="font-size:18px;">send</span> Enviar teste'; }
+  }
+};
 
 window.handleConfigChange = async function(chave, valor, tipo) {
   let valorConvertido = valor;
