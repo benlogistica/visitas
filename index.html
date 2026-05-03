@@ -3868,6 +3868,103 @@ a {
   margin-bottom: 14px;
   box-shadow: 0 2px 8px rgba(10,31,92,0.05);
 }
+
+/* Sprint 9.32.211: Lista de anexos no relatório */
+.anexos-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.anexo-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--neutral-50, #f9fafb);
+  border: 1px solid var(--neutral-200, #e5e7eb);
+  border-radius: 10px;
+  transition: all 140ms;
+}
+.anexo-item:hover {
+  border-color: var(--brand-lime, #8BC63F);
+  background: #fff;
+}
+.anexo-item__icon {
+  font-size: 28px !important;
+  color: var(--brand-navy, #0A1F5C);
+  flex-shrink: 0;
+}
+.anexo-item__body {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+.anexo-item__name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--brand-navy, #0A1F5C);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.3;
+}
+.anexo-item__meta {
+  font-size: 11px;
+  color: var(--neutral-500, #6b7280);
+  margin-top: 2px;
+}
+.anexo-item__action {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  border: 1px solid var(--neutral-200, #e5e7eb);
+  background: #fff;
+  color: var(--brand-navy, #0A1F5C);
+  cursor: pointer;
+  transition: all 140ms;
+}
+.anexo-item__action:hover {
+  background: var(--brand-navy, #0A1F5C);
+  color: #fff;
+}
+.anexo-item__action--danger:hover {
+  background: var(--status-danger, #dc2626);
+  border-color: var(--status-danger, #dc2626);
+  color: #fff;
+}
+.anexo-item__action .material-symbols-rounded {
+  font-size: 18px;
+}
+.btn-anexo-add {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 12px;
+  background: #fff;
+  border: 1.5px dashed var(--brand-lime, #8BC63F);
+  border-radius: 10px;
+  color: var(--brand-navy, #0A1F5C);
+  font-weight: 700;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 140ms;
+}
+.btn-anexo-add:hover:not(:disabled) {
+  background: #F4F9EA;
+  border-style: solid;
+}
+.btn-anexo-add .material-symbols-rounded {
+  font-size: 20px;
+  color: var(--brand-lime, #8BC63F);
+}
 .report-section__title {
   display: flex;
   align-items: center;
@@ -5926,6 +6023,9 @@ a {
   align-items: center;
   gap: 8px;
   margin-left: auto;
+  /* 9.32.210: limita largura em mobile pra não vazar do card */
+  max-width: 100%;
+  flex-wrap: wrap;
 }
 
 /* Input numérico com sufixo */
@@ -6683,7 +6783,7 @@ a {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.209-toggles-email',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.211-anexos-relatorio',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -7803,6 +7903,139 @@ async function apagarFotoDoStorage(url) {
   if (!match) return;
   const path = match[1];
   await db.storage.from('avatars').remove([path]);
+}
+
+// =============================================================================
+// 9.32.211: ANEXOS DE RELATÓRIO DE VISITA
+// =============================================================================
+// Bucket: visita-anexos (privado, 10 MB max, MIME whitelist)
+// Tabela: visita_anexos
+// Trigger no banco enforça máx 5 anexos por visita.
+// =============================================================================
+
+const ANEXO_MIME_WHITELIST = [
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+];
+const ANEXO_TAMANHO_MAX = 10 * 1024 * 1024; // 10 MB
+const ANEXO_MAX_POR_VISITA = 5;
+
+// Sanitiza nome de arquivo pra usar no storage path (remove acentos, espaços, especiais)
+function _sanitizarNomeArquivo(nome) {
+  return (nome || 'arquivo')
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-zA-Z0-9._-]/g, '_')
+    .replace(/_+/g, '_')
+    .substring(0, 80);
+}
+
+// Upload um arquivo pro bucket + cria linha em visita_anexos.
+// Retorna a linha criada. Lança Error se algo falhar.
+async function uploadAnexoVisita(visitaId, file, userId) {
+  if (!db) throw new Error('Banco não conectado');
+  if (!file) throw new Error('Arquivo não fornecido');
+  if (file.size <= 0) throw new Error('Arquivo vazio');
+  if (file.size > ANEXO_TAMANHO_MAX) throw new Error('Arquivo maior que 10 MB');
+  if (!ANEXO_MIME_WHITELIST.includes(file.type)) {
+    throw new Error('Tipo de arquivo não permitido. Use PDF, DOC, XLS, JPG, PNG ou WEBP.');
+  }
+
+  const timestamp = Date.now();
+  const nomeSeguro = _sanitizarNomeArquivo(file.name);
+  const caminho = `${visitaId}/${timestamp}_${nomeSeguro}`;
+
+  // 1. Upload do binário
+  const { error: errUp } = await db.storage
+    .from('visita-anexos')
+    .upload(caminho, file, { contentType: file.type, upsert: false });
+  if (errUp) throw new Error('Erro no upload: ' + errUp.message);
+
+  // 2. Insere metadata na tabela. Se falhar, rollback do storage.
+  const { data, error: errIns } = await db
+    .from('visita_anexos')
+    .insert({
+      visita_id: visitaId,
+      nome_original: file.name,
+      mime_type: file.type,
+      tamanho_bytes: file.size,
+      caminho_storage: caminho,
+      enviado_por: userId || null,
+    })
+    .select()
+    .single();
+
+  if (errIns) {
+    // Rollback: remove o arquivo do storage pra não vazar lixo
+    await db.storage.from('visita-anexos').remove([caminho]).catch(() => {});
+    if (/Limite de 5 anexos/.test(errIns.message)) {
+      throw new Error('Esta visita já tem 5 anexos. Remova algum antes de adicionar outro.');
+    }
+    throw new Error('Erro ao salvar metadata: ' + errIns.message);
+  }
+
+  return data;
+}
+
+async function listarAnexosVisita(visitaId) {
+  if (!db) return [];
+  const { data, error } = await db
+    .from('visita_anexos')
+    .select('id, nome_original, mime_type, tamanho_bytes, caminho_storage, enviado_em, enviado_por, usuarios:enviado_por(nome)')
+    .eq('visita_id', visitaId)
+    .order('enviado_em', { ascending: true });
+  if (error) {
+    console.warn('[anexos] erro ao listar:', error.message);
+    return [];
+  }
+  return data || [];
+}
+
+async function removerAnexoVisita(anexoId, caminhoStorage) {
+  if (!db) throw new Error('Banco não conectado');
+  // 1. Apaga do storage primeiro (best-effort — se falhar, segue)
+  if (caminhoStorage) {
+    await db.storage.from('visita-anexos').remove([caminhoStorage]).catch(err => {
+      console.warn('[anexos] falha ao remover do storage (segue):', err?.message);
+    });
+  }
+  // 2. Apaga a linha do banco
+  const { error } = await db.from('visita_anexos').delete().eq('id', anexoId);
+  if (error) throw new Error('Erro ao remover anexo: ' + error.message);
+  return true;
+}
+
+// Gera URL assinada (expira em 5 min) pra download. Bucket é privado.
+async function getAnexoSignedUrl(caminhoStorage, expiraEmSegundos = 300) {
+  if (!db || !caminhoStorage) throw new Error('Caminho inválido');
+  const { data, error } = await db.storage
+    .from('visita-anexos')
+    .createSignedUrl(caminhoStorage, expiraEmSegundos);
+  if (error) throw new Error(error.message);
+  return data?.signedUrl;
+}
+
+// Helper UI: ícone Material Symbols apropriado pro mime type
+function _iconeAnexo(mime) {
+  if (!mime) return 'description';
+  if (mime.startsWith('image/')) return 'image';
+  if (mime === 'application/pdf') return 'picture_as_pdf';
+  if (mime.includes('word')) return 'description';
+  if (mime.includes('sheet') || mime.includes('excel')) return 'table_chart';
+  return 'attach_file';
+}
+
+// Helper UI: formata tamanho em KB/MB
+function _formatarTamanhoArquivo(bytes) {
+  if (!bytes) return '0 B';
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
 }
 
 // Atualiza a coluna foto_url do user
@@ -22046,6 +22279,33 @@ Cada bloco de 3 linhas (ação / responsável / data) vira uma linha da tabela q
           <input type="date" id="fProxData" ${readonly ? 'disabled' : ''} value="${v.proxima_visita_programada || ''}" oninput="handleReportChange('proxima_visita_programada', this.value || null)" />
         </div>
       </section>
+
+      <!-- SEÇÃO 8: Anexos (Sprint 9.32.211) -->
+      <section class="report-section">
+        <div class="report-section__title">
+          <span class="material-symbols-rounded">attach_file</span>
+          Anexos
+        </div>
+        <div class="report-section__help">Documentos, fotos ou planilhas relacionadas à visita. Máximo 5 arquivos, 10 MB cada. Aceita PDF, DOC, DOCX, XLS, XLSX, JPG, PNG, WEBP.</div>
+        <div id="anexosVisitaList" class="anexos-list" data-readonly="${readonly ? '1' : '0'}">
+          <div style="font-size:12.5px;color:var(--neutral-500);padding:14px 0;text-align:center;">
+            <span class="material-symbols-rounded" style="font-size:18px;vertical-align:-3px;">hourglass_empty</span>
+            Carregando anexos...
+          </div>
+        </div>
+        ${readonly ? '' : `
+          <input type="file" id="anexoFileInput"
+            accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.webp,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,image/jpeg,image/png,image/webp"
+            style="display:none"
+            onchange="window.handleAnexoFileSelected(this)" />
+          <button type="button" id="anexoAddBtn"
+            onclick="document.getElementById('anexoFileInput').click()"
+            class="btn-anexo-add">
+            <span class="material-symbols-rounded">upload_file</span>
+            Adicionar arquivo
+          </button>
+        `}
+      </section>
     </div>
 
     ${readonly ? '' : `
@@ -22126,7 +22386,164 @@ Cada bloco de 3 linhas (ação / responsável / data) vira uma linha da tabela q
       console.warn('[renderReaberturaBanner] erro:', err);
     }
   })();
+
+  // Sprint 9.32.211: hidrata lista de anexos (assíncrono)
+  hydrateAnexos(v.id, readonly).catch(err => console.warn('[hydrateAnexos] erro:', err));
 }
+
+// Sprint 9.32.211: lista os anexos da visita e renderiza no slot #anexosVisitaList.
+// Roda async depois de hydrateReportForm porque depende de network call.
+async function hydrateAnexos(visitaId, readonly) {
+  const slot = document.getElementById('anexosVisitaList');
+  if (!slot) return;
+  try {
+    const anexos = await listarAnexosVisita(visitaId);
+    if (!anexos.length) {
+      slot.innerHTML = `
+        <div style="font-size:12.5px;color:var(--neutral-500);padding:14px 0;text-align:center;font-style:italic;">
+          Nenhum anexo ainda.
+        </div>
+      `;
+      _atualizarBotaoAnexo(0, readonly);
+      return;
+    }
+    slot.innerHTML = anexos.map(a => {
+      const icone = _iconeAnexo(a.mime_type);
+      const tamanho = _formatarTamanhoArquivo(a.tamanho_bytes);
+      const enviadoPor = a.usuarios?.nome ? ` · enviado por ${a.usuarios.nome.split(' ')[0]}` : '';
+      const nomeSafe = (a.nome_original || 'arquivo').replace(/"/g, '&quot;').replace(/</g,'&lt;');
+      const caminhoSafe = (a.caminho_storage || '').replace(/"/g, '&quot;');
+      const podeRemover = !readonly;
+      return `
+        <div class="anexo-item">
+          <span class="material-symbols-rounded anexo-item__icon">${icone}</span>
+          <div class="anexo-item__body">
+            <div class="anexo-item__name" title="${nomeSafe}">${nomeSafe}</div>
+            <div class="anexo-item__meta">${tamanho}${enviadoPor}</div>
+          </div>
+          <button type="button" class="anexo-item__action" title="Baixar"
+            onclick="window.handleAnexoDownload('${caminhoSafe}', '${nomeSafe.replace(/'/g, '&#39;')}')">
+            <span class="material-symbols-rounded">download</span>
+          </button>
+          ${podeRemover ? `
+            <button type="button" class="anexo-item__action anexo-item__action--danger" title="Remover"
+              onclick="window.handleAnexoRemove('${a.id}', '${caminhoSafe}', '${nomeSafe.replace(/'/g, '&#39;')}')">
+              <span class="material-symbols-rounded">delete</span>
+            </button>
+          ` : ''}
+        </div>
+      `;
+    }).join('');
+    _atualizarBotaoAnexo(anexos.length, readonly);
+  } catch (err) {
+    slot.innerHTML = `
+      <div style="font-size:12.5px;color:var(--status-danger,#dc2626);padding:14px 0;text-align:center;">
+        <span class="material-symbols-rounded" style="font-size:18px;vertical-align:-3px;">error</span>
+        Erro ao carregar anexos: ${err.message || err}
+      </div>
+    `;
+  }
+}
+
+// Atualiza o estado do botão "Adicionar arquivo" (some/desabilita ao bater limite)
+function _atualizarBotaoAnexo(qtd, readonly) {
+  if (readonly) return;
+  const btn = document.getElementById('anexoAddBtn');
+  if (!btn) return;
+  if (qtd >= ANEXO_MAX_POR_VISITA) {
+    btn.disabled = true;
+    btn.style.opacity = '0.5';
+    btn.style.cursor = 'not-allowed';
+    btn.innerHTML = '<span class="material-symbols-rounded">block</span> Limite de 5 anexos atingido';
+  } else {
+    btn.disabled = false;
+    btn.style.opacity = '1';
+    btn.style.cursor = 'pointer';
+    btn.innerHTML = '<span class="material-symbols-rounded">upload_file</span> Adicionar arquivo';
+  }
+}
+
+// Handler do file input — faz upload + recarrega lista
+window.handleAnexoFileSelected = async function(input) {
+  const file = input?.files?.[0];
+  if (!file) return;
+  const visitaId = ReportState.visitaId;
+  if (!visitaId) {
+    alert('Visita não identificada.');
+    input.value = '';
+    return;
+  }
+  const user = getCurrentUser();
+  if (!user) {
+    alert('Usuário não autenticado.');
+    input.value = '';
+    return;
+  }
+  const btn = document.getElementById('anexoAddBtn');
+  const btnHtmlOriginal = btn?.innerHTML;
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<span class="material-symbols-rounded">hourglass_empty</span> Enviando...';
+  }
+  try {
+    await uploadAnexoVisita(visitaId, file, user.id);
+    setFlash('success', 'Anexo enviado.');
+    input.value = '';
+    await hydrateAnexos(visitaId, false);
+  } catch (err) {
+    console.error('[anexo] upload falhou:', err);
+    alert('Erro ao enviar: ' + (err.message || err));
+    if (btn && btnHtmlOriginal) {
+      btn.disabled = false;
+      btn.innerHTML = btnHtmlOriginal;
+    }
+    input.value = '';
+  }
+};
+
+// Handler de download (gera signed URL temporária e abre)
+window.handleAnexoDownload = async function(caminho, nome) {
+  if (!caminho) return;
+  try {
+    const url = await getAnexoSignedUrl(caminho);
+    if (!url) throw new Error('URL não gerada');
+    // Abre em nova aba; navegador decide entre exibir ou baixar
+    const a = document.createElement('a');
+    a.href = url;
+    a.target = '_blank';
+    a.rel = 'noopener';
+    if (nome) a.download = nome;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  } catch (err) {
+    console.error('[anexo] download falhou:', err);
+    alert('Erro ao baixar: ' + (err.message || err));
+  }
+};
+
+// Handler de remoção (com confirmação)
+window.handleAnexoRemove = async function(anexoId, caminho, nome) {
+  const ok = await showModalConfirmacao({
+    icone: 'delete',
+    iconeCor: 'danger',
+    titulo: 'Remover anexo?',
+    subtitulo: `Esta ação remove "${(nome || 'o arquivo').replace(/</g, '&lt;')}" permanentemente da visita. Não pode ser desfeita.`,
+    btnConfirmar: 'Remover',
+    btnCancelar: 'Cancelar',
+  });
+  if (!ok) return;
+  try {
+    await removerAnexoVisita(anexoId, caminho);
+    setFlash('success', 'Anexo removido.');
+    if (ReportState.visitaId) {
+      await hydrateAnexos(ReportState.visitaId, false);
+    }
+  } catch (err) {
+    console.error('[anexo] remoção falhou:', err);
+    alert('Erro ao remover: ' + (err.message || err));
+  }
+};
 
 function renderObjetivos() {
   const grid = document.getElementById('objectiveGrid');
@@ -45743,7 +46160,7 @@ function renderConfigItem({ chave, meta, atual }) {
             id="cfg_${chave}"
             placeholder="${(meta.placeholder || '').replace(/"/g, '&quot;')}"
             autocomplete="email"
-            style="flex:1;min-width:240px;font-family:-apple-system,sans-serif;font-size:14px;padding:10px 14px;border:2px solid var(--border-color,#e5e7eb);border-radius:10px;background:#fff;"
+            style="flex:1 1 160px;min-width:0;font-family:-apple-system,sans-serif;font-size:14px;padding:10px 14px;border:2px solid var(--border-color,#e5e7eb);border-radius:10px;background:#fff;"
             onfocus="this.style.borderColor='var(--brand-lime,#8BC63F)'"
             onblur="this.style.borderColor='var(--border-color,#e5e7eb)'"
           />
