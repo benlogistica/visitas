@@ -6599,7 +6599,7 @@ a {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.180-whisper-small-qualidade-profissional',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.181-mic-hibrido-web-speech-com-buffer-e-ui-whisper',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -22654,16 +22654,19 @@ window.rteStartResize = function(ev, handle) {
   document.addEventListener('touchend', onUp);
 };
 
-// ===== Sprint 9.32.178: Microfone com Whisper local (transformers.js) =====
-// Substitui Web Speech API por gravação MediaRecorder + transcrição offline.
-// Modelo Xenova/whisper-tiny (~75MB) baixado uma vez e cacheado no IndexedDB.
-// Funciona offline depois do primeiro uso. Sem timeout de silêncio.
+// ===== Sprint 9.32.181: Microfone HÍBRIDO — Web Speech API + buffer + UI Whisper =====
+// Volta pra Web Speech (sem download de modelo, qualidade boa, rápido) MAS com a UX do
+// Whisper: grava em buffer, mostra painel rosa "gravando", e só insere o texto no editor
+// quando o user clica "Inserir". Assim, mesmo que perca pequenos fragmentos por silêncio,
+// o user nunca percebe — só vê o resultado final aparecer no campo.
+// Mantém auto-restart silencioso quando navegador encerrar por timeout.
 
-// CDN da transformers.js — biblioteca oficial pra rodar modelos Whisper no navegador
-const WHISPER_CDN = 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2';
-// Sprint 9.32.180: upgrade pra whisper-small (qualidade profissional pt-BR)
-// tiny=75MB ruim · base=145MB boa · small=466MB excelente
-const WHISPER_MODEL = 'Xenova/whisper-small'; // ~466MB
+// Variáveis de estado (mantemos o nome _whisper* pra reusar as funções de UI)
+window._whisperMicStream = null;
+window._whisperWrap = null;
+window._micRecognition = null;        // SpeechRecognition ativo
+window._micUserWantsMic = false;      // flag de "ainda quer ouvir"
+window._micBuffer = '';                // texto acumulado durante a gravação
 
 // Estado global do Whisper (loader lazy: só carrega quando o user clicar pela primeira vez)
 window._whisperPipeline = null;       // pipeline de transcrição (carrega 1x e fica em cache)
@@ -22672,128 +22675,6 @@ window._whisperMediaRecorder = null;  // MediaRecorder ativo
 window._whisperAudioChunks = [];      // chunks de áudio gravado
 window._whisperMicStream = null;      // MediaStream do microfone
 window._whisperWrap = null;           // wrap do editor que disparou (pra inserir texto depois)
-
-// Carrega a biblioteca + modelo Whisper. Mostra modal de progresso na primeira vez.
-async function _whisperCarregarPipeline(onProgress) {
-  if (window._whisperPipeline) return window._whisperPipeline;
-  if (window._whisperLoading) {
-    // Espera o load atual terminar
-    while (window._whisperLoading) await new Promise(r => setTimeout(r, 100));
-    return window._whisperPipeline;
-  }
-  window._whisperLoading = true;
-  try {
-    // Importa transformers.js dinamicamente do CDN (ESM)
-    if (!window._transformersLib) {
-      onProgress && onProgress({ stage: 'lib', percent: 0, msg: 'Baixando biblioteca…' });
-      const mod = await import(/* @vite-ignore */ `${WHISPER_CDN}`);
-      window._transformersLib = mod;
-      // Configura cache no IndexedDB (default já é IndexedDB)
-      mod.env.allowLocalModels = false; // só remoto (HuggingFace CDN)
-      mod.env.useBrowserCache = true;   // cacheia no navegador
-    }
-    const { pipeline } = window._transformersLib;
-    onProgress && onProgress({ stage: 'modelo', percent: 0, msg: 'Baixando modelo de IA (~466MB)…' });
-    // Cria pipeline de transcrição com callback de progresso
-    const pipe = await pipeline('automatic-speech-recognition', WHISPER_MODEL, {
-      progress_callback: (p) => {
-        if (p.status === 'progress' && typeof p.progress === 'number') {
-          onProgress && onProgress({ stage: 'modelo', percent: Math.round(p.progress), msg: `Baixando modelo… ${Math.round(p.progress)}%` });
-        } else if (p.status === 'done') {
-          onProgress && onProgress({ stage: 'modelo', percent: 100, msg: 'Quase lá…' });
-        } else if (p.status === 'ready') {
-          onProgress && onProgress({ stage: 'pronto', percent: 100, msg: 'Pronto!' });
-        }
-      },
-    });
-    window._whisperPipeline = pipe;
-    return pipe;
-  } catch (err) {
-    console.error('[whisper] erro ao carregar', err);
-    throw err;
-  } finally {
-    window._whisperLoading = false;
-  }
-}
-
-// Mostra modal de download na primeira vez
-function _whisperMostrarModalLoading() {
-  // Remove modal anterior se existir
-  const existente = document.getElementById('whisperLoadingModal');
-  if (existente) existente.remove();
-
-  const modal = document.createElement('div');
-  modal.id = 'whisperLoadingModal';
-  modal.style.cssText = 'position:fixed;inset:0;background:rgba(10,31,92,0.5);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;font-family:inherit;';
-  modal.innerHTML = `
-    <div style="background:#fff;border-radius:14px;max-width:420px;width:100%;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;">
-        <div style="width:40px;height:40px;border-radius:10px;background:#F0F7E1;color:#3B6D11;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-          <span class="material-symbols-rounded" style="font-size:22px;">cloud_download</span>
-        </div>
-        <div>
-          <div style="font-family:var(--font-display);font-weight:700;font-size:16px;color:var(--brand-navy);">Preparando ditado por voz</div>
-          <div style="font-size:11.5px;color:var(--neutral-500);margin-top:2px;">Só na primeira vez. Depois fica salvo no navegador.</div>
-        </div>
-      </div>
-      <div id="whisperLoadingMsg" style="font-size:13px;color:var(--neutral-700);margin-bottom:10px;">Iniciando…</div>
-      <div style="background:var(--neutral-100);height:8px;border-radius:4px;overflow:hidden;">
-        <div id="whisperLoadingBar" style="height:100%;width:0%;background:var(--brand-lime);border-radius:4px;transition:width 200ms;"></div>
-      </div>
-      <div style="font-size:10.5px;color:var(--neutral-500);margin-top:12px;line-height:1.45;">
-        ⓘ Download único (~466MB). Fica salvo no navegador. Próximas vezes carrega na hora.<br>
-        Recomendamos Wi-Fi pra esta primeira vez.
-      </div>
-    </div>
-  `;
-  document.body.appendChild(modal);
-  return modal;
-}
-
-function _whisperFecharModalLoading() {
-  const modal = document.getElementById('whisperLoadingModal');
-  if (modal) modal.remove();
-}
-
-function _whisperAtualizarProgresso(stage, percent, msg) {
-  const msgEl = document.getElementById('whisperLoadingMsg');
-  const barEl = document.getElementById('whisperLoadingBar');
-  if (msgEl) msgEl.textContent = msg;
-  if (barEl) barEl.style.width = `${percent}%`;
-}
-
-// Mostra modal de "transcrevendo" enquanto processa o áudio
-function _whisperMostrarModalTranscrevendo() {
-  const existente = document.getElementById('whisperTranscribeModal');
-  if (existente) existente.remove();
-
-  const modal = document.createElement('div');
-  modal.id = 'whisperTranscribeModal';
-  modal.style.cssText = 'position:fixed;inset:0;background:rgba(10,31,92,0.5);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;font-family:inherit;';
-  modal.innerHTML = `
-    <div style="background:#fff;border-radius:14px;max-width:380px;width:100%;padding:24px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
-      <div style="width:48px;height:48px;border-radius:50%;background:#F0F7E1;color:#3B6D11;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;">
-        <span class="material-symbols-rounded" style="font-size:26px;">graphic_eq</span>
-      </div>
-      <div style="font-family:var(--font-display);font-weight:700;font-size:15px;color:var(--brand-navy);margin-bottom:6px;">Transcrevendo áudio…</div>
-      <div style="font-size:11.5px;color:var(--neutral-500);">Isto roda 100% no seu navegador, leva alguns segundos.</div>
-      <div style="margin-top:14px;display:flex;justify-content:center;gap:4px;">
-        <span style="width:8px;height:8px;border-radius:50%;background:#8BC63F;animation:whisperPulse 1.4s ease-in-out infinite;"></span>
-        <span style="width:8px;height:8px;border-radius:50%;background:#8BC63F;animation:whisperPulse 1.4s ease-in-out 0.2s infinite;"></span>
-        <span style="width:8px;height:8px;border-radius:50%;background:#8BC63F;animation:whisperPulse 1.4s ease-in-out 0.4s infinite;"></span>
-      </div>
-    </div>
-    <style>
-      @keyframes whisperPulse { 0%,100%{transform:scale(0.7);opacity:0.5;} 50%{transform:scale(1);opacity:1;} }
-    </style>
-  `;
-  document.body.appendChild(modal);
-}
-
-function _whisperFecharModalTranscrevendo() {
-  const modal = document.getElementById('whisperTranscribeModal');
-  if (modal) modal.remove();
-}
 
 // Reseta UI do mic (botão volta ao normal, esconde waveform)
 function _whisperResetUI(wrap) {
@@ -22836,6 +22717,7 @@ function _whisperInserirTexto(wrap, texto) {
   }
 }
 
+// ===== Sprint 9.32.181: rteToggleMic HÍBRIDO (Web Speech + buffer + UI Whisper) =====
 window.rteToggleMic = function(btn) {
   const wrap = btn.closest('.rte-wrap');
   const editor = wrap?.querySelector('.rte-editor');
@@ -22845,185 +22727,177 @@ window.rteToggleMic = function(btn) {
   const ehHttps = location.protocol === 'https:' || location.hostname === 'localhost';
   if (!ehHttps) {
     if (typeof setFlash === 'function') setFlash('warning', 'Microfone só funciona em HTTPS.');
-    else alert('Microfone só funciona em HTTPS.');
     return;
   }
 
-  // Já está gravando? Para a gravação (sem transcrever ainda — o user usa o botão "Transcrever")
-  // Aqui o clique no botão do mic apenas alterna o estado de gravação.
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) {
+    const ehFirefox = /Firefox/i.test(navigator.userAgent);
+    const msg = ehFirefox
+      ? 'Firefox não suporta ditado por voz. Use Chrome, Edge ou Safari.'
+      : 'Seu navegador não suporta ditado por voz. Use Chrome, Edge ou Safari.';
+    if (typeof setFlash === 'function') setFlash('warning', msg);
+    return;
+  }
+
+  // Já está gravando? Para e insere o buffer no editor
   if (btn.dataset.state === 'on') {
-    // Para a gravação e transcreve
-    _whisperPararEGravar(wrap, btn, status);
+    _micPararEInserir(wrap, btn, status, editor);
     return;
   }
 
-  // Inicia uma nova gravação
-  _whisperIniciarGravacao(wrap, btn, status);
+  // Inicia gravação
+  _micIniciar(wrap, btn, status, SR);
 };
 
-// ===== Inicia gravação com MediaRecorder =====
-async function _whisperIniciarGravacao(wrap, btn, status) {
-  try {
-    // 1. Pede acesso ao microfone
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    window._whisperMicStream = stream;
-    window._whisperWrap = wrap;
-    window._whisperAudioChunks = [];
+// Comandos de pontuação por voz (compartilhado entre sessões)
+const _MIC_SUBSTITUICOES = [
+  [/\b(ponto final|ponto)\b/gi, '.'],
+  [/\bv[ií]rgula\b/gi, ','],
+  [/\bdois pontos\b/gi, ':'],
+  [/\bponto e v[ií]rgula\b/gi, ';'],
+  [/\binterrogaç[ãa]o\b/gi, '?'],
+  [/\bexclamaç[ãa]o\b/gi, '!'],
+  [/\b(novo par[áa]grafo|nova linha|par[áa]grafo|enter)\b/gi, '\n\n'],
+  [/\bbarra\b/gi, '/'],
+  [/\baspas\b/gi, '"'],
+  [/\b(abre par[êe]nteses|abrir par[êe]nteses)\b/gi, '('],
+  [/\b(fecha par[êe]nteses|fechar par[êe]nteses)\b/gi, ')'],
+];
 
-    // 2. Cria MediaRecorder e captura áudio
-    const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
-      ? 'audio/webm;codecs=opus'
-      : MediaRecorder.isTypeSupported('audio/webm')
-        ? 'audio/webm'
-        : 'audio/mp4'; // fallback Safari
-    const recorder = new MediaRecorder(stream, { mimeType });
-    window._whisperMediaRecorder = recorder;
+// ===== Inicia gravação =====
+function _micIniciar(wrap, btn, status, SR) {
+  // Reseta buffer
+  window._micBuffer = '';
+  window._micUserWantsMic = true;
 
-    recorder.ondataavailable = (e) => {
-      if (e.data && e.data.size > 0) {
-        window._whisperAudioChunks.push(e.data);
-      }
-    };
+  // UI: botão vermelho + painel rosa
+  btn.dataset.state = 'on';
+  btn.classList.add('rte-mic-btn--on');
+  if (status) status.style.display = 'inline-flex';
 
-    recorder.onstop = async () => {
-      // Quando para de gravar, monta o blob completo e transcreve
-      const audioBlob = new Blob(window._whisperAudioChunks, { type: mimeType });
-      window._whisperAudioChunks = [];
-      console.log('[whisper] áudio gravado:', (audioBlob.size / 1024).toFixed(0), 'KB');
-      // Libera o stream do mic
-      try { stream.getTracks().forEach(t => t.stop()); } catch (e) {}
-      window._whisperMicStream = null;
-      // Reset da UI imediatamente
-      _whisperResetUI(wrap);
-      // Transcreve
-      await _whisperTranscreverAudio(wrap, audioBlob);
-    };
-
-    recorder.start();
-    console.log('[whisper] gravação iniciada');
-
-    // 3. Atualiza UI: botão fica vermelho pulsante + waveform aparece
-    btn.dataset.state = 'on';
-    btn.classList.add('rte-mic-btn--on');
-    if (status) status.style.display = 'inline-flex';
-
-    // Cria waveform se não existe
-    let waveform = wrap.querySelector('.rte-mic-waveform');
-    if (!waveform) {
-      waveform = document.createElement('div');
-      waveform.className = 'rte-mic-waveform';
-      waveform.innerHTML = `
-        <div class="rte-mic-wave-bars">
-          <span></span><span></span><span></span><span></span><span></span>
-          <span></span><span></span><span></span><span></span><span></span>
-        </div>
-        <div class="rte-mic-label">Gravando — fale à vontade</div>
-        <button type="button" class="rte-mic-stop" onclick="window.rteToggleMic(this.closest('.rte-wrap').querySelector('.rte-mic-btn'))">
-          <span class="material-symbols-rounded" style="font-size:16px;">graphic_eq</span>
-          Transcrever
-        </button>
-      `;
-      const toolbar = wrap.querySelector('.rte-toolbar');
-      if (toolbar && toolbar.nextSibling) {
-        wrap.insertBefore(waveform, toolbar.nextSibling);
-      } else {
-        wrap.appendChild(waveform);
-      }
-    }
-    waveform.style.display = 'flex';
-  } catch (err) {
-    console.error('[whisper iniciar]', err);
-    if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-      window.rteMostrarAjudaPermissao && window.rteMostrarAjudaPermissao();
-    } else if (err.name === 'NotFoundError') {
-      if (typeof setFlash === 'function') setFlash('warning', 'Sem microfone detectado.');
+  // Cria/mostra o painel rosa
+  let waveform = wrap.querySelector('.rte-mic-waveform');
+  if (!waveform) {
+    waveform = document.createElement('div');
+    waveform.className = 'rte-mic-waveform';
+    waveform.innerHTML = `
+      <div class="rte-mic-wave-bars">
+        <span></span><span></span><span></span><span></span><span></span>
+        <span></span><span></span><span></span><span></span><span></span>
+      </div>
+      <div class="rte-mic-label">Gravando — fale à vontade</div>
+      <button type="button" class="rte-mic-stop" onclick="window.rteToggleMic(this.closest('.rte-wrap').querySelector('.rte-mic-btn'))">
+        <span class="material-symbols-rounded" style="font-size:16px;">graphic_eq</span>
+        Inserir texto
+      </button>
+    `;
+    const toolbar = wrap.querySelector('.rte-toolbar');
+    if (toolbar && toolbar.nextSibling) {
+      wrap.insertBefore(waveform, toolbar.nextSibling);
     } else {
-      if (typeof setFlash === 'function') setFlash('warning', `Erro: ${err.message || err.name}`);
+      wrap.appendChild(waveform);
     }
-    _whisperResetUI(wrap);
   }
+  waveform.style.display = 'flex';
+
+  // Inicia o SpeechRecognition (com auto-restart silencioso)
+  _micCriarERodar(wrap, btn, status, SR);
 }
 
-// ===== Para a gravação =====
-function _whisperPararEGravar(wrap, btn, status) {
-  const recorder = window._whisperMediaRecorder;
-  if (recorder && recorder.state === 'recording') {
-    recorder.stop(); // dispara onstop, que faz a transcrição
-  } else {
-    // Recorder não estava ativo — só reseta UI
-    _whisperResetUI(wrap);
-  }
-}
+// Cria nova instância de SpeechRecognition. Reusada pelo auto-restart.
+function _micCriarERodar(wrap, btn, status, SR) {
+  if (!window._micUserWantsMic) return;
+  const rec = new SR();
+  rec.lang = 'pt-BR';
+  rec.continuous = true;
+  rec.interimResults = false;
 
-// ===== Transcreve o áudio gravado usando Whisper local =====
-async function _whisperTranscreverAudio(wrap, audioBlob) {
-  // 1. Garante que o pipeline está carregado (mostra modal de download na primeira vez)
-  if (!window._whisperPipeline) {
-    const modal = _whisperMostrarModalLoading();
-    try {
-      await _whisperCarregarPipeline((p) => {
-        _whisperAtualizarProgresso(p.stage, p.percent, p.msg);
-      });
-      _whisperFecharModalLoading();
-    } catch (err) {
-      _whisperFecharModalLoading();
-      console.error('[whisper carregar]', err);
-      if (typeof setFlash === 'function') setFlash('warning', 'Erro ao baixar modelo de transcrição: ' + (err.message || err));
+  let _proximoIdx = 0;
+
+  rec.onresult = (event) => {
+    // Acumula só os results NOVOS desta sessão NO BUFFER (não insere no editor!)
+    let textoNovo = '';
+    for (let i = _proximoIdx; i < event.results.length; i++) {
+      const res = event.results[i];
+      if (res.isFinal) {
+        textoNovo += res[0].transcript + ' ';
+      }
+    }
+    _proximoIdx = event.results.length;
+    if (textoNovo.trim()) {
+      window._micBuffer = (window._micBuffer || '') + textoNovo;
+      console.log('[mic] buffer atualizado:', window._micBuffer.length, 'chars');
+    }
+  };
+
+  rec.onerror = (event) => {
+    console.warn('[mic onerror]', event.error);
+    if (event.error === 'no-speech' || event.error === 'aborted') return; // onend cuida
+    // Erros reais: desliga
+    window._micUserWantsMic = false;
+    _whisperResetUI(wrap);
+    window._micRecognition = null;
+    if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+      window.rteMostrarAjudaPermissao && window.rteMostrarAjudaPermissao();
+    } else if (event.error === 'audio-capture') {
+      if (typeof setFlash === 'function') setFlash('warning', 'Sem acesso ao microfone.');
+    } else {
+      if (typeof setFlash === 'function') setFlash('warning', `Erro: ${event.error}`);
+    }
+  };
+
+  rec.onend = () => {
+    if (window._micUserWantsMic) {
+      // Auto-restart silencioso (cria NOVA instância)
+      setTimeout(() => {
+        if (window._micUserWantsMic) _micCriarERodar(wrap, btn, status, SR);
+      }, 100);
       return;
     }
-  }
-
-  // 2. Mostra modal de "transcrevendo"
-  _whisperMostrarModalTranscrevendo();
+    // Para de verdade: reseta UI
+    _whisperResetUI(wrap);
+    window._micRecognition = null;
+  };
 
   try {
-    // 3. Converte o Blob de áudio em ArrayBuffer → AudioBuffer → Float32Array (formato esperado)
-    const arrayBuffer = await audioBlob.arrayBuffer();
-    const audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
-    const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-    // Whisper espera mono 16kHz
-    let samples;
-    if (audioBuffer.numberOfChannels > 1) {
-      // Mistura canais pra mono
-      const ch0 = audioBuffer.getChannelData(0);
-      const ch1 = audioBuffer.getChannelData(1);
-      samples = new Float32Array(ch0.length);
-      for (let i = 0; i < ch0.length; i++) {
-        samples[i] = (ch0[i] + ch1[i]) / 2;
-      }
-    } else {
-      samples = audioBuffer.getChannelData(0);
+    rec.start();
+    window._micRecognition = rec;
+  } catch (e) {
+    console.warn('[mic start]', e);
+    if (window._micUserWantsMic) {
+      setTimeout(() => {
+        if (window._micUserWantsMic) _micCriarERodar(wrap, btn, status, SR);
+      }, 500);
     }
-    audioContext.close();
+  }
+}
 
-    // 4. Transcreve com o pipeline (Sprint 9.32.179: parâmetros otimizados pra pt-BR)
-    console.log('[whisper] transcrevendo', samples.length, 'samples...');
-    const t0 = performance.now();
-    const result = await window._whisperPipeline(samples, {
-      language: 'portuguese',
-      task: 'transcribe',
-      chunk_length_s: 30,
-      stride_length_s: 5,
-      return_timestamps: false,
-      // Parâmetros que melhoram qualidade da transcrição
-      no_repeat_ngram_size: 3,  // evita repetições tipo "vamos vamos vamos"
-      temperature: 0,           // determinístico (sempre mesma resposta pro mesmo áudio)
-    });
-    const dt = ((performance.now() - t0) / 1000).toFixed(1);
-    console.log(`[whisper] transcrito em ${dt}s:`, result?.text);
+// ===== Para a gravação e insere o texto acumulado no editor =====
+function _micPararEInserir(wrap, btn, status, editor) {
+  window._micUserWantsMic = false;
+  const recAtual = window._micRecognition;
+  const buffer = window._micBuffer || '';
+  window._micRecognition = null;
+  window._micBuffer = '';
+  _whisperResetUI(wrap);
 
-    _whisperFecharModalTranscrevendo();
-
-    const texto = (result?.text || '').trim();
-    if (texto) {
-      _whisperInserirTexto(wrap, texto);
-    } else {
-      if (typeof setFlash === 'function') setFlash('info', 'Nada foi transcrito. Fale mais alto ou tente de novo.');
+  if (recAtual) {
+    try { recAtual.abort(); } catch (e1) {
+      try { recAtual.stop(); } catch (e2) {}
     }
-  } catch (err) {
-    _whisperFecharModalTranscrevendo();
-    console.error('[whisper transcrever]', err);
-    if (typeof setFlash === 'function') setFlash('warning', 'Erro ao transcrever: ' + (err.message || err));
+  }
+
+  // Processa o buffer e insere no editor
+  if (buffer.trim()) {
+    let processado = buffer;
+    _MIC_SUBSTITUICOES.forEach(([re, rep]) => { processado = processado.replace(re, rep); });
+    processado = processado.trim();
+    if (processado) {
+      _whisperInserirTexto(wrap, processado);
+    }
+  } else {
+    if (typeof setFlash === 'function') setFlash('info', 'Nada foi captado. Tente falar mais alto.');
   }
 }
 
