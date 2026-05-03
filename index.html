@@ -6683,7 +6683,7 @@ a {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.199-mic-groq-key-configuravel',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.200-mic-groq-key-ux-melhorada',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -45480,29 +45480,44 @@ function renderConfigItem({ chave, meta, atual }) {
       </span>
     `;
   } else if (meta.tipo === 'text') {
-    // 9.32.199: input de texto (com mask de password se sensitive=true)
+    // 9.32.200: input de texto com UX melhorada (campo grande, botão Mostrar/Esconder visível)
     const inputType = meta.sensitive ? 'password' : 'text';
     const valSafe = (valor !== null && valor !== undefined ? String(valor) : '').replace(/"/g, '&quot;');
     const placeholder = (meta.placeholder || '').replace(/"/g, '&quot;');
+    const temValor = !!(valor && String(valor).trim());
     controlHtml = `
-      <div class="config-text-group" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-        <input
-          type="${inputType}"
-          class="config-text"
-          id="cfg_${chave}"
-          value="${valSafe}"
-          placeholder="${placeholder}"
-          autocomplete="off"
-          spellcheck="false"
-          style="font-family:'JetBrains Mono',monospace;font-size:13px;padding:8px 12px;border:1px solid var(--border-color,#e5e7eb);border-radius:8px;min-width:280px;"
-          onchange="handleConfigChange('${chave}', this.value, 'string')"
-        />
+      <div style="display:flex;flex-direction:column;gap:8px;width:100%;max-width:520px;">
+        <div style="display:flex;align-items:center;gap:8px;width:100%;">
+          <input
+            type="${inputType}"
+            class="config-text"
+            id="cfg_${chave}"
+            value="${valSafe}"
+            placeholder="${placeholder}"
+            autocomplete="off"
+            spellcheck="false"
+            style="flex:1;min-width:0;font-family:'JetBrains Mono',monospace;font-size:14px;padding:10px 14px;border:2px solid var(--border-color,#e5e7eb);border-radius:10px;background:#fff;letter-spacing:0.02em;"
+            onchange="handleConfigChange('${chave}', this.value, 'string')"
+            onfocus="this.style.borderColor='var(--brand-lime,#8BC63F)'"
+            onblur="this.style.borderColor='var(--border-color,#e5e7eb)'"
+          />
+          ${meta.sensitive ? `
+            <button type="button" id="cfgEye_${chave}" title="Mostrar/Esconder"
+              onclick="(function(b){var i=document.getElementById('cfg_${chave}');var hidden=i.type==='password';i.type=hidden?'text':'password';b.querySelector('.material-symbols-rounded').textContent=hidden?'visibility_off':'visibility';b.title=hidden?'Esconder':'Mostrar';})(this)"
+              style="display:inline-flex;align-items:center;justify-content:center;width:42px;height:42px;border:2px solid var(--border-color,#e5e7eb);border-radius:10px;background:#fff;cursor:pointer;color:var(--brand-navy,#0A1F5C);transition:all .15s;"
+              onmouseover="this.style.background='#f3f4f6'" onmouseout="this.style.background='#fff'"
+            ><span class="material-symbols-rounded" style="font-size:20px;">visibility</span></button>
+          ` : ''}
+          <span class="config-saved-badge" id="cfgSaved_${chave}">
+            <span class="material-symbols-rounded">check</span>Salvo
+          </span>
+        </div>
         ${meta.sensitive ? `
-          <button type="button" onclick="(function(b){var i=document.getElementById('cfg_${chave}');i.type=i.type==='password'?'text':'password';b.textContent=i.type==='password'?'Mostrar':'Esconder';})(this)" style="padding:8px 12px;border:1px solid var(--border-color,#e5e7eb);border-radius:8px;background:#fff;cursor:pointer;font-size:12px;">Mostrar</button>
+          <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:${temValor ? 'var(--status-success,#16a34a)' : 'var(--status-warning,#d97706)'};">
+            <span class="material-symbols-rounded" style="font-size:14px;">${temValor ? 'lock' : 'warning'}</span>
+            <span>${temValor ? 'Chave cadastrada (oculta por segurança). Clique no olho 👁 para conferir.' : 'Nenhuma chave cadastrada ainda.'}</span>
+          </div>
         ` : ''}
-        <span class="config-saved-badge" id="cfgSaved_${chave}">
-          <span class="material-symbols-rounded">check</span>Salvo
-        </span>
       </div>
     `;
   }
