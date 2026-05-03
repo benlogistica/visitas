@@ -4044,11 +4044,6 @@ a {
 }
 .rte-color-swatch:hover { transform: scale(1.15); }
 /* Microfone — estado "ouvindo" pulsa em vermelho */
-.rte-mic-btn--ready {
-  background: #10b981 !important;
-  color: #fff !important;
-  animation: rte-mic-pulse 1.5s ease-in-out infinite;
-}
 .rte-mic-btn--reconnect {
   background: #fb923c !important;
   color: #fff !important;
@@ -6609,7 +6604,7 @@ a {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.196-mic-push-to-talk-simulado',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.197-mic-audiotrack-phrases-vocabulario',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -22750,27 +22745,78 @@ window.rteToggleMic = function(btn) {
     return;
   }
 
-  // 9.32.196: 3 estados possíveis
-  // 'on' = gravando agora → para tudo
-  // 'ready' = sessão pausada (Chrome fechou), pode continuar → start nova sessão
-  // 'off' = não está gravando → inicia tudo
+  // Já está gravando? Para e insere o buffer no editor
   if (btn.dataset.state === 'on') {
     _micPararEInserir(wrap, btn, status, editor);
     return;
   }
-  if (btn.classList.contains('rte-mic-btn--ready')) {
-    // Continua gravação: já tem _micWrapAlvo, _micUserWantsMic, processLocally check feito.
-    // Só precisa criar nova SR e reanexar.
-    console.log('[mic] continuando gravação (push-to-talk)');
-    btn.classList.remove('rte-mic-btn--ready');
-    btn.dataset.state = 'on';
-    _micCriarERodar(SR);
-    return;
-  }
 
-  // Inicia gravação do zero
+  // Inicia gravação
   _micIniciar(wrap, btn, status, SR);
 };
+
+// ===== Sprint 9.32.197: vocabulário personalizado pra biasing =====
+// SpeechRecognitionPhrase permite dar peso maior a termos que o reconhecedor costuma errar.
+// Funciona em Chrome novo (139+). Se o navegador não suportar, ignora silenciosamente.
+const _MIC_VOCABULARIO = [
+  // Estruturas hospitalares
+  'Hospital', 'UTI', 'Centro Cirúrgico', 'Pronto Socorro',
+  // Termos administrativos
+  'convênio', 'autorização', 'OPME',
+  // Profissionais e prescrição
+  'nutricionista', 'prescrição', 'dieta',
+  // Produtos nutricionais
+  'sonda enteral', 'NPT', 'suplementação',
+  // Marca da empresa
+  'Nestlé Health Science', 'NHSC',
+  // Produtos NHSC mais comuns
+  'Resource', 'Optifibre', 'Fortini',
+  // Termos do sistema
+  'padronizado', 'devolução', 'faturamento',
+];
+
+function _micAplicarVocabulario(rec) {
+  try {
+    if (typeof window.SpeechRecognitionPhrase === 'undefined') return false;
+    if (!('phrases' in rec)) return false;
+    const phrases = _MIC_VOCABULARIO.map(termo => new window.SpeechRecognitionPhrase(termo, 5.0));
+    rec.phrases = phrases;
+    console.log('[mic] vocabulário aplicado:', phrases.length, 'termos');
+    return true;
+  } catch (e) {
+    console.warn('[mic] phrases não suportadas:', e);
+    return false;
+  }
+}
+
+// ===== Sprint 9.32.197: stream pre-warm pra start(audioTrack) =====
+// Mantém um getUserMedia ativo durante toda a gravação. Permite passar o
+// MediaStreamTrack pro recognition.start(track) (Chrome 135+ desktop).
+// Em navegadores que não suportam, a gente chama start() sem track normalmente.
+window._micStream = null;
+
+async function _micAbrirStream() {
+  if (window._micStream && window._micStream.active) return window._micStream;
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+    });
+    window._micStream = stream;
+    console.log('[mic] stream aberto pra start(audioTrack)');
+    return stream;
+  } catch (e) {
+    console.warn('[mic] não foi possível abrir stream:', e);
+    return null;
+  }
+}
+
+function _micFecharStream() {
+  if (window._micStream) {
+    try { window._micStream.getTracks().forEach(t => t.stop()); } catch (e) {}
+    window._micStream = null;
+    console.log('[mic] stream fechado');
+  }
+}
 
 // ===== Sprint 9.32.194: helper pra reconhecimento ON-DEVICE (Chrome novo) =====
 // Verifica se navegador suporta processLocally (Web Speech on-device).
@@ -22851,41 +22897,27 @@ function _micIniciar(wrap, btn, status, SR) {
   if (status) status.style.display = 'inline-flex';
 
   // 9.32.194: dispara o check do processLocally em background (não bloqueia)
-  // Se o navegador suportar e instalar o pacote pt-BR, próximas sessões serão on-device (sem beep)
   _micPrepararProcessLocally().then(ok => {
     if (ok) console.log('[mic] usando reconhecimento ON-DEVICE');
   });
 
-  // Inicia o SpeechRecognition (com auto-restart curto)
-  _micCriarERodar(SR);
+  // 9.32.197: abre stream do mic UMA VEZ. Vamos passar pra cada recognition.start(track).
+  // Se o navegador não suportar start(track), o recognition abre o próprio mic normalmente.
+  _micAbrirStream().then(() => {
+    _micCriarERodar(SR);
+  });
 }
 
-// 9.32.196: helper pra mudar cor do ícone do mic
-// Estados: 'on' (vermelho pulsante), 'ready' (verde pulsante = sessão pausada, clica pra continuar), 'off' (normal)
+// 9.32.194: helper pra mudar cor do ícone do mic indicando estado
+// Estados: 'on' (vermelho pulsante), 'reconnect' (laranja), 'off' (normal)
 function _micSetEstadoVisual(estado) {
   const wrap = window._micWrapAlvo;
   if (!wrap) return;
   const btn = wrap.querySelector('.rte-mic-btn');
   if (!btn) return;
-  btn.classList.remove('rte-mic-btn--on', 'rte-mic-btn--reconnect', 'rte-mic-btn--ready');
+  btn.classList.remove('rte-mic-btn--on', 'rte-mic-btn--reconnect');
   if (estado === 'on') btn.classList.add('rte-mic-btn--on');
   else if (estado === 'reconnect') btn.classList.add('rte-mic-btn--reconnect');
-  else if (estado === 'ready') btn.classList.add('rte-mic-btn--ready');
-}
-
-// 9.32.196: insere o buffer atual no editor e zera (mantém o estado de gravação)
-// Diferente de _micFinalizarInsercao, não para o mic — só transfere o que captou.
-function _micInserirBufferParcial() {
-  const buffer = window._micBuffer || '';
-  window._micBuffer = '';
-  if (buffer.trim() && window._micWrapAlvo) {
-    let processado = buffer;
-    _MIC_SUBSTITUICOES.forEach(([re, rep]) => { processado = processado.replace(re, rep); });
-    processado = processado.trim();
-    if (processado) {
-      _whisperInserirTexto(window._micWrapAlvo, processado);
-    }
-  }
 }
 
 // Cria nova instância de SpeechRecognition. Reusada pelo auto-restart.
@@ -22961,21 +22993,40 @@ function _micCriarERodar(SR) {
   };
 
   rec.onend = () => {
-    // 9.32.196: PUSH-TO-TALK SIMULADO — NÃO faz auto-restart!
-    // Quando o Chrome fecha a sessão (silêncio interno ou stop), simplesmente para.
-    // O usuário aperta o botão de novo pra continuar gravando.
-    // Isso elimina TODOS os problemas de transição (perda de palavra, beep duplo, triplicar).
-    console.log('[mic onend] sessão fechou, aguardando usuário clicar pra continuar');
-    if (window._micUserWantsMic) {
-      // Marca o botão como "pronto pra continuar" (laranja em vez de vermelho)
-      _micSetEstadoVisual('ready');
-      // Insere o que captou até agora no editor (não espera o usuário clicar pra ver o texto)
-      _micInserirBufferParcial();
+    if (!window._micUserWantsMic) return;
+    if (!_sessaoTeveResultado) {
+      window._micFalhasSeguidas = (window._micFalhasSeguidas || 0) + 1;
     }
+    // 9.32.194: cor laranja indica reconexão
+    _micSetEstadoVisual('reconnect');
+    // 9.32.194: cooldown CURTO (250ms) — recomendação do briefing externo
+    // Não usa cooldown longo (perdia palavras), nem 30ms (perigo de loop apertado)
+    const cooldown = window._micFalhasSeguidas > 10 ? 2000 :
+                     window._micFalhasSeguidas > 5  ? 800  :
+                                                      250;
+    setTimeout(() => {
+      if (window._micUserWantsMic) _micCriarERodar(SR);
+    }, cooldown);
   };
 
+  // 9.32.197: aplica vocabulário ANTES do start (phrases biasing)
+  _micAplicarVocabulario(rec);
+
   try {
-    rec.start();
+    // 9.32.197: tenta start(audioTrack) — Chrome 135+ desktop. Mais limpo que abrir mic toda hora.
+    const track = window._micStream && window._micStream.getAudioTracks && window._micStream.getAudioTracks()[0];
+    if (track && track.readyState === 'live') {
+      try {
+        rec.start(track);
+        console.log('[mic] start(audioTrack) — usando stream pre-warm');
+      } catch (eTrack) {
+        // Browser não suporta start(track). Cai pro start() normal.
+        console.log('[mic] start(track) não suportado, usando start() normal');
+        rec.start();
+      }
+    } else {
+      rec.start();
+    }
     window._micRecognition = rec;
   } catch (e) {
     console.warn('[mic start]', e);
@@ -23019,6 +23070,7 @@ function _micPararEInserir(wrap, btn, status, editor) {
       window._micRecognition = null;
     }
     _micPararKeepAlive();
+    _micFecharStream(); // 9.32.197: libera o stream pre-warm
     _micFinalizarInsercao(wrapAlvo);
     // Limpa TODAS as flags — começa do zero pra próxima gravação
     window._micUserWantsMic = false;
