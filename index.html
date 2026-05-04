@@ -7308,7 +7308,7 @@ a {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.228-fix-quebra-cards-print',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.235-notif-to-email',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -17749,6 +17749,7 @@ const routes = {
   '#/admin/instituicoes': { title: 'Instituições', icon: 'local_hospital', render: renderAdminInstituicoes },
   '#/admin/profissionais':{ title: 'Profissionais', icon: 'stethoscope', render: renderAdminProfissionais },
   '#/admin/configuracoes':{ title: 'Configurações', icon: 'settings', render: renderAdminConfig },
+  '#/admin/frases':{ title: 'Frases motivacionais', icon: 'format_quote', render: renderAdminFrases },
   '#/admin/pendentes':{ title: 'Pendências de aprovação', icon: 'hourglass_top', render: renderAdminPendentes },
   '#/admin/objetivos':{ title: 'Objetivos de visita', icon: 'flag', render: renderAdminObjetivos },
   '#/admin/itens-padronizados':{ title: 'Itens padronizados', icon: 'inventory_2', render: renderItensPadronizadosCarrossel },
@@ -17782,6 +17783,7 @@ const DESKTOP_RENDERERS = {
   '#/admin/objetivos': renderAdminObjetivosDesktop,
   '#/admin/agenda': renderAdminAgendaDesktop,
   '#/admin/configuracoes': renderAdminConfigDesktop,
+  '#/admin/frases': renderAdminFrasesDesktop,
   '#/admin/itens-padronizados': renderItensPadronizadosDesktop,
   '#/admin/itens-padronizados/historico': renderItensHistoricoConversoesDesktop,
   '#/admin/faturamento': renderFaturamentoDesktop,
@@ -18903,6 +18905,294 @@ async function carregarFrasesAtivas() {
   return _frasesCache;
 }
 
+// =============================================================================
+// 9.32.233: CRUD de frases motivacionais (admin) — gerenciador em /admin/frases
+// =============================================================================
+async function listarTodasFrases() {
+  if (!db) return [];
+  const { data, error } = await db.from('frases_motivacionais')
+    .select('id, texto, autor, ativa, criado_em')
+    .order('criado_em', { ascending: false });
+  if (error) { console.warn('[frases] erro listar todas:', error.message); return []; }
+  return data || [];
+}
+
+async function criarFrase({ texto, autor, ativa = true }) {
+  if (!db) throw new Error('Banco não conectado');
+  if (!texto || !texto.trim()) throw new Error('Texto da frase é obrigatório');
+  const user = getCurrentUser();
+  const { data, error } = await db.from('frases_motivacionais')
+    .insert({
+      texto: texto.trim(),
+      autor: (autor && autor.trim()) || null,
+      ativa: !!ativa,
+      criado_por: user?.id || null,
+    })
+    .select()
+    .single();
+  if (error) throw new Error(error.message);
+  // Invalida cache de frases ativas
+  _frasesCache = null;
+  _frasesCacheExpira = 0;
+  return data;
+}
+
+async function atualizarFrase(id, campos) {
+  if (!db) throw new Error('Banco não conectado');
+  if (!id) throw new Error('ID da frase é obrigatório');
+  const payload = {};
+  if (campos.texto !== undefined) payload.texto = campos.texto.trim();
+  if (campos.autor !== undefined) payload.autor = (campos.autor && campos.autor.trim()) || null;
+  if (campos.ativa !== undefined) payload.ativa = !!campos.ativa;
+  const { error } = await db.from('frases_motivacionais').update(payload).eq('id', id);
+  if (error) throw new Error(error.message);
+  _frasesCache = null;
+  _frasesCacheExpira = 0;
+}
+
+async function excluirFrase(id) {
+  if (!db) throw new Error('Banco não conectado');
+  if (!id) throw new Error('ID da frase é obrigatório');
+  const { error } = await db.from('frases_motivacionais').delete().eq('id', id);
+  if (error) throw new Error(error.message);
+  _frasesCache = null;
+  _frasesCacheExpira = 0;
+}
+
+// =============================================================================
+// 9.32.233: Tela de gerenciamento de frases motivacionais (mobile)
+// =============================================================================
+function renderAdminFrases() {
+  const user = requireAdmin();
+  if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
+
+  setTimeout(() => carregarAdminFrases(), 0);
+
+  return `
+    <div class="mobile-app">
+      ${mobileTopBar({ title: 'Frases motivacionais', showBack: true, backTo: '#/admin/configuracoes' })}
+      <main class="mcontent">
+        <div style="margin-bottom:14px;">
+          <button onclick="window.handleNovaFrase()" class="btn-anexo-add" style="background:var(--brand-lime);border-color:var(--brand-lime);color:#fff;">
+            <span class="material-symbols-rounded" style="color:#fff;">add</span>
+            Nova frase
+          </button>
+        </div>
+        <div id="adminFrasesContent">
+          <div style="padding:30px;text-align:center;color:var(--neutral-500);font-size:13px;">
+            <span class="material-symbols-rounded" style="font-size:18px;vertical-align:-3px;">hourglass_empty</span>
+            Carregando frases...
+          </div>
+        </div>
+      </main>
+    </div>
+  `;
+}
+
+// 9.32.233: Tela de gerenciamento de frases motivacionais (desktop)
+function renderAdminFrasesDesktop() {
+  const user = requireAdmin();
+  if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
+
+  setTimeout(() => {
+    atualizarBadgesSidebarDesktop();
+    carregarAdminFrases();
+  }, 0);
+
+  const titleExtra = `
+    <button onclick="window.handleNovaFrase()" class="no-print"
+      style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;background:var(--brand-lime);color:#fff;border:0;border-radius:9999px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;box-shadow:0 4px 12px rgba(139,198,63,0.3);">
+      <span class="material-symbols-rounded" style="font-size:18px;">add</span>
+      Nova frase
+    </button>
+  `;
+
+  const content = `
+    <div style="max-width:920px;margin:0 auto;">
+      <div style="background:#fff;border:1px solid var(--neutral-200);border-radius:14px;padding:18px 20px;margin-bottom:14px;">
+        <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:16px;">Frases motivacionais</div>
+        <div style="font-size:12.5px;color:var(--neutral-600);margin-top:2px;">Cada profissional vê uma frase do dia (determinística por usuário). Apenas frases <strong>ativas</strong> entram no rodízio.</div>
+      </div>
+      <div id="adminFrasesContent">
+        <div style="padding:60px;text-align:center;color:var(--neutral-500);font-size:13px;background:#fff;border:1px solid var(--neutral-200);border-radius:14px;">
+          <div class="splash__spinner" style="margin:0 auto 12px;"></div>
+          Carregando frases...
+        </div>
+      </div>
+    </div>
+  `;
+
+  return desktopShell({
+    title: 'Frases motivacionais',
+    breadcrumb: ['Admin', 'Configurações', 'Frases motivacionais'],
+    titleExtra,
+    content,
+    activeId: 'settings',
+  });
+}
+
+async function carregarAdminFrases() {
+  const container = document.getElementById('adminFrasesContent');
+  if (!container) return;
+  try {
+    const frases = await listarTodasFrases();
+    const ativas = frases.filter(f => f.ativa).length;
+    const inativas = frases.length - ativas;
+    if (frases.length === 0) {
+      container.innerHTML = `
+        <div style="background:#fff;border:1px solid var(--neutral-200);border-radius:12px;padding:40px 20px;text-align:center;color:var(--neutral-500);">
+          <span class="material-symbols-rounded" style="font-size:32px;color:var(--neutral-300);">format_quote</span>
+          <div style="margin-top:8px;font-family:var(--font-display);font-weight:700;color:var(--brand-navy);">Nenhuma frase cadastrada</div>
+          <div style="font-size:12.5px;margin-top:4px;">Clique em "Nova frase" pra começar.</div>
+        </div>
+      `;
+      return;
+    }
+    container.innerHTML = `
+      <div style="display:flex;gap:14px;margin-bottom:14px;font-size:12.5px;color:var(--neutral-600);">
+        <div><strong style="color:var(--brand-navy);">${frases.length}</strong> ${frases.length === 1 ? 'frase' : 'frases'}</div>
+        <div>·</div>
+        <div><strong style="color:var(--status-success);">${ativas}</strong> ativa${ativas === 1 ? '' : 's'}</div>
+        ${inativas > 0 ? `<div>·</div><div><strong style="color:var(--neutral-500);">${inativas}</strong> inativa${inativas === 1 ? '' : 's'}</div>` : ''}
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        ${frases.map(f => _renderFraseRow(f)).join('')}
+      </div>
+    `;
+  } catch (err) {
+    container.innerHTML = `
+      <div style="padding:20px;background:#FCE8E8;color:var(--status-danger);border-radius:12px;font-size:13px;">
+        Erro ao carregar frases: ${err.message || err}
+      </div>
+    `;
+  }
+}
+
+function _renderFraseRow(f) {
+  const txtSafe = (f.texto || '').replace(/</g, '&lt;');
+  const autorSafe = (f.autor || '').replace(/</g, '&lt;');
+  return `
+    <div style="background:#fff;border:1px solid ${f.ativa ? 'var(--neutral-200)' : '#FCD9A4'};border-left:4px solid ${f.ativa ? 'var(--brand-lime)' : 'var(--neutral-300)'};border-radius:10px;padding:14px 16px;display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;${f.ativa ? '' : 'opacity:0.7;'}">
+      <div style="min-width:0;">
+        <div style="font-family:var(--font-display);font-weight:600;color:var(--brand-navy);font-size:14px;line-height:1.45;">"${txtSafe}"</div>
+        ${autorSafe ? `<div style="font-size:11.5px;color:var(--neutral-500);margin-top:4px;font-style:italic;">— ${autorSafe}</div>` : ''}
+        <div style="margin-top:6px;display:flex;gap:8px;align-items:center;">
+          <span style="font-size:10.5px;font-weight:700;padding:3px 8px;border-radius:9999px;background:${f.ativa ? '#E6F6EF' : 'var(--neutral-100)'};color:${f.ativa ? '#166534' : 'var(--neutral-500)'};">
+            ${f.ativa ? '● ATIVA' : '○ INATIVA'}
+          </span>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;flex-shrink:0;">
+        <button onclick="window.handleToggleFrase('${f.id}', ${!f.ativa})" title="${f.ativa ? 'Desativar' : 'Ativar'}"
+          style="width:36px;height:36px;border-radius:8px;border:1px solid var(--neutral-200);background:#fff;color:var(--brand-navy);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;">
+          <span class="material-symbols-rounded" style="font-size:18px;">${f.ativa ? 'visibility_off' : 'visibility'}</span>
+        </button>
+        <button onclick="window.handleEditarFrase('${f.id}')" title="Editar"
+          style="width:36px;height:36px;border-radius:8px;border:1px solid var(--neutral-200);background:#fff;color:var(--brand-navy);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;">
+          <span class="material-symbols-rounded" style="font-size:18px;">edit</span>
+        </button>
+        <button onclick="window.handleExcluirFrase('${f.id}')" title="Excluir"
+          style="width:36px;height:36px;border-radius:8px;border:1px solid #FCE7B0;background:#fff;color:var(--status-danger);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;">
+          <span class="material-symbols-rounded" style="font-size:18px;">delete</span>
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+window.handleNovaFrase = async function() {
+  const texto = await showModalInput({
+    icone: 'format_quote', iconeCor: 'info',
+    titulo: 'Nova frase motivacional',
+    subtitulo: 'A frase aparece pros profissionais como "Frase do dia" — cada um vê uma diferente, mas a mesma o dia inteiro.',
+    label: 'Texto da frase',
+    placeholder: 'Ex: A consistência é mais importante que a perfeição.',
+    required: true,
+    btnConfirmar: 'Próximo',
+    tipo: 'textarea',
+  });
+  if (!texto) return;
+  const autor = await showModalInput({
+    icone: 'person', iconeCor: 'info',
+    titulo: 'Autor (opcional)',
+    subtitulo: 'Quem disse essa frase? Deixe em branco se não souber ou for anônima.',
+    label: 'Autor',
+    placeholder: 'Ex: Muhammad Ali',
+    btnConfirmar: 'Salvar',
+    tipo: 'input',
+  });
+  // autor pode ser null (cancelou) ou '' (vazio) — ambos viram null
+  try {
+    await criarFrase({ texto, autor: autor || null, ativa: true });
+    setFlash('success', 'Frase adicionada.');
+    await carregarAdminFrases();
+  } catch (err) {
+    alert('Erro ao salvar: ' + (err.message || err));
+  }
+};
+
+window.handleEditarFrase = async function(id) {
+  const frases = await listarTodasFrases();
+  const f = frases.find(x => x.id === id);
+  if (!f) { alert('Frase não encontrada.'); return; }
+  const novoTexto = await showModalInput({
+    icone: 'edit', iconeCor: 'info',
+    titulo: 'Editar texto',
+    label: 'Texto da frase',
+    valorInicial: f.texto,
+    required: true,
+    btnConfirmar: 'Próximo',
+    tipo: 'textarea',
+  });
+  if (!novoTexto) return;
+  const novoAutor = await showModalInput({
+    icone: 'person', iconeCor: 'info',
+    titulo: 'Autor',
+    label: 'Autor (opcional)',
+    valorInicial: f.autor || '',
+    btnConfirmar: 'Salvar',
+    tipo: 'input',
+  });
+  try {
+    await atualizarFrase(id, { texto: novoTexto, autor: novoAutor === null ? f.autor : novoAutor });
+    setFlash('success', 'Frase atualizada.');
+    await carregarAdminFrases();
+  } catch (err) {
+    alert('Erro ao salvar: ' + (err.message || err));
+  }
+};
+
+window.handleToggleFrase = async function(id, novoAtiva) {
+  try {
+    await atualizarFrase(id, { ativa: novoAtiva });
+    setFlash('success', novoAtiva ? 'Frase ativada.' : 'Frase desativada.');
+    await carregarAdminFrases();
+  } catch (err) {
+    alert('Erro: ' + (err.message || err));
+  }
+};
+
+window.handleExcluirFrase = async function(id) {
+  const frases = await listarTodasFrases();
+  const f = frases.find(x => x.id === id);
+  if (!f) { alert('Frase não encontrada.'); return; }
+  const ok = await showModalConfirmacao({
+    icone: 'delete', iconeCor: 'danger',
+    titulo: 'Excluir frase?',
+    subtitulo: `"${(f.texto || '').replace(/</g, '&lt;')}"\n\nEsta ação não pode ser desfeita.`,
+    btnConfirmar: 'Excluir',
+    btnCancelar: 'Cancelar',
+  });
+  if (!ok) return;
+  try {
+    await excluirFrase(id);
+    setFlash('success', 'Frase excluída.');
+    await carregarAdminFrases();
+  } catch (err) {
+    alert('Erro ao excluir: ' + (err.message || err));
+  }
+};
+
 // Popula o card de frase do dia na home
 async function carregarFraseDoDia() {
   const el = document.getElementById('fraseDoDiaCard');
@@ -19242,6 +19532,9 @@ function renderInicioNutriDesktop() {
     } catch (err) {
       console.warn('[home nutri desktop] erro banner check-in esquecido:', err);
     }
+
+    // Sprint 9.32.232: frase motivacional do dia (mesmo componente do mobile)
+    carregarFraseDoDia().catch(err => console.warn('[frase do dia desktop]', err));
   }, 0);
 
   const anoAtual = new Date().getFullYear();
@@ -19259,6 +19552,18 @@ function renderInicioNutriDesktop() {
           Fazer check-in
         </a>
       </div>
+
+      <!-- Sprint 9.32.232: Frase motivacional do dia (mesmo componente do mobile, largura total entre saudação e KPIs) -->
+      <div id="fraseDoDiaWrapper" style="display:none;position:relative;margin:0 0 18px;border-radius:18px;padding:2px;overflow:hidden;">
+        <div class="frase-aura" style="position:absolute;inset:-50%;background:conic-gradient(from 0deg, #8BC63F, #22D3EE, #A78BFA, #F472B6, #FCD34D, #8BC63F);animation:fraseAuraSpin 6s linear infinite;"></div>
+        <div id="fraseDoDiaCard" style="position:relative;background:linear-gradient(135deg,#FFFFFF 0%,#F8FAFC 100%);border-radius:16px;padding:18px 18px 18px 20px;box-shadow:0 4px 14px rgba(10,31,92,0.08);overflow:hidden;z-index:1;"></div>
+      </div>
+      <style>
+        @keyframes fraseAuraSpin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+      </style>
 
       <!-- Banner check-in esquecido (Sprint 9.32.14) -->
       <div id="nutriCheckinEsquecidoBanner" style="display:none;margin-bottom:18px;"></div>
@@ -25232,9 +25537,12 @@ function renderNotificacoesDesktop() {
     </style>
   `;
 
-  return desktopShell({
+  // 9.32.234: usa shell correto por perfil — sem isso, nutri vê sidebar admin
+  const ehAdmin = getCurrentUser()?.perfil === 'admin';
+  const shell = ehAdmin ? desktopShell : desktopShellNutri;
+  return shell({
     title: 'Notificações',
-    breadcrumb: [getCurrentUser()?.perfil === 'admin' ? 'Admin' : 'Nutri', 'Notificações'],
+    breadcrumb: [ehAdmin ? 'Admin' : 'Nutri', 'Notificações'],
     content,
     activeId: '',
   });
@@ -27169,7 +27477,10 @@ async function carregarIndicadoresNutri() {
     // 9.32.226: filtro do período selecionado pelos botões/dropdown
     const inPeriodoSel = v => v.checkin_timestamp && new Date(v.checkin_timestamp) >= inicioPeriodo && new Date(v.checkin_timestamp) <= fimPeriodo;
 
-    const kpiMes = visitas.filter(inPeriodoSel).length; // 9.32.226: agora reflete o período selecionado
+    // 9.32.229: visitas filtradas pelo período selecionado — base de todos os gráficos exceto "Visitas por mês"
+    const visitasNoPeriodo = visitas.filter(inPeriodoSel);
+
+    const kpiMes = visitasNoPeriodo.length;
     const kpiMesAnterior = visitas.filter(inMesAnterior).length;
     const kpiSemana = visitas.filter(inSemana).length;
 
@@ -27180,8 +27491,8 @@ async function carregarIndicadoresNutri() {
       .eq('nutricionista_id', user.id)
       .gte('checkin_timestamp', inicioAno.toISOString());
 
-    // Hospitais distintos no ano
-    const hospitaisDistinct = new Set(visitas.filter(v => v.instituicao_id).map(v => v.instituicao_id)).size;
+    // 9.32.229: hospitais distintos NO PERÍODO selecionado (era no ano)
+    const hospitaisDistinct = new Set(visitasNoPeriodo.filter(v => v.instituicao_id).map(v => v.instituicao_id)).size;
 
     // 9.32.225: variação vs mês anterior agora vive no badge da home (pctAnteriorStr).
     // Variáveis pctStr/pctColor/pctIcon/diff_ removidas (dead code).
@@ -27202,23 +27513,24 @@ async function carregarIndicadoresNutri() {
     const mesesArr = Object.entries(mesesMap);
     const maxMes = Math.max(...mesesArr.map(([, c]) => c), 1);
 
-    // Top hospitais (baseado nos últimos 6 meses)
+    // 9.32.229: top hospitais agora reflete o PERÍODO selecionado
     const hospCount = {};
-    visitas.forEach(v => {
+    visitasNoPeriodo.forEach(v => {
       const nome = v.instituicoes?.nome || '(sem nome)';
       hospCount[nome] = (hospCount[nome] || 0) + 1;
     });
     const topHosp = Object.entries(hospCount).sort((a, b) => b[1] - a[1]).slice(0, 5);
     const maxHosp = topHosp[0]?.[1] || 1;
 
-    // Top objetivos — precisa query separada (junction table)
+    // 9.32.229: top objetivos agora reflete o PERÍODO selecionado (era 6 meses fixos)
     let topObj = [];
     try {
       const { data: objData } = await db
         .from('visitas_objetivos')
         .select('objetivo_id, objetivos_visita(nome), visitas!inner(nutricionista_id, checkin_timestamp)')
         .eq('visitas.nutricionista_id', user.id)
-        .gte('visitas.checkin_timestamp', inicio6Meses.toISOString());
+        .gte('visitas.checkin_timestamp', inicioPeriodo.toISOString())
+        .lte('visitas.checkin_timestamp', fimPeriodo.toISOString());
       const objCount = {};
       (objData || []).forEach(r => {
         const nome = r.objetivos_visita?.nome || '(sem nome)';
@@ -27230,8 +27542,8 @@ async function carregarIndicadoresNutri() {
     }
     const maxObj = topObj[0]?.[1] || 1;
 
-    // Tempo médio (só visitas com checkin + checkout preenchidos)
-    const duracoes = visitas
+    // 9.32.229: tempo médio agora reflete o PERÍODO selecionado
+    const duracoes = visitasNoPeriodo
       .map(v => calcularDuracaoMin(v.checkin_timestamp, v.checkout_timestamp))
       .filter(m => m !== null && m > 0);
     const tempoMedio = duracoes.length > 0
@@ -27307,17 +27619,20 @@ async function carregarIndicadoresNutri() {
       cursorStreak.setDate(cursorStreak.getDate() - 1);
     }
 
-    // Taxa aprovação (das que passaram por revisão)
-    const visitasRevisao = visitas.filter(v =>
+    // Taxa aprovação (das que passaram por revisão) — 9.32.229: agora reflete o PERÍODO
+    const visitasRevisao = visitasNoPeriodo.filter(v =>
       ['completa','em_revisao','aprovada_pos_revisao'].includes(v.status) ||
       v.revisao_solicitada_em || v.revisao_resolvida_em
     );
-    const visitasAprovadasCount = visitas.filter(v => v.status === 'aprovada_pos_revisao').length;
+    // 9.32.229: taxa de aprovação agora reflete o PERÍODO selecionado
+    const visitasAprovadasCount = visitasNoPeriodo.filter(v => v.status === 'aprovada_pos_revisao').length;
     const taxaAprovacao = visitasRevisao.length > 0
       ? Math.round((visitasAprovadasCount / visitasRevisao.length) * 100)
       : null;
 
     // === Heatmap (90 dias, 14 semanas × 7 dias começando numa segunda) ===
+    // 9.32.229: o range visual continua 90 dias, mas só pinta visitas DO PERÍODO selecionado.
+    // Pra períodos curtos (7 dias) aparecem poucas células coloridas — comportamento esperado.
     const heatmapStart = new Date(agora);
     heatmapStart.setDate(heatmapStart.getDate() - 90);
     heatmapStart.setHours(0,0,0,0);
@@ -27325,7 +27640,7 @@ async function carregarIndicadoresNutri() {
     const offsetHeat = fdHeat === 0 ? 6 : fdHeat - 1;
     heatmapStart.setDate(heatmapStart.getDate() - offsetHeat);
     const visitasPorDia = {};
-    visitas.forEach(v => {
+    visitasNoPeriodo.forEach(v => {
       if (!v.checkin_timestamp) return;
       const d = new Date(v.checkin_timestamp);
       d.setHours(0,0,0,0);
@@ -27345,9 +27660,9 @@ async function carregarIndicadoresNutri() {
 
     // === Insights inteligentes ===
     const insights = [];
-    // Última visita por hospital
+    // Última visita por hospital — 9.32.229: agora baseado no PERÍODO selecionado
     const hospUltimaVisita = {};
-    visitas.forEach(v => {
+    visitasNoPeriodo.forEach(v => {
       const nome = v.instituicoes?.nome || '(sem nome)';
       const ts = v.checkin_timestamp ? new Date(v.checkin_timestamp).getTime() : 0;
       if (!hospUltimaVisita[nome] || ts > hospUltimaVisita[nome]) hospUltimaVisita[nome] = ts;
@@ -27376,9 +27691,9 @@ async function carregarIndicadoresNutri() {
       });
     }
 
-    // Padrão dia da semana
+    // Padrão dia da semana — 9.32.229: agora baseado no PERÍODO selecionado
     const visitasPorDiaSemana = [0,0,0,0,0,0,0];
-    visitas.forEach(v => {
+    visitasNoPeriodo.forEach(v => {
       if (!v.checkin_timestamp) return;
       visitasPorDiaSemana[new Date(v.checkin_timestamp).getDay()]++;
     });
@@ -27500,7 +27815,7 @@ async function carregarIndicadoresNutri() {
             <span class="material-symbols-rounded" style="font-size:18px;color:var(--brand-lime);">calendar_view_month</span>
             <span style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:13.5px;">Sua frequência</span>
           </div>
-          <div style="font-size:10.5px;color:var(--neutral-500);flex-shrink:0;">últimos 90 dias</div>
+          <div style="font-size:10.5px;color:var(--neutral-500);flex-shrink:0;">${labelPeriodo}</div>
         </div>
         <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px;">
           ${(() => {
@@ -47444,6 +47759,20 @@ function renderAdminConfigDesktop() {
         </div>
       </div>
 
+      <!-- 9.32.233: card de atalho pra gerenciador de frases motivacionais -->
+      <a href="#/admin/frases" style="display:flex;align-items:center;gap:14px;padding:16px 20px;background:linear-gradient(135deg,#F4F9EA 0%,#FFFFFF 100%);border:1px solid #E7F3D4;border-left:4px solid var(--brand-lime);border-radius:12px;text-decoration:none;color:inherit;transition:all 140ms;"
+        onmouseover="this.style.transform='translateY(-1px)';this.style.boxShadow='0 4px 14px rgba(139,198,63,0.18)';"
+        onmouseout="this.style.transform='';this.style.boxShadow='';">
+        <div style="width:42px;height:42px;border-radius:10px;background:linear-gradient(135deg,var(--brand-lime) 0%,#6FAD28 100%);color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 4px 12px rgba(139,198,63,0.3);">
+          <span class="material-symbols-rounded" style="font-size:22px;">format_quote</span>
+        </div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-family:'Poppins',sans-serif;font-weight:700;font-size:14.5px;color:var(--brand-navy);">Frases motivacionais</div>
+          <div style="font-size:12.5px;color:var(--neutral-600);margin-top:2px;">Gerencie as frases que aparecem na "Frase do dia" pros profissionais.</div>
+        </div>
+        <span class="material-symbols-rounded" style="font-size:20px;color:var(--brand-lime);">arrow_forward</span>
+      </a>
+
       <!-- Grid de categorias (2 colunas em telas grandes) -->
       <div id="dsdConfBody" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(420px,1fr));gap:18px;">
         <div style="grid-column:1/-1;padding:50px;text-align:center;color:var(--neutral-500);font-size:13px;background:#fff;border-radius:12px;border:1px solid var(--neutral-200);">
@@ -47562,6 +47891,16 @@ function renderAdminConfig() {
           <span class="material-symbols-rounded">info</span>
           <div>Alterações aqui afetam <strong>todo o sistema</strong>. Mudanças nos limites (raio GPS, margem de horário) passam a valer imediatamente para novas visitas.</div>
         </div>
+        <a href="#/admin/frases" style="display:flex;align-items:center;gap:12px;padding:14px 16px;margin:14px 0;background:linear-gradient(135deg,#F4F9EA 0%,#FFFFFF 100%);border:1px solid #E7F3D4;border-left:4px solid var(--brand-lime);border-radius:10px;text-decoration:none;color:inherit;">
+          <div style="width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,var(--brand-lime) 0%,#6FAD28 100%);color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <span class="material-symbols-rounded" style="font-size:20px;">format_quote</span>
+          </div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-family:'Poppins',sans-serif;font-weight:700;font-size:13.5px;color:var(--brand-navy);">Frases motivacionais</div>
+            <div style="font-size:11.5px;color:var(--neutral-600);margin-top:2px;">Gerenciar frases da "Frase do dia"</div>
+          </div>
+          <span class="material-symbols-rounded" style="font-size:18px;color:var(--brand-lime);">arrow_forward</span>
+        </a>
       `;
 
       Object.keys(ConfigCategorias).forEach(catKey => {
