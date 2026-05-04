@@ -7308,7 +7308,7 @@ a {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.235-notif-to-email',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.249-foto-nutris-inativos-relatorio',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -10628,12 +10628,18 @@ function getSaudacao() {
   return 'Boa noite';
 }
 
-// Data formatada pt-BR
+// Data formatada pt-BR (sprint 9.32.244: formato "domingo, 3 maio 2026")
 function formatarDataPtBr(date) {
   const d = date instanceof Date ? date : new Date(date);
   const diasSemana = ['domingo','segunda-feira','terça-feira','quarta-feira','quinta-feira','sexta-feira','sábado'];
-  const meses = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+  const meses = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
   return `${diasSemana[d.getDay()]}, ${d.getDate()} ${meses[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+// Sprint 9.32.245: hora HH:MM pra usar nas saudações e "atualizado em"
+function formatarHoraHM(date) {
+  const d = date instanceof Date ? date : new Date(date);
+  return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
 }
 
 function formatarDataCurta(date) {
@@ -10910,7 +10916,9 @@ function desktopTopbar({ title, breadcrumb = [], titleExtra = '' } = {}) {
       <div class="ds-topbar__search" onclick="if(event.target.id !== 'dsSearchFiltros') document.getElementById('dsSearchInput')?.focus()">
         <span class="material-symbols-rounded" style="font-size:17px;color:var(--neutral-500);">search</span>
         <input id="dsSearchInput" placeholder="Buscar hospital, nutricionista, visita…" onfocus="abrirBuscaGlobal()" readonly />
-        <button id="dsSearchFiltros" type="button" onclick="event.stopPropagation();abrirBuscaGlobal();" title="Pesquisa avançada com filtros" style="background:transparent;border:0;padding:4px 6px;cursor:pointer;display:flex;align-items:center;color:var(--neutral-500);border-radius:6px;" onmouseover="this.style.background='var(--neutral-100)';this.style.color='var(--brand-navy)'" onmouseout="this.style.background='transparent';this.style.color='var(--neutral-500)'">
+        <!-- Sprint 9.32.247: hint de atalho ⌘K / Ctrl+K -->
+        <kbd title="Atalho de teclado" style="font-family:var(--font-mono,monospace);font-size:10.5px;font-weight:700;color:var(--neutral-500);background:var(--neutral-100);border:1px solid var(--neutral-200);border-radius:5px;padding:2px 6px;letter-spacing:.3px;line-height:1;">⌘K</kbd>
+        <button id="dsSearchFiltros" type="button" onclick="event.stopPropagation();abrirBuscaGlobal();" title="Pesquisa avançada com filtros" style="background:transparent;border:0;padding:4px 6px;cursor:pointer;display:flex;align-items:center;color:var(--neutral-500);border-radius:6px;margin-left:4px;" onmouseover="this.style.background='var(--neutral-100)';this.style.color='var(--brand-navy)'" onmouseout="this.style.background='transparent';this.style.color='var(--neutral-500)'">
           <span class="material-symbols-rounded" style="font-size:18px;">tune</span>
         </button>
       </div>
@@ -11225,6 +11233,14 @@ function renderAdminDashboardDesktop() {
         <!-- Sprint 9.32.145: banner de filtro ativo por profissional -->
         <div id="dsdFiltroNutriBanner" style="display:none;"></div>
 
+        <!-- Sprint 9.32.245: indicador "Atualizado às HH:MM" -->
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:-4px;">
+          <div style="font-size:11.5px;color:var(--neutral-500);display:inline-flex;align-items:center;gap:6px;">
+            <span class="material-symbols-rounded" style="font-size:14px;color:var(--neutral-400);">schedule</span>
+            <span id="dsdAtualizadoEm">Carregando…</span>
+          </div>
+        </div>
+
         <!-- 6 KPIs em linha (grid responsivo) -->
         <div data-dash-section="kpis" style="display:grid;grid-template-columns:repeat(6,1fr);gap:12px;" id="dsdKpiRow">
           <div style="background:#fff;border-radius:12px;padding:40px 16px;border:1px solid var(--neutral-200);text-align:center;color:var(--neutral-400);font-size:12px;">Carregando KPIs...</div>
@@ -11371,7 +11387,11 @@ function renderAdminDashboardDesktop() {
       <aside style="width:300px;flex-shrink:0;position:sticky;top:88px;background:#fff;border-radius:12px;padding:20px;border:1px solid var(--neutral-200);box-shadow:0 1px 3px rgba(10,31,92,0.04);">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
           <div style="font-family:'Poppins',sans-serif;font-weight:600;font-size:15px;color:var(--brand-navy);">Ações pendentes</div>
-          <span id="dsdPendCount" style="background:var(--brand-navy);color:#fff;font-size:11px;font-weight:700;padding:2px 9px;border-radius:9999px;min-width:24px;text-align:center;">—</span>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <!-- Sprint 9.32.248: chip "+N hoje" mostra deltas do dia -->
+            <span id="dsdPendNovoHoje" style="display:none;background:var(--brand-lime);color:var(--brand-navy);font-size:10px;font-weight:800;padding:2px 7px;border-radius:9999px;line-height:1.4;align-items:center;gap:3px;letter-spacing:0.2px;box-shadow:0 1px 4px rgba(139,198,63,0.4);"></span>
+            <span id="dsdPendCount" style="background:var(--brand-navy);color:#fff;font-size:11px;font-weight:700;padding:2px 9px;border-radius:9999px;min-width:24px;text-align:center;">—</span>
+          </div>
         </div>
         <div style="font-size:11.5px;color:var(--neutral-500);margin-bottom:16px;">Requerem sua atenção</div>
         <div id="dsdAcoesPendentes" style="display:flex;flex-direction:column;gap:10px;">
@@ -11722,10 +11742,16 @@ async function carregarAdminDashboardDesktop() {
 
     // Sprint 9.20.1: aplica layout customizado (ordem + visibilidade salvas pelo usuário)
     aplicarDashLayout();
+
+    // Sprint 9.32.245: atualiza indicador de "última atualização"
+    const elAtualizadoEm = document.getElementById('dsdAtualizadoEm');
+    if (elAtualizadoEm) elAtualizadoEm.textContent = `Atualizado às ${formatarHoraHM(new Date())}`;
   } catch (err) {
     console.error('[dash desktop]', err);
     const grid = document.getElementById('dsdKpiRow');
     if (grid) grid.innerHTML = `<div style="grid-column:span 6;padding:20px;background:var(--status-danger-bg,#FCE8E8);color:var(--status-danger);border-radius:12px;">Erro: ${err.message}</div>`;
+    const elAtualizadoEm = document.getElementById('dsdAtualizadoEm');
+    if (elAtualizadoEm) elAtualizadoEm.textContent = `Erro ao atualizar — ${formatarHoraHM(new Date())}`;
   }
 }
 
@@ -13410,9 +13436,16 @@ async function renderDsdNutrisInativos(visitasPeriodo) {
 async function renderDsdAcoesPendentes() {
   const container = document.getElementById('dsdAcoesPendentes');
   const countEl = document.getElementById('dsdPendCount');
+  const novoHojeEl = document.getElementById('dsdPendNovoHoje');
   if (!container) return;
   try {
-    const [instPend, objPend, eqCnts, reabPend, revRes] = await Promise.all([
+    // Sprint 9.32.248: timestamp do início do dia atual (00:00 local)
+    const inicioHojeDt = new Date();
+    inicioHojeDt.setHours(0, 0, 0, 0);
+    const inicioHojeIso = inicioHojeDt.toISOString();
+
+    const [instPend, objPend, eqCnts, reabPend, revRes,
+           usuariosHojeRes, revHojeRes, visConcluidasHojeRes, visAndamentoRes] = await Promise.all([
       listarInstituicoesPendentes().catch(() => []),
       listarObjetivosPendentes().catch(() => []),
       contarUsuariosPorStatus().catch(() => ({ pendentes: 0 })),
@@ -13421,11 +13454,79 @@ async function renderDsdAcoesPendentes() {
       db.from('visitas').select('id', { count: 'exact', head: true })
         .or('flag_sem_checkin.eq.true,flag_sem_checkout.eq.true,flag_gps_divergente.eq.true,flag_horario_fora_margem.eq.true,checkin_manual.eq.true')
         .not('status', 'in', '(aprovada_pos_revisao,agendada,sugerida)'),
+      // Sprint 9.32.248: usuários pendentes criados HOJE
+      db.from('usuarios').select('id', { count: 'exact', head: true })
+        .eq('status', 'pendente').gte('criado_em', inicioHojeIso).then(r => r, () => ({ count: 0 })),
+      // Sprint 9.32.248: visitas em revisão criadas/checkin HOJE
+      db.from('visitas').select('id', { count: 'exact', head: true })
+        .or('flag_sem_checkin.eq.true,flag_sem_checkout.eq.true,flag_gps_divergente.eq.true,flag_horario_fora_margem.eq.true,checkin_manual.eq.true')
+        .not('status', 'in', '(aprovada_pos_revisao,agendada,sugerida)')
+        .gte('checkin_timestamp', inicioHojeIso).then(r => r, () => ({ count: 0 })),
+      // Sprint 9.32.248: visitas concluídas HOJE (tem checkout no dia)
+      db.from('visitas').select('id', { count: 'exact', head: true })
+        .gte('checkout_timestamp', inicioHojeIso).then(r => r, () => ({ count: 0 })),
+      // Sprint 9.32.248: visitas em andamento agora (checkin hoje, sem checkout)
+      db.from('visitas').select('id', { count: 'exact', head: true })
+        .gte('checkin_timestamp', inicioHojeIso).is('checkout_timestamp', null).then(r => r, () => ({ count: 0 })),
     ]);
 
     const revisaoCount = revRes?.count || 0;
+    const revHojeCount = revHojeRes?.count || 0;
+    const usuariosHojeCount = usuariosHojeRes?.count || 0;
+    const visConcluidasHoje = visConcluidasHojeRes?.count || 0;
+    const visAndamentoHoje = visAndamentoRes?.count || 0;
+
+    // "Novos hoje" pra cada categoria — filtra os arrays já carregados quando possível
+    const instPendHoje = instPend.filter(x => x.criado_em && x.criado_em >= inicioHojeIso).length;
+    const objPendHoje = objPend.filter(x => x.criado_em && x.criado_em >= inicioHojeIso).length;
+    const reabPendHoje = reabPend.filter(x => x.solicitado_em && x.solicitado_em >= inicioHojeIso).length;
+    const totalNovoHoje = revHojeCount + instPendHoje + objPendHoje + usuariosHojeCount + reabPendHoje;
+
     const totalPend = revisaoCount + instPend.length + objPend.length + eqCnts.pendentes + reabPend.length;
     if (countEl) countEl.textContent = String(totalPend);
+
+    // Sprint 9.32.248: chip "+N hoje" no header (some quando não há novidade)
+    if (novoHojeEl) {
+      if (totalNovoHoje > 0) {
+        novoHojeEl.style.display = 'inline-flex';
+        novoHojeEl.innerHTML = `<span style="display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--brand-navy);"></span>+${totalNovoHoje} hoje`;
+      } else {
+        novoHojeEl.style.display = 'none';
+      }
+    }
+
+    // Sprint 9.32.248: bloco "Atividade de hoje" — items positivos (sem CTA, só info)
+    const positivos = [];
+    if (visConcluidasHoje > 0) {
+      positivos.push({
+        icon: 'check_circle',
+        text: `<strong style="color:var(--brand-navy);">${visConcluidasHoje}</strong> visita${visConcluidasHoje === 1 ? '' : 's'} concluída${visConcluidasHoje === 1 ? '' : 's'} hoje`,
+      });
+    }
+    if (visAndamentoHoje > 0) {
+      positivos.push({
+        icon: 'directions_walk',
+        text: `<strong style="color:var(--brand-navy);">${visAndamentoHoje}</strong> visita${visAndamentoHoje === 1 ? '' : 's'} em andamento agora`,
+      });
+    }
+    const positivosHtml = positivos.length === 0 ? '' : `
+      <div style="margin-top:14px;padding-top:14px;border-top:1px dashed var(--neutral-200);">
+        <div style="font-size:10.5px;font-weight:700;color:var(--neutral-500);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:8px;display:inline-flex;align-items:center;gap:5px;">
+          <span class="material-symbols-rounded" style="font-size:13px;color:var(--brand-lime,#8BC63F);">trending_up</span>
+          Atividade de hoje
+        </div>
+        <div style="display:flex;flex-direction:column;gap:7px;">
+          ${positivos.map(p => `
+            <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--neutral-700);">
+              <div style="width:22px;height:22px;border-radius:6px;background:var(--status-success-bg,#E6F6EF);color:#3B6D11;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <span class="material-symbols-rounded" style="font-size:14px;">${p.icon}</span>
+              </div>
+              <div>${p.text}</div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
 
     if (totalPend === 0) {
       container.innerHTML = `
@@ -13434,19 +13535,21 @@ async function renderDsdAcoesPendentes() {
           <div style="margin-top:8px;font-size:13px;color:var(--brand-navy);font-weight:600;">Tudo em dia!</div>
           <div style="font-size:11.5px;color:var(--neutral-600);margin-top:2px;">Nenhuma ação pendente.</div>
         </div>
+        ${positivosHtml}
       `;
       return;
     }
 
-    // Monta cards de ação
+    // Monta cards de ação (cada um com possível chip "+N hoje" discreto)
     const cards = [];
     if (revisaoCount > 0) {
       cards.push({
         tint: 'var(--status-warning)', tintBg: 'var(--status-warning-bg,#FEF4E1)', icon: 'rule',
-        title: `${revisaoCount} visita${revisaoCount === 1 ? '' : 's'} ${revisaoCount === 1 ? 'aguardando' : 'aguardando'} revisão`,
+        title: `${revisaoCount} visita${revisaoCount === 1 ? '' : 's'} aguardando revisão`,
         sub: 'Visitas com flags pendentes de revisão',
         cta: 'Ver fila',
         href: '#/admin/revisao',
+        novo: revHojeCount,
       });
     }
     if (instPend.length > 0 || objPend.length > 0) {
@@ -13457,6 +13560,7 @@ async function renderDsdAcoesPendentes() {
         sub: `${instPend.length} inst · ${objPend.length} obj`,
         cta: 'Revisar',
         href: instPend.length > 0 ? '#/admin/instituicoes?filtro=pendentes' : '#/admin/pendentes',
+        novo: instPendHoje + objPendHoje,
       });
     }
     if (eqCnts.pendentes > 0) {
@@ -13466,6 +13570,7 @@ async function renderDsdAcoesPendentes() {
         sub: 'Cadastros novos na equipe',
         cta: 'Aprovar',
         href: '#/admin/equipe?filtro=pendentes',
+        novo: usuariosHojeCount,
       });
     }
     if (reabPend.length > 0) {
@@ -13475,26 +13580,34 @@ async function renderDsdAcoesPendentes() {
         sub: 'Nutris pediram pra reabrir visitas',
         cta: 'Ver solicitações',
         href: '#/admin/revisao',
+        novo: reabPendHoje,
       });
     }
 
-    container.innerHTML = cards.map(c => `
-      <a href="${c.href}" style="text-decoration:none;display:block;padding:14px;background:${c.tintBg};border-radius:10px;transition:transform 140ms;">
-        <div style="display:flex;align-items:flex-start;gap:10px;">
-          <span class="material-symbols-rounded" style="font-size:22px;color:${c.tint};flex-shrink:0;">${c.icon}</span>
-          <div style="flex:1;min-width:0;">
-            <div style="font-size:13px;font-weight:600;color:var(--brand-navy);line-height:1.3;">${c.title}</div>
-            <div style="font-size:11px;color:var(--neutral-600);margin-top:3px;">${c.sub}</div>
+    const cardsHtml = cards.map(c => {
+      const chipNovo = (c.novo && c.novo > 0)
+        ? `<span style="background:rgba(139,198,63,0.18);color:#3B6D11;font-size:10px;font-weight:800;padding:2px 7px;border-radius:9999px;line-height:1.4;display:inline-flex;align-items:center;gap:3px;letter-spacing:0.2px;"><span style="display:inline-block;width:5px;height:5px;border-radius:50%;background:#3B6D11;"></span>+${c.novo} hoje</span>`
+        : '';
+      return `
+        <a href="${c.href}" style="text-decoration:none;display:block;padding:14px;background:${c.tintBg};border-radius:10px;transition:transform 140ms;">
+          <div style="display:flex;align-items:flex-start;gap:10px;">
+            <span class="material-symbols-rounded" style="font-size:22px;color:${c.tint};flex-shrink:0;">${c.icon}</span>
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:13px;font-weight:600;color:var(--brand-navy);line-height:1.3;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">${c.title}${chipNovo}</div>
+              <div style="font-size:11px;color:var(--neutral-600);margin-top:3px;">${c.sub}</div>
+            </div>
           </div>
-        </div>
-        <div style="margin-top:10px;display:flex;justify-content:flex-start;">
-          <span style="background:${c.tint};color:#fff;font-size:11.5px;font-weight:700;padding:6px 14px;border-radius:8px;display:inline-flex;align-items:center;gap:4px;">
-            ${c.cta}
-            <span class="material-symbols-rounded" style="font-size:14px;">arrow_forward</span>
-          </span>
-        </div>
-      </a>
-    `).join('');
+          <div style="margin-top:10px;display:flex;justify-content:flex-start;">
+            <span style="background:${c.tint};color:#fff;font-size:11.5px;font-weight:700;padding:6px 14px;border-radius:8px;display:inline-flex;align-items:center;gap:4px;">
+              ${c.cta}
+              <span class="material-symbols-rounded" style="font-size:14px;">arrow_forward</span>
+            </span>
+          </div>
+        </a>
+      `;
+    }).join('');
+
+    container.innerHTML = cardsHtml + positivosHtml;
   } catch (err) {
     container.innerHTML = `<div style="padding:16px;color:var(--status-danger);font-size:12px;">Erro: ${err.message}</div>`;
   }
@@ -13993,7 +14106,7 @@ function renderVisitCardDesktop(v) {
         </a>
         <div style="flex:1;"></div>
         <button onclick="manterEmRevisaoDesktop('${v.id}')" style="height:38px;padding:0 16px;border-radius:9999px;font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:6px;cursor:pointer;background:var(--brand-navy);color:#fff;border:0;font-family:inherit;">
-          <span class="material-symbols-rounded" style="font-size:16px;">pause</span>Manter em revisão
+          <span class="material-symbols-rounded" style="font-size:16px;">rate_review</span>Solicitar revisão
         </button>
         ${v._emAndamento ? `
           <button disabled title="Aguarde o profissional finalizar ou a janela de 72h expirar" style="height:38px;padding:0 16px;border-radius:9999px;font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:6px;background:var(--neutral-200);color:var(--neutral-500);border:0;font-family:inherit;cursor:not-allowed;">
@@ -14198,7 +14311,9 @@ window.aprovarVisitaRapidaDesktop = async function(visitaId) {
   }
 };
 
-// Manter em revisão = devolver pro nutri com motivo
+// 9.32.239: "Solicitar revisão" (antes "Manter em revisão") — devolve pro nutri com motivo.
+// Mantemos o nome da função (manterEmRevisaoDesktop) pra evitar quebrar handlers; só o
+// label visual e o ícone mudaram.
 window.manterEmRevisaoDesktop = async function(visitaId) {
   if (await bloqueioSimulacao('devolver visita')) return;
   const motivo = await showModalInput({
@@ -14634,7 +14749,12 @@ window.aprovarInstRapidoDesktop = async function(id) {
     }).eq('id', id);
     if (updErr) throw new Error(updErr.message);
     setFlash('success', `"${inst.nome}" aprovada!`);
-    carregarAdminInstituicoesDesktop();
+    // 9.32.238: recarrega tanto a tela de Pendências quanto a de Instituições —
+    // a função é chamada das duas, e antes só atualizava Instituições (causava bug
+    // de "aprovei mas não some" na tela de Pendências).
+    try { if (typeof recarregarAdminPendentesUI === 'function') await recarregarAdminPendentesUI(); } catch {}
+    try { if (typeof carregarAdminInstituicoesDesktop === 'function') await carregarAdminInstituicoesDesktop(); } catch {}
+    try { if (typeof carregarAdminInstituicoes === 'function') await carregarAdminInstituicoes(); } catch {}
     atualizarBadgesSidebarDesktop();
   } catch (err) {
     setFlash('error', 'Erro: ' + err.message);
@@ -19327,7 +19447,7 @@ function renderInicio() {
       <main class="mcontent">
         <div class="home__greeting">
           <div class="home__greeting-title">${getSaudacao()}, ${primeiroNome}</div>
-          <div class="home__greeting-date">${formatarDataPtBr(new Date())}</div>
+          <div class="home__greeting-date">${formatarDataPtBr(new Date())} · ${formatarHoraHM(new Date())}</div>
         </div>
 
         <!-- Sprint 9.21: Frase motivacional do dia com borda gradiente animada (Sprint 9.21.5) -->
@@ -19544,7 +19664,7 @@ function renderInicioNutriDesktop() {
       <div style="display:grid;grid-template-columns:1fr auto;gap:24px;align-items:end;margin-bottom:22px;flex-wrap:wrap;">
         <div>
           <div style="font-family:var(--font-display);font-size:28px;font-weight:700;color:var(--brand-navy);line-height:1.1;">${getSaudacao()}, ${primeiroNome} 👋</div>
-          <div style="font-size:13.5px;color:var(--neutral-600);margin-top:6px;">${formatarDataPtBr(new Date())}</div>
+          <div style="font-size:13.5px;color:var(--neutral-600);margin-top:6px;">${formatarDataPtBr(new Date())} · ${formatarHoraHM(new Date())}</div>
         </div>
         <a href="#/checkin" style="display:inline-flex;align-items:center;gap:10px;background:var(--brand-lime);color:#fff;padding:14px 24px;border-radius:9999px;text-decoration:none;font-weight:700;font-size:14px;box-shadow:0 4px 14px rgba(139,198,63,0.35);transition:transform 140ms;"
            onmouseover="this.style.transform='translateY(-1px)';" onmouseout="this.style.transform='';">
@@ -25328,19 +25448,30 @@ async function oferecerAgendarProximaVisita(visita, dataProxima) {
   });
   if (!ok) return;
 
+  // 9.32.240: logging detalhado pra debugar fluxo
+  console.log('[sugestao agendamento] iniciando — instituicao_id:', visita.instituicao_id, 'data:', dataProxima);
+  if (!visita.instituicao_id) {
+    console.error('[sugestao agendamento] visita sem instituicao_id', visita);
+    alert('Não foi possível agendar: visita sem instituição registrada. Crie o agendamento manualmente em Agenda.');
+    return;
+  }
+
   try {
-    await criarAgendamento({
+    const novo = await criarAgendamento({
       instituicao_id: visita.instituicao_id,
       data: dataProxima,
       hora: null,  // profissional ajusta na hora se quiser
       objetivo_id: null,
       observacao: 'Agendamento criado automaticamente a partir de visita anterior.',
     });
-    setFlash('success', 'Adicionado à agenda! Confira em "Agenda".');
+    console.log('[sugestao agendamento] criado com sucesso, id:', novo?.id);
+    setFlash('success', 'Adicionado à agenda!');
+    // 9.32.241: redireciona pra Agenda pra o user ver o agendamento criado.
+    // Pequeno delay pra o flash ser visível antes do redirect.
+    setTimeout(() => { window.location.hash = '#/agenda'; }, 800);
   } catch (err) {
-    // Não é crítico — só loga pra não atrapalhar o fluxo
-    console.warn('[sugestao agendamento]', err.message);
-    setFlash('info', 'Não foi possível criar o agendamento automaticamente. Você pode criar manualmente na Agenda.');
+    console.error('[sugestao agendamento] erro:', err);
+    alert('Erro ao criar agendamento: ' + (err.message || err) + '\n\nVocê pode criar manualmente na Agenda.');
   }
 }
 
@@ -28214,10 +28345,10 @@ function renderAdminDashboard() {
       ${mobileTopBar({ title: 'Dashboard', showNotification: true, showAvatar: true, showMenu: true })}
       <main class="mcontent dsd-mobile">
 
-        <!-- Saudação -->
+        <!-- Saudação (sprint 9.32.245: usa getSaudacao + hora atual) -->
         <div style="margin:-4px 0 14px;">
-          <div style="font-family:var(--font-display);font-weight:700;font-size:20px;color:var(--brand-navy);line-height:1.2;">Painel Administrador</div>
-          <div style="font-size:12px;color:var(--neutral-500);margin-top:3px;">${user.nome} · ${formatarDataPtBr(new Date())}</div>
+          <div style="font-family:var(--font-display);font-weight:700;font-size:20px;color:var(--brand-navy);line-height:1.2;">${getSaudacao()}, ${(user.nome || '').split(' ')[0] || 'Admin'}</div>
+          <div style="font-size:12px;color:var(--neutral-500);margin-top:3px;">Painel Administrador · ${formatarDataPtBr(new Date())} · ${formatarHoraHM(new Date())}</div>
         </div>
 
         <!-- Period selector horizontal scrollável + dropdown de mês + tune -->
@@ -28375,7 +28506,11 @@ function renderAdminDashboard() {
         <div class="ds-chart-card" style="margin-top:16px;">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
             <div style="font-family:var(--font-display);font-weight:600;font-size:15px;color:var(--brand-navy);">Ações pendentes</div>
-            <span id="dsdPendCount" style="background:var(--brand-navy);color:#fff;font-size:11px;font-weight:700;padding:2px 9px;border-radius:9999px;min-width:24px;text-align:center;">—</span>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <!-- Sprint 9.32.248: chip "+N hoje" mostra deltas do dia -->
+              <span id="dsdPendNovoHoje" style="display:none;background:var(--brand-lime);color:var(--brand-navy);font-size:10px;font-weight:800;padding:2px 7px;border-radius:9999px;line-height:1.4;align-items:center;gap:3px;letter-spacing:0.2px;box-shadow:0 1px 4px rgba(139,198,63,0.4);"></span>
+              <span id="dsdPendCount" style="background:var(--brand-navy);color:#fff;font-size:11px;font-weight:700;padding:2px 9px;border-radius:9999px;min-width:24px;text-align:center;">—</span>
+            </div>
           </div>
           <div style="font-size:11.5px;color:var(--neutral-500);margin-bottom:14px;">Requerem sua atenção</div>
           <div id="dsdAcoesPendentes" style="display:flex;flex-direction:column;gap:10px;">
@@ -29038,7 +29173,7 @@ async function renderR2Equipe(visitas) {
   const [profsAtivosRes, instAtivasRes, todosNutrisRes] = await Promise.all([
     db.from('usuarios').select('*', { count: 'exact', head: true }).eq('status', 'ativo').eq('perfil', 'nutricionista'),
     db.from('instituicoes').select('*', { count: 'exact', head: true }).eq('ativo', true),
-    db.from('usuarios').select('id, nome').eq('status', 'ativo').eq('perfil', 'nutricionista'),
+    db.from('usuarios').select('id, nome, foto_url').eq('status', 'ativo').eq('perfil', 'nutricionista'),
   ]);
 
   const profsAtivos = profsAtivosRes.count || 0;
@@ -29080,6 +29215,10 @@ async function renderR2Equipe(visitas) {
     <ul class="r2-inativos-list">
       ${ultimas.slice(0, 6).map(({ user, ultima }) => {
         const iniciais = (user.nome || '?').split(' ').slice(0, 2).map(p => p[0] || '').join('').toUpperCase();
+        // Sprint 9.32.249: usa foto do nutri se houver
+        const avatarHtml = user.foto_url
+          ? `<div class="r2-inativo-row__avatar" style="background-image:url('${user.foto_url}');background-size:cover;background-position:center;background-color:transparent;color:transparent;"></div>`
+          : `<div class="r2-inativo-row__avatar">${iniciais}</div>`;
         const dias = ultima?.checkin_timestamp
           ? Math.floor((Date.now() - new Date(ultima.checkin_timestamp).getTime()) / 86400000)
           : null;
@@ -29090,7 +29229,7 @@ async function renderR2Equipe(visitas) {
         const tagText = dias === null ? 'sem dados' : `${dias} ${dias === 1 ? 'dia' : 'dias'}`;
         return `
           <li class="r2-inativo-row">
-            <div class="r2-inativo-row__avatar">${iniciais}</div>
+            ${avatarHtml}
             <div>
               <div class="r2-inativo-row__name">${(user.nome || '').replace(/</g,'&lt;')}</div>
               <div class="r2-inativo-row__meta">${meta}</div>
@@ -29367,12 +29506,16 @@ function renderAdminDrawer() {
     { href: '#/logout',                   icon: 'logout',         titulo: 'Sair',               desc: 'Encerrar sessão' },
   ];
   const itemsNutri = [
-    { href: '#/nutri/instituicoes',   icon: 'local_hospital', titulo: 'Instituições',  desc: 'Hospitais que você visita' },
-    { href: '#/nutri/profissionais',  icon: 'stethoscope',    titulo: 'Profissionais', desc: 'Contatos nos hospitais' },
-    { href: '#/nutri/itens-padronizados', icon: 'inventory_2', titulo: 'Itens padronizados', desc: 'Concorrentes nos hospitais que você visita' },
-    { href: '#/nutri/indicadores',    icon: 'bar_chart',      titulo: 'Indicadores',   desc: 'Sua produção em números' },
-    { href: '#/nutri/performance',    icon: 'insights',       titulo: 'Performance & ROI', desc: 'Faturamento dos hospitais que você visita' },
-    { href: '#/logout',               icon: 'logout',         titulo: 'Sair',          desc: 'Encerrar sessão' },
+    { href: '#/inicio',                   icon: 'home',            titulo: 'Início',         desc: 'Voltar pro painel inicial' },
+    { href: '#/checkin',                  icon: 'my_location',     titulo: 'Fazer check-in', desc: 'Iniciar uma visita agora' },
+    { href: '#/visitas',                  icon: 'location_on',     titulo: 'Minhas visitas', desc: 'Histórico das suas visitas' },
+    { href: '#/agenda',                   icon: 'calendar_month',  titulo: 'Agenda',         desc: 'Visitas agendadas' },
+    { href: '#/nutri/instituicoes',       icon: 'local_hospital',  titulo: 'Instituições',   desc: 'Hospitais que você visita' },
+    { href: '#/nutri/profissionais',      icon: 'stethoscope',     titulo: 'Profissionais',  desc: 'Contatos nos hospitais' },
+    { href: '#/nutri/itens-padronizados', icon: 'inventory_2',     titulo: 'Itens padronizados', desc: 'Concorrentes nos hospitais que você visita' },
+    { href: '#/nutri/indicadores',        icon: 'bar_chart',       titulo: 'Indicadores',    desc: 'Sua produção em números' },
+    { href: '#/nutri/performance',        icon: 'insights',        titulo: 'Performance & ROI', desc: 'Faturamento dos hospitais que você visita' },
+    { href: '#/logout',                   icon: 'logout',          titulo: 'Sair',           desc: 'Encerrar sessão' },
   ];
   const items = perfil === 'admin' ? itemsAdmin : itemsNutri;
 
@@ -29541,6 +29684,21 @@ window.fecharBuscaGlobal = function() {
   // Sprint 9.32.20: reset filtro ao fechar
   window._bgFiltroTipo = 'todos';
 };
+
+// Sprint 9.32.247: atalho global Ctrl+K / ⌘+K abre a busca global
+// (uma única vez — guard pra evitar registrar 2x se o script for re-executado)
+if (!window._buscaGlobalShortcutBound) {
+  window._buscaGlobalShortcutBound = true;
+  document.addEventListener('keydown', function(e) {
+    if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) {
+      // Só se houver usuário logado e modal ainda não aberto
+      if (!getCurrentUser()) return;
+      if (document.getElementById('buscaGlobalModal')) return;
+      e.preventDefault();
+      window.abrirBuscaGlobal();
+    }
+  });
+}
 
 // Sprint 9.32.20: filtra resultados por tipo (instituicoes / visitas / profissionais)
 window.bgFiltrarPorTipo = function(tipo) {
@@ -33557,6 +33715,14 @@ async function updateOrThrow(tabela, patch, id) {
   return data[0];
 }
 
+// 9.32.237: helper único pra recarregar a lista de pendentes (mobile E desktop).
+// Sem isso o admin no desktop precisa dar F5 pra ver as mudanças após aprovar/rejeitar.
+async function recarregarAdminPendentesUI() {
+  try { if (typeof carregarAdminPendentes === 'function') await carregarAdminPendentes(); } catch {}
+  try { if (typeof carregarAdminPendentesDesktop === 'function') await carregarAdminPendentesDesktop(); } catch {}
+  try { if (typeof atualizarBadgesSidebarDesktop === 'function') atualizarBadgesSidebarDesktop(); } catch {}
+}
+
 window.aprovarInstituicaoPendente = async function(id) {
   if (await bloqueioSimulacao('aprovar instituição')) return;
   const ok = await showModalConfirmacao({
@@ -33571,7 +33737,7 @@ window.aprovarInstituicaoPendente = async function(id) {
   try {
     await updateOrThrow('instituicoes', { pendente_aprovacao: false }, id);
     setFlash('success', 'Instituição aprovada. Complete os dados agora.');
-    await carregarAdminPendentes();
+    await recarregarAdminPendentesUI();
   } catch (err) { alert('Erro: ' + err.message); console.error(err); }
 };
 
@@ -33590,7 +33756,7 @@ window.abrirEdicaoInstituicaoPendente = async function(id) {
     if (aprovar) payload.pendente_aprovacao = false;
     await updateOrThrow('instituicoes', payload, id);
     setFlash('success', aprovar ? 'Instituição aprovada e atualizada.' : 'Dados salvos (ainda pendente).');
-    await carregarAdminPendentes();
+    await recarregarAdminPendentesUI();
   } catch (err) { alert('Erro: ' + err.message); console.error(err); }
 };
 
@@ -33776,7 +33942,7 @@ window.rejeitarInstituicaoPendente = async function(id) {
   try {
     await updateOrThrow('instituicoes', { ativo: false, pendente_aprovacao: false }, id);
     setFlash('info', 'Instituição rejeitada e desativada.');
-    await carregarAdminPendentes();
+    await recarregarAdminPendentesUI();
   } catch (err) { alert('Erro: ' + err.message); console.error(err); }
 };
 
