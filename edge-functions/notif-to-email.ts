@@ -37,6 +37,7 @@
 // =============================================================================
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
 
 // Tipos: cada um vira título + corpo do e-mail
 const TIPO_TEMPLATE: Record<string, { titulo: string; cta?: string; }> = {
@@ -104,17 +105,33 @@ function templateBN(opts: { titulo: string; corpo: string; cta?: string; ctaUrl?
 </body></html>`;
 }
 
-// Chama a Edge Function send-email já existente
+// 9.32.236: envia e-mail DIRETO via SMTP (igual send-email faz) — evita problema de
+// verify_jwt em Edge Functions chamadas via Database Webhook.
 async function dispararEmail(to: string, subject: string, html: string, text: string) {
-  const url = (Deno.env.get("SUPABASE_URL") || "").replace(/\/$/, "") + "/functions/v1/send-email";
-  const anonKey = Deno.env.get("SUPABASE_ANON_KEY") || "";
-  const resp = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "Authorization": "Bearer " + anonKey },
-    body: JSON.stringify({ to, subject, html: minifyEmailHtml(html), text }),
+  const client = new SMTPClient({
+    connection: {
+      hostname: Deno.env.get("SMTP_HOST")!,
+      port: Number(Deno.env.get("SMTP_PORT") || "465"),
+      tls: true,
+      auth: {
+        username: Deno.env.get("SMTP_USER")!,
+        password: Deno.env.get("SMTP_PASS")!,
+      },
+    },
   });
-  const j = await resp.json().catch(() => ({}));
-  if (!resp.ok || !j.ok) throw new Error(j.error || ("HTTP " + resp.status));
+  try {
+    await client.send({
+      from: `${Deno.env.get("SMTP_FROM_NAME") || "B&N Logística"} <${
+        Deno.env.get("SMTP_FROM") || Deno.env.get("SMTP_USER")
+      }>`,
+      to,
+      subject,
+      content: text || "Veja em HTML.",
+      html: minifyEmailHtml(html) || undefined,
+    });
+  } finally {
+    await client.close();
+  }
 }
 
 Deno.serve(async (req) => {
