@@ -7308,7 +7308,7 @@ a {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.249-foto-nutris-inativos-relatorio',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.253-trocar-senha-no-perfil',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -8117,6 +8117,10 @@ window.togglePerfilDropdown = function(ev) {
         <span>Remover foto</span>
       </button>
     ` : ''}
+    <button class="perfil-dropdown__item" onclick="abrirTrocarSenhaModal()">
+      <span class="material-symbols-rounded">key</span>
+      <span>Trocar senha</span>
+    </button>
     ${user._simulando ? `
       <button class="perfil-dropdown__item perfil-dropdown__item--warning" onclick="handleSairSimulacao()">
         <span class="material-symbols-rounded">switch_account</span>
@@ -8165,6 +8169,189 @@ function fecharPerfilDropdownOnClickFora(ev) {
     dd.remove();
   }
 }
+
+/* ==========================================================================
+   TROCAR SENHA — modal acessível pelo dropdown do avatar (Sprint 9.32.253)
+   Usuário logado precisa confirmar a senha atual + escolher nova senha que
+   atenda aos requisitos (8+ chars, maiúscula, número, caractere especial).
+   ========================================================================== */
+window.abrirTrocarSenhaModal = function() {
+  // Fecha o dropdown se estiver aberto
+  document.getElementById('perfilDropdown')?.remove();
+  // Evita 2 modais
+  if (document.getElementById('trocarSenhaModal')) return;
+
+  const user = getCurrentUser();
+  if (!user) return;
+
+  const overlay = document.createElement('div');
+  overlay.id = 'trocarSenhaModal';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(10,31,92,0.45);backdrop-filter:blur(4px);z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px;';
+  overlay.innerHTML = `
+    <div style="background:#fff;border-radius:16px;width:100%;max-width:440px;box-shadow:0 20px 60px rgba(10,31,92,0.3);overflow:hidden;display:flex;flex-direction:column;max-height:90vh;">
+      <!-- Header -->
+      <div style="padding:18px 22px;border-bottom:1px solid var(--neutral-100);display:flex;align-items:center;gap:12px;">
+        <div style="width:38px;height:38px;border-radius:10px;background:rgba(10,31,92,0.08);color:var(--brand-navy);display:flex;align-items:center;justify-content:center;">
+          <span class="material-symbols-rounded" style="font-size:20px;">key</span>
+        </div>
+        <div style="flex:1;">
+          <div style="font-family:'Poppins',sans-serif;font-weight:700;font-size:15.5px;color:var(--brand-navy);">Trocar senha</div>
+          <div style="font-size:11.5px;color:var(--neutral-500);margin-top:1px;">Confirme a senha atual pra criar uma nova</div>
+        </div>
+        <button type="button" onclick="fecharTrocarSenhaModal()" style="width:30px;height:30px;border-radius:8px;border:0;background:var(--neutral-100);color:var(--neutral-600);cursor:pointer;display:flex;align-items:center;justify-content:center;">
+          <span class="material-symbols-rounded" style="font-size:17px;">close</span>
+        </button>
+      </div>
+
+      <!-- Body -->
+      <form id="trocarSenhaForm" onsubmit="handleTrocarSenha(event); return false;" style="padding:22px;display:flex;flex-direction:column;gap:14px;overflow-y:auto;">
+        <div id="trocarSenhaFlash"></div>
+
+        <label style="display:flex;flex-direction:column;gap:5px;">
+          <span style="font-size:11px;font-weight:700;color:var(--neutral-600);text-transform:uppercase;letter-spacing:0.05em;">Senha atual</span>
+          <div style="position:relative;">
+            <input id="tsAtual" type="password" autocomplete="current-password" required
+              style="width:100%;height:42px;padding:0 42px 0 14px;border:1px solid var(--neutral-200);border-radius:10px;font-family:inherit;font-size:14px;color:var(--brand-navy);outline:none;" />
+            <button type="button" onclick="togglePasswordVisibility('tsAtual', this)" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:transparent;border:0;cursor:pointer;color:var(--neutral-500);padding:4px;display:flex;align-items:center;">
+              <span class="material-symbols-rounded" style="font-size:19px;">visibility</span>
+            </button>
+          </div>
+        </label>
+
+        <label style="display:flex;flex-direction:column;gap:5px;">
+          <span style="font-size:11px;font-weight:700;color:var(--neutral-600);text-transform:uppercase;letter-spacing:0.05em;">Nova senha</span>
+          <div style="position:relative;">
+            <input id="tsNova" type="password" autocomplete="new-password" required oninput="atualizarReqsTrocarSenha()"
+              style="width:100%;height:42px;padding:0 42px 0 14px;border:1px solid var(--neutral-200);border-radius:10px;font-family:inherit;font-size:14px;color:var(--brand-navy);outline:none;" />
+            <button type="button" onclick="togglePasswordVisibility('tsNova', this)" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:transparent;border:0;cursor:pointer;color:var(--neutral-500);padding:4px;display:flex;align-items:center;">
+              <span class="material-symbols-rounded" style="font-size:19px;">visibility</span>
+            </button>
+          </div>
+          <div id="tsReqs" style="font-size:11px;color:var(--neutral-500);line-height:1.6;margin-top:4px;"></div>
+        </label>
+
+        <label style="display:flex;flex-direction:column;gap:5px;">
+          <span style="font-size:11px;font-weight:700;color:var(--neutral-600);text-transform:uppercase;letter-spacing:0.05em;">Confirmar nova senha</span>
+          <div style="position:relative;">
+            <input id="tsNova2" type="password" autocomplete="new-password" required
+              style="width:100%;height:42px;padding:0 42px 0 14px;border:1px solid var(--neutral-200);border-radius:10px;font-family:inherit;font-size:14px;color:var(--brand-navy);outline:none;" />
+            <button type="button" onclick="togglePasswordVisibility('tsNova2', this)" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:transparent;border:0;cursor:pointer;color:var(--neutral-500);padding:4px;display:flex;align-items:center;">
+              <span class="material-symbols-rounded" style="font-size:19px;">visibility</span>
+            </button>
+          </div>
+        </label>
+
+        <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:6px;">
+          <button type="button" onclick="fecharTrocarSenhaModal()" style="height:40px;padding:0 16px;border:1px solid var(--neutral-200);background:#fff;color:var(--neutral-700);border-radius:9999px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">Cancelar</button>
+          <button type="submit" id="tsBtnSalvar" style="height:40px;padding:0 18px;border:0;background:var(--brand-navy);color:#fff;border-radius:9999px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px;">
+            <span class="material-symbols-rounded" style="font-size:16px;">check</span>
+            Salvar nova senha
+          </button>
+        </div>
+      </form>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  // Render inicial dos requisitos
+  atualizarReqsTrocarSenha();
+
+  // Foco no primeiro input
+  setTimeout(() => document.getElementById('tsAtual')?.focus(), 50);
+
+  // Fecha clicando fora
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) fecharTrocarSenhaModal();
+  });
+
+  // Fecha com ESC
+  const escHandler = (e) => { if (e.key === 'Escape') fecharTrocarSenhaModal(); };
+  document.addEventListener('keydown', escHandler);
+  overlay._escHandler = escHandler;
+};
+
+window.fecharTrocarSenhaModal = function() {
+  const overlay = document.getElementById('trocarSenhaModal');
+  if (!overlay) return;
+  if (overlay._escHandler) document.removeEventListener('keydown', overlay._escHandler);
+  overlay.remove();
+};
+
+window.atualizarReqsTrocarSenha = function() {
+  const pwd = document.getElementById('tsNova')?.value || '';
+  const checks = [
+    { ok: pwd.length >= 8,             label: 'Mínimo 8 caracteres' },
+    { ok: /[A-Z]/.test(pwd),           label: 'Uma letra maiúscula' },
+    { ok: /[0-9]/.test(pwd),           label: 'Um número' },
+    { ok: /[^A-Za-z0-9]/.test(pwd),    label: 'Um caractere especial (!@#$...)' },
+  ];
+  const el = document.getElementById('tsReqs');
+  if (!el) return;
+  el.innerHTML = checks.map(c => `
+    <span style="display:inline-flex;align-items:center;gap:4px;color:${c.ok ? 'var(--brand-lime,#6CA022)' : 'var(--neutral-500)'};margin-right:10px;">
+      <span class="material-symbols-rounded" style="font-size:13px;">${c.ok ? 'check_circle' : 'radio_button_unchecked'}</span>
+      ${c.label}
+    </span>
+  `).join('');
+};
+
+window.handleTrocarSenha = async function(ev) {
+  ev.preventDefault();
+  const atual = document.getElementById('tsAtual').value;
+  const nova  = document.getElementById('tsNova').value;
+  const nova2 = document.getElementById('tsNova2').value;
+  const flash = document.getElementById('trocarSenhaFlash');
+  const btn   = document.getElementById('tsBtnSalvar');
+  const showErr = (msg) => {
+    flash.innerHTML = `<div style="background:var(--status-danger-bg,#FEE2E2);color:var(--status-danger,#991B1B);padding:10px 12px;border-radius:8px;font-size:12.5px;display:flex;align-items:flex-start;gap:8px;"><span class="material-symbols-rounded" style="font-size:17px;flex-shrink:0;">error</span><span>${msg}</span></div>`;
+  };
+
+  // Validações
+  if (!atual || !nova || !nova2) { showErr('Preencha todos os campos.'); return; }
+  if (nova.length < 8 || !/[A-Z]/.test(nova) || !/[0-9]/.test(nova) || !/[^A-Za-z0-9]/.test(nova)) {
+    showErr('A nova senha não atende aos requisitos abaixo.');
+    return;
+  }
+  if (nova !== nova2) { showErr('As senhas não conferem.'); return; }
+  if (nova === atual) { showErr('A nova senha precisa ser diferente da atual.'); return; }
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="material-symbols-rounded" style="font-size:16px;animation:spin 1s linear infinite;">autorenew</span> Salvando...';
+  flash.innerHTML = '';
+
+  try {
+    const user = getCurrentUser();
+    if (!user) throw new Error('Sessão expirou. Faça login de novo.');
+
+    // 1. Confirma senha atual contra senha_hash do banco
+    const hashAtualInformada = await hashSenha(atual);
+    const { data: row, error: errSel } = await db.from('usuarios')
+      .select('id, senha_hash')
+      .eq('id', user.id)
+      .maybeSingle();
+    if (errSel) throw new Error('Erro ao verificar usuário: ' + errSel.message);
+    if (!row || row.senha_hash !== hashAtualInformada) {
+      throw new Error('Senha atual incorreta.');
+    }
+
+    // 2. Atualiza com a nova senha
+    const hashNova = await hashSenha(nova);
+    const { error: errUpd } = await db.from('usuarios')
+      .update({ senha_hash: hashNova })
+      .eq('id', user.id);
+    if (errUpd) throw new Error('Erro ao salvar nova senha: ' + errUpd.message);
+
+    // Sucesso
+    fecharTrocarSenhaModal();
+    setFlash('success', 'Senha trocada com sucesso! Use a nova no próximo login.');
+    // Re-renderiza a tela atual pra refletir o flash
+    if (typeof router === 'function') router();
+  } catch (err) {
+    showErr(err.message || String(err));
+    btn.disabled = false;
+    btn.innerHTML = '<span class="material-symbols-rounded" style="font-size:16px;">check</span> Salvar nova senha';
+  }
+};
 
 // Abre o seletor de arquivo nativo
 window.handleAlterarFotoClick = function() {
@@ -15783,6 +15970,18 @@ async function carregarListaVisitasDesktop() {
     });
   }
 
+  // Sprint 9.32.250: contagem de anexos por visita pra exibir clipes na linha
+  const anexosCount = new Map();
+  if (visitas.length > 0) {
+    const ids = visitas.map(v => v.id);
+    try {
+      const { data: anxs } = await db.from('visita_anexos').select('visita_id').in('visita_id', ids);
+      (anxs || []).forEach(a => {
+        anexosCount.set(a.visita_id, (anexosCount.get(a.visita_id) || 0) + 1);
+      });
+    } catch (e) { /* silent — não bloqueia render */ }
+  }
+
   window._visitasDesktopCurrent = visitas;
 
   if (cntEl) {
@@ -15858,6 +16057,12 @@ async function carregarListaVisitasDesktop() {
       ? `<div style="width:28px;height:28px;border-radius:50%;background-image:url('${nutriFoto}');background-size:cover;background-position:center;flex-shrink:0;"></div>`
       : `<div style="width:28px;height:28px;border-radius:50%;background:var(--brand-navy);color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;font-family:'Poppins',sans-serif;flex-shrink:0;">${nutriInit}</div>`;
 
+    // Sprint 9.32.250: badge de clipes quando há anexos
+    const nAnexos = anexosCount.get(v.id) || 0;
+    const anexoBadge = nAnexos > 0
+      ? `<span title="${nAnexos} anexo${nAnexos === 1 ? '' : 's'}" style="display:inline-flex;align-items:center;gap:3px;background:rgba(10,31,92,0.07);color:var(--brand-navy);padding:2px 7px;border-radius:9999px;font-size:10.5px;font-weight:700;line-height:1.4;flex-shrink:0;"><span class="material-symbols-rounded" style="font-size:13px;">attach_file</span>${nAnexos}</span>`
+      : '';
+
     return `
       <a href="#/admin/revisao/detalhe?id=${v.id}" class="ds-table__row" data-id="${v.id}" style="cursor:pointer;text-decoration:none;color:inherit;">
         <div class="ds-table__cell" style="width:140px;font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--neutral-700);">${dataFmt}</div>
@@ -15868,8 +16073,13 @@ async function carregarListaVisitasDesktop() {
           </div>
         </div>
         <div class="ds-table__cell" style="flex:1.3;min-width:220px;">
-          <div style="font-size:13px;color:var(--neutral-700);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${instNome.replace(/</g,'&lt;')}</div>
-          ${instCidade ? `<div style="font-size:11px;color:var(--neutral-500);margin-top:2px;">${instCidade}</div>` : ''}
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:13px;color:var(--neutral-700);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${instNome.replace(/</g,'&lt;')}</div>
+              ${instCidade ? `<div style="font-size:11px;color:var(--neutral-500);margin-top:2px;">${instCidade}</div>` : ''}
+            </div>
+            ${anexoBadge}
+          </div>
         </div>
         <div class="ds-table__cell" style="width:100px;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--neutral-600);">${durFmt}</div>
         <div class="ds-table__cell" style="width:130px;">${statusHtml}</div>
@@ -30442,6 +30652,18 @@ async function carregarListaVisitas() {
     return;
   }
 
+  // Sprint 9.32.250: contagem de anexos por visita pra exibir clipes no card mobile
+  const anexosCount = new Map();
+  if (visitas.length > 0) {
+    const ids = visitas.map(v => v.id);
+    try {
+      const { data: anxs } = await db.from('visita_anexos').select('visita_id').in('visita_id', ids);
+      (anxs || []).forEach(a => {
+        anexosCount.set(a.visita_id, (anexosCount.get(a.visita_id) || 0) + 1);
+      });
+    } catch (e) { /* silent — não bloqueia render */ }
+  }
+
   // Renderiza cards reutilizando o visual da review-card (que já é bem polido)
   listEl.innerHTML = visitas.map(v => {
     const flags = getFlagsAtivas(v);
@@ -30457,6 +30679,12 @@ async function carregarListaVisitas() {
     const maisFlags = flags.length > 3 ? `<span class="review-flag review-flag--info">+${flags.length - 3}</span>` : '';
     const flagCountClass = nivel === 'critical' ? 'review-card__flag-count--critical' : 'review-card__flag-count--warning';
     const cardClass = nivel === 'critical' ? 'review-card--critical' : nivel === 'warning' ? 'review-card--warning' : '';
+
+    // Sprint 9.32.250: badge de clipes
+    const nAnexos = anexosCount.get(v.id) || 0;
+    const anexoChip = nAnexos > 0
+      ? `<span class="review-card__meta-item" title="${nAnexos} anexo${nAnexos === 1 ? '' : 's'}" style="color:var(--brand-navy);font-weight:600;"><span class="material-symbols-rounded">attach_file</span>${nAnexos}</span>`
+      : '';
 
     return `
       <a href="#/admin/revisao/detalhe?id=${v.id}" data-id="${v.id}" class="review-card ${cardClass}">
@@ -30474,6 +30702,7 @@ async function carregarListaVisitas() {
                 <span class="material-symbols-rounded">schedule</span>${dataFmt}
               </span>
               ${sbadgeForStatus(v)}
+              ${anexoChip}
             </div>
           </div>
           ${flags.length > 0 ? `
@@ -34032,7 +34261,7 @@ window.rejeitarObjetivoPendente = async function(id) {
 let FAT_DATA = null;
 let _fatDataPromise = null;
 // __FAT_VERSION_START__ — substituído pelo atualizar_index.py com hash do JSON
-const FAT_DATA_VERSION = '1aab737c56c3';
+const FAT_DATA_VERSION = 'f93c09b677ac';
 // __FAT_VERSION_END__
 const FAT_DATA_URL = 'faturamento_data_inline.json?v=' + FAT_DATA_VERSION;
 
