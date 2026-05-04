@@ -51,15 +51,22 @@ const TIPO_TEMPLATE: Record<string, { titulo: string; cta?: string; }> = {
   visita_devolvida_revisao:    { titulo: "Visita devolvida pra revisão", cta: "Revisar visita" },
   agendamento_atribuido:       { titulo: "Novo agendamento atribuído", cta: "Ver agenda" },
   agendamento_sugerido:        { titulo: "Agendamento sugerido", cta: "Aceitar ou recusar" },
+  categoria_aprovada:          { titulo: "Categoria profissional aprovada" }, // 9.32.255
+  // 9.32.261: avisos de visita aberta (Tipo A — só sininho nas 2h e 4h, sem template)
+  // 6h e auto-fechado SIM têm template (mandam e-mail)
+  visita_aviso_6h_final:       { titulo: "Último aviso: visita aberta há 6 horas", cta: "Encerrar agora" },
+  visita_auto_fechada:         { titulo: "Visita encerrada automaticamente", cta: "Ver rascunho" },
 
   // --- Pro admin ---
   conta_pendente:              { titulo: "Novo cadastro aguardando aprovação", cta: "Revisar cadastro" },
   instituicao_sugerida:        { titulo: "Nova instituição sugerida", cta: "Aprovar instituição" },
   objetivo_sugerido:           { titulo: "Novo objetivo sugerido", cta: "Aprovar objetivo" },
+  categoria_sugerida:          { titulo: "Nova categoria profissional sugerida", cta: "Aprovar categoria" }, // 9.32.255
   visita_reenviada:            { titulo: "Visita reenviada após revisão", cta: "Ver fila de revisão" },
   visita_flagueada:            { titulo: "Visita com divergências", cta: "Ver fila de revisão" },
   agendamento_aceito:          { titulo: "Agendamento aceito pelo profissional" },
   agendamento_recusado:        { titulo: "Agendamento recusado pelo profissional" },
+  admin_visita_auto_fechada:   { titulo: "Visita auto-fechada pelo sistema", cta: "Ver visita" }, // 9.32.261
 };
 
 const SITE_URL = "https://www.benlogistica.com.br";
