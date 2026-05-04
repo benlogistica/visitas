@@ -7308,7 +7308,7 @@ a {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.253-trocar-senha-no-perfil',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.261-fase1-visita-aberta',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -7702,7 +7702,8 @@ async function login(cpf, senha) {
 // Cadastro
 async function cadastrar(dados) {
   if (!db) throw new Error('Banco de dados não conectado');
-  const { nome, cpf, email, telefone, senha, categoria_id = null } = dados;
+  // Sprint 9.32.254: aceita categoria_outro_nome quando user pediu "Outro" no select
+  const { nome, cpf, email, telefone, senha, categoria_id = null, categoria_outro_nome = null } = dados;
   const cpfFmt = maskCPF(cpf);
   const senhaHash = await hashSenha(senha);
 
@@ -7718,6 +7719,34 @@ async function cadastrar(dados) {
     if (existing.email === email) throw new Error('Este e-mail já está cadastrado');
   }
 
+  // Sprint 9.32.254: se a categoria foi sugerida pelo user ("Outro"), cria a linha como pendente
+  let categoriaIdFinal = categoria_id;
+  let categoriaPendenteCriada = null; // guarda info pra notificar admins depois
+  if (categoria_outro_nome) {
+    const nomeLimpo = categoria_outro_nome.trim();
+    // Tenta achar uma categoria com mesmo nome (case-insensitive) pra evitar duplicar
+    const { data: existente } = await db
+      .from('categorias_profissionais')
+      .select('id, nome, ativo, pendente_aprovacao')
+      .ilike('nome', nomeLimpo)
+      .maybeSingle();
+
+    if (existente) {
+      // Reutiliza a existente (ativa ou já pendente)
+      categoriaIdFinal = existente.id;
+    } else {
+      // Cria nova como pendente
+      const { data: nova, error: errCat } = await db
+        .from('categorias_profissionais')
+        .insert({ nome: nomeLimpo, ativo: false, pendente_aprovacao: true })
+        .select('id, nome')
+        .single();
+      if (errCat) throw new Error(`Erro ao registrar categoria sugerida: ${errCat.message}`);
+      categoriaIdFinal = nova.id;
+      categoriaPendenteCriada = nova;
+    }
+  }
+
   const { error } = await db.from('usuarios').insert({
     nome: nome.trim(),
     cpf: cpfFmt,
@@ -7726,11 +7755,32 @@ async function cadastrar(dados) {
     senha_hash: senhaHash,
     perfil: 'nutricionista',
     status: 'pendente',
-    categoria_id: categoria_id || null,
+    categoria_id: categoriaIdFinal || null,
     permissoes: {},
   });
 
   if (error) throw new Error(`Erro ao criar conta: ${error.message}`);
+
+  // Sprint 9.32.254: notifica todos os admins quando uma categoria nova foi sugerida
+  if (categoriaPendenteCriada) {
+    try {
+      const { data: admins } = await db.from('usuarios')
+        .select('id').eq('perfil', 'admin').eq('status', 'ativo');
+      const linhas = (admins || []).map(a => ({
+        user_id: a.id,
+        tipo: 'categoria_sugerida',
+        titulo: `Nova categoria sugerida: ${categoriaPendenteCriada.nome}`,
+        mensagem: `${nome} solicitou a categoria "${categoriaPendenteCriada.nome}" no cadastro. Aprove ou rejeite em /admin/equipe.`,
+        link: '/admin/equipe?filtro=pendentes',
+        lida: false,
+      }));
+      if (linhas.length > 0) {
+        await db.from('notificacoes').insert(linhas).then(() => {}, () => {});
+      }
+    } catch (err) {
+      console.warn('[cadastrar] falhou ao notificar admins sobre categoria sugerida:', err);
+    }
+  }
 
   // 9.32.205: e-mail "Cadastro recebido" — não bloqueia o cadastro se falhar
   // 9.32.209: respeita toggle do admin em Configurações
@@ -7771,12 +7821,14 @@ async function cadastrar(dados) {
 }
 
 // Lista categorias ativas para dropdowns
+// Sprint 9.32.254: exclui pendentes (sugestões aguardando aprovação) do dropdown público
 async function listarCategoriasAtivas() {
   if (!db) return [];
   const { data, error } = await db
     .from('categorias_profissionais')
     .select('id, nome')
     .eq('ativo', true)
+    .eq('pendente_aprovacao', false)
     .order('nome');
   if (error) return [];
   return data || [];
@@ -15143,7 +15195,15 @@ async function carregarAdminEquipeDesktop() {
         ? '<span style="display:inline-flex;align-items:center;gap:3px;padding:3px 10px;border-radius:9999px;font-size:10.5px;font-weight:700;text-transform:uppercase;background:var(--brand-navy);color:#fff;letter-spacing:0.04em;"><span class="material-symbols-rounded" style="font-size:12px;">admin_panel_settings</span>Admin</span>'
         : '<span style="display:inline-flex;padding:3px 10px;border-radius:9999px;font-size:10.5px;font-weight:700;text-transform:uppercase;background:var(--brand-lime);color:#fff;letter-spacing:0.04em;">Membro</span>';
 
-      const categoria = u.categorias_profissionais?.nome || '<span style="color:var(--neutral-400);">—</span>';
+      // Sprint 9.32.256: badge "sugerida" quando categoria está pendente
+      const catNome = u.categorias_profissionais?.nome;
+      const catPendente = !!u.categorias_profissionais?.pendente_aprovacao;
+      const catBadge = catPendente
+        ? ' <span title="Categoria sugerida pelo nutri — aguarda aprovação" style="display:inline-flex;align-items:center;gap:3px;background:rgba(245,158,11,0.18);color:#B45309;font-size:9.5px;font-weight:700;padding:2px 6px;border-radius:9999px;letter-spacing:0.04em;text-transform:uppercase;margin-left:4px;"><span class="material-symbols-rounded" style="font-size:11px;">hourglass_top</span>Sugerida</span>'
+        : '';
+      const categoria = catNome
+        ? (catNome.replace(/</g,'&lt;') + catBadge)
+        : '<span style="color:var(--neutral-400);">—</span>';
       const dataCad = u.criado_em ? new Date(u.criado_em).toLocaleDateString('pt-BR') : '—';
       const ultimoLogin = u.ultimo_login ? new Date(u.ultimo_login).toLocaleDateString('pt-BR') : '<span style="color:var(--neutral-400);">nunca</span>';
 
@@ -18572,6 +18632,7 @@ function renderCadastro() {
   }
 
   // Carrega lista de categorias do banco (async, depois da renderização)
+  // Sprint 9.32.254: adiciona opção "Outro" no fim do dropdown que abre input livre
   setTimeout(async () => {
     const sel = document.getElementById('sCategoria');
     if (!sel) return;
@@ -18582,7 +18643,10 @@ function renderCadastro() {
         sel.disabled = true;
       } else {
         sel.innerHTML = '<option value="">Selecione sua categoria...</option>' +
-          cats.map(c => `<option value="${c.id}">${c.nome}</option>`).join('');
+          cats.map(c => `<option value="${c.id}">${c.nome}</option>`).join('') +
+          '<option value="__outro__">Outro (descreva abaixo)</option>';
+        // Liga handler pra mostrar/esconder input livre
+        sel.addEventListener('change', toggleCategoriaOutroInput);
       }
     } catch (err) {
       sel.innerHTML = '<option value="">Erro ao carregar categorias</option>';
@@ -18648,6 +18712,24 @@ function renderCadastro() {
               </div>
             </div>
 
+            <!-- Sprint 9.32.254: input livre que aparece quando seleciona "Outro" -->
+            <div class="input-group" id="sCategoriaOutroWrap" style="display:none;">
+              <label class="input__label" for="sCategoriaOutro">
+                Qual sua categoria? <span class="required">*</span>
+                <span style="font-weight:400;color:var(--neutral-500);font-size:11.5px;margin-left:6px;">Será revisada pelo admin</span>
+              </label>
+              <div class="input__wrap">
+                <span class="material-symbols-rounded input__icon">edit</span>
+                <input id="sCategoriaOutro" class="input__field" type="text" maxlength="60"
+                       placeholder="Ex: Fonoaudiólogo, Técnico de enfermagem..."
+                       style="padding-left:44px;" />
+              </div>
+              <div style="font-size:11.5px;color:var(--neutral-500);margin-top:4px;line-height:1.4;">
+                <span class="material-symbols-rounded" style="font-size:13px;vertical-align:-2px;">info</span>
+                Sua sugestão fica pendente até o admin aprovar. Sua conta também só é liberada após aprovação.
+              </div>
+            </div>
+
             <div>
               ${renderPasswordField({ id: 'sPwd', required: true })}
               <div id="sPwdStrength" style="margin-top:8px"></div>
@@ -18680,6 +18762,21 @@ function renderCadastro() {
   `;
 }
 
+// Sprint 9.32.254: liga/desliga visibilidade do input livre quando seleciona "Outro"
+window.toggleCategoriaOutroInput = function() {
+  const sel = document.getElementById('sCategoria');
+  const wrap = document.getElementById('sCategoriaOutroWrap');
+  const input = document.getElementById('sCategoriaOutro');
+  if (!sel || !wrap) return;
+  const ehOutro = sel.value === '__outro__';
+  wrap.style.display = ehOutro ? '' : 'none';
+  if (ehOutro) {
+    setTimeout(() => input?.focus(), 50);
+  } else if (input) {
+    input.value = '';
+  }
+};
+
 // Helpers do cadastro
 window.toggleTerms = function() {
   const label = document.getElementById('termsLabel');
@@ -18699,7 +18796,10 @@ window.handleSignupSubmit = async function(ev) {
   const cpf = document.getElementById('sCpf').value;
   const email = document.getElementById('sEmail').value.trim();
   const telefone = document.getElementById('sTel').value;
-  const categoriaId = document.getElementById('sCategoria')?.value || '';
+  const categoriaSel = document.getElementById('sCategoria')?.value || '';
+  // Sprint 9.32.254: se for "Outro", lê o input livre
+  const categoriaOutroNome = (document.getElementById('sCategoriaOutro')?.value || '').trim();
+  const categoriaId = categoriaSel === '__outro__' ? null : categoriaSel;
   const pwd = document.getElementById('sPwd').value;
   const pwd2 = document.getElementById('sPwd2').value;
   const termsChecked = document.getElementById('termsLabel').classList.contains('cbx--checked');
@@ -18712,7 +18812,11 @@ window.handleSignupSubmit = async function(ev) {
   if (cpf.replace(/\D/g,'').length !== 11) errors.push('CPF inválido');
   if (!email.includes('@') || !email.includes('.')) errors.push('E-mail inválido');
   if (telefone.replace(/\D/g,'').length < 10) errors.push('Telefone inválido');
-  if (!categoriaId) errors.push('Selecione sua categoria profissional');
+  if (!categoriaSel) errors.push('Selecione sua categoria profissional');
+  // Sprint 9.32.254: validação extra quando "Outro" foi escolhido
+  if (categoriaSel === '__outro__' && categoriaOutroNome.length < 3) {
+    errors.push('Descreva sua categoria com pelo menos 3 caracteres');
+  }
   if (pwd.length < 8 || !/[A-Z]/.test(pwd) || !/[0-9]/.test(pwd) || !/[^A-Za-z0-9]/.test(pwd)) {
     errors.push('Senha não atende aos requisitos');
   }
@@ -18729,7 +18833,12 @@ window.handleSignupSubmit = async function(ev) {
   flashEl.innerHTML = '';
 
   try {
-    await cadastrar({ nome, cpf, email, telefone, senha: pwd, categoria_id: categoriaId });
+    // Sprint 9.32.254: passa categoria_outro_nome quando user escolheu "Outro"
+    await cadastrar({
+      nome, cpf, email, telefone, senha: pwd,
+      categoria_id: categoriaId,
+      categoria_outro_nome: categoriaSel === '__outro__' ? categoriaOutroNome : null,
+    });
     setFlash('success', 'Conta criada! Aguardando aprovação do administrador.');
     window.location.hash = '#/login';
   } catch (err) {
@@ -45773,11 +45882,12 @@ function renderAdminEquipe() {
 }
 
 // ====== Equipe: helpers ======
+// Sprint 9.32.256: traz pendente_aprovacao da categoria pra mostrar/decidir na hora de aprovar usuário
 async function listarUsuariosPorStatus(statuses) {
   if (!db) return [];
   const { data, error } = await db
     .from('usuarios')
-    .select('id, nome, cpf, email, telefone, perfil, super_admin, status, categoria_id, criado_em, ultimo_login, foto_url, categorias_profissionais(nome)')
+    .select('id, nome, cpf, email, telefone, perfil, super_admin, status, categoria_id, criado_em, ultimo_login, foto_url, categorias_profissionais(nome, pendente_aprovacao)')
     .in('status', statuses)
     .order('criado_em', { ascending: false });
   if (error) { console.warn('[equipe]', error.message); return []; }
@@ -45904,11 +46014,14 @@ async function carregarEquipe() {
 }
 
 // Lista categorias com contagem de profissionais vinculados
+// Sprint 9.32.255: traz pendente_aprovacao + ordena pendentes primeiro
 async function listarTodasCategoriasComContagem() {
   if (!db) return [];
   const { data: cats, error: errC } = await db
     .from('categorias_profissionais')
-    .select('id, nome, ativo, criado_em')
+    .select('id, nome, ativo, pendente_aprovacao, criado_em')
+    .order('pendente_aprovacao', { ascending: false })
+    .order('ativo', { ascending: false })
     .order('nome');
   if (errC || !cats) return [];
   // Pega contagens em paralelo — poderia ser uma view, mas com poucas categorias roda rápido
@@ -45919,16 +46032,31 @@ async function listarTodasCategoriasComContagem() {
 }
 
 function renderAbaCategorias(listEl, cats) {
+  // Sprint 9.32.255: contadores incluem pendentes
+  const totPend = cats.filter(c => c.pendente_aprovacao).length;
+  const totAtv = cats.filter(c => c.ativo && !c.pendente_aprovacao).length;
+  const subtitulo = [
+    totPend > 0 ? `<strong style="color:#B45309;">${totPend} pendente${totPend === 1 ? '' : 's'}</strong>` : '',
+    `${totAtv} ativa${totAtv === 1 ? '' : 's'}`,
+    `${cats.length} no total`,
+  ].filter(Boolean).join(' · ');
+
   const header = `
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:10px;">
-      <div style="font-size:13px;color:var(--neutral-600);">
-        <strong>${cats.length}</strong> categoria${cats.length === 1 ? '' : 's'} ${cats.filter(c => c.ativo).length !== cats.length ? `· ${cats.filter(c => c.ativo).length} ativa${cats.filter(c => c.ativo).length === 1 ? '' : 's'}` : ''}
-      </div>
+      <div style="font-size:13px;color:var(--neutral-600);">${subtitulo}</div>
       <button class="eq-btn eq-btn--primary" onclick="novaCategoria()" style="width:auto;padding:8px 14px;">
         <span class="material-symbols-rounded" style="font-size:16px;">add</span>
         Nova categoria
       </button>
     </div>
+    ${totPend > 0 ? `
+      <div style="background:linear-gradient(135deg,rgba(245,158,11,0.1),rgba(245,158,11,0.04));border:1px solid rgba(245,158,11,0.3);border-radius:10px;padding:10px 14px;margin-bottom:12px;display:flex;align-items:center;gap:10px;">
+        <span class="material-symbols-rounded" style="font-size:20px;color:#B45309;">how_to_reg</span>
+        <div style="flex:1;font-size:12.5px;color:#92400E;line-height:1.45;">
+          <strong>${totPend} categoria${totPend === 1 ? '' : 's'} sugerida${totPend === 1 ? '' : 's'}</strong> por novos cadastros aguardam sua decisão. Revise abaixo.
+        </div>
+      </div>
+    ` : ''}
   `;
 
   if (cats.length === 0) {
@@ -45943,8 +46071,45 @@ function renderAbaCategorias(listEl, cats) {
   }
 
   const cards = cats.map(c => {
-    const desativada = !c.ativo;
+    const pendente = !!c.pendente_aprovacao;
+    const desativada = !c.ativo && !pendente;
     const vazia = c.total_profissionais === 0;
+
+    // Sprint 9.32.255: card pendente tem visual distinto + botões aprovar/rejeitar
+    if (pendente) {
+      return `
+        <div class="eq-card" style="border:1px solid rgba(245,158,11,0.4);background:rgba(254,243,199,0.18);">
+          <div class="eq-card__top">
+            <div class="eq-card__avatar" style="background:#F59E0B;">
+              <span class="material-symbols-rounded" style="font-size:22px;">how_to_reg</span>
+            </div>
+            <div class="eq-card__info">
+              <div class="eq-card__name">${c.nome.replace(/"/g,'&quot;')}</div>
+              <div class="eq-card__meta">
+                <span>${c.total_profissionais} ${c.total_profissionais === 1 ? 'cadastro aguardando' : 'cadastros aguardando'}</span>
+                <span>·</span>
+                <span class="badge" style="background:rgba(245,158,11,0.18);color:#B45309;"><span class="material-symbols-rounded" style="font-size:12px;">hourglass_top</span>Sugerida (pendente)</span>
+              </div>
+            </div>
+          </div>
+          <div class="eq-card__actions">
+            <button class="eq-btn eq-btn--secondary" onclick="renomearCategoria('${c.id}', '${c.nome.replace(/'/g,"\\'")}')">
+              <span class="material-symbols-rounded" style="font-size:16px;">edit</span>
+              Renomear
+            </button>
+            <button class="eq-btn eq-btn--danger-outline" onclick="rejeitarCategoriaSugerida('${c.id}', '${c.nome.replace(/'/g,"\\'")}')">
+              <span class="material-symbols-rounded" style="font-size:16px;">close</span>
+              Rejeitar
+            </button>
+            <button class="eq-btn eq-btn--primary" onclick="aprovarCategoriaSugerida('${c.id}', '${c.nome.replace(/'/g,"\\'")}')">
+              <span class="material-symbols-rounded" style="font-size:16px;">check</span>
+              Aprovar
+            </button>
+          </div>
+        </div>
+      `;
+    }
+
     return `
       <div class="eq-card" style="${desativada ? 'opacity:0.6;' : ''}">
         <div class="eq-card__top">
@@ -46006,6 +46171,210 @@ window.novaCategoria = async function() {
   } else {
     setFlash('success', 'Categoria criada.');
   }
+  recarregarEquipeUI();
+};
+
+// Sprint 9.32.256: modal customizado pra aprovar usuário com categoria pendente.
+// Resolve com { acao: 'aprovar' | 'trocar' | 'semCategoria', novaCategoriaId? } ou null se cancelar.
+async function abrirModalAprovarComCategoria(nomeUser, categoriaSugerida) {
+  // Carrega categorias ativas pra o dropdown da opção "trocar"
+  const categoriasAtivas = await listarCategoriasAtivas();
+
+  return new Promise((resolve) => {
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(10,31,92,0.45);backdrop-filter:blur(4px);z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px;';
+    overlay.innerHTML = `
+      <div style="background:#fff;border-radius:16px;width:100%;max-width:520px;box-shadow:0 20px 60px rgba(10,31,92,0.3);overflow:hidden;display:flex;flex-direction:column;max-height:90vh;">
+        <div style="padding:20px 24px;border-bottom:1px solid var(--neutral-100);display:flex;align-items:center;gap:12px;">
+          <div style="width:42px;height:42px;border-radius:10px;background:rgba(245,158,11,0.18);color:#B45309;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <span class="material-symbols-rounded" style="font-size:22px;">how_to_reg</span>
+          </div>
+          <div style="flex:1;">
+            <div style="font-family:'Poppins',sans-serif;font-weight:700;font-size:16px;color:var(--brand-navy);">Aprovar ${(nomeUser || '').replace(/</g,'&lt;')}</div>
+            <div style="font-size:12px;color:var(--neutral-600);margin-top:2px;line-height:1.4;">Esse cadastro veio com uma <strong>categoria sugerida</strong> ainda não oficial. O que fazer?</div>
+          </div>
+        </div>
+
+        <div style="padding:20px 24px;display:flex;flex-direction:column;gap:10px;overflow-y:auto;">
+          <!-- Opção 1: Aprovar a sugestão (com nome padronizável) -->
+          <label class="aac-opt" data-acao="aprovar" style="border:1px solid var(--neutral-200);border-radius:11px;padding:13px 14px;cursor:pointer;display:flex;gap:11px;align-items:flex-start;transition:all 120ms;">
+            <input type="radio" name="aacAcao" value="aprovar" checked style="margin-top:2px;flex-shrink:0;accent-color:var(--brand-navy);" />
+            <div style="flex:1;min-width:0;">
+              <div style="font-weight:700;color:var(--brand-navy);font-size:13px;">Aprovar a sugestão como categoria oficial</div>
+              <div style="font-size:11.5px;color:var(--neutral-600);margin-top:3px;line-height:1.4;">Pode padronizar a grafia/capitalização antes de aprovar — o user que sugeriu fica vinculado ao nome final.</div>
+              <input id="aacNomePadronizado" type="text" value="${(categoriaSugerida.nome || '').replace(/"/g,'&quot;')}" maxlength="60" placeholder="Nome da categoria"
+                     style="margin-top:8px;width:100%;height:36px;padding:0 12px;border:1px solid var(--neutral-200);border-radius:8px;font-family:inherit;font-size:13px;color:var(--brand-navy);background:#fff;" />
+            </div>
+          </label>
+
+          <!-- Opção 2: Trocar pra existente -->
+          <label class="aac-opt" data-acao="trocar" style="border:1px solid var(--neutral-200);border-radius:11px;padding:13px 14px;cursor:pointer;display:flex;gap:11px;align-items:flex-start;transition:all 120ms;">
+            <input type="radio" name="aacAcao" value="trocar" style="margin-top:2px;flex-shrink:0;accent-color:var(--brand-navy);" />
+            <div style="flex:1;min-width:0;">
+              <div style="font-weight:700;color:var(--brand-navy);font-size:13px;">Trocar pra uma categoria existente</div>
+              <div style="font-size:11.5px;color:var(--neutral-600);margin-top:3px;line-height:1.4;">A sugestão "<strong>${categoriaSugerida.nome.replace(/</g,'&lt;')}</strong>" é descartada. Útil se foi cliquinho errado ou erro de digitação.</div>
+              <select id="aacSelectCat" disabled style="margin-top:8px;width:100%;height:36px;padding:0 10px;border:1px solid var(--neutral-200);border-radius:8px;font-family:inherit;font-size:13px;color:var(--brand-navy);background:#fff;">
+                <option value="">Selecione uma categoria…</option>
+                ${categoriasAtivas.map(c => `<option value="${c.id}">${c.nome.replace(/"/g,'&quot;')}</option>`).join('')}
+              </select>
+            </div>
+          </label>
+
+          <!-- Opção 3: Sem categoria por enquanto -->
+          <label class="aac-opt" data-acao="semCategoria" style="border:1px solid var(--neutral-200);border-radius:11px;padding:13px 14px;cursor:pointer;display:flex;gap:11px;align-items:flex-start;transition:all 120ms;">
+            <input type="radio" name="aacAcao" value="semCategoria" style="margin-top:2px;flex-shrink:0;accent-color:var(--brand-navy);" />
+            <div style="flex:1;min-width:0;">
+              <div style="font-weight:700;color:var(--brand-navy);font-size:13px;">Aprovar sem categoria (decidir depois)</div>
+              <div style="font-size:11.5px;color:var(--neutral-600);margin-top:3px;line-height:1.4;">A sugestão é descartada. O usuário fica ativo sem categoria — você atribui depois usando o botão "Categoria" na lista de membros ativos.</div>
+            </div>
+          </label>
+        </div>
+
+        <div id="aacFlash" style="padding:0 24px;"></div>
+
+        <div style="padding:14px 24px 18px;display:flex;justify-content:flex-end;gap:8px;border-top:1px solid var(--neutral-100);">
+          <button id="aacBtnCancel" style="height:40px;padding:0 16px;border:1px solid var(--neutral-200);background:#fff;color:var(--neutral-700);border-radius:9999px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">Cancelar</button>
+          <button id="aacBtnOk" style="height:40px;padding:0 18px;border:0;background:var(--brand-navy);color:#fff;border-radius:9999px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px;">
+            <span class="material-symbols-rounded" style="font-size:16px;">check_circle</span>
+            Aprovar
+          </button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+
+    // Habilita/desabilita o select quando muda a opção
+    const select = overlay.querySelector('#aacSelectCat');
+    const radios = overlay.querySelectorAll('input[name="aacAcao"]');
+    const updateUi = () => {
+      const acao = overlay.querySelector('input[name="aacAcao"]:checked')?.value;
+      select.disabled = acao !== 'trocar';
+      // destaca a opção selecionada
+      overlay.querySelectorAll('.aac-opt').forEach(opt => {
+        const sel = opt.querySelector('input[name="aacAcao"]')?.checked;
+        opt.style.background = sel ? 'rgba(10,31,92,0.04)' : '';
+        opt.style.borderColor = sel ? 'var(--brand-navy)' : 'var(--neutral-200)';
+      });
+    };
+    radios.forEach(r => r.addEventListener('change', updateUi));
+    overlay.querySelectorAll('.aac-opt').forEach(opt => {
+      opt.addEventListener('click', (e) => {
+        if (e.target.tagName === 'SELECT' || e.target.tagName === 'OPTION') return;
+        const radio = opt.querySelector('input[name="aacAcao"]');
+        if (radio) { radio.checked = true; updateUi(); }
+      });
+    });
+    updateUi();
+
+    const cleanup = () => overlay.remove();
+    const showFlash = (msg) => {
+      overlay.querySelector('#aacFlash').innerHTML = `<div style="background:var(--status-danger-bg,#FEE2E2);color:#991B1B;padding:8px 12px;border-radius:8px;font-size:12px;margin:8px 0;">${msg}</div>`;
+    };
+    overlay.querySelector('#aacBtnCancel').onclick = () => { cleanup(); resolve(null); };
+    overlay.querySelector('#aacBtnOk').onclick = () => {
+      const acao = overlay.querySelector('input[name="aacAcao"]:checked')?.value;
+      if (acao === 'aprovar') {
+        // Sprint 9.32.258: admin pode padronizar a grafia da categoria antes de aprovar
+        const inputNome = overlay.querySelector('#aacNomePadronizado');
+        const novoNome = (inputNome?.value || '').trim();
+        if (novoNome.length < 3) {
+          showFlash('O nome da categoria precisa ter pelo menos 3 caracteres.');
+          inputNome?.focus();
+          return;
+        }
+        cleanup();
+        resolve({ acao, nomePadronizado: novoNome });
+      } else if (acao === 'trocar') {
+        const novaCategoriaId = select.value;
+        if (!novaCategoriaId) {
+          showFlash('Selecione uma categoria existente.');
+          return;
+        }
+        cleanup();
+        resolve({ acao, novaCategoriaId });
+      } else {
+        cleanup();
+        resolve({ acao });
+      }
+    };
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) { cleanup(); resolve(null); }
+    });
+  });
+}
+
+// Sprint 9.32.255: aprova categoria sugerida (vira ativa) + notifica os usuários vinculados
+window.aprovarCategoriaSugerida = async function(id, nome) {
+  const ok = await showModalConfirmacao({
+    icone: 'check_circle', iconeCor: 'success',
+    titulo: `Aprovar categoria "${nome}"?`,
+    subtitulo: `A categoria entra na lista oficial e fica disponível pra novos cadastros. Quem sugeriu também é notificado.`,
+    btnConfirmar: 'Aprovar',
+    btnCancelar: 'Cancelar',
+  });
+  if (!ok) return;
+
+  // 1. Aprova a categoria
+  const { error: errUpd } = await db.from('categorias_profissionais')
+    .update({ ativo: true, pendente_aprovacao: false })
+    .eq('id', id);
+  if (errUpd) { setFlash('error', 'Erro ao aprovar: ' + errUpd.message); return; }
+
+  // 2. Busca usuários vinculados a essa categoria pra notificar
+  try {
+    const { data: usuariosVinculados } = await db.from('usuarios')
+      .select('id, nome').eq('categoria_id', id);
+    const linhas = (usuariosVinculados || []).map(u => ({
+      user_id: u.id,
+      tipo: 'categoria_aprovada',
+      titulo: `Categoria "${nome}" aprovada`,
+      mensagem: `A categoria que você sugeriu foi aprovada pelo administrador.`,
+      link: '/inicio',
+      lida: false,
+    }));
+    if (linhas.length > 0) {
+      await db.from('notificacoes').insert(linhas).then(() => {}, () => {});
+    }
+  } catch (err) {
+    console.warn('[aprovarCategoriaSugerida] falha ao notificar:', err);
+  }
+
+  setFlash('success', `Categoria "${nome}" aprovada.`);
+  recarregarEquipeUI();
+};
+
+// Sprint 9.32.255: rejeita categoria sugerida — desvincula usuários e apaga categoria
+window.rejeitarCategoriaSugerida = async function(id, nome) {
+  // Conta usuários vinculados pra avisar
+  const { count: vinculados } = await db.from('usuarios')
+    .select('id', { count: 'exact', head: true }).eq('categoria_id', id);
+  const qtd = vinculados || 0;
+
+  const subtitulo = qtd > 0
+    ? `A categoria "${nome}" será apagada. ${qtd} ${qtd === 1 ? 'cadastro vinculado vai ficar' : 'cadastros vinculados vão ficar'} sem categoria — você precisará atribuir uma categoria nova ao aprovar o usuário.`
+    : `A categoria "${nome}" será apagada. Não há cadastros vinculados.`;
+
+  const ok = await showModalConfirmacao({
+    icone: 'do_not_disturb_on', iconeCor: 'danger',
+    titulo: `Rejeitar e apagar "${nome}"?`,
+    subtitulo,
+    btnConfirmar: 'Rejeitar',
+    btnCancelar: 'Cancelar',
+  });
+  if (!ok) return;
+
+  // 1. Desvincula usuários (categoria_id = NULL) — não apaga o cadastro deles
+  if (qtd > 0) {
+    const { error: errUnlink } = await db.from('usuarios')
+      .update({ categoria_id: null }).eq('categoria_id', id);
+    if (errUnlink) { setFlash('error', 'Erro ao desvincular usuários: ' + errUnlink.message); return; }
+  }
+
+  // 2. Apaga a categoria
+  const { error: errDel } = await db.from('categorias_profissionais').delete().eq('id', id);
+  if (errDel) { setFlash('error', 'Erro ao apagar categoria: ' + errDel.message); return; }
+
+  setFlash('success', `Categoria "${nome}" rejeitada e apagada.`);
   recarregarEquipeUI();
 };
 
@@ -46109,7 +46478,13 @@ function showModalInputTexto({ titulo, subtitulo = '', label, placeholder = '', 
 }
 
 function renderEquipeCard(u, filtro) {
-  const categoria = u.categorias_profissionais?.nome || '—';
+  const catNome = u.categorias_profissionais?.nome;
+  const catPendente = !!u.categorias_profissionais?.pendente_aprovacao;
+  // Sprint 9.32.256: badge "sugerida" quando categoria está pendente
+  const catBadge = catPendente
+    ? ' <span title="Categoria sugerida — aguarda aprovação" style="display:inline-flex;align-items:center;gap:3px;background:rgba(245,158,11,0.18);color:#B45309;font-size:10px;font-weight:700;padding:1px 6px;border-radius:9999px;text-transform:uppercase;margin-left:4px;"><span class="material-symbols-rounded" style="font-size:11px;">hourglass_top</span>Sugerida</span>'
+    : '';
+  const categoria = catNome ? (catNome.replace(/</g,'&lt;') + catBadge) : '—';
   const iniciais_ = (u.nome || '?').split(' ').filter(Boolean).slice(0, 2).map(s => s[0].toUpperCase()).join('');
   const dataCad = u.criado_em ? new Date(u.criado_em).toLocaleDateString('pt-BR') : '—';
   const ultimoLogin = u.ultimo_login ? new Date(u.ultimo_login).toLocaleDateString('pt-BR') : 'nunca';
@@ -46238,18 +46613,111 @@ async function recarregarEquipeUI() {
 }
 
 window.aprovarProfissional = async function(id) {
-  const ok = await showModalConfirmacao({
-    icone: 'check_circle', iconeCor: 'success',
-    titulo: 'Aprovar profissional?',
-    subtitulo: 'Ele poderá fazer login imediatamente e começar a registrar visitas.',
-    btnConfirmar: 'Aprovar',
-    btnCancelar: 'Cancelar',
-  });
-  if (!ok) return;
+  // Sprint 9.32.256: se a categoria do user é uma sugestão pendente, abre modal especial
+  // que permite aprovar a categoria, trocar pra existente ou aprovar sem categoria.
+  const { data: userInfo } = await db.from('usuarios')
+    .select('id, nome, categoria_id, categorias_profissionais(id, nome, pendente_aprovacao)')
+    .eq('id', id).maybeSingle();
+
+  let acaoCategoria = null; // null = não tem categoria pendente, segue fluxo normal
+  let novaCategoriaId = userInfo?.categoria_id || null;
+  let categoriaSugeridaInfo = null;
+
+  let nomePadronizado = null; // Sprint 9.32.258: opcional, usado quando admin padroniza o nome ao aprovar
+  if (userInfo?.categorias_profissionais?.pendente_aprovacao) {
+    categoriaSugeridaInfo = {
+      id: userInfo.categorias_profissionais.id,
+      nome: userInfo.categorias_profissionais.nome,
+    };
+    const escolha = await abrirModalAprovarComCategoria(userInfo.nome, categoriaSugeridaInfo);
+    if (!escolha) return; // usuário cancelou
+    acaoCategoria = escolha.acao; // 'aprovar', 'trocar', 'semCategoria'
+    if (escolha.acao === 'aprovar') {
+      nomePadronizado = escolha.nomePadronizado || categoriaSugeridaInfo.nome;
+    } else if (escolha.acao === 'trocar') {
+      novaCategoriaId = escolha.novaCategoriaId;
+    } else if (escolha.acao === 'semCategoria') {
+      novaCategoriaId = null;
+    }
+  } else {
+    // Fluxo padrão: confirmação simples
+    const ok = await showModalConfirmacao({
+      icone: 'check_circle', iconeCor: 'success',
+      titulo: 'Aprovar profissional?',
+      subtitulo: 'Ele poderá fazer login imediatamente e começar a registrar visitas.',
+      btnConfirmar: 'Aprovar',
+      btnCancelar: 'Cancelar',
+    });
+    if (!ok) return;
+  }
+
+  // Aplica decisão sobre a categoria sugerida (se houver)
+  if (acaoCategoria === 'aprovar' && categoriaSugeridaInfo) {
+    // Sprint 9.32.258: se admin padronizou o nome, verifica se conflita com categoria existente
+    const nomeFinal = (nomePadronizado || categoriaSugeridaInfo.nome).trim();
+    const nomeMudou = nomeFinal.toLowerCase() !== categoriaSugeridaInfo.nome.toLowerCase();
+
+    // Se o nome mudou, checa se já existe categoria com esse nome (case-insensitive)
+    if (nomeMudou) {
+      const { data: existente } = await db.from('categorias_profissionais')
+        .select('id, nome, ativo, pendente_aprovacao')
+        .ilike('nome', nomeFinal)
+        .neq('id', categoriaSugeridaInfo.id)
+        .maybeSingle();
+      if (existente) {
+        // Já existe — funde: aponta o user pra essa e descarta a sugerida
+        novaCategoriaId = existente.id;
+        // Garante que a existente está ativa (pode estar inativa ou pendente)
+        if (!existente.ativo || existente.pendente_aprovacao) {
+          await db.from('categorias_profissionais')
+            .update({ ativo: true, pendente_aprovacao: false })
+            .eq('id', existente.id).then(()=>{},()=>{});
+        }
+        // Descarta a sugerida (já garantimos que ninguém mais usa pq só esse user tava nela)
+        await db.from('categorias_profissionais').delete().eq('id', categoriaSugeridaInfo.id).then(()=>{},()=>{});
+        setFlash('info', `Categoria "${nomeFinal}" já existia — usuário foi vinculado a ela.`);
+      } else {
+        // Nome novo único — atualiza a sugerida com o nome padronizado
+        const { error: errCatAp } = await db.from('categorias_profissionais')
+          .update({ ativo: true, pendente_aprovacao: false, nome: nomeFinal })
+          .eq('id', categoriaSugeridaInfo.id);
+        if (errCatAp) { setFlash('error', 'Erro ao aprovar categoria: ' + errCatAp.message); return; }
+      }
+    } else {
+      // Nome igual — só aprova como antes
+      const { error: errCatAp } = await db.from('categorias_profissionais')
+        .update({ ativo: true, pendente_aprovacao: false })
+        .eq('id', categoriaSugeridaInfo.id);
+      if (errCatAp) { setFlash('error', 'Erro ao aprovar categoria: ' + errCatAp.message); return; }
+    }
+  } else if (acaoCategoria === 'trocar' && categoriaSugeridaInfo) {
+    // Apaga a categoria sugerida (foi descartada). Só apaga se ninguém mais usa.
+    const { count: usosCount } = await db.from('usuarios')
+      .select('id', { count: 'exact', head: true })
+      .eq('categoria_id', categoriaSugeridaInfo.id)
+      .neq('id', id);
+    if ((usosCount || 0) === 0) {
+      await db.from('categorias_profissionais').delete().eq('id', categoriaSugeridaInfo.id).then(()=>{},()=>{});
+    }
+  } else if (acaoCategoria === 'semCategoria' && categoriaSugeridaInfo) {
+    // Idem: apaga sugestão se ninguém mais usa
+    const { count: usosCount } = await db.from('usuarios')
+      .select('id', { count: 'exact', head: true })
+      .eq('categoria_id', categoriaSugeridaInfo.id)
+      .neq('id', id);
+    if ((usosCount || 0) === 0) {
+      await db.from('categorias_profissionais').delete().eq('id', categoriaSugeridaInfo.id).then(()=>{},()=>{});
+    }
+  }
+
   // 9.32.205: usa .select() pra recuperar email/nome e enviar e-mail "Cadastro aprovado"
+  // 9.32.256: também atualiza categoria_id se admin escolheu trocar/remover
+  const updatePayload = { status: 'ativo' };
+  if (acaoCategoria) updatePayload.categoria_id = novaCategoriaId;
+
   const { data: aprovado, error } = await db
     .from('usuarios')
-    .update({ status: 'ativo' })
+    .update(updatePayload)
     .eq('id', id)
     .select('id, email, nome')
     .single();
