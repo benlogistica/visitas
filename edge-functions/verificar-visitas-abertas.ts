@@ -32,6 +32,8 @@ const MIN_AVISO_2H = 120;   // 2 horas
 const MIN_AVISO_4H = 240;   // 4 horas
 const MIN_AVISO_6H = 360;   // 6 horas
 const MIN_AUTO_FECHAR = 390; // 6h30 — janela de 30min após o último aviso pra agir
+// Sprint 9.32.269: extensão do nutri (+2h) — quando concedida, o threshold de auto-fechar pula pra 8h30
+const MIN_AUTO_FECHAR_COM_EXTENSAO = 510; // 8h30
 
 const SITE_URL = "https://www.benlogistica.com.br";
 
@@ -61,11 +63,12 @@ Deno.serve(async (req) => {
   try {
     // 1. Busca todas as visitas com check-in SEM check-out
     //    Já vem com nome do nutri e nome da instituição pra usar nas mensagens
+    // Sprint 9.32.269: também traz extensao_concedida_em pra cálculo do threshold
     const { data: visitas, error: errSel } = await supabase
       .from("visitas")
       .select(`
         id, nutricionista_id, instituicao_id, checkin_timestamp,
-        aviso_2h_em, aviso_4h_em, aviso_6h_em,
+        aviso_2h_em, aviso_4h_em, aviso_6h_em, extensao_concedida_em,
         usuarios:nutricionista_id(id, nome, email),
         instituicoes(id, nome, cidade)
       `)
@@ -104,8 +107,9 @@ Deno.serve(async (req) => {
         const instNome = inst?.nome || "instituição";
         const linkVisita = `/visitas/${v.id}`;
 
-        // ===== AUTO-FECHAMENTO (>= 6h30) =====
-        if (minutosAberto >= MIN_AUTO_FECHAR) {
+        // ===== AUTO-FECHAMENTO (>= 6h30, ou >= 8h30 se extensão foi concedida) =====
+        const limiteAutoFechar = v.extensao_concedida_em ? MIN_AUTO_FECHAR_COM_EXTENSAO : MIN_AUTO_FECHAR;
+        if (minutosAberto >= limiteAutoFechar) {
           // Marca a visita como auto-fechada
           const { error: errUpd } = await supabase
             .from("visitas")

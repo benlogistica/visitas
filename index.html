@@ -5413,6 +5413,95 @@ a {
   to   { transform: rotate(360deg); }
 }
 
+/* Sprint 9.32.267: animação de entrada dos toasts de aviso na visita ativa */
+@keyframes checkAvisoPop {
+  from { opacity: 0; transform: translateY(-10px) scale(0.96); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Sprint 9.32.272: estilos da tela /admin/auto-fechamentos */
+.af-periodo-bar {
+  display: flex; gap: 6px; padding: 3px; background: var(--neutral-100); border-radius: 9999px;
+  margin-bottom: 14px; overflow-x: auto; scrollbar-width: none; width: fit-content;
+}
+.af-periodo-bar::-webkit-scrollbar { display: none; }
+.af-periodo-btn {
+  flex-shrink: 0; padding: 7px 14px; border: 0; background: transparent; color: var(--neutral-600);
+  border-radius: 9999px; font-size: 12.5px; font-weight: 600; cursor: pointer; font-family: inherit; white-space: nowrap;
+}
+.af-periodo-btn--active { background: var(--brand-navy); color: #fff; }
+.af-stats {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px;
+}
+.af-stats--desktop { grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 0; }
+.af-stat {
+  background: #fff; border: 1px solid var(--neutral-200); border-radius: 12px;
+  padding: 14px; display: flex; flex-direction: column; gap: 6px;
+}
+.af-stats--desktop .af-stat { padding: 16px 18px; }
+.af-stat__icon {
+  width: 32px; height: 32px; border-radius: 9px; display: flex; align-items: center; justify-content: center;
+}
+.af-stat__icon .material-symbols-rounded { font-size: 18px; }
+.af-stat__num {
+  font-family: var(--font-display); font-weight: 700; font-size: 26px; color: var(--brand-navy); line-height: 1;
+}
+.af-stats--desktop .af-stat__num { font-size: 32px; }
+.af-stat__label { font-size: 11.5px; color: var(--neutral-600); line-height: 1.3; }
+.af-rank__row {
+  display: flex; align-items: center; gap: 10px; padding: 8px 0;
+  border-bottom: 1px solid var(--neutral-100);
+}
+.af-rank__row:last-child { border-bottom: 0; }
+.af-rank__avatar {
+  width: 30px; height: 30px; border-radius: 50%; background: var(--brand-navy); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display); font-weight: 700; font-size: 11px; flex-shrink: 0;
+}
+.af-rank__info { flex: 1; min-width: 0; }
+.af-rank__nome { font-weight: 600; font-size: 13px; color: var(--brand-navy); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.af-rank__sub { font-size: 11px; color: var(--neutral-500); margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.af-rank__count {
+  background: var(--status-warning-bg, #FEF4E1); color: #92400E;
+  padding: 3px 10px; border-radius: 9999px; font-size: 11.5px; font-weight: 700; flex-shrink: 0;
+}
+.af-visita {
+  background: #fff; border: 1px solid var(--neutral-200); border-radius: 12px;
+  padding: 12px 14px; margin-bottom: 8px; display: flex; align-items: center; gap: 12px;
+}
+.af-visita__icon {
+  width: 36px; height: 36px; border-radius: 10px;
+  background: var(--status-warning-bg, #FEF4E1); color: #B45309;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.af-visita__icon .material-symbols-rounded { font-size: 19px; }
+.af-visita__body { flex: 1; min-width: 0; }
+.af-visita__top { display: flex; align-items: baseline; gap: 4px; flex-wrap: wrap; }
+.af-visita__nutri { font-weight: 700; color: var(--brand-navy); font-size: 13.5px; }
+.af-visita__hosp { color: var(--neutral-600); font-size: 12.5px; }
+.af-visita__meta {
+  font-size: 11px; color: var(--neutral-500); margin-top: 4px; display: flex;
+  flex-wrap: wrap; gap: 8px; font-family: var(--font-mono);
+}
+.af-visita__meta span {
+  display: inline-flex; align-items: center; gap: 3px;
+}
+.af-visita__actions { display: flex; gap: 6px; flex-shrink: 0; }
+@media (max-width: 600px) {
+  .af-visita { flex-wrap: wrap; }
+  .af-visita__actions { width: 100%; margin-top: 8px; }
+}
+.af-btn {
+  height: 32px; padding: 0 12px; border-radius: 8px; font-size: 11.5px; font-weight: 700;
+  cursor: pointer; font-family: inherit; display: inline-flex; align-items: center; gap: 4px;
+  border: 0; white-space: nowrap; text-decoration: none;
+}
+.af-btn .material-symbols-rounded { font-size: 14px; }
+.af-btn--primary { background: var(--brand-navy); color: #fff; }
+.af-btn--primary:hover { background: #142E7E; }
+.af-btn--secondary { background: var(--neutral-100); color: var(--brand-navy); }
+.af-btn--secondary:hover { background: var(--neutral-200); }
+
 /* Pulse de destaque pra item vindo de busca global (Sprint 8) */
 @keyframes buscaPulse {
   0%   { box-shadow: 0 0 0 0 rgba(245,158,11,0.45); background: #FEF4E1; }
@@ -7308,7 +7397,7 @@ a {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.265-modal-fecha-so-x-ou-cancelar',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.274-fix-dedupe-faturamento',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -10939,14 +11028,26 @@ const CheckinFlow = {
 };
 
 // Estado do timer (visita ativa)
+// Sprint 9.32.266: também rastreia visitaId pra polling de detecção de auto-fechamento
 const TimerState = {
   interval: null,
   startTime: null,
+  visitaId: null,         // ID da visita ativa
+  pollingInterval: null,  // checa de 30/30s se foi auto-fechada
 };
 
-function startTimer(startTime) {
+function startTimer(startTime, visitaId = null) {
   TimerState.startTime = new Date(startTime);
+  TimerState.visitaId = visitaId;
   if (TimerState.interval) clearInterval(TimerState.interval);
+  // Sprint 9.32.266: polling pra detectar auto-fechamento pelo backend (cron 6h30)
+  // Sprint 9.32.267: também busca avisos backend (visita_aviso_*) e mostra como toast
+  if (TimerState.pollingInterval) clearInterval(TimerState.pollingInterval);
+  if (visitaId) {
+    // Checagem imediata (não espera 30s pra primeira) — pra avisos preexistentes aparecerem rápido
+    setTimeout(() => verificarVisitaAindaAberta(visitaId), 800);
+    TimerState.pollingInterval = setInterval(() => verificarVisitaAindaAberta(visitaId), 30000);
+  }
   const tick = () => {
     const el = document.getElementById('timerValue');
     if (!el) {
@@ -11035,6 +11136,224 @@ function stopTimer() {
     clearInterval(TimerState.interval);
     TimerState.interval = null;
   }
+  // Sprint 9.32.266: para também o polling de auto-fechamento
+  if (TimerState.pollingInterval) {
+    clearInterval(TimerState.pollingInterval);
+    TimerState.pollingInterval = null;
+  }
+  TimerState.visitaId = null;
+}
+
+// Sprint 9.32.266: verifica periodicamente se a visita ainda está aberta no backend.
+// Se foi auto-fechada pelo cron (checkout_automatico=true), para o timer e mostra modal.
+// Sprint 9.32.267: também busca notificações backend (visita_aviso_2h/4h/6h_final) e renderiza
+// como toasts inline no topo do checkin ativo (já que o sininho fica inacessível durante visita).
+// Sprint 9.32.270: também detecta extensao_concedida_em e renderiza banner persistente.
+async function verificarVisitaAindaAberta(visitaId) {
+  if (!db || !visitaId) return;
+  try {
+    const { data, error } = await db.from('visitas')
+      .select('id, checkout_timestamp, checkout_automatico, status, extensao_concedida_em')
+      .eq('id', visitaId)
+      .maybeSingle();
+    if (error || !data) return;
+    // Foi auto-fechada → reage
+    if (data.checkout_automatico === true && data.checkout_timestamp) {
+      stopTimer();
+      mostrarModalVisitaAutoFechada(visitaId);
+      return;
+    }
+    // Sprint 9.32.270: visita está em modo estendido → mostra banner persistente
+    if (data.extensao_concedida_em) {
+      renderBannerExtensaoAtiva(data.extensao_concedida_em);
+    }
+    // Sprint 9.32.267: busca avisos backend não-lidos pra exibir como toast
+    const user = getCurrentUser();
+    if (!user) return;
+    const { data: notifs } = await db.from('notificacoes')
+      .select('id, tipo, titulo, mensagem, lida, criado_em')
+      .eq('user_id', user.id)
+      .eq('lida', false)
+      .in('tipo', ['visita_aviso_2h','visita_aviso_4h','visita_aviso_6h_final'])
+      .order('criado_em', { ascending: false })
+      .limit(3);
+    if (notifs && notifs.length > 0) {
+      renderToastsAvisoVisita(notifs);
+    }
+  } catch (e) {
+    console.warn('[verificarVisitaAindaAberta] falhou:', e);
+  }
+}
+
+// Sprint 9.32.270: banner persistente quando a visita está em modo estendido (+2h)
+function renderBannerExtensaoAtiva(concedidaEm) {
+  const cont = document.getElementById('checkinAtivoNotifs');
+  if (!cont) return;
+  // Se já tá renderizado, só atualiza
+  if (cont.querySelector('[data-banner-extensao]')) return;
+  const dt = concedidaEm ? new Date(concedidaEm) : null;
+  const horaConcedida = dt ? `${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}` : '';
+  const div = document.createElement('div');
+  div.setAttribute('data-banner-extensao', 'true');
+  div.style.cssText = 'background:linear-gradient(135deg,#D1FAE5 0%,#A7F3D0 100%);border:1px solid rgba(16,185,129,0.45);border-radius:14px;padding:12px 14px;display:flex;align-items:center;gap:10px;animation:checkAvisoPop 240ms ease-out;';
+  div.innerHTML = `
+    <div style="width:34px;height:34px;border-radius:10px;background:#10B981;color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+      <span class="material-symbols-rounded" style="font-size:19px;">verified</span>
+    </div>
+    <div style="flex:1;min-width:0;">
+      <div style="font-family:var(--font-display);font-weight:700;color:#065F46;font-size:13px;line-height:1.3;">Visita estendida +2h</div>
+      <div style="font-size:11.5px;color:#047857;margin-top:2px;line-height:1.4;">
+        Concedida${horaConcedida ? ' às ' + horaConcedida : ''}. Auto-fechamento agora só ocorre em 8h30 do check-in.
+      </div>
+    </div>
+  `;
+  // Insere no topo (antes dos toasts de aviso)
+  if (cont.firstChild) cont.insertBefore(div, cont.firstChild);
+  else cont.appendChild(div);
+}
+
+// Sprint 9.32.267: renderiza toasts de aviso na tela de visita ativa.
+// Idempotente: não duplica se já renderizou (controla por data-notif-id).
+function renderToastsAvisoVisita(notifs) {
+  const cont = document.getElementById('checkinAtivoNotifs');
+  if (!cont) return;
+  // Cores por tipo (gravidade crescente)
+  const palette = {
+    visita_aviso_2h:        { bg: 'linear-gradient(135deg,#FFFBEB 0%,#FEF3C7 100%)', border: 'rgba(217,119,6,0.35)', icon: 'schedule', iconBg: '#F59E0B', titleColor: '#78350F', textColor: '#92400E' },
+    visita_aviso_4h:        { bg: 'linear-gradient(135deg,#FFEDD5 0%,#FED7AA 100%)', border: 'rgba(234,88,12,0.45)', icon: 'warning', iconBg: '#EA580C', titleColor: '#7C2D12', textColor: '#9A3412' },
+    visita_aviso_6h_final:  { bg: 'linear-gradient(135deg,#FEE2E2 0%,#FECACA 100%)', border: 'rgba(220,38,38,0.50)', icon: 'priority_high', iconBg: '#DC2626', titleColor: '#7F1D1D', textColor: '#991B1B' },
+  };
+  notifs.forEach(n => {
+    // Já renderizou? não duplica
+    if (cont.querySelector(`[data-notif-id="${n.id}"]`)) return;
+    const p = palette[n.tipo] || palette.visita_aviso_2h;
+    const div = document.createElement('div');
+    div.setAttribute('data-notif-id', n.id);
+    div.style.cssText = `background:${p.bg};border:2px solid ${p.border};border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px;animation:checkAvisoPop 240ms ease-out;`;
+
+    // Sprint 9.32.269: no aviso de 6h, mostra também botão "Estender +2h"
+    const ehAvisoFinal = n.tipo === 'visita_aviso_6h_final';
+    const visitaIdAtual = TimerState?.visitaId || null;
+
+    div.innerHTML = `
+      <div style="display:flex;align-items:flex-start;gap:12px;">
+        <div style="width:38px;height:38px;border-radius:10px;background:${p.iconBg};color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <span class="material-symbols-rounded" style="font-size:21px;">${p.icon}</span>
+        </div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-family:var(--font-display);font-weight:700;color:${p.titleColor};font-size:14px;line-height:1.3;">${(n.titulo || 'Aviso').replace(/</g,'&lt;')}</div>
+          <div style="font-size:12.5px;color:${p.textColor};margin-top:4px;line-height:1.4;">${(n.mensagem || '').replace(/</g,'&lt;')}</div>
+        </div>
+        <button data-dismiss="${n.id}" aria-label="Dispensar" style="width:28px;height:28px;border:0;background:rgba(255,255,255,0.6);color:${p.titleColor};border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <span class="material-symbols-rounded" style="font-size:16px;">close</span>
+        </button>
+      </div>
+      ${ehAvisoFinal && visitaIdAtual ? `
+        <div style="display:flex;justify-content:flex-end;">
+          <button data-extender="${visitaIdAtual}" style="height:34px;padding:0 14px;border:0;background:#fff;color:${p.titleColor};border:1px solid ${p.border};border-radius:9999px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:5px;">
+            <span class="material-symbols-rounded" style="font-size:16px;">schedule_send</span>
+            Estender visita +2h
+          </button>
+        </div>
+      ` : ''}
+    `;
+    cont.appendChild(div);
+    div.querySelector(`button[data-dismiss="${n.id}"]`).onclick = () => dispensarToastAviso(n.id, div);
+    const btnExt = div.querySelector(`button[data-extender]`);
+    if (btnExt) btnExt.onclick = () => estenderVisitaMaisDuasHoras(visitaIdAtual, n.id, div);
+  });
+}
+
+// Sprint 9.32.269: concede +2h no threshold de auto-fechamento da visita ativa
+window.estenderVisitaMaisDuasHoras = async function(visitaId, notifId, toastEl) {
+  if (!visitaId) return;
+  // Verifica se já tem extensão concedida
+  try {
+    const { data: visita } = await db.from('visitas')
+      .select('id, extensao_concedida_em')
+      .eq('id', visitaId).maybeSingle();
+    if (visita?.extensao_concedida_em) {
+      setFlash('info', 'Esta visita já teve uma extensão concedida.');
+      return;
+    }
+    const { error } = await db.from('visitas')
+      .update({ extensao_concedida_em: new Date().toISOString() })
+      .eq('id', visitaId);
+    if (error) {
+      setFlash('error', 'Não foi possível estender: ' + error.message);
+      return;
+    }
+    setFlash('success', '+2h concedidas! Auto-fechamento agora só dispara em 8h30.');
+    // Sprint 9.32.270: renderiza o banner verde imediatamente (sem esperar 30s do polling)
+    renderBannerExtensaoAtiva(new Date().toISOString());
+    // Marca a notificação como lida + remove o toast
+    if (notifId && toastEl) {
+      dispensarToastAviso(notifId, toastEl);
+    }
+  } catch (e) {
+    console.warn('[estenderVisitaMaisDuasHoras]', e);
+    setFlash('error', 'Falha inesperada ao estender visita.');
+  }
+};
+
+// Sprint 9.32.267: marca notificação como lida no banco e remove o toast da tela
+async function dispensarToastAviso(notifId, elemento) {
+  if (!notifId || !elemento) return;
+  // Animação de saída
+  elemento.style.transition = 'opacity 200ms, transform 200ms';
+  elemento.style.opacity = '0';
+  elemento.style.transform = 'translateX(20px)';
+  setTimeout(() => elemento.remove(), 200);
+  // Marca lida no banco (não bloqueia se falhar)
+  try {
+    await db.from('notificacoes')
+      .update({ lida: true, lida_em: new Date().toISOString() })
+      .eq('id', notifId);
+  } catch (e) {
+    console.warn('[dispensarToastAviso] falhou marcar como lida:', e);
+  }
+}
+
+// Sprint 9.32.266: modal explicativo quando o sistema fechou a visita do user automaticamente
+function mostrarModalVisitaAutoFechada(visitaId) {
+  if (document.getElementById('modalVisitaAutoFechada')) return; // evita 2 modais
+  const overlay = document.createElement('div');
+  overlay.id = 'modalVisitaAutoFechada';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(10,31,92,0.55);backdrop-filter:blur(4px);z-index:10001;display:flex;align-items:center;justify-content:center;padding:20px;';
+  overlay.innerHTML = `
+    <div style="background:#fff;border-radius:16px;width:100%;max-width:440px;box-shadow:0 20px 60px rgba(10,31,92,0.4);overflow:hidden;display:flex;flex-direction:column;">
+      <div style="padding:22px 22px 14px;display:flex;align-items:flex-start;gap:14px;">
+        <div style="width:44px;height:44px;border-radius:11px;background:rgba(245,158,11,0.18);color:#B45309;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <span class="material-symbols-rounded" style="font-size:24px;">schedule</span>
+        </div>
+        <div style="flex:1;">
+          <div style="font-family:'Poppins',sans-serif;font-weight:700;font-size:16.5px;color:var(--brand-navy);">Visita encerrada automaticamente</div>
+          <div style="font-size:13px;color:var(--neutral-600);margin-top:6px;line-height:1.5;">
+            Sua visita ficou aberta por mais de 6h30 sem encerramento, então o sistema fechou ela como <strong>rascunho</strong>. Você pode revisar e editar quando quiser.
+          </div>
+        </div>
+      </div>
+      <div style="padding:0 22px 18px;display:flex;flex-direction:column;gap:8px;">
+        <button id="mvafBtnVer" style="width:100%;height:44px;border:0;background:var(--brand-navy);color:#fff;border-radius:10px;font-size:13.5px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;justify-content:center;gap:6px;">
+          <span class="material-symbols-rounded" style="font-size:18px;">edit_note</span>
+          Ver rascunho da visita
+        </button>
+        <button id="mvafBtnFechar" style="width:100%;height:40px;border:1px solid var(--neutral-200);background:#fff;color:var(--neutral-700);border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">
+          Fechar e ir pro início
+        </button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  const cleanup = () => overlay.remove();
+  overlay.querySelector('#mvafBtnVer').onclick = () => {
+    cleanup();
+    window.location.hash = `#/visitas/${visitaId}`;
+  };
+  overlay.querySelector('#mvafBtnFechar').onclick = () => {
+    cleanup();
+    window.location.hash = '#/inicio';
+  };
 }
 
 /* ==========================================================================
@@ -11077,6 +11396,7 @@ function desktopSidebar(activeId) {
     { id: 'institutions', href: '#/admin/instituicoes',   icon: 'local_hospital',  label: 'Instituições' },
     { id: 'professions',  href: '#/admin/profissionais',  icon: 'stethoscope',     label: 'Profissionais' },
     { id: 'visits',       href: '#/admin/visitas',        icon: 'location_on',     label: 'Todas as visitas' },
+    { id: 'auto_fechadas', href: '#/admin/auto-fechamentos', icon: 'auto_mode',      label: 'Auto-fechamentos' },
     { id: 'agenda',       href: '#/admin/agenda',         icon: 'calendar_month',  label: 'Agenda global' },
     { id: 'objectives',   href: '#/admin/objetivos',      icon: 'flag',            label: 'Objetivos' },
     { id: 'standardized', href: '#/admin/itens-padronizados', icon: 'inventory_2', label: 'Itens padronizados' },
@@ -13685,8 +14005,12 @@ async function renderDsdAcoesPendentes() {
     inicioHojeDt.setHours(0, 0, 0, 0);
     const inicioHojeIso = inicioHojeDt.toISOString();
 
+    // Sprint 9.32.268: também conta auto-fechadas dos últimos 7 dias
+    const inicio7DiasIso = new Date(Date.now() - 7 * 86400000).toISOString();
+
     const [instPend, objPend, eqCnts, reabPend, revRes,
-           usuariosHojeRes, revHojeRes, visConcluidasHojeRes, visAndamentoRes] = await Promise.all([
+           usuariosHojeRes, revHojeRes, visConcluidasHojeRes, visAndamentoRes,
+           autoFechadas7dRes] = await Promise.all([
       listarInstituicoesPendentes().catch(() => []),
       listarObjetivosPendentes().catch(() => []),
       contarUsuariosPorStatus().catch(() => ({ pendentes: 0 })),
@@ -13709,6 +14033,10 @@ async function renderDsdAcoesPendentes() {
       // Sprint 9.32.248: visitas em andamento agora (checkin hoje, sem checkout)
       db.from('visitas').select('id', { count: 'exact', head: true })
         .gte('checkin_timestamp', inicioHojeIso).is('checkout_timestamp', null).then(r => r, () => ({ count: 0 })),
+      // Sprint 9.32.268: visitas auto-fechadas pelo sistema nos últimos 7 dias
+      db.from('visitas').select('id', { count: 'exact', head: true })
+        .eq('checkout_automatico', true)
+        .gte('auto_checkout_em', inicio7DiasIso).then(r => r, () => ({ count: 0 })),
     ]);
 
     const revisaoCount = revRes?.count || 0;
@@ -13723,7 +14051,9 @@ async function renderDsdAcoesPendentes() {
     const reabPendHoje = reabPend.filter(x => x.solicitado_em && x.solicitado_em >= inicioHojeIso).length;
     const totalNovoHoje = revHojeCount + instPendHoje + objPendHoje + usuariosHojeCount + reabPendHoje;
 
-    const totalPend = revisaoCount + instPend.length + objPend.length + eqCnts.pendentes + reabPend.length;
+    // Sprint 9.32.268: inclui auto-fechadas dos últimos 7 dias no contador total
+    const autoFechadas7dCount = autoFechadas7dRes?.count || 0;
+    const totalPend = revisaoCount + instPend.length + objPend.length + eqCnts.pendentes + reabPend.length + autoFechadas7dCount;
     if (countEl) countEl.textContent = String(totalPend);
 
     // Sprint 9.32.248: chip "+N hoje" no header (some quando não há novidade)
@@ -13822,6 +14152,18 @@ async function renderDsdAcoesPendentes() {
         cta: 'Ver solicitações',
         href: '#/admin/revisao',
         novo: reabPendHoje,
+      });
+    }
+    // Sprint 9.32.268: visitas auto-fechadas pelo sistema (últimos 7 dias)
+    const autoFechadas7d = autoFechadas7dRes?.count || 0;
+    if (autoFechadas7d > 0) {
+      cards.push({
+        tint: 'var(--status-warning)', tintBg: 'var(--status-warning-bg,#FEF4E1)', icon: 'auto_mode',
+        title: `${autoFechadas7d} visita${autoFechadas7d === 1 ? '' : 's'} auto-fechada${autoFechadas7d === 1 ? '' : 's'}`,
+        sub: 'Sistema fechou por inatividade · últimos 7 dias',
+        cta: 'Ver visitas',
+        href: '#/admin/visitas?auto_fechadas=true',
+        novo: 0,
       });
     }
 
@@ -15833,12 +16175,18 @@ function renderAdminVisitasDesktop() {
       profissional_id: window._routeParams?.profissional_id || 'todos',
       instituicao_id: window._routeParams?.instituicao_id || 'todos',
       gps: window._routeParams?.gps || 'todos',
+      // Sprint 9.32.268: filtro pra ver só visitas auto-fechadas pelo sistema
+      auto_fechadas: window._routeParams?.auto_fechadas === 'true' || window._routeParams?.auto_fechadas === true,
       busca: '',
     };
   }
   // Se veio da URL, respeita
   if (window._routeParams?.periodo) window._visitasDesktopState.periodo = window._routeParams.periodo;
   if (window._routeParams?.status) window._visitasDesktopState.status = window._routeParams.status;
+  // Sprint 9.32.268: respeita ?auto_fechadas=true vindo de outras telas (ex: link do dashboard)
+  if (window._routeParams?.auto_fechadas !== undefined) {
+    window._visitasDesktopState.auto_fechadas = window._routeParams.auto_fechadas === 'true' || window._routeParams.auto_fechadas === true;
+  }
 
   setTimeout(() => {
     atualizarBadgesSidebarDesktop();
@@ -15908,6 +16256,15 @@ function renderAdminVisitasDesktop() {
         </div>
 
         <button onclick="limparFiltrosVisitasDesktop()" style="height:38px;background:transparent;border:0;color:var(--neutral-500);font-size:12.5px;font-weight:600;font-family:inherit;cursor:pointer;text-decoration:underline;text-underline-offset:3px;padding:0 8px;">Limpar filtros</button>
+      </div>
+
+      <!-- Sprint 9.32.268: chip toggle "Apenas auto-fechadas" -->
+      <div>
+        <button id="dsdVstAutoFechadasChip" onclick="toggleAutoFechadasDesktop()"
+                style="height:34px;padding:0 14px;border:1px solid ${s.auto_fechadas ? 'var(--status-warning)' : 'var(--neutral-200)'};background:${s.auto_fechadas ? 'rgba(245,158,11,0.12)' : '#fff'};color:${s.auto_fechadas ? '#92400E' : 'var(--neutral-600)'};border-radius:9999px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px;transition:all 120ms;">
+          <span class="material-symbols-rounded" style="font-size:16px;">${s.auto_fechadas ? 'check_circle' : 'auto_mode'}</span>
+          ${s.auto_fechadas ? 'Mostrando só auto-fechadas' : 'Mostrar só auto-fechadas'}
+        </button>
       </div>
 
       <!-- Busca + Export + Contador -->
@@ -16013,6 +16370,9 @@ async function carregarListaVisitasDesktop() {
   else if (f.gps === 'problema') query = query.or('flag_gps_divergente.eq.true,checkin_manual.eq.true');
   else if (f.gps === 'divergente') query = query.eq('flag_gps_divergente', true);
   else if (f.gps === 'manual') query = query.eq('checkin_manual', true);
+
+  // Sprint 9.32.268: filtro de visitas auto-fechadas pelo sistema (cron 6h30)
+  if (f.auto_fechadas) query = query.eq('checkout_automatico', true);
 
   query = query.order('checkin_timestamp', { ascending: false, nullsFirst: false }).limit(500);
 
@@ -16177,11 +16537,19 @@ window.trocarFiltroVisitasDesktop = function(campo, valor) {
   carregarListaVisitasDesktop();
 };
 
+// Sprint 9.32.268: liga/desliga filtro de auto-fechadas
+window.toggleAutoFechadasDesktop = function() {
+  window._visitasDesktopState.auto_fechadas = !window._visitasDesktopState.auto_fechadas;
+  // Re-renderiza a tela inteira (precisa refletir o estado visual do chip)
+  if (typeof router === 'function') router();
+};
+
 window.limparFiltrosVisitasDesktop = function() {
   window._visitasDesktopState.status = 'todos';
   window._visitasDesktopState.profissional_id = 'todos';
   window._visitasDesktopState.instituicao_id = 'todos';
   window._visitasDesktopState.gps = 'todos';
+  window._visitasDesktopState.auto_fechadas = false;
   window._visitasDesktopState.busca = '';
   // Reseta UI
   ['dsdVstStatus','dsdVstProf','dsdVstInst','dsdVstGps'].forEach(id => {
@@ -16222,6 +16590,332 @@ window.exportarVisitasCsvDesktop = function() {
   baixarCsv(`visitas-${new Date().toISOString().substring(0, 10)}.csv`, header, rows);
   setFlash('success', 'CSV baixado.');
 };
+
+// =============================================================================
+// Sprint 9.32.272: Tela dedicada /admin/auto-fechamentos
+// =============================================================================
+// Estado compartilhado entre mobile/desktop
+function _initAutoFechState() {
+  if (!window._autoFechState) {
+    window._autoFechState = {
+      periodo: '30', // '7' | '30' | 'mes' | 'all'
+    };
+  }
+}
+
+// Calcula data início baseada no período
+function _autoFechDataInicio(periodo) {
+  const agora = new Date();
+  if (periodo === '7') return new Date(agora.getTime() - 7*86400000).toISOString();
+  if (periodo === '30') return new Date(agora.getTime() - 30*86400000).toISOString();
+  if (periodo === 'mes') {
+    const d = new Date(agora.getFullYear(), agora.getMonth(), 1);
+    return d.toISOString();
+  }
+  return null; // 'all'
+}
+
+// Carrega dados (stats + ranking + lista) e popula a UI
+async function carregarAutoFechamentos() {
+  if (!db) return;
+  _initAutoFechState();
+  const dataInicio = _autoFechDataInicio(window._autoFechState.periodo);
+
+  // Query base: visitas auto-fechadas no período
+  let query = db.from('visitas')
+    .select(`
+      id, checkin_timestamp, checkout_timestamp, auto_checkout_em,
+      nutricionista_id, instituicao_id, status,
+      usuarios:nutricionista_id(id, nome, foto_url),
+      instituicoes(id, nome, cidade)
+    `)
+    .eq('checkout_automatico', true)
+    .order('auto_checkout_em', { ascending: false, nullsFirst: false });
+  if (dataInicio) query = query.gte('auto_checkout_em', dataInicio);
+
+  const { data, error } = await query;
+  if (error) {
+    const el = document.getElementById('afContent');
+    if (el) el.innerHTML = `<div style="padding:20px;background:var(--status-danger-bg,#FCE8E8);color:var(--status-danger);border-radius:10px;">Erro: ${error.message}</div>`;
+    return;
+  }
+
+  const visitas = data || [];
+
+  // === STATS ===
+  const total = visitas.length;
+  const nutrisAfetados = new Set(visitas.map(v => v.nutricionista_id).filter(Boolean)).size;
+
+  // Conta visitas reabertas (status diferente de 'rascunho' indica que admin tomou ação)
+  // Nesse contexto, visitas que voltaram a ter status 'completa' / 'aprovada_pos_revisao' = reabertas
+  const reabertas = visitas.filter(v => v.status === 'completa' || v.status === 'aprovada_pos_revisao').length;
+
+  // Tempo médio aberto (em horas) — checkin → auto_checkout_em
+  let totalMin = 0, contMin = 0;
+  visitas.forEach(v => {
+    if (v.checkin_timestamp && v.auto_checkout_em) {
+      const min = (new Date(v.auto_checkout_em).getTime() - new Date(v.checkin_timestamp).getTime()) / 60000;
+      if (Number.isFinite(min) && min > 0) { totalMin += min; contMin++; }
+    }
+  });
+  const mediaMin = contMin > 0 ? totalMin / contMin : 0;
+  const mediaH = Math.floor(mediaMin / 60);
+  const mediaM = Math.round(mediaMin % 60);
+  const tempoMedio = contMin > 0 ? `${mediaH}h${String(mediaM).padStart(2,'0')}` : '—';
+
+  // Total de nutris ativos pra mostrar "X de Y"
+  let totalNutris = 0;
+  try {
+    const { count } = await db.from('usuarios').select('*', { count: 'exact', head: true })
+      .eq('perfil', 'nutricionista').eq('status', 'ativo');
+    totalNutris = count || 0;
+  } catch (e) { /* silent */ }
+
+  // === RANKING (quem mais esquece) ===
+  const ranking = {};
+  visitas.forEach(v => {
+    const nid = v.nutricionista_id;
+    if (!nid) return;
+    if (!ranking[nid]) ranking[nid] = { id: nid, nome: v.usuarios?.nome || 'Profissional', foto: v.usuarios?.foto_url, count: 0, hospitais: new Set() };
+    ranking[nid].count++;
+    if (v.instituicoes?.nome) ranking[nid].hospitais.add(v.instituicoes.nome);
+  });
+  const rankingArr = Object.values(ranking).sort((a, b) => b.count - a.count).slice(0, 5);
+
+  // === Renderiza ===
+  const taxaReabertura = total > 0 ? Math.round((reabertas / total) * 100) : 0;
+
+  const statsHtml = `
+    <div class="af-stat">
+      <div class="af-stat__icon" style="background:var(--status-warning-bg,#FEF4E1);color:#B45309;">
+        <span class="material-symbols-rounded">auto_mode</span>
+      </div>
+      <div class="af-stat__num">${total}</div>
+      <div class="af-stat__label">Auto-fechadas no período</div>
+    </div>
+    <div class="af-stat">
+      <div class="af-stat__icon" style="background:var(--status-info-bg,#E4ECFD);color:var(--status-info);">
+        <span class="material-symbols-rounded">groups</span>
+      </div>
+      <div class="af-stat__num">${nutrisAfetados}</div>
+      <div class="af-stat__label">Nutris afetados${totalNutris ? ` (de ${totalNutris} ativos)` : ''}</div>
+    </div>
+    <div class="af-stat">
+      <div class="af-stat__icon" style="background:rgba(139,198,63,0.18);color:var(--brand-lime-2,#6CA022);">
+        <span class="material-symbols-rounded">restart_alt</span>
+      </div>
+      <div class="af-stat__num">${reabertas}</div>
+      <div class="af-stat__label">Reabertas pelo admin${total > 0 ? ` · ${taxaReabertura}%` : ''}</div>
+    </div>
+    <div class="af-stat">
+      <div class="af-stat__icon" style="background:rgba(10,31,92,0.08);color:var(--brand-navy);">
+        <span class="material-symbols-rounded">schedule</span>
+      </div>
+      <div class="af-stat__num">${tempoMedio}</div>
+      <div class="af-stat__label">Tempo médio aberto</div>
+    </div>
+  `;
+
+  // === Ranking HTML ===
+  const rankingHtml = rankingArr.length === 0
+    ? `<div style="padding:18px;text-align:center;color:var(--neutral-500);font-size:12.5px;">Nenhum esquecimento no período 🎉</div>`
+    : rankingArr.map(r => {
+        const inits = (r.nome || '?').split(' ').filter(Boolean).slice(0, 2).map(s => s[0].toUpperCase()).join('');
+        const avatar = r.foto
+          ? `<div class="af-rank__avatar" style="background-image:url('${r.foto}');background-size:cover;background-position:center;color:transparent;">${inits}</div>`
+          : `<div class="af-rank__avatar">${inits}</div>`;
+        const hosps = Array.from(r.hospitais).slice(0, 2).join(' · ') || '—';
+        return `
+          <div class="af-rank__row">
+            ${avatar}
+            <div class="af-rank__info">
+              <div class="af-rank__nome">${(r.nome || '').replace(/</g,'&lt;')}</div>
+              <div class="af-rank__sub">${hosps.replace(/</g,'&lt;')}</div>
+            </div>
+            <div class="af-rank__count">${r.count}</div>
+          </div>
+        `;
+      }).join('');
+
+  // === Lista de visitas ===
+  const listaHtml = visitas.length === 0
+    ? `<div style="padding:40px;text-align:center;color:var(--neutral-500);font-size:13px;background:#fff;border-radius:12px;">
+         <span class="material-symbols-rounded" style="font-size:32px;color:var(--neutral-300);display:block;margin-bottom:6px;">verified</span>
+         Nenhuma visita auto-fechada no período. Bom sinal!
+       </div>`
+    : visitas.slice(0, 50).map(v => {
+        const nutriNome = v.usuarios?.nome || 'Profissional';
+        const instNome = v.instituicoes?.nome || 'Instituição';
+        const instCidade = v.instituicoes?.cidade || '';
+        const ckIn = v.checkin_timestamp ? new Date(v.checkin_timestamp) : null;
+        const autoEm = v.auto_checkout_em ? new Date(v.auto_checkout_em) : null;
+        const dataIn = ckIn ? formatarTempoRelativo(v.checkin_timestamp) + ' ' + String(ckIn.getHours()).padStart(2,'0') + ':' + String(ckIn.getMinutes()).padStart(2,'0') : '—';
+        const horaAuto = autoEm ? String(autoEm.getHours()).padStart(2,'0') + ':' + String(autoEm.getMinutes()).padStart(2,'0') : '—';
+        const durMin = (ckIn && autoEm) ? Math.round((autoEm.getTime() - ckIn.getTime()) / 60000) : null;
+        const durStr = durMin !== null ? Math.floor(durMin/60) + 'h' + String(durMin%60).padStart(2,'0') : '—';
+        const reaberta = v.status === 'completa' || v.status === 'aprovada_pos_revisao';
+
+        return `
+          <div class="af-visita">
+            <div class="af-visita__icon"><span class="material-symbols-rounded">auto_mode</span></div>
+            <div class="af-visita__body">
+              <div class="af-visita__top">
+                <span class="af-visita__nutri">${nutriNome.replace(/</g,'&lt;')}</span>
+                <span class="af-visita__hosp"> · ${instNome.replace(/</g,'&lt;')}${instCidade ? ', ' + instCidade.replace(/</g,'&lt;') : ''}</span>
+              </div>
+              <div class="af-visita__meta">
+                <span><span class="material-symbols-rounded" style="font-size:13px;">login</span>Check-in ${dataIn}</span>
+                <span><span class="material-symbols-rounded" style="font-size:13px;">logout</span>Auto-fech. ${horaAuto}</span>
+                <span><span class="material-symbols-rounded" style="font-size:13px;">timelapse</span>${durStr}</span>
+                ${reaberta ? `<span style="color:var(--brand-lime-2,#6CA022);font-weight:700;"><span class="material-symbols-rounded" style="font-size:13px;">check_circle</span>Reaberta</span>` : ''}
+              </div>
+            </div>
+            <div class="af-visita__actions">
+              ${reaberta
+                ? `<button class="af-btn af-btn--secondary" disabled style="opacity:0.6;cursor:not-allowed;">Já reaberta</button>`
+                : `<button class="af-btn af-btn--primary" onclick="reabrirVisitaAutoFechada('${v.id}')"><span class="material-symbols-rounded">restart_alt</span>Reabrir</button>`}
+              <a href="#/admin/revisao/detalhe?id=${v.id}" class="af-btn af-btn--secondary">Ver detalhe</a>
+            </div>
+          </div>
+        `;
+      }).join('') + (visitas.length > 50 ? `<div style="text-align:center;padding:12px;color:var(--neutral-500);font-size:12px;">Mostrando 50 de ${visitas.length}. Refine o período pra ver mais.</div>` : '');
+
+  // Atualiza DOM
+  const elStats = document.getElementById('afStats'); if (elStats) elStats.innerHTML = statsHtml;
+  const elRank = document.getElementById('afRanking'); if (elRank) elRank.innerHTML = rankingHtml;
+  const elLista = document.getElementById('afLista'); if (elLista) elLista.innerHTML = listaHtml;
+  const elCount = document.getElementById('afListaCount'); if (elCount) elCount.textContent = total === 1 ? '1 visita' : `${total} visitas`;
+}
+
+// Troca período do filtro
+window.trocarPeriodoAutoFech = function(periodo) {
+  _initAutoFechState();
+  window._autoFechState.periodo = periodo;
+  // Atualiza UI dos botões
+  document.querySelectorAll('[data-af-periodo]').forEach(btn => {
+    btn.classList.toggle('af-periodo-btn--active', btn.dataset.afPeriodo === periodo);
+  });
+  carregarAutoFechamentos();
+};
+
+// Reabre uma visita auto-fechada — admin pode ajustar checkout depois
+window.reabrirVisitaAutoFechada = async function(visitaId) {
+  if (!visitaId) return;
+  const ok = await showModalConfirmacao({
+    icone: 'restart_alt', iconeCor: 'success',
+    titulo: 'Reabrir visita?',
+    subtitulo: 'O checkout automático será removido e a visita volta como rascunho aberto. O nutri pode finalizar manualmente, ou você pode ajustar os horários no detalhe.',
+    btnConfirmar: 'Reabrir',
+    btnCancelar: 'Cancelar',
+  });
+  if (!ok) return;
+  const { error } = await db.from('visitas')
+    .update({
+      checkout_timestamp: null,
+      checkout_automatico: false,
+      auto_checkout_em: null,
+      status: 'rascunho',
+    })
+    .eq('id', visitaId);
+  if (error) { setFlash('error', 'Erro ao reabrir: ' + error.message); return; }
+  setFlash('success', 'Visita reaberta.');
+  carregarAutoFechamentos();
+};
+
+// MOBILE renderer
+function renderAdminAutoFechamentos() {
+  const user = requireAdmin();
+  if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
+  _initAutoFechState();
+  setTimeout(() => carregarAutoFechamentos(), 0);
+  const s = window._autoFechState;
+  return `
+    <div class="mobile-app">
+      ${mobileTopBar({ title: 'Auto-fechamentos', showBack: true })}
+      <main class="mcontent">
+        <div style="margin-bottom:14px;">
+          <div style="font-family:var(--font-display);font-weight:700;font-size:20px;color:var(--brand-navy);line-height:1.15;">Auto-fechamentos</div>
+          <div style="font-size:12.5px;color:var(--neutral-600);margin-top:3px;">Visitas fechadas pelo sistema por inatividade.</div>
+        </div>
+        <div class="af-periodo-bar">
+          ${['7','30','mes','all'].map(p => `
+            <button data-af-periodo="${p}" onclick="trocarPeriodoAutoFech('${p}')" class="af-periodo-btn ${s.periodo === p ? 'af-periodo-btn--active' : ''}">${p === '7' ? '7 dias' : p === '30' ? '30 dias' : p === 'mes' ? 'Este mês' : 'Tudo'}</button>
+          `).join('')}
+        </div>
+        <div id="afStats" class="af-stats">
+          <div style="grid-column:span 2;padding:30px;text-align:center;color:var(--neutral-400);font-size:12px;">Carregando…</div>
+        </div>
+        <div id="afContent">
+          <div style="background:#fff;border:1px solid var(--neutral-200);border-radius:12px;padding:14px;margin-bottom:14px;">
+            <div style="font-family:var(--font-display);font-weight:700;font-size:14px;color:var(--brand-navy);display:inline-flex;align-items:center;gap:6px;margin-bottom:10px;">
+              <span class="material-symbols-rounded" style="font-size:16px;color:var(--status-warning);">person_alert</span>Quem mais esquece
+            </div>
+            <div id="afRanking">
+              <div style="padding:18px;text-align:center;color:var(--neutral-400);font-size:12px;">Carregando…</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+            <div style="font-family:var(--font-display);font-weight:700;font-size:14px;color:var(--brand-navy);">Lista detalhada</div>
+            <div id="afListaCount" style="font-size:11.5px;color:var(--neutral-500);">—</div>
+          </div>
+          <div id="afLista">
+            <div style="padding:30px;text-align:center;color:var(--neutral-400);font-size:12px;">Carregando…</div>
+          </div>
+        </div>
+      </main>
+    </div>
+  `;
+}
+
+// DESKTOP renderer
+function renderAdminAutoFechamentosDesktop() {
+  const user = requireAdmin();
+  if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
+  _initAutoFechState();
+  setTimeout(() => carregarAutoFechamentos(), 0);
+  const s = window._autoFechState;
+  const titleExtra = `
+    <div class="af-periodo-bar" style="margin-bottom:0;">
+      ${['7','30','mes','all'].map(p => `
+        <button data-af-periodo="${p}" onclick="trocarPeriodoAutoFech('${p}')" class="af-periodo-btn ${s.periodo === p ? 'af-periodo-btn--active' : ''}">${p === '7' ? '7 dias' : p === '30' ? '30 dias' : p === 'mes' ? 'Este mês' : 'Tudo'}</button>
+      `).join('')}
+    </div>
+  `;
+  const content = `
+    <div style="margin-bottom:14px;">
+      <div style="font-size:13.5px;color:var(--neutral-600);line-height:1.55;">Visitas fechadas automaticamente pelo sistema por inatividade (mais de 6h30 sem checkout, ou 8h30 com extensão).</div>
+    </div>
+    <div id="afStats" class="af-stats af-stats--desktop">
+      <div style="grid-column:span 4;padding:40px;text-align:center;color:var(--neutral-400);font-size:13px;background:#fff;border-radius:12px;">Carregando…</div>
+    </div>
+    <div id="afContent" style="display:grid;grid-template-columns:1fr 2fr;gap:18px;align-items:start;margin-top:18px;">
+      <div style="background:#fff;border:1px solid var(--neutral-200);border-radius:12px;padding:16px;">
+        <div style="font-family:var(--font-display);font-weight:700;font-size:14px;color:var(--brand-navy);display:inline-flex;align-items:center;gap:6px;margin-bottom:10px;">
+          <span class="material-symbols-rounded" style="font-size:16px;color:var(--status-warning);">person_alert</span>Quem mais esquece
+        </div>
+        <div id="afRanking">
+          <div style="padding:18px;text-align:center;color:var(--neutral-400);font-size:12px;">Carregando…</div>
+        </div>
+      </div>
+      <div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+          <div style="font-family:var(--font-display);font-weight:700;font-size:14px;color:var(--brand-navy);">Lista cronológica</div>
+          <div id="afListaCount" style="font-size:12px;color:var(--neutral-500);">—</div>
+        </div>
+        <div id="afLista">
+          <div style="padding:30px;text-align:center;color:var(--neutral-400);font-size:12px;">Carregando…</div>
+        </div>
+      </div>
+    </div>
+  `;
+  return desktopShell({
+    title: 'Auto-fechamentos',
+    breadcrumb: ['Admin', 'Operação', 'Auto-fechamentos'],
+    titleExtra,
+    content,
+    activeId: 'auto_fechadas',
+  });
+}
 
 // Sprint 9.17 (Parte 9): Objetivos desktop
 // Layout: abas Ativos/Pendentes/Arquivados + tabela com ações por aba
@@ -18137,6 +18831,8 @@ const routes = {
   '#/admin/revisao':{ title: 'Revisão', icon: 'rule', render: renderAdminRevisao },
   '#/admin/revisao/detalhe':{ title: 'Detalhes da visita', icon: 'rule', render: renderAdminRevisaoDetalhe },
   '#/admin/visitas': { title: 'Todas as visitas', icon: 'list_alt', render: renderAdminVisitas },
+  // Sprint 9.32.272: tela dedicada de auto-fechamentos
+  '#/admin/auto-fechamentos': { title: 'Auto-fechamentos', icon: 'auto_mode', render: renderAdminAutoFechamentos },
   '#/admin/equipe': { title: 'Equipe', icon: 'groups', render: renderAdminEquipe },
   '#/admin/instituicoes': { title: 'Instituições', icon: 'local_hospital', render: renderAdminInstituicoes },
   '#/admin/profissionais':{ title: 'Profissionais', icon: 'stethoscope', render: renderAdminProfissionais },
@@ -18172,6 +18868,7 @@ const DESKTOP_RENDERERS = {
   '#/admin/pendentes': renderAdminPendentesDesktop,
   '#/admin/profissionais': renderAdminProfissionaisDesktop,
   '#/admin/visitas': renderAdminVisitasDesktop,
+  '#/admin/auto-fechamentos': renderAdminAutoFechamentosDesktop, // Sprint 9.32.272
   '#/admin/objetivos': renderAdminObjetivosDesktop,
   '#/admin/agenda': renderAdminAgendaDesktop,
   '#/admin/configuracoes': renderAdminConfigDesktop,
@@ -22483,8 +23180,8 @@ function renderCheckinAtivo() {
       startEl.textContent = `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
     }
 
-    // Inicia timer
-    startTimer(visita.checkin_timestamp);
+    // Inicia timer (Sprint 9.32.266: passa visitaId pro polling de auto-fechamento)
+    startTimer(visita.checkin_timestamp, visita.id);
 
     // Guarda ID + dados da visita (Sprint 9.22.4: evita 2ª chamada Supabase no checkout)
     window._activeVisitaId = visita.id;
@@ -22501,6 +23198,8 @@ function renderCheckinAtivo() {
       <main class="mcontent mcontent--flex">
         <!-- Sprint 9.32.14: alerta gigante quando passa de 4h (preenchido pelo timer tick) -->
         <div id="checkinAtivoAlerta" style="display:none;margin-bottom:14px;"></div>
+        <!-- Sprint 9.32.267: toasts de notificações backend (visita_aviso_2h/4h/6h) -->
+        <div id="checkinAtivoNotifs" style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px;"></div>
 
         <div class="active-card">
           <div class="active-card__icon">
@@ -28663,7 +29362,7 @@ function renderAdminDashboard() {
 
   return `
     <div class="mobile-app">
-      ${mobileTopBar({ title: 'Dashboard', showNotification: true, showAvatar: true, showMenu: true })}
+      ${mobileTopBar({ showLogo: true, showNotification: true, showAvatar: true, showMenu: true })}
       <main class="mcontent dsd-mobile">
 
         <!-- Saudação (sprint 9.32.245: usa getSaudacao + hora atual) -->
@@ -29817,6 +30516,7 @@ function renderAdminDrawer() {
     { href: '#/admin/instituicoes',       icon: 'local_hospital', titulo: 'Instituições',       desc: 'Hospitais e clínicas cadastrados' },
     { href: '#/admin/profissionais',      icon: 'stethoscope',    titulo: 'Profissionais',      desc: 'Contatos nas instituições' },
     { href: '#/admin/visitas',            icon: 'location_on',    titulo: 'Todas as visitas',   desc: 'Histórico completo da equipe' },
+    { href: '#/admin/auto-fechamentos',   icon: 'auto_mode',      titulo: 'Auto-fechamentos',   desc: 'Visitas fechadas pelo sistema por inatividade' },
     { href: '#/admin/agenda',             icon: 'event_note',     titulo: 'Agenda da equipe',   desc: 'Ver e atribuir visitas agendadas' },
     { href: '#/admin/objetivos',          icon: 'flag',           titulo: 'Objetivos',          desc: 'Gerenciar lista de objetivos de visita' },
     { href: '#/admin/itens-padronizados', icon: 'inventory_2',    titulo: 'Itens padronizados', desc: 'Mapear concorrentes e converter vendas' },
@@ -30527,6 +31227,8 @@ function renderAdminVisitas() {
     profissional_id: window._routeParams?.profissional_id || 'todos',
     instituicao_id: window._routeParams?.instituicao_id || 'todos',
     gps: window._routeParams?.gps || 'todos',
+    // Sprint 9.32.268: filtro de auto-fechadas tb no mobile
+    auto_fechadas: window._routeParams?.auto_fechadas === 'true' || window._routeParams?.auto_fechadas === true,
   };
 
   setTimeout(async () => {
@@ -30736,6 +31438,9 @@ async function carregarListaVisitas() {
   } else if (f.gps === 'manual') {
     query = query.eq('checkin_manual', true);
   }
+
+  // Sprint 9.32.268: filtro de visitas auto-fechadas pelo sistema
+  if (f.auto_fechadas) query = query.eq('checkout_automatico', true);
 
   // Ordena do mais recente pro mais antigo
   query = query.order('checkin_timestamp', { ascending: false, nullsFirst: false });
@@ -34478,7 +35183,7 @@ window.rejeitarObjetivoPendente = async function(id) {
 let FAT_DATA = null;
 let _fatDataPromise = null;
 // __FAT_VERSION_START__ — substituído pelo atualizar_index.py com hash do JSON
-const FAT_DATA_VERSION = 'f93c09b677ac';
+const FAT_DATA_VERSION = '5d6f602115d3';
 // __FAT_VERSION_END__
 const FAT_DATA_URL = 'faturamento_data_inline.json?v=' + FAT_DATA_VERSION;
 
@@ -34675,7 +35380,10 @@ function _fatRenderInner() {
           <span class="material-symbols-rounded" style="font-size:17px;">undo</span>
           Devoluções
         </button>
-        <button id="fatTabConsignado" onclick="_fatTrocarAba('consignado')" style="padding:10px 18px;background:transparent;border:0;border-bottom:3px solid transparent;color:var(--neutral-500);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px;margin-bottom:-1.5px;transition:color 140ms;">
+        <!-- Sprint 9.32.273: aba Consignado escondida (provisório).
+             Pra reativar: tirar style="display:none;" abaixo.
+             Os dados e o código de _fatRenderConsignado continuam intactos. -->
+        <button id="fatTabConsignado" onclick="_fatTrocarAba('consignado')" style="display:none;padding:10px 18px;background:transparent;border:0;border-bottom:3px solid transparent;color:var(--neutral-500);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;align-items:center;gap:6px;margin-bottom:-1.5px;transition:color 140ms;">
           <span class="material-symbols-rounded" style="font-size:17px;">inventory</span>
           Consignado
           <span style="font-size:9px;background:#F59E0B;color:#fff;padding:2px 6px;border-radius:9999px;font-weight:700;letter-spacing:0.05em;">NEW</span>
@@ -39561,10 +40269,20 @@ function _fatRender() {
   const mensal = _fatFiltrarMensal();
 
   // KPIs ====
-  const fatTotal = mensal.reduce((s, m) => s + m.faturamento, 0);
+  // Sprint 9.32.273: faturamento agora inclui Vendas + Remessa(consignado), e o "líquido"
+  // desconta as devoluções pra bater com a totalização do BI (Power BI).
+  const fatVendas = mensal.reduce((s, m) => s + m.faturamento, 0);
   const qtdNotas = mensal.reduce((s, m) => s + m.qtd_notas, 0);
   const qtdItens = mensal.reduce((s, m) => s + m.qtd_itens, 0);
-  const ticketMedio = qtdNotas > 0 ? fatTotal / qtdNotas : 0;
+
+  // Soma consignado/remessa do mesmo período
+  const consignadoPeriodo = (FAT_DATA.consignado_mensal || [])
+    .filter(c => mensal.some(m => m.ano_mes === c.ano_mes))
+    .reduce((s, c) => s + (c.valor_consignado || 0), 0);
+
+  // fatBruto = vendas + remessa(consignado)
+  const fatBruto = fatVendas + consignadoPeriodo;
+  const ticketMedio = qtdNotas > 0 ? fatVendas / qtdNotas : 0; // ticket é só sobre vendas com nota
 
   // Calcula devoluções no mesmo período
   // Sprint 9.32.34: respeita filtro de cliente — usa cliente_devolucao_mes
@@ -39579,10 +40297,10 @@ function _fatRender() {
       .filter(d => mensal.some(m => m.ano_mes === d.ano_mes))
       .reduce((s, d) => s + d.valor_devolucao, 0);
   }
-  // Sprint 9.32.26: removido toggle "Abater devoluções" — faturamento é sempre bruto
-  // (devoluções têm aba dedicada com análises completas)
-  // Mantém variável fatLiquido = fatTotal pra evitar quebrar referências abaixo
-  const fatLiquido = fatTotal;
+  // Sprint 9.32.273: faturamento líquido = bruto − devoluções
+  const fatLiquido = fatBruto - devsPeriodo;
+  // Mantém alias antigo pra não quebrar refs eventuais
+  const fatTotal = fatLiquido;
 
   // YoY (compara primeiro mês do filtro vs mesmo mês ano anterior)
   let yoyHtml = '';
@@ -39604,10 +40322,13 @@ function _fatRender() {
     kpisEl.innerHTML = `
       <div style="background:linear-gradient(135deg,var(--brand-navy) 0%,#1E3A8A 100%);color:#fff;border-radius:12px;padding:14px 16px;">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;">
-          <div style="font-size:10.5px;font-weight:700;opacity:0.85;letter-spacing:0.06em;text-transform:uppercase;">Faturamento total</div>
-          <span title="Valores de Remessa de Produto (consignado) ficam na aba Consignado e não entram aqui." style="font-size:9px;font-weight:700;background:rgba(245,158,11,0.85);color:#fff;padding:2px 6px;border-radius:9999px;cursor:help;">VENDAS</span>
+          <div style="font-size:10.5px;font-weight:700;opacity:0.85;letter-spacing:0.06em;text-transform:uppercase;">Faturamento bruto</div>
+          <span title="Vendas + Remessa(consignado), antes de descontar devoluções." style="font-size:9px;font-weight:700;background:rgba(255,255,255,0.18);color:#fff;padding:2px 6px;border-radius:9999px;cursor:help;">BRUTO</span>
         </div>
-        <div style="font-family:var(--font-display);font-size:26px;font-weight:700;line-height:1.1;margin-top:3px;">${_fmtMoeda(fatLiquido, true)}</div>
+        <div style="font-family:var(--font-display);font-size:18px;font-weight:600;line-height:1.1;margin-top:3px;opacity:0.85;">${_fmtMoeda(fatBruto)}</div>
+        <div style="height:1px;background:rgba(255,255,255,0.18);margin:8px 0 6px;"></div>
+        <div style="font-size:10.5px;font-weight:700;opacity:0.85;letter-spacing:0.06em;text-transform:uppercase;">Líquido (após devoluções)</div>
+        <div style="font-family:var(--font-display);font-size:24px;font-weight:700;line-height:1.1;margin-top:2px;">${_fmtMoeda(fatLiquido)}</div>
         ${yoyHtml.replace('var(--status-success)', '#A7F3D0').replace('var(--status-danger)', '#FCA5A5')}
       </div>
       <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:12px;padding:14px 16px;">
@@ -39622,8 +40343,8 @@ function _fatRender() {
       </div>
       <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:12px;padding:14px 16px;">
         <div style="font-size:10.5px;color:var(--neutral-500);font-weight:700;letter-spacing:0.06em;text-transform:uppercase;">Devoluções</div>
-        <div style="font-family:var(--font-display);font-size:24px;font-weight:700;color:var(--status-danger);line-height:1.1;margin-top:3px;">${_fmtMoeda(devsPeriodo, true)}</div>
-        <div style="font-size:10.5px;color:var(--neutral-500);margin-top:3px;">${fatTotal > 0 ? ((devsPeriodo / fatTotal) * 100).toFixed(1) : '0'}% do faturamento</div>
+        <div style="font-family:var(--font-display);font-size:24px;font-weight:700;color:var(--status-danger);line-height:1.1;margin-top:3px;">${_fmtMoeda(devsPeriodo)}</div>
+        <div style="font-size:10.5px;color:var(--neutral-500);margin-top:3px;">${fatBruto > 0 ? ((devsPeriodo / fatBruto) * 100).toFixed(1) : '0'}% do bruto</div>
       </div>
     `;
   }
