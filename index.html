@@ -7397,7 +7397,7 @@ a {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.274-fix-dedupe-faturamento',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.276-email-prefs-individual',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -8262,6 +8262,10 @@ window.togglePerfilDropdown = function(ev) {
       <span class="material-symbols-rounded">key</span>
       <span>Trocar senha</span>
     </button>
+    <button class="perfil-dropdown__item" onclick="abrirEmailPrefsModal()">
+      <span class="material-symbols-rounded">mark_email_read</span>
+      <span>Notificações por e-mail</span>
+    </button>
     ${user._simulando ? `
       <button class="perfil-dropdown__item perfil-dropdown__item--warning" onclick="handleSairSimulacao()">
         <span class="material-symbols-rounded">switch_account</span>
@@ -8491,6 +8495,229 @@ window.handleTrocarSenha = async function(ev) {
     showErr(err.message || String(err));
     btn.disabled = false;
     btn.innerHTML = '<span class="material-symbols-rounded" style="font-size:16px;">check</span> Salvar nova senha';
+  }
+};
+
+/* ==========================================================================
+   NOTIFICAÇÕES POR E-MAIL — modal pra cada usuário escolher quais tipos receber
+   por e-mail (Sprint 9.32.276). Sininho continua sempre. Salva em
+   usuarios.email_prefs (jsonb). NULL = recebe tudo.
+   ========================================================================== */
+
+// Lista de tipos com label e perfil-alvo. 'ambos' = aparece pra nutri E admin.
+window._EMAIL_PREFS_TIPOS = [
+  // Pro nutri
+  { tipo: 'visita_aprovada_pos_revisao', label: 'Visita aprovada após revisão',         grupo: 'Visitas',     perfil: 'nutri' },
+  { tipo: 'visita_devolvida_revisao',    label: 'Visita devolvida pra revisão',         grupo: 'Visitas',     perfil: 'nutri' },
+  { tipo: 'visita_aviso_6h_final',       label: 'Aviso: visita aberta há 6h',           grupo: 'Visitas',     perfil: 'nutri' },
+  { tipo: 'visita_auto_fechada',         label: 'Visita encerrada automaticamente',     grupo: 'Visitas',     perfil: 'nutri' },
+  { tipo: 'instituicao_aprovada',        label: 'Instituição aprovada',                 grupo: 'Cadastros',   perfil: 'nutri' },
+  { tipo: 'instituicao_rejeitada',       label: 'Instituição rejeitada',                grupo: 'Cadastros',   perfil: 'nutri' },
+  { tipo: 'objetivo_aprovado',           label: 'Objetivo aprovado',                    grupo: 'Cadastros',   perfil: 'nutri' },
+  { tipo: 'objetivo_rejeitado',          label: 'Objetivo rejeitado',                   grupo: 'Cadastros',   perfil: 'nutri' },
+  { tipo: 'categoria_aprovada',          label: 'Categoria profissional aprovada',      grupo: 'Cadastros',   perfil: 'nutri' },
+  { tipo: 'conta_aprovada',              label: 'Sua conta foi aprovada',               grupo: 'Cadastros',   perfil: 'nutri' },
+  { tipo: 'agendamento_atribuido',       label: 'Novo agendamento atribuído',           grupo: 'Agenda',      perfil: 'nutri' },
+  { tipo: 'agendamento_sugerido',        label: 'Agendamento sugerido pra você',        grupo: 'Agenda',      perfil: 'nutri' },
+  // Pro admin
+  { tipo: 'conta_pendente',              label: 'Novo cadastro aguardando aprovação',   grupo: 'Cadastros',   perfil: 'admin' },
+  { tipo: 'instituicao_sugerida',        label: 'Nova instituição sugerida',            grupo: 'Cadastros',   perfil: 'admin' },
+  { tipo: 'objetivo_sugerido',           label: 'Novo objetivo sugerido',               grupo: 'Cadastros',   perfil: 'admin' },
+  { tipo: 'categoria_sugerida',          label: 'Nova categoria profissional sugerida', grupo: 'Cadastros',   perfil: 'admin' },
+  { tipo: 'visita_reenviada',            label: 'Visita reenviada após revisão',        grupo: 'Visitas',     perfil: 'admin' },
+  { tipo: 'visita_flagueada',            label: 'Visita com divergências (flag)',       grupo: 'Visitas',     perfil: 'admin' },
+  { tipo: 'admin_visita_auto_fechada',   label: 'Visita auto-fechada pelo sistema',     grupo: 'Visitas',     perfil: 'admin' },
+  { tipo: 'agendamento_aceito',          label: 'Agendamento aceito pelo profissional', grupo: 'Agenda',      perfil: 'admin' },
+  { tipo: 'agendamento_recusado',        label: 'Agendamento recusado pelo profissional', grupo: 'Agenda',  perfil: 'admin' },
+];
+
+window.abrirEmailPrefsModal = async function() {
+  document.getElementById('perfilDropdown')?.remove();
+  if (document.getElementById('emailPrefsModal')) return;
+
+  const user = getCurrentUser();
+  if (!user) return;
+
+  // Busca prefs atualizadas direto do banco (caso outro device tenha mudado)
+  let prefs = {};
+  try {
+    const { data, error } = await db
+      .from('usuarios')
+      .select('email_prefs')
+      .eq('id', user.id)
+      .maybeSingle();
+    if (!error && data?.email_prefs && typeof data.email_prefs === 'object') {
+      prefs = data.email_prefs;
+    }
+  } catch (e) {
+    console.warn('[EmailPrefs] erro ao carregar prefs, assumindo vazio (recebe tudo):', e);
+  }
+
+  // Filtra tipos pelo perfil do user (admin vê tipos admin, nutri vê tipos nutri).
+  // Super_admin é admin tb.
+  const ehAdmin = user.perfil === 'admin' || user.perfil === 'super_admin';
+  const tiposVisiveis = window._EMAIL_PREFS_TIPOS.filter(t =>
+    ehAdmin ? t.perfil === 'admin' : t.perfil === 'nutri'
+  );
+
+  // Agrupa por categoria
+  const grupos = {};
+  tiposVisiveis.forEach(t => {
+    if (!grupos[t.grupo]) grupos[t.grupo] = [];
+    grupos[t.grupo].push(t);
+  });
+
+  // Helper: retorna se o tipo está habilitado (default true se não setado)
+  const ehLigado = (tipo) => prefs[tipo] !== false;
+
+  const overlay = document.createElement('div');
+  overlay.id = 'emailPrefsModal';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(10,31,92,0.45);backdrop-filter:blur(4px);z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px;';
+
+  const renderToggle = (t) => {
+    const ligado = ehLigado(t.tipo);
+    return `
+      <label style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 14px;border-radius:10px;background:#fff;border:1px solid var(--neutral-100);cursor:pointer;transition:background 0.15s;" onmouseover="this.style.background='var(--neutral-50)'" onmouseout="this.style.background='#fff'">
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:13px;color:var(--brand-navy);font-weight:600;line-height:1.3;">${t.label}</div>
+          <div style="font-size:10.5px;color:var(--neutral-500);font-family:var(--font-mono);margin-top:2px;">${t.tipo}</div>
+        </div>
+        <div style="position:relative;width:42px;height:24px;flex-shrink:0;">
+          <input type="checkbox" data-tipo="${t.tipo}" ${ligado ? 'checked' : ''} class="email-prefs-toggle" style="opacity:0;width:0;height:0;position:absolute;" />
+          <span class="email-prefs-track" style="position:absolute;inset:0;border-radius:9999px;background:${ligado ? 'var(--brand-lime)' : 'var(--neutral-200)'};transition:background 0.2s;"></span>
+          <span class="email-prefs-thumb" style="position:absolute;top:2px;left:${ligado ? '20px' : '2px'};width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,0.2);transition:left 0.2s;"></span>
+        </div>
+      </label>
+    `;
+  };
+
+  const renderGrupo = (nome, tipos) => `
+    <div style="margin-top:18px;">
+      <div style="font-size:11px;font-weight:700;color:var(--neutral-500);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;padding:0 4px;">${nome}</div>
+      <div style="display:flex;flex-direction:column;gap:6px;">
+        ${tipos.map(renderToggle).join('')}
+      </div>
+    </div>
+  `;
+
+  overlay.innerHTML = `
+    <div style="background:var(--neutral-50);border-radius:16px;width:100%;max-width:520px;box-shadow:0 20px 60px rgba(10,31,92,0.3);overflow:hidden;display:flex;flex-direction:column;max-height:90vh;">
+      <!-- Header -->
+      <div style="padding:18px 22px;border-bottom:1px solid var(--neutral-100);display:flex;align-items:center;gap:12px;background:#fff;">
+        <div style="width:38px;height:38px;border-radius:10px;background:rgba(10,31,92,0.08);color:var(--brand-navy);display:flex;align-items:center;justify-content:center;">
+          <span class="material-symbols-rounded" style="font-size:20px;">mark_email_read</span>
+        </div>
+        <div style="flex:1;">
+          <div style="font-family:'Poppins',sans-serif;font-weight:700;font-size:15.5px;color:var(--brand-navy);">Notificações por e-mail</div>
+          <div style="font-size:11.5px;color:var(--neutral-500);margin-top:1px;">Escolha quais tipos vc quer receber. O sininho continua sempre.</div>
+        </div>
+        <button type="button" onclick="fecharEmailPrefsModal()" style="width:30px;height:30px;border-radius:8px;border:0;background:var(--neutral-100);color:var(--neutral-600);cursor:pointer;display:flex;align-items:center;justify-content:center;">
+          <span class="material-symbols-rounded" style="font-size:17px;">close</span>
+        </button>
+      </div>
+
+      <!-- Body -->
+      <div style="padding:18px 22px;overflow-y:auto;flex:1;">
+        <div id="emailPrefsFlash"></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 14px;background:rgba(139,198,63,0.08);border:1px solid rgba(139,198,63,0.25);border-radius:10px;margin-bottom:6px;">
+          <div style="font-size:11.5px;color:var(--brand-navy);">
+            <strong>Dica:</strong> desligar um tipo só para de mandar <strong>e-mail</strong> — o sininho da plataforma continua mostrando tudo.
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:12px;">
+          <button type="button" onclick="emailPrefsToggleTodos(true)" style="flex:1;height:32px;border:1px solid var(--neutral-200);background:#fff;color:var(--brand-navy);border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;">Marcar todos</button>
+          <button type="button" onclick="emailPrefsToggleTodos(false)" style="flex:1;height:32px;border:1px solid var(--neutral-200);background:#fff;color:var(--neutral-700);border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;">Desmarcar todos</button>
+        </div>
+        ${Object.keys(grupos).map(g => renderGrupo(g, grupos[g])).join('')}
+      </div>
+
+      <!-- Footer -->
+      <div style="padding:16px 22px;border-top:1px solid var(--neutral-100);display:flex;justify-content:flex-end;gap:8px;background:#fff;">
+        <button type="button" onclick="fecharEmailPrefsModal()" style="height:40px;padding:0 16px;border:1px solid var(--neutral-200);background:#fff;color:var(--neutral-700);border-radius:9999px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">Cancelar</button>
+        <button id="emailPrefsSalvarBtn" type="button" onclick="handleSalvarEmailPrefs()" style="height:40px;padding:0 18px;border:0;background:var(--brand-navy);color:#fff;border-radius:9999px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:6px;">
+          <span class="material-symbols-rounded" style="font-size:16px;">check</span> Salvar
+        </button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+
+  // Atualiza visual do toggle ao clicar
+  overlay.querySelectorAll('.email-prefs-toggle').forEach(input => {
+    input.addEventListener('change', (ev) => {
+      const wrapper = ev.target.parentElement;
+      const track = wrapper.querySelector('.email-prefs-track');
+      const thumb = wrapper.querySelector('.email-prefs-thumb');
+      if (ev.target.checked) {
+        track.style.background = 'var(--brand-lime)';
+        thumb.style.left = '20px';
+      } else {
+        track.style.background = 'var(--neutral-200)';
+        thumb.style.left = '2px';
+      }
+    });
+  });
+
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) fecharEmailPrefsModal();
+  });
+  const escHandler = (e) => { if (e.key === 'Escape') fecharEmailPrefsModal(); };
+  document.addEventListener('keydown', escHandler);
+  overlay._escHandler = escHandler;
+};
+
+window.fecharEmailPrefsModal = function() {
+  const m = document.getElementById('emailPrefsModal');
+  if (m) {
+    if (m._escHandler) document.removeEventListener('keydown', m._escHandler);
+    m.remove();
+  }
+};
+
+window.emailPrefsToggleTodos = function(ligar) {
+  document.querySelectorAll('#emailPrefsModal .email-prefs-toggle').forEach(input => {
+    input.checked = !!ligar;
+    const ev = new Event('change');
+    input.dispatchEvent(ev);
+  });
+};
+
+window.handleSalvarEmailPrefs = async function() {
+  const user = getCurrentUser();
+  if (!user) return;
+  const btn = document.getElementById('emailPrefsSalvarBtn');
+  const flash = document.getElementById('emailPrefsFlash');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="material-symbols-rounded" style="font-size:16px;animation:spin 1s linear infinite;">progress_activity</span> Salvando...'; }
+
+  const showErr = (msg) => {
+    if (flash) flash.innerHTML = `<div style="padding:10px 14px;background:rgba(211,51,51,0.08);border:1px solid rgba(211,51,51,0.25);border-radius:10px;color:var(--status-danger);font-size:12.5px;margin-bottom:14px;">${msg}</div>`;
+  };
+
+  try {
+    // Monta o objeto prefs a partir dos toggles
+    const prefs = {};
+    document.querySelectorAll('#emailPrefsModal .email-prefs-toggle').forEach(input => {
+      const tipo = input.dataset.tipo;
+      if (tipo) prefs[tipo] = !!input.checked;
+    });
+
+    // Se TODOS estão true, envia null pra economizar (NULL = default = recebe tudo)
+    const todosLigados = Object.values(prefs).every(v => v === true);
+    const valorParaSalvar = todosLigados ? null : prefs;
+
+    const { error } = await db
+      .from('usuarios')
+      .update({ email_prefs: valorParaSalvar })
+      .eq('id', user.id);
+    if (error) throw new Error('Erro ao salvar: ' + error.message);
+
+    fecharEmailPrefsModal();
+    setFlash('success', 'Preferências de e-mail salvas!');
+    if (typeof router === 'function') router();
+  } catch (err) {
+    showErr(err.message || String(err));
+    if (btn) { btn.disabled = false; btn.innerHTML = '<span class="material-symbols-rounded" style="font-size:16px;">check</span> Salvar'; }
   }
 };
 
@@ -35183,7 +35410,7 @@ window.rejeitarObjetivoPendente = async function(id) {
 let FAT_DATA = null;
 let _fatDataPromise = null;
 // __FAT_VERSION_START__ — substituído pelo atualizar_index.py com hash do JSON
-const FAT_DATA_VERSION = '90bbaebfe515';
+const FAT_DATA_VERSION = '391332b4a63f';
 // __FAT_VERSION_END__
 const FAT_DATA_URL = 'faturamento_data_inline.json?v=' + FAT_DATA_VERSION;
 
@@ -35224,6 +35451,11 @@ function _fatRenderInner() {
   const user = requireAdmin();
   if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
 
+  // Sprint 9.32.275: o DOM é reconstruído toda vez que entra na tela de faturamento
+  // (saiu pra outra tela e voltou). A flag _fatSelectsPopulados precisa ser resetada,
+  // senão _fatPopularSelects vai pular a populate e os selects ficam vazios (só "Todos").
+  _fatSelectsPopulados = false;
+
   // Sprint 9.32.35: dados saíram do inline pra arquivo separado.
   // Dispara o load aqui; o setTimeout abaixo aguarda e renderiza.
   if (!FAT_DATA) {
@@ -35249,6 +35481,11 @@ function _fatRenderInner() {
       await _fatCarregarDados();
       // Remove o splash de loading antes do primeiro render
       document.getElementById('_fatLoadingSplash')?.remove();
+      // Sprint 9.32.275: filtro default = último mês disponível (Visão Geral começa focada no mês vigente)
+      const ultimoMes = FAT_DATA?.mensal?.[FAT_DATA.mensal.length - 1]?.ano_mes;
+      if (ultimoMes && window._fatFiltro && window._fatFiltro.mes === 'todos' && window._fatFiltro.periodo === 'todos') {
+        window._fatFiltro.mes = ultimoMes;
+      }
       _fatRender();
     } catch (e) {
       console.error('Erro ao carregar faturamento_data_inline.json:', e);
@@ -37730,9 +37967,41 @@ window._fatTrocarAba = function(aba) {
     t.style.fontWeight = '600';
   });
 
+  // Sprint 9.32.275: comportamento de filtro por aba
+  //   - Análises Avançadas: PRECISA do período inteiro (comparações multi-mês, Pareto da base toda).
+  //     Salva o filtro atual e força mes='todos' + periodo='todos'.
+  //   - Outras abas (Visão Geral, Devoluções, Consignado): focam no mês vigente. Restaura o
+  //     filtro salvo se houver, ou aplica último mês como default.
+  const ultimoMes = FAT_DATA?.mensal?.[FAT_DATA.mensal.length - 1]?.ano_mes;
+  if (aba === 'analises') {
+    // Salva só se ainda não foi salvo (evita sobrescrever ao alternar várias vezes)
+    if (!window._fatFiltroSalvo && window._fatFiltro) {
+      window._fatFiltroSalvo = { mes: window._fatFiltro.mes, periodo: window._fatFiltro.periodo };
+    }
+    if (window._fatFiltro) {
+      window._fatFiltro.mes = 'todos';
+      window._fatFiltro.periodo = 'todos';
+    }
+    if (typeof _fatSincronizarSelects === 'function') _fatSincronizarSelects();
+  } else {
+    // Volta pra qualquer aba que não seja Análises: restaura filtro salvo, ou último mês
+    if (window._fatFiltroSalvo && window._fatFiltro) {
+      window._fatFiltro.mes = window._fatFiltroSalvo.mes;
+      window._fatFiltro.periodo = window._fatFiltroSalvo.periodo;
+      window._fatFiltroSalvo = null;
+      if (typeof _fatSincronizarSelects === 'function') _fatSincronizarSelects();
+    } else if (ultimoMes && window._fatFiltro && window._fatFiltro.mes === 'todos' && window._fatFiltro.periodo === 'todos') {
+      // Caso entre direto numa aba sem ter passado pela Análises: aplica default
+      window._fatFiltro.mes = ultimoMes;
+      if (typeof _fatSincronizarSelects === 'function') _fatSincronizarSelects();
+    }
+  }
+
   if (aba === 'visao') {
     if (p1) p1.style.display = '';
     if (tabV) { tabV.style.borderBottomColor = 'var(--brand-lime)'; tabV.style.color = 'var(--brand-navy)'; tabV.style.fontWeight = '700'; }
+    // Sprint 9.32.275: re-renderiza Visão Geral pra refletir filtro restaurado/default
+    _fatRender();
   } else if (aba === 'analises') {
     if (p2) p2.style.display = '';
     if (tabA) { tabA.style.borderBottomColor = 'var(--brand-lime)'; tabA.style.color = 'var(--brand-navy)'; tabA.style.fontWeight = '700'; }
