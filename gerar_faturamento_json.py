@@ -1173,12 +1173,27 @@ def main():
     df = pd.concat(dfs, ignore_index=True)
     print(f"\n📊 Total após concatenação: {len(df):,} linhas")
 
-    # Deduplica (se mesma nota aparecer em 2 arquivos — pode acontecer em overlaps)
-    antes = len(df)
-    # Chave de dedupe: Nota Fiscal + Código do Produto + CNPJ (+ Operação pra segurança)
-    df = df.drop_duplicates(subset=['Nota Fiscal', 'Código do Produto', 'CNPJ/CPF', 'Operação'], keep='first')
-    if len(df) < antes:
-        print(f"🔍 Deduplicação removeu {antes - len(df):,} duplicatas")
+    # Sprint 9.32.274: REMOVIDO o dedupe agressivo por (NF+Prod+CNPJ+Op).
+    # Motivo: o Omie exporta múltiplas linhas pra mesma combinação quando o produto sai em LOTES
+    # diferentes (ex: NF 4100 / Prod 148 = 1 linha de 5,72 unid + 1 linha de 6,28 unid).
+    # O dedupe estava removendo essas linhas legítimas, causando ~R$19k a menos no faturamento
+    # de Abril/26 (líquido R$2.411k em vez do D3 real do Excel R$2.430k).
+    # Agora confiamos que o Omie já exporta os dados certos e somamos todas as linhas.
+    # Se vc importar 2 XLSX com overlap de período, o aviso abaixo te avisa antes:
+    if len(caminhos) > 1:
+        meses_por_arquivo = {}
+        for c in caminhos:
+            df_arq = df[df.get('_arquivo_origem', '') == Path(c).name] if '_arquivo_origem' in df.columns else None
+            if df_arq is not None and not df_arq.empty:
+                meses_por_arquivo[Path(c).name] = set(df_arq['_ano_mes'].unique())
+        # Se 2+ arquivos têm meses em comum, só avisa (não quebra)
+        nomes = list(meses_por_arquivo.keys())
+        for i in range(len(nomes)):
+            for j in range(i+1, len(nomes)):
+                comum = meses_por_arquivo[nomes[i]] & meses_por_arquivo[nomes[j]]
+                if comum:
+                    print(f"⚠️  AVISO: '{nomes[i]}' e '{nomes[j]}' têm meses em comum: {sorted(comum)}")
+                    print(f"   Pode haver duplicação. Confirme manualmente ou remova um dos arquivos.")
 
     # Filtra por categoria
     df_vendas     = df[df['_categoria'] == 'Venda'].copy()
