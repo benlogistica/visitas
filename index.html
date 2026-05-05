@@ -7308,7 +7308,7 @@ a {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.261-fase1-visita-aberta',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.265-modal-fecha-so-x-ou-cancelar',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -10245,7 +10245,8 @@ async function criarInstituicaoSugerida(dados) {
   if (!user) throw new Error('Usuário não logado');
   // Aceita tanto string (backward-compat do fluxo de objetivo) quanto objeto
   const payload = (typeof dados === 'string') ? { nome: dados } : dados;
-  const { nome, logradouro = null, bairro = null, cidade = null, latitude = null, longitude = null } = payload || {};
+  // Sprint 9.32.264: aceita estado (UF) também
+  const { nome, logradouro = null, bairro = null, cidade = null, estado = null, latitude = null, longitude = null } = payload || {};
   if (!nome || !nome.trim()) throw new Error('Nome da instituição é obrigatório');
   const nomeClean = nome.trim();
   // Verifica duplicidade case-insensitive
@@ -10264,6 +10265,7 @@ async function criarInstituicaoSugerida(dados) {
       logradouro: logradouro ? logradouro.trim() : null,
       bairro: bairro ? bairro.trim() : null,
       cidade: cidade ? cidade.trim() : null,
+      estado: estado ? String(estado).trim().toUpperCase().slice(0, 2) : null,
       latitude: latitude,
       longitude: longitude,
       ativo: true,
@@ -32781,6 +32783,72 @@ async function geocodificarEndereco(endereco) {
   }
 }
 
+// Sprint 9.32.262: expande abreviações comuns de logradouro pra Nominatim achar mais fácil
+function expandirAbreviacoesEndereco(s) {
+  if (!s) return s;
+  return s
+    .replace(/\b[Rr]\.\s+/g, 'Rua ')
+    .replace(/\b[Aa][Vv]\.\s+/g, 'Avenida ')
+    .replace(/\b[Tt][Vv]\.\s+/g, 'Travessa ')
+    .replace(/\b[Pp][çÇCc]\.\s+/g, 'Praça ')
+    .replace(/\b[Aa][Ll]\.\s+/g, 'Alameda ')
+    .replace(/\b[Ee][Ss][Tt][Rr]\.\s+/g, 'Estrada ')
+    .replace(/\b[Rr][Oo][Dd]\.\s+/g, 'Rodovia ')
+    .replace(/\b[Pp][Qq]\.\s+/g, 'Parque ')
+    .replace(/\b[Ll][Gg][Oo]\.\s+/g, 'Largo ')
+    .trim();
+}
+
+// Sprint 9.32.262: geocoding com fallback em cascata
+//   Tenta várias estratégias até achar uma que funcione.
+//   Pra hospitais, buscar pelo NOME costuma funcionar melhor que o endereço.
+//
+// Retorna { lat, lng, display_name, estrategia } ou null se nada funcionou.
+async function geocodificarComFallback(opts) {
+  const { nome, endereco, bairro, cidade, estado } = opts || {};
+  const cidadeLimpa = (cidade || '').trim();
+  if (!cidadeLimpa) return null; // sem cidade não dá pra ancorar nada
+
+  const enderecoExpandido = expandirAbreviacoesEndereco((endereco || '').trim());
+  // Remove número final pra estratégia "rua sem número"
+  const ruaSemNumero = enderecoExpandido.replace(/[\s,]+\d+\s*$/, '').trim();
+  const bairroLimpo = (bairro || '').trim();
+  const estadoLimpo = (estado || '').trim();
+  const nomeLimpo = (nome || '').trim();
+
+  // Estratégias em ordem de prioridade
+  const estrategias = [
+    // 1. Endereço completo expandido (R. → Rua) + bairro + cidade
+    { label: 'endereço completo', q: [enderecoExpandido, bairroLimpo, cidadeLimpa, estadoLimpo, 'Brasil'].filter(Boolean).join(', ') },
+    // 2. Nome do estabelecimento + cidade (funciona MUITO bem pra hospitais conhecidos)
+    nomeLimpo ? { label: 'nome do estabelecimento', q: [nomeLimpo, cidadeLimpa, estadoLimpo, 'Brasil'].filter(Boolean).join(', ') } : null,
+    // 3. Endereço SEM número + bairro + cidade
+    ruaSemNumero && ruaSemNumero !== enderecoExpandido
+      ? { label: 'endereço sem número', q: [ruaSemNumero, bairroLimpo, cidadeLimpa, estadoLimpo, 'Brasil'].filter(Boolean).join(', ') }
+      : null,
+    // 4. Endereço original sem expandir + cidade
+    enderecoExpandido !== (endereco || '').trim()
+      ? { label: 'endereço original', q: [(endereco || '').trim(), cidadeLimpa, 'Brasil'].filter(Boolean).join(', ') }
+      : null,
+    // 5. Bairro + cidade (último recurso — ancora num ponto do bairro)
+    bairroLimpo ? { label: 'só bairro+cidade', q: [bairroLimpo, cidadeLimpa, estadoLimpo, 'Brasil'].filter(Boolean).join(', ') } : null,
+  ].filter(Boolean);
+
+  for (const est of estrategias) {
+    try {
+      const r = await geocodificarEndereco(est.q);
+      if (r && Number.isFinite(r.lat) && Number.isFinite(r.lng)) {
+        return { ...r, estrategia: est.label, query: est.q };
+      }
+      // Pequeno espaço pra respeitar rate limit (1 req/s do Nominatim)
+      await new Promise(res => setTimeout(res, 350));
+    } catch (e) {
+      console.warn(`[geocodificarComFallback] estratégia "${est.label}" falhou:`, e);
+    }
+  }
+  return null;
+}
+
 // Sprint 9.32.111: reverse geocoding (coords → endereço) via Nominatim.
 // Cache em memória pra evitar refazer requests durante a sessão.
 const _reverseGeoCache = new Map();
@@ -33176,7 +33244,13 @@ function showModalInstituicaoNova({ valorInicialNome = '', modo = 'cadastro', in
 
     backdrop.innerHTML = `
       <div class="modal-card" style="max-width:480px;max-height:92vh;overflow-y:auto;">
-        <div class="modal-card__header">
+        <div class="modal-card__header" style="position:relative;">
+          <!-- Sprint 9.32.264: botão X explícito no canto superior direito -->
+          <button type="button" id="mniClose" aria-label="Fechar"
+                  style="position:absolute;top:12px;right:12px;width:32px;height:32px;border:0;background:var(--neutral-100);color:var(--neutral-600);border-radius:9999px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:inherit;z-index:2;"
+                  onmouseover="this.style.background='var(--neutral-200)'" onmouseout="this.style.background='var(--neutral-100)'">
+            <span class="material-symbols-rounded" style="font-size:18px;">close</span>
+          </button>
           <div class="modal-card__icon" style="background:${perfilAdmin ? 'var(--brand-lime-50,#F4F9EA);color:var(--brand-lime-dark,#6FA62E)' : '#E4ECFD;color:var(--status-info)'};">
             <span class="material-symbols-rounded">${ehEdicao ? 'edit_location_alt' : 'add_location_alt'}</span>
           </div>
@@ -33204,6 +33278,19 @@ function showModalInstituicaoNova({ valorInicialNome = '', modo = 'cadastro', in
               <input type="text" id="mniCidade" placeholder="Ex: São Paulo" value="${(valCidade || '').replace(/"/g,'&quot;')}" style="width:100%;padding:10px 12px;border:1.5px solid var(--neutral-200);border-radius:10px;font-size:14px;font-family:inherit;" />
             </div>
           </div>
+          <!-- Sprint 9.32.264: campo UF visível também pra nutri (admin já tem o dele em camposAdminHtml) -->
+          ${!perfilAdmin ? `
+            <div style="display:grid;grid-template-columns:1fr 80px;gap:12px;align-items:start;">
+              <div style="font-size:11px;color:var(--neutral-500);padding:8px 0;line-height:1.4;">
+                <span class="material-symbols-rounded" style="font-size:13px;vertical-align:-2px;color:var(--brand-lime-dark,#6FA62E);">info</span>
+                Sigla do estado da instituição (default: SP).
+              </div>
+              <div class="report-field">
+                <label>UF <span style="color:var(--neutral-400);font-weight:normal;">(opcional)</span></label>
+                <input type="text" id="mniEstadoNutri" maxlength="2" placeholder="SP" value="${(valEstado || 'SP').replace(/"/g,'&quot;')}" style="width:100%;padding:10px 12px;border:1.5px solid var(--neutral-200);border-radius:10px;font-size:14px;font-family:inherit;text-transform:uppercase;text-align:center;" />
+              </div>
+            </div>
+          ` : ''}
           ${camposAdminHtml}
           ${coordsHtml}
           ${perfilEquipeSupervisorHtml}
@@ -33379,38 +33466,52 @@ function showModalInstituicaoNova({ valorInicialNome = '', modo = 'cadastro', in
         // no_match
         setFlash('warning', 'Não consegui extrair coords desse texto. Tenta outro link ou usa o botão "Buscar pelo endereço".');
       };
-      // Botão buscar pelo endereço (geocoding)
+      // Botão buscar pelo endereço (geocoding com fallback — Sprint 9.32.262)
+      // Sprint 9.32.263: usa optional chaining (?.) porque o campo Estado só existe na visão admin
       const btnGeo = backdrop.querySelector('#mniBtnGeocode');
       const btnGeoText = backdrop.querySelector('#mniBtnGeocodeText');
       if (btnGeo) btnGeo.onclick = async () => {
-        const partes = [
-          endEl.value.trim(),
-          bairroEl.value.trim(),
-          cidadeEl.value.trim(),
-          estadoEl.value.trim(),
-          'Brasil',
-        ].filter(Boolean);
-        if (partes.length < 2) {
-          setFlash('info', 'Preenche pelo menos o endereço e a cidade pra eu poder buscar.');
-          endEl.focus();
+        const cidadeVal = cidadeEl?.value.trim() || '';
+        const enderecoVal = endEl?.value.trim() || '';
+        const nomeVal = nomeEl?.value.trim() || '';
+        const bairroVal = bairroEl?.value.trim() || '';
+        // Sprint 9.32.264: lê estado do campo admin OU do campo nutri (mniEstadoNutri)
+        const estadoNutriEl = backdrop.querySelector('#mniEstadoNutri');
+        const estadoVal = (estadoEl?.value.trim() || estadoNutriEl?.value.trim() || '').toUpperCase();
+        if (!cidadeVal) {
+          setFlash('info', 'Preenche pelo menos a cidade pra eu poder buscar.');
+          cidadeEl?.focus();
           return;
         }
-        const consulta = partes.join(', ');
+        if (!enderecoVal && !nomeVal) {
+          setFlash('info', 'Preenche o endereço (ou pelo menos o nome da instituição) pra eu buscar.');
+          endEl?.focus();
+          return;
+        }
         btnGeo.disabled = true;
         btnGeoText.textContent = 'Buscando...';
         btnGeo.style.opacity = '0.7';
         try {
-          const r = await geocodificarEndereco(consulta);
+          const r = await geocodificarComFallback({
+            nome: nomeVal,
+            endereco: enderecoVal,
+            bairro: bairroVal,
+            cidade: cidadeVal,
+            estado: estadoVal,
+          });
           if (!r) {
-            setFlash('warning', 'Endereço não encontrado. Tenta refinar ou use o link do Google Maps.');
+            setFlash('warning', 'Não consegui localizar mesmo tentando várias variações. Tenta refinar o endereço, ou cole o link longo do Google Maps acima.');
           } else {
             latEl.value = r.lat.toFixed(6);
             lngEl.value = r.lng.toFixed(6);
             atualizarStatusCoords();
-            setFlash('success', `Encontrei: ${r.display_name ? r.display_name.slice(0, 60) + '…' : 'coords OK'}`);
+            const trecho = r.display_name ? r.display_name.slice(0, 60) + '…' : 'coords OK';
+            const dica = r.estrategia !== 'endereço completo' ? ` (via ${r.estrategia})` : '';
+            setFlash('success', `Encontrei: ${trecho}${dica}`);
           }
         } catch (err) {
-          setFlash('danger', 'Falha na busca. Verifique sua conexão e tente novamente.');
+          console.error('[geocoding] erro:', err);
+          setFlash('danger', 'Falha na busca: ' + (err?.message || 'erro desconhecido'));
         } finally {
           btnGeo.disabled = false;
           btnGeoText.textContent = 'Buscar coordenadas pelo endereço';
@@ -33462,8 +33563,11 @@ function showModalInstituicaoNova({ valorInicialNome = '', modo = 'cadastro', in
             longitude = lng;
           }
         }
+        // Sprint 9.32.264: nutri também salva o UF (default 'SP')
+        const estadoNutriEl = backdrop.querySelector('#mniEstadoNutri');
+        const estadoNutri = estadoNutriEl ? estadoNutriEl.value.trim().toUpperCase().slice(0, 2) : '';
         cleanup();
-        resolve({ nome, logradouro, bairro: bairro || null, cidade, latitude, longitude });
+        resolve({ nome, logradouro, bairro: bairro || null, cidade, latitude, longitude, estado: estadoNutri || null });
         return;
       }
       // Perfil admin: regra Eduardo — obrigatórios só nome e endereço
@@ -33575,7 +33679,9 @@ function showModalInstituicaoNova({ valorInicialNome = '', modo = 'cadastro', in
     };
     backdrop.querySelector('#mniOk').onclick = () => submit();
     backdrop.querySelector('#mniCancel').onclick = () => { cleanup(); resolve(null); };
-    backdrop.onclick = (e) => { if (e.target === backdrop) { cleanup(); resolve(null); } };
+    // Sprint 9.32.265: modal só fecha via X ou Cancelar (clique fora foi removido a pedido).
+    const btnCloseMni = backdrop.querySelector('#mniClose');
+    if (btnCloseMni) btnCloseMni.onclick = () => { cleanup(); resolve(null); };
     // Sprint 9.2: botões de Desativar/Reativar (só admin + edição)
     // Resolve({ __acao: 'desativar' }) ou Resolve({ __acao: 'reativar' }) pra quem chamou decidir
     const btnDesativar = backdrop.querySelector('#mniDesativar');
@@ -34218,36 +34324,38 @@ function showModalEdicaoInstituicao(inst) {
       cleanup();
       resolve({ dados: d, aprovar: true });
     };
-    // Geocoding via OpenStreetMap (Nominatim) — busca lat/lng pelo endereço
+    // Geocoding via OpenStreetMap (Nominatim) com fallback em cascata — Sprint 9.32.262
     get('#meiGeocode').onclick = async () => {
       const btn = get('#meiGeocode');
       const lbl = get('#meiGeocodeLabel');
+      const nome = get('#meiNome').value.trim();
       const logradouro = get('#meiLogr').value.trim();
       const bairro = get('#meiBairro').value.trim();
       const cidade = get('#meiCidade').value.trim();
       const uf = get('#meiUf').value.trim();
-      if (!logradouro || !cidade) {
-        alert('Preencha pelo menos Endereço e Cidade antes de buscar.');
+      if (!cidade) {
+        alert('Preencha pelo menos a cidade antes de buscar.');
+        return;
+      }
+      if (!logradouro && !nome) {
+        alert('Preencha o endereço (ou pelo menos o nome) antes de buscar.');
         return;
       }
       btn.disabled = true;
       lbl.textContent = 'Buscando...';
       try {
-        const partes = [logradouro, bairro, cidade, uf, 'Brasil'].filter(Boolean);
-        const query = encodeURIComponent(partes.join(', '));
-        const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${query}`;
-        const resp = await fetch(url, { headers: { 'Accept-Language': 'pt-BR' } });
-        if (!resp.ok) throw new Error('Serviço indisponível');
-        const results = await resp.json();
-        if (!results || results.length === 0) {
-          alert('Endereço não encontrado. Tente ajustar os dados ou preencher manualmente.');
+        const r = await geocodificarComFallback({
+          nome, endereco: logradouro, bairro, cidade, estado: uf,
+        });
+        if (!r) {
+          alert('Não localizei mesmo tentando várias variações. Tente ajustar o endereço ou preencher manualmente via Google Maps.');
           return;
         }
-        const r = results[0];
-        get('#meiLat').value = parseFloat(r.lat).toFixed(6);
-        get('#meiLng').value = parseFloat(r.lon).toFixed(6);
-        lbl.textContent = '✓ Encontrado!';
-        setTimeout(() => { lbl.textContent = 'Buscar novamente'; }, 2000);
+        get('#meiLat').value = r.lat.toFixed(6);
+        get('#meiLng').value = r.lng.toFixed(6);
+        const dica = r.estrategia !== 'endereço completo' ? ` (via ${r.estrategia})` : '';
+        lbl.textContent = `✓ Encontrado${dica}`;
+        setTimeout(() => { lbl.textContent = 'Buscar novamente'; }, 2500);
       } catch (err) {
         alert('Erro ao buscar: ' + err.message + '\n\nPreencha manualmente usando Google Maps.');
         lbl.textContent = 'Buscar coordenadas pelo endereço';
