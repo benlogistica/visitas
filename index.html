@@ -5142,7 +5142,9 @@ a {
   background: rgba(10,31,92,0.5);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
-  z-index: 200;
+  /* Sprint 9.32.286: bumpado de 200 → 9999 pra ficar acima do mapa Leaflet
+     (panes do Leaflet vão até z-index 700 — o backdrop precisa estar acima de tudo) */
+  z-index: 9999;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -6234,6 +6236,160 @@ a {
   white-space: pre-wrap;
 }
 
+/* Sprint 9.32.291: redesign do painel de detalhes da visita (versão responsiva)
+   Classes rdv-* (review detail v2) — substituem inline styles do renderReviewDetailContent
+   pra suportar mobile sem quebrar */
+.rdv-grid {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr;
+  gap: 14px;
+  align-items: start;
+}
+.rdv-hero {
+  background: #fff;
+  border: 1px solid var(--neutral-200);
+  border-radius: 14px;
+  overflow: hidden;
+  margin-bottom: 14px;
+}
+.rdv-hero-banner {
+  background: linear-gradient(120deg,#EAF3DE 0%,#FAEEDA 100%);
+  padding: 12px 22px;
+  border-bottom: 1px solid var(--neutral-150,#EDF0F4);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.rdv-hero-banner-icon {
+  width: 26px; height: 26px; border-radius: 50%;
+  background: rgba(255,255,255,0.7);
+  display: inline-flex; align-items: center; justify-content: center;
+  color: var(--status-warning-dark,#854F0B); flex-shrink: 0;
+}
+.rdv-hero-banner-text { font-size: 12.5px; color: var(--brand-navy); line-height: 1.4; }
+.rdv-hero-body {
+  padding: 22px 24px;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 18px;
+  align-items: center;
+}
+.rdv-hero-icon {
+  width: 56px; height: 56px;
+  background: var(--brand-navy);
+  color: #fff;
+  border-radius: 14px;
+  display: inline-flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.rdv-hero-name {
+  font-family: 'Poppins', sans-serif;
+  font-size: 21px; font-weight: 700;
+  color: var(--brand-navy);
+  line-height: 1.25;
+  word-break: break-word;
+}
+.rdv-hero-meta {
+  display: flex; gap: 16px; margin-top: 6px;
+  font-size: 12.5px; color: var(--neutral-600);
+  flex-wrap: wrap;
+}
+.rdv-hero-meta-item { display: inline-flex; align-items: center; gap: 5px; }
+.rdv-card {
+  background: #fff;
+  border: 1px solid var(--neutral-200);
+  border-radius: 12px;
+  padding: 16px 18px;
+  margin-bottom: 14px;
+}
+.rdv-card-h {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 11px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--neutral-500);
+  margin-bottom: 12px;
+}
+.rdv-card-h .material-symbols-rounded { font-size: 16px; color: var(--brand-navy); }
+.rdv-decisao {
+  background: var(--brand-navy);
+  color: #fff;
+  border-radius: 14px;
+  padding: 18px 22px;
+  margin-top: 14px;
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 14px;
+  align-items: center;
+}
+.rdv-decisao-info { font-size: 12.5px; color: rgba(255,255,255,0.85); line-height: 1.45; }
+.rdv-decisao-info strong.title {
+  color: #fff; font-weight: 700;
+  font-family: 'Poppins', sans-serif;
+  font-size: 13.5px;
+  display: block; margin-bottom: 2px;
+}
+.rdv-btn-aprovar {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 11px 22px; border: 0;
+  background: var(--brand-lime); color: var(--brand-navy);
+  font-size: 13.5px; font-weight: 700;
+  border-radius: 9999px; cursor: pointer;
+  font-family: inherit;
+  transition: background 150ms;
+}
+.rdv-btn-aprovar:hover { background: var(--brand-lime-dark, #6FA62E); }
+.rdv-btn-devolver {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 10px 18px;
+  border: 1px solid rgba(255,255,255,0.25);
+  background: rgba(255,255,255,0.08);
+  color: #fff;
+  font-size: 13px; font-weight: 600;
+  border-radius: 9999px; cursor: pointer;
+  font-family: inherit;
+  transition: background 150ms;
+}
+.rdv-btn-devolver:hover { background: rgba(255,255,255,0.15); }
+
+/* Mobile: colapsa grid 2 col em 1, ajusta hero, KV table empilhada */
+@media (max-width: 768px) {
+  .rdv-grid { grid-template-columns: 1fr; gap: 10px; }
+  .rdv-hero-body {
+    grid-template-columns: auto 1fr;
+    padding: 16px 18px;
+    gap: 12px;
+  }
+  .rdv-hero-status {
+    grid-column: 1 / -1;
+    justify-self: start;
+    margin-top: 2px;
+  }
+  .rdv-hero-icon { width: 44px; height: 44px; border-radius: 11px; }
+  .rdv-hero-icon .material-symbols-rounded { font-size: 22px !important; }
+  .rdv-hero-name { font-size: 17px; }
+  .rdv-hero-meta { gap: 10px 14px; font-size: 11.5px; margin-top: 4px; }
+  .rdv-hero-banner { padding: 10px 16px; }
+  .rdv-hero-banner-text { font-size: 11.5px; }
+  .rdv-card { padding: 14px 14px; }
+  .rdv-decisao {
+    grid-template-columns: 1fr;
+    gap: 10px; padding: 16px 18px;
+  }
+  .rdv-decisao .rdv-btn-aprovar,
+  .rdv-decisao .rdv-btn-devolver { width: 100%; justify-content: center; }
+  /* KV rows ficam empilhados em mobile pra não quebrar palavra a palavra */
+  .rdv-card .review-detail__row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+  }
+  .rdv-card .review-detail__value {
+    text-align: left;
+    width: 100%;
+    word-break: break-word;
+  }
+}
+
 /* Sprint 9.32.162: estilo R1 — cards estruturados na seção Relatório
    Substitui o layout label-direita / valor-esquerda por mini-cards em grid 2-col,
    uplabels uppercase e chips/pills coloridos pros profissionais e objetivos. */
@@ -7085,12 +7241,14 @@ a {
   font-weight: 700;
   color: var(--brand-navy);
   letter-spacing: -0.01em;
-  line-height: 1.2;
+  /* Sprint 9.32.289: line-height mais apertada pra colar o breadcrumb visualmente */
+  line-height: 1.1;
 }
 .ds-topbar__breadcrumb {
   font-size: 12px;
   color: var(--neutral-500);
-  margin-top: 2px;
+  /* Sprint 9.32.289: aproximado do título (era 2px) */
+  margin-top: 0;
   display: flex;
   align-items: center;
   gap: 5px;
@@ -7397,7 +7555,7 @@ a {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.276-email-prefs-individual',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.294-ocultar-super-admin-equipe',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -11694,7 +11852,7 @@ function desktopTopbar({ title, breadcrumb = [], titleExtra = '' } = {}) {
         <span class="material-symbols-rounded" style="font-size:18px;">arrow_back</span>
       </button>
       <div class="ds-topbar__title-wrap">
-        <div style="display:flex;align-items:baseline;gap:10px;">
+        <div style="display:flex;align-items:center;gap:12px;">
           <div class="ds-topbar__title">${title || ''}</div>
           ${titleExtra}
         </div>
@@ -14507,12 +14665,34 @@ function renderAdminRevisaoDesktop() {
   `;
 
   // Chips de flag (cores diferentes por severidade)
-  const flagChips = [
-    { k: 'noCheckin', cor: 'var(--status-danger)',  bg: 'var(--status-danger-bg,#FCE8E8)',   label: 'Sem check-in',    badgeId: 'dsdRevFlagCnt_noCheckin' },
-    { k: 'gps',       cor: 'var(--status-warning)', bg: 'var(--status-warning-bg,#FEF4E1)',  label: 'GPS divergente',  badgeId: 'dsdRevFlagCnt_gps' },
-    { k: 'time',      cor: '#EA580C',               bg: '#FFF1E6',                           label: 'Fora da margem',  badgeId: 'dsdRevFlagCnt_time' },
-    { k: 'manual',    cor: 'var(--status-info)',    bg: 'var(--status-info-bg,#E4ECFD)',     label: 'Check-in manual', badgeId: 'dsdRevFlagCnt_manual' },
-  ];
+  // Sprint 9.32.283: extraído pra escopo de window pra ser usado tb pelo carregarAdminRevisaoDesktop
+  // (re-renderizar quando s.flags muda).
+  if (!window._dsdRevFlagChips) {
+    window._dsdRevFlagChips = [
+      { k: 'noCheckin', cor: 'var(--status-danger)',  bg: 'var(--status-danger-bg,#FCE8E8)',   label: 'Sem check-in',    badgeId: 'dsdRevFlagCnt_noCheckin' },
+      { k: 'gps',       cor: 'var(--status-warning)', bg: 'var(--status-warning-bg,#FEF4E1)',  label: 'GPS divergente',  badgeId: 'dsdRevFlagCnt_gps' },
+      { k: 'time',      cor: '#EA580C',               bg: '#FFF1E6',                           label: 'Fora da margem',  badgeId: 'dsdRevFlagCnt_time' },
+      { k: 'manual',    cor: 'var(--status-info)',    bg: 'var(--status-info-bg,#E4ECFD)',     label: 'Check-in manual', badgeId: 'dsdRevFlagCnt_manual' },
+    ];
+  }
+  const flagChips = window._dsdRevFlagChips;
+
+  // Helper que retorna o HTML de UM chip baseado no estado atual
+  // Usado tanto no render inicial quanto no re-render após click
+  if (!window._dsdRevRenderChip) {
+    window._dsdRevRenderChip = function(c, on) {
+      return `
+        <div id="dsdRevChip_${c.k}" style="display:inline-flex;align-items:center;height:36px;border-radius:9999px;border:1px solid ${on ? c.cor + '55' : 'var(--neutral-200)'};background:${on ? c.bg : '#fff'};color:${on ? c.cor : 'var(--neutral-400)'};font-size:12px;font-weight:600;overflow:hidden;transition:all 120ms;opacity:${on ? '1' : '0.55'};">
+          <button onclick="isolarFlagRevisaoDesktop('${c.k}')" title="Mostrar só visitas com essa flag" style="height:100%;padding:0 4px 0 12px;border:0;background:transparent;color:inherit;display:inline-flex;align-items:center;gap:6px;font-size:inherit;font-weight:inherit;font-family:inherit;cursor:pointer;">
+            <span style="width:8px;height:8px;border-radius:50%;background:${on ? c.cor : 'var(--neutral-300)'};"></span>
+            ${c.label}
+            <span id="${c.badgeId}" style="font-family:'JetBrains Mono',monospace;font-size:12.5px;font-weight:700;background:${on ? '#fff' : 'var(--neutral-100)'};color:${on ? c.cor : 'var(--neutral-500)'};padding:2px 8px;border-radius:9999px;margin-left:2px;min-width:22px;text-align:center;">—</span>
+          </button>
+          ${on ? `<button onclick="event.stopPropagation();desligarFlagRevisaoDesktop('${c.k}')" title="Ocultar essa flag" style="height:100%;padding:0 10px 0 4px;border:0;background:transparent;color:${c.cor};cursor:pointer;display:inline-flex;align-items:center;"><span class="material-symbols-rounded" style="font-size:14px;">close</span></button>` : ''}
+        </div>
+      `;
+    };
+  }
 
   const content = `
     <div style="display:flex;flex-direction:column;gap:20px;">
@@ -14532,23 +14712,11 @@ function renderAdminRevisaoDesktop() {
 
         <div style="width:1px;height:42px;background:var(--neutral-200);"></div>
 
-        <!-- Chips de flag -->
+        <!-- Chips de flag (Sprint 9.32.283: container com id pra re-render do estado on/off) -->
         <div style="display:flex;flex-direction:column;gap:4px;">
           <div style="font-size:10.5px;font-weight:600;color:var(--neutral-500);text-transform:uppercase;letter-spacing:0.05em;">Tipo de flag</div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;">
-            ${flagChips.map(c => {
-              const on = s.flags.has(c.k);
-              return `
-                <div id="dsdRevChip_${c.k}" style="display:inline-flex;align-items:center;height:36px;border-radius:9999px;border:1px solid ${on ? c.cor + '55' : 'var(--neutral-200)'};background:${on ? c.bg : '#fff'};color:${on ? c.cor : 'var(--neutral-500)'};font-size:12px;font-weight:600;overflow:hidden;transition:all 120ms;">
-                  <button onclick="isolarFlagRevisaoDesktop('${c.k}')" title="Mostrar só visitas com essa flag" style="height:100%;padding:0 4px 0 12px;border:0;background:transparent;color:inherit;display:inline-flex;align-items:center;gap:6px;font-size:inherit;font-weight:inherit;font-family:inherit;cursor:pointer;">
-                    <span style="width:8px;height:8px;border-radius:50%;background:${c.cor};"></span>
-                    ${c.label}
-                    <span id="${c.badgeId}" style="font-family:'JetBrains Mono',monospace;font-size:10.5px;background:${on ? '#fff' : 'var(--neutral-100)'};padding:1px 6px;border-radius:9999px;margin-left:2px;min-width:18px;text-align:center;">—</span>
-                  </button>
-                  ${on ? `<button onclick="event.stopPropagation();desligarFlagRevisaoDesktop('${c.k}')" title="Ocultar essa flag" style="height:100%;padding:0 10px 0 4px;border:0;background:transparent;color:${c.cor};cursor:pointer;display:inline-flex;align-items:center;"><span class="material-symbols-rounded" style="font-size:14px;">close</span></button>` : ''}
-                </div>
-              `;
-            }).join('')}
+          <div id="dsdRevChipsBar" style="display:flex;gap:8px;flex-wrap:wrap;">
+            ${flagChips.map(c => window._dsdRevRenderChip(c, s.flags.has(c.k))).join('')}
           </div>
         </div>
 
@@ -14581,7 +14749,7 @@ function renderAdminRevisaoDesktop() {
   `;
 
   return desktopShell({
-    title: 'Revisão de visitas',
+    title: 'Fila de Revisão',
     breadcrumb: ['Admin', 'Operação', 'Revisão'],
     titleExtra,
     content,
@@ -14666,6 +14834,16 @@ async function carregarAdminRevisaoDesktop() {
     filtradas.forEach(v => {
       v._chipKeys.forEach(k => chipCounts[k]++);
     });
+
+    // Sprint 9.32.283: re-renderiza os chips com o estado atualizado (on/off colorido vs cinza)
+    // Antes só atualizava o número via setBadge, mas a cor de fundo/borda/opacidade não acompanhava
+    // o s.flags. Agora reconstrói o HTML do container — preserva a estrutura e respeita o estado.
+    const chipsBar = document.getElementById('dsdRevChipsBar');
+    if (chipsBar && window._dsdRevFlagChips && window._dsdRevRenderChip) {
+      chipsBar.innerHTML = window._dsdRevFlagChips.map(c => window._dsdRevRenderChip(c, state.flags.has(c.k))).join('');
+    }
+
+    // Aplica os contadores nos badges (depois do re-render pra não serem perdidos)
     Object.entries(chipCounts).forEach(([k, n]) => {
       setBadge(`dsdRevFlagCnt_${k}`, n);
     });
@@ -17882,7 +18060,9 @@ async function finalizarRelatorio(visitaId, dados) {
     horario_termino: dados.horario_termino,
     visita_realizada: dados.visita_realizada,
     motivo_nao_realizada: dados.motivo_nao_realizada || null,
-    resumo: dados.resumo || null,
+    // Sprint 9.32.278: normaliza &nbsp; e entidades comuns antes de salvar
+    // (paste de Word/Outlook traz &nbsp; literal — quebra o escape no admin)
+    resumo: (dados.resumo || '').replace(/&nbsp;/gi, ' ').replace(/&amp;nbsp;/gi, ' ').replace(/&#160;/g, ' ').trim() || null,
     proximos_passos: dados.proximos_passos || null,
     proxima_visita_programada: dados.proxima_visita_programada || null,
     flag_horario_fora_margem: flagHorarioForaMargem,
@@ -31159,9 +31339,23 @@ function renderAdminRevisao() {
   const filtroInicial = window._routeParams?.filtro || 'com_flags';
   window._reviewFilter = filtroInicial;
 
+  // Sprint 9.32.292: estado de filtros de Tipo de flag pra alinhar com o desktop
+  if (!window._reviewMobileFlags) {
+    window._reviewMobileFlags = new Set(['noCheckin', 'gps', 'time', 'manual']);
+  }
+
   setTimeout(async () => {
     await carregarFilaRevisao();
   }, 0);
+
+  // Sprint 9.32.293: chips mobile no estilo "ícones circulares" (Protótipo 3)
+  // Cada chip tem: ícone circular + badge número sobreposto + label curto embaixo
+  const flagChipsMob = [
+    { k: 'noCheckin', cor: 'var(--status-danger)',  bg: 'var(--status-danger-bg,#FCE8E8)',   short: 'Sem check-in', icone: 'do_not_disturb_on', badgeId: 'mobRevFlagCnt_noCheckin' },
+    { k: 'gps',       cor: 'var(--status-warning)', bg: 'var(--status-warning-bg,#FEF4E1)',  short: 'GPS',          icone: 'location_off',     badgeId: 'mobRevFlagCnt_gps' },
+    { k: 'time',      cor: '#EA580C',               bg: '#FFF1E6',                           short: 'Fora margem',  icone: 'schedule',         badgeId: 'mobRevFlagCnt_time' },
+    { k: 'manual',    cor: 'var(--status-info)',    bg: 'var(--status-info-bg,#E4ECFD)',     short: 'Manual',       icone: 'touch_app',        badgeId: 'mobRevFlagCnt_manual' },
+  ];
 
   return `
     <div class="mobile-app">
@@ -31192,6 +31386,23 @@ function renderAdminRevisao() {
                  style="width:100%;padding:10px 14px 10px 38px;border:1px solid var(--neutral-200);border-radius:10px;font-family:inherit;font-size:13px;background:var(--neutral-0);color:var(--brand-navy);" />
         </div>
 
+        <!-- Sprint 9.32.293: chips em ícones circulares (Protótipo 3) — número em badge sobre o ícone -->
+        <div style="display:flex;justify-content:space-between;gap:8px;margin:8px 0 12px;" id="mobRevChipsBar">
+          ${flagChipsMob.map(c => {
+            const on = window._reviewMobileFlags.has(c.k);
+            return `
+              <button onclick="trocarFlagMobileRevisao('${c.k}')"
+                      style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;padding:9px 4px;background:#fff;border:1px solid var(--neutral-200);border-radius:10px;font-size:10px;font-weight:600;color:${on ? c.cor : 'var(--neutral-500)'};text-align:center;cursor:pointer;font-family:inherit;opacity:${on ? '1' : '0.6'};line-height:1.2;transition:all 150ms;">
+                <div style="position:relative;width:34px;height:34px;border-radius:50%;background:${on ? c.bg : 'var(--neutral-100)'};color:${on ? c.cor : 'var(--neutral-400)'};display:inline-flex;align-items:center;justify-content:center;">
+                  <span class="material-symbols-rounded" style="font-size:17px;">${c.icone}</span>
+                  <span id="${c.badgeId}" style="position:absolute;top:-4px;right:-4px;background:${on ? c.cor : 'var(--neutral-400)'};color:#fff;font-size:9.5px;font-weight:700;padding:1px 5px;border-radius:9999px;min-width:16px;text-align:center;line-height:1.4;">—</span>
+                </div>
+                <span>${c.short}</span>
+              </button>
+            `;
+          }).join('')}
+        </div>
+
         <div id="reviewList">
           <div style="padding:30px 20px;text-align:center;color:var(--neutral-500);font-size:13px;">
             <span class="material-symbols-rounded" style="font-size:28px;color:var(--neutral-400);">hourglass_empty</span>
@@ -31202,6 +31413,19 @@ function renderAdminRevisao() {
     </div>
   `;
 }
+
+// Sprint 9.32.292: toggle de flag no mobile (mesma lógica do desktop — isolar/restaurar)
+window.trocarFlagMobileRevisao = function(k) {
+  if (!window._reviewMobileFlags) window._reviewMobileFlags = new Set(['noCheckin', 'gps', 'time', 'manual']);
+  const todas = ['noCheckin', 'gps', 'time', 'manual'];
+  const soEla = window._reviewMobileFlags.size === 1 && window._reviewMobileFlags.has(k);
+  if (soEla) {
+    window._reviewMobileFlags = new Set(todas);
+  } else {
+    window._reviewMobileFlags = new Set([k]);
+  }
+  carregarFilaRevisao();
+};
 
 async function carregarFilaRevisao() {
   const listEl = document.getElementById('reviewList');
@@ -31250,7 +31474,6 @@ async function carregarFilaRevisao() {
       v._peso = (v._flags.filter(f => f.nivel === 'critical').length * 100)
               + (v._flags.filter(f => f.nivel === 'warning').length * 10)
               + v._flags.length;
-      // Em andamento = rascunho com checkin recente (<72h) e SEM motivo de revisão
       const checkinTs = v.checkin_timestamp ? new Date(v.checkin_timestamp).getTime() : null;
       v._emAndamento = (
         v.status === 'rascunho' &&
@@ -31259,10 +31482,69 @@ async function carregarFilaRevisao() {
         !v.revisao_motivo
       );
       v._janelaExpira = checkinTs ? new Date(checkinTs + limiteMs) : null;
+      // Sprint 9.32.292: mapeia chip keys (igual desktop) pra filtro de Tipo de flag mobile
+      v._chipKeys = new Set();
+      if (v.flag_sem_checkin || v.flag_sem_checkout) v._chipKeys.add('noCheckin');
+      if (v.flag_gps_divergente) v._chipKeys.add('gps');
+      if (v.flag_horario_fora_margem) v._chipKeys.add('time');
+      if (v.checkin_manual) v._chipKeys.add('manual');
     });
-    visitas.sort((a, b) => b._peso - a._peso);
 
-    listEl.innerHTML = visitas.map(v => {
+    // Sprint 9.32.293: conta visitas por chip e re-renderiza os chips em ícones circulares (Protótipo 3)
+    const chipCountsMob = { noCheckin: 0, gps: 0, time: 0, manual: 0 };
+    visitas.forEach(v => v._chipKeys.forEach(k => chipCountsMob[k]++));
+    const chipsBar = document.getElementById('mobRevChipsBar');
+    if (chipsBar) {
+      const flagsSet = window._reviewMobileFlags || new Set(['noCheckin', 'gps', 'time', 'manual']);
+      const chipsMeta = [
+        { k: 'noCheckin', cor: 'var(--status-danger)',  bg: 'var(--status-danger-bg,#FCE8E8)',   short: 'Sem check-in', icone: 'do_not_disturb_on', badgeId: 'mobRevFlagCnt_noCheckin' },
+        { k: 'gps',       cor: 'var(--status-warning)', bg: 'var(--status-warning-bg,#FEF4E1)',  short: 'GPS',          icone: 'location_off',     badgeId: 'mobRevFlagCnt_gps' },
+        { k: 'time',      cor: '#EA580C',               bg: '#FFF1E6',                           short: 'Fora margem',  icone: 'schedule',         badgeId: 'mobRevFlagCnt_time' },
+        { k: 'manual',    cor: 'var(--status-info)',    bg: 'var(--status-info-bg,#E4ECFD)',     short: 'Manual',       icone: 'touch_app',        badgeId: 'mobRevFlagCnt_manual' },
+      ];
+      chipsBar.innerHTML = chipsMeta.map(c => {
+        const on = flagsSet.has(c.k);
+        const n = chipCountsMob[c.k];
+        return `
+          <button onclick="trocarFlagMobileRevisao('${c.k}')"
+                  style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;padding:9px 4px;background:#fff;border:1px solid var(--neutral-200);border-radius:10px;font-size:10px;font-weight:600;color:${on ? c.cor : 'var(--neutral-500)'};text-align:center;cursor:pointer;font-family:inherit;opacity:${on ? '1' : '0.6'};line-height:1.2;transition:all 150ms;">
+            <div style="position:relative;width:34px;height:34px;border-radius:50%;background:${on ? c.bg : 'var(--neutral-100)'};color:${on ? c.cor : 'var(--neutral-400)'};display:inline-flex;align-items:center;justify-content:center;">
+              <span class="material-symbols-rounded" style="font-size:17px;">${c.icone}</span>
+              <span id="${c.badgeId}" style="position:absolute;top:-4px;right:-4px;background:${on ? c.cor : 'var(--neutral-400)'};color:#fff;font-size:9.5px;font-weight:700;padding:1px 5px;border-radius:9999px;min-width:16px;text-align:center;line-height:1.4;">${n}</span>
+            </div>
+            <span>${c.short}</span>
+          </button>
+        `;
+      }).join('');
+    }
+
+    // Sprint 9.32.292: filtro por chip (só ativa em "com_flags" — outros filtros tabular já restringem por status)
+    const flagsAtivas = window._reviewMobileFlags || new Set(['noCheckin', 'gps', 'time', 'manual']);
+    let visitasFiltradas = visitas;
+    if (window._reviewFilter === 'com_flags' && flagsAtivas.size > 0 && flagsAtivas.size < 4) {
+      visitasFiltradas = visitas.filter(v => {
+        if (v._chipKeys.size === 0) return false;
+        return Array.from(v._chipKeys).some(k => flagsAtivas.has(k));
+      });
+    }
+
+    visitasFiltradas.sort((a, b) => b._peso - a._peso);
+
+    // Se o filtro de chips deixou a lista vazia, mostra empty-state específico
+    if (visitasFiltradas.length === 0 && visitas.length > 0) {
+      listEl.innerHTML = `
+        <div class="empty-state" style="margin:0;">
+          <div class="empty-state__icon">
+            <span class="material-symbols-rounded">filter_alt_off</span>
+          </div>
+          <div class="empty-state__title">Nenhuma visita com esses filtros</div>
+          <div class="empty-state__desc">Toque num chip de Tipo de flag pra alternar a seleção.</div>
+        </div>
+      `;
+      return;
+    }
+
+    listEl.innerHTML = visitasFiltradas.map(v => {
       const nivel = v._nivel || 'info';
       // Classe especial pra visitas em revisão (devolvidas pro profissional) ou em andamento (janela ativa)
       let cardClass;
@@ -32231,6 +32513,7 @@ function renderAdminRevisaoDetalheDesktop() {
   }, 0);
 
   // Conteúdo desktop: container largo, sem mobile-app/topbar
+  // Sprint 9.32.287: botão Voltar agora vai no topbar via titleExtra (alinhado com título)
   const conteudoDesktop = `
     <div style="max-width:1100px;margin:0 auto;padding:14px 14px 60px;">
       <div id="reviewDetailBody">
@@ -32242,14 +32525,28 @@ function renderAdminRevisaoDetalheDesktop() {
     </div>
   `;
 
+  // Sprint 9.32.287: Voltar pill outline navy injetado no topbar (à direita do título)
+  const voltarBtn = `
+    <a href="#/admin/revisao"
+       style="display:inline-flex;align-items:center;gap:6px;padding:6px 14px 6px 10px;border:1.5px solid var(--brand-navy);background:#fff;color:var(--brand-navy);font-size:12.5px;font-weight:600;border-radius:9999px;text-decoration:none;font-family:inherit;transition:all 150ms;cursor:pointer;align-self:center;"
+       onmouseover="this.style.background='var(--brand-navy)';this.style.color='#fff';"
+       onmouseout="this.style.background='#fff';this.style.color='var(--brand-navy)';">
+      <span class="material-symbols-rounded" style="font-size:15px;">arrow_back</span>
+      Voltar
+    </a>
+  `;
+
   return desktopShell({
     title: 'Detalhes da visita',
     breadcrumb: ['Admin', 'Revisão', 'Detalhes'],
+    titleExtra: voltarBtn,
     content: conteudoDesktop,
     activeId: 'review',
   });
 }
 
+// Sprint 9.32.288: redesign completo do painel de detalhes da visita (Protótipo 5)
+// Hero com banda de alerta + grid 2 colunas + decisão navy no rodapé
 function renderReviewDetailContent(v) {
   const flags = getFlagsAtivas(v);
   const checkinFmt = v.checkin_timestamp ? formatarDataCompleta(v.checkin_timestamp) : '—';
@@ -32258,140 +32555,95 @@ function renderReviewDetailContent(v) {
   const nutriNome = v.nutricionista?.nome || '—';
   const instName = v.instituicoes?.nome || 'Instituição';
   const podeAgir = v.status !== 'aprovada_pos_revisao';
+  const dataCurta = v.checkin_timestamp ? formatarDataCurta(v.checkin_timestamp) : '—';
 
-  return `
-    <!-- Header com status -->
-    <div class="report-info">
-      <div class="report-info__icon">
-        <span class="material-symbols-rounded">local_hospital</span>
-      </div>
-      <div class="report-info__body">
-        <div class="report-info__name">${instName.replace(/"/g,'&quot;')}</div>
-        <div class="report-info__meta">
-          <span class="report-info__meta-item">
-            <span class="material-symbols-rounded">person</span>${nutriNome.replace(/"/g,'&quot;')}
-          </span>
-          <span class="report-info__meta-item">
-            <span class="material-symbols-rounded">schedule</span>${formatarDuracao(duracao)}
-          </span>
-          <span class="report-info__meta-item">
-            ${sbadgeForStatus(v)}
-          </span>
-        </div>
-      </div>
-    </div>
-
-    ${v.revisao_motivo && !v.revisao_resolvida_em ? `
-      <div class="report-lock-warning" style="background:#FEF4E1;border-color:rgba(245,158,11,0.3);color:#92400E;">
-        <span class="material-symbols-rounded" style="color:var(--status-warning);">rate_review</span>
-        <div>
-          <strong>Revisão solicitada ${v.status === 'rascunho' ? '— aguardando correção do profissional.' : '.'}</strong> ${v.revisor_solicitou?.nome ? `Por ${v.revisor_solicitou.nome}` : 'Por admin'}${v.revisao_solicitada_em ? ` em ${formatarDataCurta(v.revisao_solicitada_em)}` : ''}.
-          <div style="margin-top:6px;background:var(--neutral-0);border-radius:6px;padding:8px 10px;font-style:italic;color:var(--brand-navy);">
-            "${v.revisao_motivo.replace(/"/g,'&quot;')}"
+  // ===== HERO com banda de alerta no topo (se tem flags) =====
+  const heroHtml = `
+    <div class="rdv-hero">
+      ${flags.length > 0 ? `
+        <div class="rdv-hero-banner">
+          <div class="rdv-hero-banner-icon"><span class="material-symbols-rounded" style="font-size:14px;">flag</span></div>
+          <div class="rdv-hero-banner-text">
+            <strong>${flags.length} ${flags.length === 1 ? 'divergência' : 'divergências'}</strong> detectada${flags.length === 1 ? '' : 's'} — ${flags.map(f => f.titulo).join(' · ').toLowerCase()}
           </div>
         </div>
-      </div>
-    ` : v.status === 'aprovada_pos_revisao' ? `
-      <div class="report-lock-warning" style="background:#E6F6EF;border-color:rgba(34,160,107,0.25);color:#166534;">
-        <span class="material-symbols-rounded" style="color:var(--status-success);">verified</span>
-        <div>
-          <strong>Visita aprovada pós-revisão.</strong> Resolvida por ${v.revisor_resolveu?.nome || 'admin'} em ${v.revisao_resolvida_em ? formatarDataCurta(v.revisao_resolvida_em) : '—'}.
+      ` : ''}
+      <div class="rdv-hero-body">
+        <div class="rdv-hero-icon"><span class="material-symbols-rounded" style="font-size:26px;">local_hospital</span></div>
+        <div style="min-width:0;">
+          <div class="rdv-hero-name">${instName.replace(/"/g,'&quot;')}</div>
+          <div class="rdv-hero-meta">
+            <span class="rdv-hero-meta-item"><span class="material-symbols-rounded" style="font-size:14px;color:var(--neutral-500);">person</span>${nutriNome.replace(/"/g,'&quot;')}</span>
+            <span class="rdv-hero-meta-item"><span class="material-symbols-rounded" style="font-size:14px;color:var(--neutral-500);">event</span>${dataCurta}</span>
+            <span class="rdv-hero-meta-item"><span class="material-symbols-rounded" style="font-size:14px;color:var(--neutral-500);">schedule</span>${formatarDuracao(duracao)}</span>
+          </div>
         </div>
+        <div class="rdv-hero-status">${sbadgeForStatus(v)}</div>
       </div>
-    ` : ''}
+    </div>
+  `;
 
-    <!-- Flags ativas -->
-    ${flags.length > 0 ? `
-      <div class="review-detail__section">
-        <div class="review-detail__section-title">
-          <span class="material-symbols-rounded">flag</span>
-          Divergências detectadas (${flags.length})
+  // ===== Banner contextual de revisão/aprovação =====
+  const bannerRevisaoHtml = v.revisao_motivo && !v.revisao_resolvida_em ? `
+    <div class="report-lock-warning" style="background:#FEF4E1;border-color:rgba(245,158,11,0.3);color:#92400E;margin-bottom:14px;">
+      <span class="material-symbols-rounded" style="color:var(--status-warning);">rate_review</span>
+      <div>
+        <strong>Revisão solicitada ${v.status === 'rascunho' ? '— aguardando correção do profissional.' : '.'}</strong> ${v.revisor_solicitou?.nome ? `Por ${v.revisor_solicitou.nome}` : 'Por admin'}${v.revisao_solicitada_em ? ` em ${formatarDataCurta(v.revisao_solicitada_em)}` : ''}.
+        <div style="margin-top:6px;background:var(--neutral-0);border-radius:6px;padding:8px 10px;font-style:italic;color:var(--brand-navy);">
+          "${v.revisao_motivo.replace(/"/g,'&quot;')}"
         </div>
-        <div style="display:flex;flex-direction:column;gap:8px;">
-          ${flags.map(f => `
-            <div style="display:flex;gap:10px;align-items:flex-start;padding:10px;border-radius:10px;background:${
-              f.nivel === 'critical' ? 'var(--status-danger-bg)' :
-              f.nivel === 'warning' ? '#FEF4E1' : '#E4ECFD'
-            };">
-              <span class="material-symbols-rounded" style="font-size:20px;color:${
-                f.nivel === 'critical' ? 'var(--status-danger)' :
-                f.nivel === 'warning' ? 'var(--status-warning)' : 'var(--status-info)'
-              };flex-shrink:0;">${f.icone}</span>
-              <div>
-                <div style="font-size:13px;font-weight:700;color:${
-                  f.nivel === 'critical' ? '#B91C1C' :
-                  f.nivel === 'warning' ? '#B45309' : '#1D4ED8'
-                };">${f.titulo}</div>
-                <div style="font-size:12px;color:var(--neutral-600);margin-top:2px;line-height:1.4;">${f.descricao}</div>
+      </div>
+    </div>
+  ` : v.status === 'aprovada_pos_revisao' ? `
+    <div class="report-lock-warning" style="background:#E6F6EF;border-color:rgba(34,160,107,0.25);color:#166534;margin-bottom:14px;">
+      <span class="material-symbols-rounded" style="color:var(--status-success);">verified</span>
+      <div>
+        <strong>Visita aprovada pós-revisão.</strong> Resolvida por ${v.revisor_resolveu?.nome || 'admin'} em ${v.revisao_resolvida_em ? formatarDataCurta(v.revisao_resolvida_em) : '—'}.
+      </div>
+    </div>
+  ` : '';
+
+  // ===== Card de divergências (esquerda) =====
+  const divergenciasHtml = flags.length > 0 ? `
+    <div class="rdv-card">
+      <div class="rdv-card-h">
+        <span class="material-symbols-rounded" style="color:var(--status-warning,#EF9F27) !important;">flag</span>
+        Divergências detectadas (${flags.length})
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        ${flags.map(f => {
+          const corBg = f.nivel === 'critical' ? 'var(--status-danger-bg,#FCEBEB)' : f.nivel === 'warning' ? '#FAEEDA' : '#E6F1FB';
+          const corIcon = f.nivel === 'critical' ? 'rgba(226,75,74,0.18)' : f.nivel === 'warning' ? 'rgba(239,159,39,0.18)' : 'rgba(24,95,165,0.15)';
+          const corIconFg = f.nivel === 'critical' ? '#A32D2D' : f.nivel === 'warning' ? '#854F0B' : '#0C447C';
+          return `
+            <div style="display:flex;gap:12px;align-items:flex-start;padding:12px 14px;background:${corBg};border-radius:10px;">
+              <div style="width:28px;height:28px;border-radius:8px;background:${corIcon};color:${corIconFg};display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <span class="material-symbols-rounded" style="font-size:16px;">${f.icone}</span>
+              </div>
+              <div style="min-width:0;">
+                <div style="font-size:13px;font-weight:600;color:${corIconFg};margin-bottom:2px;">${f.titulo}</div>
+                <div style="font-size:12px;color:var(--neutral-700);line-height:1.45;">${f.descricao}</div>
               </div>
             </div>
-          `).join('')}
-        </div>
+          `;
+        }).join('')}
       </div>
-    ` : `
-      <div class="review-detail__section">
-        <div style="display:flex;gap:10px;align-items:center;color:var(--status-success);padding:6px 0;">
-          <span class="material-symbols-rounded">check_circle</span>
-          <strong style="font-size:13px;">Nenhuma divergência detectada</strong>
-        </div>
-      </div>
-    `}
-
-    <!-- Info GPS -->
-    <div class="review-detail__section">
-      <div class="review-detail__section-title">
-        <span class="material-symbols-rounded">my_location</span>
-        Check-in / Check-out
-      </div>
-      <div class="review-detail__row">
-        <span class="review-detail__label">Check-in</span>
-        <span class="review-detail__value review-detail__value--mono">${checkinFmt}</span>
-      </div>
-      <div class="review-detail__row">
-        <span class="review-detail__label">Check-out</span>
-        <span class="review-detail__value review-detail__value--mono">${checkoutFmt}</span>
-      </div>
-      ${v.checkin_latitude ? `
-        <div class="review-detail__row">
-          <span class="review-detail__label">Endereço check-in</span>
-          <span class="review-detail__value" id="addrCheckin_${v.id}" style="text-align:right;">
-            <span style="color:var(--neutral-400);font-size:12px;font-style:italic;">buscando endereço...</span>
-            <a href="https://www.google.com/maps?q=${v.checkin_latitude},${v.checkin_longitude}" target="_blank" rel="noopener" style="color:var(--status-info);text-decoration:none;font-family:var(--font-mono);font-size:11px;display:inline-flex;align-items:center;gap:3px;margin-left:6px;">${v.checkin_latitude.toFixed(5)}, ${v.checkin_longitude.toFixed(5)} <span class="material-symbols-rounded" style="font-size:13px;">open_in_new</span></a>
-          </span>
-        </div>
-      ` : ''}
-      ${v.checkout_latitude ? `
-        <div class="review-detail__row">
-          <span class="review-detail__label">Endereço check-out</span>
-          <span class="review-detail__value" id="addrCheckout_${v.id}" style="text-align:right;">
-            <span style="color:var(--neutral-400);font-size:12px;font-style:italic;">buscando endereço...</span>
-            <a href="https://www.google.com/maps?q=${v.checkout_latitude},${v.checkout_longitude}" target="_blank" rel="noopener" style="color:var(--status-info);text-decoration:none;font-family:var(--font-mono);font-size:11px;display:inline-flex;align-items:center;gap:3px;margin-left:6px;">${v.checkout_latitude.toFixed(5)}, ${v.checkout_longitude.toFixed(5)} <span class="material-symbols-rounded" style="font-size:13px;">open_in_new</span></a>
-          </span>
-        </div>
-      ` : ''}
-      ${v.checkin_precisao_metros ? `
-        <div class="review-detail__row">
-          <span class="review-detail__label">Precisão GPS</span>
-          <span class="review-detail__value review-detail__value--mono">±${Math.round(v.checkin_precisao_metros)}m</span>
-        </div>
-      ` : ''}
-      ${v.checkin_manual ? `
-        <div class="review-detail__row">
-          <span class="review-detail__label">Modo</span>
-          <span class="review-detail__value" style="color:var(--status-warning);">Manual (sem GPS)</span>
-        </div>
-      ` : ''}
-      ${renderMiniMapaVisita(v)}
     </div>
+  ` : `
+    <div class="rdv-card" style="display:flex;align-items:center;gap:10px;padding:14px 18px;">
+      <span class="material-symbols-rounded" style="color:var(--status-success);font-size:20px;">check_circle</span>
+      <strong style="font-size:13px;color:var(--brand-navy);">Nenhuma divergência detectada</strong>
+    </div>
+  `;
 
-    <!-- Relatório da nutri -->
-    <div class="review-detail__section">
-      <div class="review-detail__section-title">
+  // ===== Card de relatório (esquerda) =====
+  const relatorioHtml = `
+    <div class="rdv-card">
+      <div class="rdv-card-h">
         <span class="material-symbols-rounded">description</span>
         Relatório
       </div>
-      <!-- Sprint 9.32.162: R1 — grid 2-col com mini-cards (Empresa / Horário / Realizada / Status) -->
-      <div class="report-r1-grid">
+      <div class="report-r1-grid" style="margin-bottom:14px;">
         <div class="report-r1-cell">
           <div class="report-r1-uplabel">Empresa representada</div>
           ${v.empresa_representada
@@ -32400,7 +32652,7 @@ function renderReviewDetailContent(v) {
                 v.empresa_representada === 'Nutricionais-Santos' ? 'background:#DBEAFE;color:#1E40AF;' :
                 'background:#FEF3C7;color:#92400E;'
               }">${String(v.empresa_representada).replace(/</g,'&lt;')}</span>`
-            : '<span style="color:var(--status-warning);font-size:12px;">⚠ Não informada</span>'}
+            : '<span style="color:var(--status-warning-dark,#854F0B);font-size:12px;font-weight:600;">⚠ Não informada</span>'}
         </div>
         <div class="report-r1-cell">
           <div class="report-r1-uplabel">Horário declarado</div>
@@ -32431,17 +32683,14 @@ function renderReviewDetailContent(v) {
         </div>
       </div>
       ${v.visita_realizada === false ? `
-        <!-- Motivo da não realização (banner danger) -->
-        <div style="margin-top:14px;padding:12px 14px;background:var(--status-danger-bg,#FCE8E8);border-left:3px solid var(--status-danger);border-radius:0 8px 8px 0;">
+        <div style="padding:12px 14px;background:var(--status-danger-bg,#FCE8E8);border-left:3px solid var(--status-danger);border-radius:0 8px 8px 0;">
           <div class="report-r1-uplabel" style="margin-bottom:4px;color:#7F1D1D;">Motivo</div>
           <div style="font-size:12.5px;color:#7F1D1D;line-height:1.5;">${(v.motivo_nao_realizada || '—').replace(/</g, '&lt;')}</div>
         </div>
       ` : `
-        <!-- Profissionais conversados como pills com avatar -->
-        <div style="margin-top:14px;">
+        <div style="margin-bottom:14px;">
           <div class="report-r1-uplabel" style="margin-bottom:8px;">
-            Profissionais conversados
-            <span class="report-r1-count">${v.profissionais?.length || 0}</span>
+            Profissionais conversados <span class="report-r1-count">${v.profissionais?.length || 0}</span>
           </div>
           ${v.profissionais?.length ? `
             <div style="display:flex;flex-wrap:wrap;gap:6px;">
@@ -32459,12 +32708,9 @@ function renderReviewDetailContent(v) {
             </div>
           ` : '<div style="color:var(--neutral-400);font-style:italic;font-size:12px;">Nenhum profissional registrado</div>'}
         </div>
-
-        <!-- Objetivos como chips lime -->
-        <div style="margin-top:14px;">
+        <div style="margin-bottom:14px;">
           <div class="report-r1-uplabel" style="margin-bottom:8px;">
-            Objetivos trabalhados
-            <span class="report-r1-count">${v.objetivos?.length || 0}</span>
+            Objetivos trabalhados <span class="report-r1-count">${v.objetivos?.length || 0}</span>
           </div>
           ${v.objetivos?.length ? `
             <div style="display:flex;flex-wrap:wrap;gap:6px;">
@@ -32477,35 +32723,104 @@ function renderReviewDetailContent(v) {
             </div>
           ` : '<div style="color:var(--neutral-400);font-style:italic;font-size:12px;">Nenhum objetivo registrado</div>'}
         </div>
-
         ${renderRelatorioCards(v)}
-
-        <!-- 9.32.216: Anexos (somente leitura na visão consolidada) -->
-        <div class="review-detail__section" id="anexosConsolidadoSec_${v.id}" style="margin-top:14px;">
-          <div class="review-detail__section-title">
-            <span class="material-symbols-rounded">attach_file</span>
-            Anexos
-          </div>
-          <div class="anexos-list" id="anexosConsolidadoList_${v.id}">
-            <div style="font-size:12px;color:var(--neutral-500);padding:8px 0;text-align:center;">Carregando anexos...</div>
-          </div>
-        </div>
       `}
     </div>
+  `;
 
-    ${podeAgir ? `
-      <!-- Ações admin: sempre 2 opções diretas, independente do status -->
-      <div class="review-actions">
-        <button class="review-action-btn review-action-btn--approve" onclick="handleAprovarVisita()">
-          <span class="material-symbols-rounded">verified</span>
-          ${estaEmRevisao(v) ? 'Aprovar esta visita' : 'Aprovar'}
-        </button>
-        <button class="review-action-btn review-action-btn--return" onclick="handleDevolverAoNutri()">
-          <span class="material-symbols-rounded">undo</span>
-          Devolver pro profissional
-        </button>
+  // ===== Card de localização (direita) — check-in/out + mapa =====
+  const localizacaoHtml = `
+    <div class="rdv-card">
+      <div class="rdv-card-h">
+        <span class="material-symbols-rounded">my_location</span>
+        Localização
       </div>
-    ` : ''}
+      <div class="review-detail__row">
+        <span class="review-detail__label">Check-in</span>
+        <span class="review-detail__value review-detail__value--mono">${checkinFmt}</span>
+      </div>
+      <div class="review-detail__row">
+        <span class="review-detail__label">Check-out</span>
+        <span class="review-detail__value review-detail__value--mono">${checkoutFmt}</span>
+      </div>
+      ${v.checkin_latitude ? `
+        <div class="review-detail__row">
+          <span class="review-detail__label">Endereço entrada</span>
+          <span class="review-detail__value" id="addrCheckin_${v.id}" style="text-align:right;">
+            <span style="color:var(--neutral-400);font-size:12px;font-style:italic;">buscando endereço...</span>
+            <a href="https://www.google.com/maps?q=${v.checkin_latitude},${v.checkin_longitude}" target="_blank" rel="noopener" style="color:var(--status-info);text-decoration:none;font-family:var(--font-mono);font-size:11px;display:inline-flex;align-items:center;gap:3px;margin-left:6px;">${v.checkin_latitude.toFixed(5)}, ${v.checkin_longitude.toFixed(5)} <span class="material-symbols-rounded" style="font-size:13px;">open_in_new</span></a>
+          </span>
+        </div>
+      ` : ''}
+      ${v.checkout_latitude ? `
+        <div class="review-detail__row">
+          <span class="review-detail__label">Endereço saída</span>
+          <span class="review-detail__value" id="addrCheckout_${v.id}" style="text-align:right;">
+            <span style="color:var(--neutral-400);font-size:12px;font-style:italic;">buscando endereço...</span>
+            <a href="https://www.google.com/maps?q=${v.checkout_latitude},${v.checkout_longitude}" target="_blank" rel="noopener" style="color:var(--status-info);text-decoration:none;font-family:var(--font-mono);font-size:11px;display:inline-flex;align-items:center;gap:3px;margin-left:6px;">${v.checkout_latitude.toFixed(5)}, ${v.checkout_longitude.toFixed(5)} <span class="material-symbols-rounded" style="font-size:13px;">open_in_new</span></a>
+          </span>
+        </div>
+      ` : ''}
+      ${v.checkin_precisao_metros ? `
+        <div class="review-detail__row">
+          <span class="review-detail__label">Precisão GPS</span>
+          <span class="review-detail__value review-detail__value--mono">±${Math.round(v.checkin_precisao_metros)}m</span>
+        </div>
+      ` : ''}
+      ${v.checkin_manual ? `
+        <div class="review-detail__row">
+          <span class="review-detail__label">Modo</span>
+          <span class="review-detail__value" style="color:var(--status-warning);">Manual (sem GPS)</span>
+        </div>
+      ` : ''}
+      ${renderMiniMapaVisita(v)}
+    </div>
+
+    <!-- Anexos (direita, abaixo da localização) -->
+    <div class="rdv-card" id="anexosConsolidadoSec_${v.id}">
+      <div class="rdv-card-h">
+        <span class="material-symbols-rounded">attach_file</span>
+        Anexos
+      </div>
+      <div class="anexos-list" id="anexosConsolidadoList_${v.id}">
+        <div style="font-size:12px;color:var(--neutral-500);padding:8px 0;text-align:center;">Carregando anexos...</div>
+      </div>
+    </div>
+  `;
+
+  // ===== Decisão final navy no rodapé =====
+  const decisaoHtml = podeAgir ? `
+    <div class="rdv-decisao">
+      <div class="rdv-decisao-info">
+        <strong class="title">Decisão final</strong>
+        ${flags.length > 0
+          ? `<strong style="color:#fff;">${flags.length} ${flags.length === 1 ? 'divergência' : 'divergências'}</strong> detectada${flags.length === 1 ? '' : 's'}. Aprove se tudo estiver conforme, ou devolva pro profissional revisar.`
+          : 'Aprove se tudo estiver conforme, ou devolva pro profissional ajustar.'}
+      </div>
+      <button class="rdv-btn-devolver" onclick="handleDevolverAoNutri()">
+        <span class="material-symbols-rounded" style="font-size:16px;">undo</span>
+        Devolver
+      </button>
+      <button class="rdv-btn-aprovar" onclick="handleAprovarVisita()">
+        <span class="material-symbols-rounded" style="font-size:17px;">verified</span>
+        ${estaEmRevisao(v) ? 'Aprovar esta visita' : 'Aprovar visita'}
+      </button>
+    </div>
+  ` : '';
+
+  return `
+    ${heroHtml}
+    ${bannerRevisaoHtml}
+    <div class="rdv-grid">
+      <div>
+        ${divergenciasHtml}
+        ${relatorioHtml}
+      </div>
+      <div>
+        ${localizacaoHtml}
+      </div>
+    </div>
+    ${decisaoHtml}
   `;
 }
 
@@ -32678,6 +32993,20 @@ function _parseDataBr(s) {
 // um único parágrafo justified — é a versão "Mínimo" embutida (fallback seguro).
 function _formatarResumoMedio(texto) {
   if (!texto || typeof texto !== 'string') return { html: '', secoes: 0 };
+
+  // Sprint 9.32.278: decode entidades HTML comuns ANTES de detectar/escapar.
+  // Caso clássico: nutri cola texto do Word/Outlook/Gmail e vem com &nbsp; literal no banco.
+  // No nutri o texto passa por _rteSanitizar (browser decodifica &nbsp; → espaço).
+  // No admin passava por escapeHtml, que converte & em &amp; — daí aparecia "&nbsp;" literal.
+  // Aqui normalizamos as entidades pra unicode antes de qualquer outro tratamento.
+  texto = texto
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;nbsp;/gi, ' ')
+    .replace(/&quot;/gi, '"')
+    .replace(/&apos;/gi, "'")
+    .replace(/&#39;/g, "'")
+    .replace(/&#160;/g, ' ')
+    .replace(/&#xA0;/gi, ' ');
 
   // Sprint 9.32.164: se o texto já vem como HTML (do RTE), renderiza direto após sanitizar.
   // Detectamos HTML pela presença de tags básicas (b, i, u, p, ul, span, etc).
@@ -32959,10 +33288,33 @@ function _initMapaLeafletVisita(v) {
     L.polyline([[ci.lat, ci.lng], [co.lat, co.lng]], { color: '#9CA3AF', weight: 2, dashArray: '6 4' }).addTo(map);
   }
 
-  // Auto-fit nos pinos com padding
-  if (bounds.length > 1) {
-    map.fitBounds(bounds, { padding: [30, 30], maxZoom: 17 });
-  }
+  // Sprint 9.32.290: encapsula auto-fit pra poder chamar várias vezes.
+  // Antes rodava 1x logo depois do L.map() — quando o container ainda não tinha
+  // tamanho final, o cálculo de bounds saía errado (mostrando só 1 pino).
+  // Agora rodamos junto com cada invalidateSize pra garantir que vê todos.
+  const fitAll = () => {
+    if (bounds.length > 1) {
+      try { map.fitBounds(bounds, { padding: [40, 40], maxZoom: 16 }); } catch (e) {}
+    } else if (bounds.length === 1) {
+      try { map.setView(bounds[0], 16); } catch (e) {}
+    }
+  };
+  fitAll();
+
+  // Sprint 9.32.287: força recálculo de tamanho após setup. Evita tiles em branco
+  // quando o container Leaflet ainda não tinha tamanho final no momento da inicialização.
+  // Sprint 9.32.290: junto com o invalidate, chamamos fitAll de novo pra garantir
+  // que TODOS os pontos (Local, Check-in, Check-out) ficam visíveis no zoom ideal.
+  const invalidate = () => {
+    try { map.invalidateSize(); } catch (e) {}
+    fitAll();
+  };
+  setTimeout(invalidate, 50);
+  setTimeout(invalidate, 250);
+  setTimeout(invalidate, 800);
+
+  // Também invalida no primeiro evento de resize da janela
+  window.addEventListener('resize', invalidate, { once: true });
 }
 
 function formatarDataCompleta(ts) {
@@ -35410,7 +35762,7 @@ window.rejeitarObjetivoPendente = async function(id) {
 let FAT_DATA = null;
 let _fatDataPromise = null;
 // __FAT_VERSION_START__ — substituído pelo atualizar_index.py com hash do JSON
-const FAT_DATA_VERSION = '391332b4a63f';
+const FAT_DATA_VERSION = 'bae644a1c6b7';
 // __FAT_VERSION_END__
 const FAT_DATA_URL = 'faturamento_data_inline.json?v=' + FAT_DATA_VERSION;
 
@@ -37282,7 +37634,7 @@ window._fatAbrirVendedor = function(nome) {
       <div style="padding:18px 22px;display:grid;grid-template-columns:repeat(3,1fr);gap:12px;border-bottom:1px solid var(--neutral-200);">
         <div>
           <div style="font-size:10.5px;color:var(--neutral-500);font-weight:700;letter-spacing:0.06em;text-transform:uppercase;">Faturamento total</div>
-          <div style="font-family:var(--font-display);font-size:22px;font-weight:700;color:var(--brand-navy);margin-top:2px;">${_fmtMoeda(total, true)}</div>
+          <div style="font-family:var(--font-display);font-size:22px;font-weight:700;color:var(--brand-navy);margin-top:2px;">${_fmtMoeda(total)}</div>
         </div>
         <div>
           <div style="font-size:10.5px;color:var(--neutral-500);font-weight:700;letter-spacing:0.06em;text-transform:uppercase;">Notas</div>
@@ -37394,7 +37746,7 @@ window._fatAbrirCliente = function(nomeFantasia) {
       <div style="padding:16px 22px;display:grid;grid-template-columns:repeat(4,1fr);gap:10px;border-bottom:1px solid var(--neutral-200);">
         <div>
           <div style="font-size:10px;color:var(--neutral-500);font-weight:700;letter-spacing:0.05em;text-transform:uppercase;">Faturamento</div>
-          <div style="font-family:var(--font-display);font-size:18px;font-weight:700;color:var(--brand-navy);margin-top:2px;">${_fmtMoeda(total, true)}</div>
+          <div style="font-family:var(--font-display);font-size:18px;font-weight:700;color:var(--brand-navy);margin-top:2px;">${_fmtMoeda(total)}</div>
         </div>
         <div>
           <div style="font-size:10px;color:var(--neutral-500);font-weight:700;letter-spacing:0.05em;text-transform:uppercase;">Notas</div>
@@ -37560,7 +37912,7 @@ window._fatAbrirMarca = function(nomeMarca) {
       <div style="padding:18px 22px;display:grid;grid-template-columns:repeat(4,1fr);gap:12px;border-bottom:1px solid var(--neutral-200);">
         <div>
           <div style="font-size:10px;color:var(--neutral-500);font-weight:700;letter-spacing:0.05em;text-transform:uppercase;">Faturamento</div>
-          <div style="font-family:var(--font-display);font-size:18px;font-weight:700;color:var(--brand-navy);margin-top:2px;">${_fmtMoeda(marca.faturamento, true)}</div>
+          <div style="font-family:var(--font-display);font-size:18px;font-weight:700;color:var(--brand-navy);margin-top:2px;">${_fmtMoeda(marca.faturamento)}</div>
         </div>
         <div>
           <div style="font-size:10px;color:var(--neutral-500);font-weight:700;letter-spacing:0.05em;text-transform:uppercase;">% do total</div>
@@ -46981,6 +47333,8 @@ function renderAdminEquipe() {
 
 // ====== Equipe: helpers ======
 // Sprint 9.32.256: traz pendente_aprovacao da categoria pra mostrar/decidir na hora de aprovar usuário
+// Sprint 9.32.294: oculta o super_admin da listagem da Equipe (proteção visual — a conta master
+// não deve aparecer pra outros admins gerenciarem). Continua existindo no banco e no login.
 async function listarUsuariosPorStatus(statuses) {
   if (!db) return [];
   const { data, error } = await db
@@ -46989,11 +47343,10 @@ async function listarUsuariosPorStatus(statuses) {
     .in('status', statuses)
     .order('criado_em', { ascending: false });
   if (error) { console.warn('[equipe]', error.message); return []; }
-  // Super admin primeiro, depois admins, depois o resto (por criado_em desc)
-  const lista = data || [];
+  // Sprint 9.32.294: filtra super_admin da lista
+  const lista = (data || []).filter(u => u.super_admin !== true);
+  // Admins primeiro, depois o resto (por criado_em desc)
   return lista.sort((a, b) => {
-    if (a.super_admin && !b.super_admin) return -1;
-    if (b.super_admin && !a.super_admin) return 1;
     if (a.perfil === 'admin' && b.perfil !== 'admin') return -1;
     if (b.perfil === 'admin' && a.perfil !== 'admin') return 1;
     return 0;
@@ -47002,10 +47355,11 @@ async function listarUsuariosPorStatus(statuses) {
 
 async function contarUsuariosPorStatus() {
   if (!db) return { pendentes: 0, ativos: 0, desativados: 0 };
+  // Sprint 9.32.294: contagens excluem super_admin pra bater com a listagem (que também exclui)
   const [p, a, d] = await Promise.all([
-    db.from('usuarios').select('*', { count: 'exact', head: true }).eq('status', 'pendente'),
-    db.from('usuarios').select('*', { count: 'exact', head: true }).eq('status', 'ativo'),
-    db.from('usuarios').select('*', { count: 'exact', head: true }).in('status', ['inativo', 'bloqueado']),
+    db.from('usuarios').select('*', { count: 'exact', head: true }).eq('status', 'pendente').neq('super_admin', true),
+    db.from('usuarios').select('*', { count: 'exact', head: true }).eq('status', 'ativo').neq('super_admin', true),
+    db.from('usuarios').select('*', { count: 'exact', head: true }).in('status', ['inativo', 'bloqueado']).neq('super_admin', true),
   ]);
   return { pendentes: p.count || 0, ativos: a.count || 0, desativados: d.count || 0 };
 }
