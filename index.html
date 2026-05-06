@@ -6236,6 +6236,26 @@ a {
   white-space: pre-wrap;
 }
 
+/* Sprint 9.32.299: calendário + tabela do desktop nutri Minhas visitas */
+.mv-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.mv-cal-dayh { font-size: 9.5px; font-weight: 700; color: var(--neutral-500); text-align: center; padding: 3px 0; text-transform: uppercase; letter-spacing: 0.04em; }
+.mv-cal-cell { aspect-ratio: 1; border: 1px solid var(--neutral-150,#EDF0F4); border-radius: 6px; padding: 3px 4px; font-size: 10.5px; color: var(--neutral-700); position: relative; cursor: pointer; transition: border-color 0.15s; }
+.mv-cal-cell:hover:not(.muted) { border-color: var(--neutral-400); }
+.mv-cal-cell.muted { color: var(--neutral-300); background: var(--neutral-50); cursor: default; }
+.mv-cal-cell.today { background: #E6F1FB; border-color: var(--status-info); }
+.mv-cal-cell.has-visit { background: #F0F7DD; border-color: var(--brand-lime); }
+.mv-cal-cell.has-flag { background: var(--status-warning-bg,#FAEEDA); border-color: var(--status-warning); }
+.mv-cal-cell.selected { border: 2px solid var(--brand-navy); background: #DCE5F8; padding: 2px 3px; }
+.mv-cal-num { font-size: 11px; font-weight: 700; }
+.mv-cal-cnt { position: absolute; top: 2px; right: 3px; font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--neutral-500); font-weight: 700; }
+.mv-cal-cell.has-visit .mv-cal-cnt { color: var(--brand-lime-dark, #6FA62E); }
+.mv-cal-cell.has-flag .mv-cal-cnt { color: var(--status-warning-dark, #854F0B); }
+
+.mv-table-desktop { background: #fff; border: 1px solid var(--neutral-200); border-radius: 12px; overflow: hidden; }
+.mv-row { display: grid; grid-template-columns: 110px minmax(0, 2.4fr) minmax(0, 1.2fr) 80px 60px 60px 105px 50px; gap: 10px; padding: 11px 14px; align-items: center; font-size: 12.5px; border-top: 1px solid var(--neutral-100); }
+.mv-row.mv-row-head { background: var(--neutral-50); font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--neutral-500); font-weight: 700; padding: 10px 14px; border-top: 0; }
+.mv-row:not(.mv-row-head):hover { background: var(--neutral-50); cursor: pointer; }
+
 /* Sprint 9.32.291: redesign do painel de detalhes da visita (versão responsiva)
    Classes rdv-* (review detail v2) — substituem inline styles do renderReviewDetailContent
    pra suportar mobile sem quebrar */
@@ -7555,7 +7575,7 @@ a {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.294-ocultar-super-admin-equipe',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.299-desktop-calendario-tabela',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -11038,10 +11058,11 @@ async function listarMinhasVisitas(limit = 5) {
   if (!user) return [];
 
   // Sprint 9.32.13: traz campo extra `resumo` pra busca avançada
-  // Sprint 9.32.15 fix: removido `observacoes` (não existe na tabela) e `profissionais_conversados` (é N:N)
+  // Sprint 9.32.299: traz tb bairro/cidade da instituição + contagem de anexos pra tabela desktop
+  // Sprint 9.32.299: traz horario_termino + flags pra desktop também
   const { data, error } = await db
     .from('visitas')
-    .select('id, data_visita, horario_inicio, status, revisao_motivo, revisao_solicitada_em, revisao_resolvida_em, reabertura_expira_em, visita_realizada, cancelamento_motivo, cancelado_em, checkin_timestamp, checkout_timestamp, resumo, instituicoes(nome)')
+    .select('id, data_visita, horario_inicio, horario_termino, status, revisao_motivo, revisao_solicitada_em, revisao_resolvida_em, reabertura_expira_em, visita_realizada, cancelamento_motivo, cancelado_em, checkin_timestamp, checkout_timestamp, resumo, flag_sem_checkin, flag_sem_checkout, flag_gps_divergente, flag_horario_fora_margem, checkin_manual, instituicoes(nome, bairro, cidade), visita_anexos(count)')
     .eq('nutricionista_id', user.id)
     .order('checkin_timestamp', { ascending: false, nullsFirst: false })
     .limit(limit);
@@ -21217,22 +21238,29 @@ function renderItensPadronizadosDesktopNutri() {
   });
 }
 
-// Sprint 9.26 Fase 2: Minhas visitas no desktop nutri.
-// Reusa carregarMinhasVisitas / trocarFiltroMinhasVisitas / filtrarMinhasVisitasLocal
-// (os DOMs #visitasList, #mvBusca, #cntMv* são os mesmos, só o shell muda).
+// Sprint 9.32.299: Minhas visitas desktop nutri — layout calendário (30%) + tabela (70%)
+// Reusa carregarMinhasVisitas (que detecta se está em desktop pra renderizar tabela ao invés de cards mobile)
 function renderVisitasDesktopNutri() {
   const user = requireAuth();
   if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
 
   if (!window._visitasNutriFiltro) window._visitasNutriFiltro = 'todas';
+  // Sprint 9.32.299: estado do calendário desktop (mês visualizado + dia selecionado)
+  if (!window._mvCalDesktopMes) {
+    const hoje = new Date();
+    window._mvCalDesktopMes = `${hoje.getFullYear()}-${String(hoje.getMonth()+1).padStart(2,'0')}`;
+  }
+  // Sprint 9.32.299: dia selecionado no calendário (yyyy-mm-dd) — null = mostra mês inteiro
+  if (window._mvCalDesktopDia === undefined) window._mvCalDesktopDia = null;
 
   setTimeout(async () => {
     await carregarMinhasVisitas();
   }, 0);
 
   const content = `
-    <div style="max-width:1280px;margin:0 auto;">
+    <div style="max-width:1400px;margin:0 auto;">
       <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:14px;padding:18px 20px;">
+
         <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:14px;flex-wrap:wrap;">
           <div>
             <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:16px;">Minhas visitas</div>
@@ -21259,29 +21287,31 @@ function renderVisitasDesktopNutri() {
           </button>
         </div>
 
-        <!-- Sprint 9.32.13: campo de busca + toggle avançado -->
-        <div style="display:flex;gap:10px;align-items:center;margin:0 0 12px;flex-wrap:wrap;">
-          <div style="position:relative;flex:1;min-width:240px;max-width:460px;">
+        <!-- Filtros: busca + pills + calendário + exportar -->
+        <div style="display:flex;gap:10px;align-items:center;margin:0 0 14px;flex-wrap:wrap;">
+          <div style="position:relative;flex:1;min-width:220px;max-width:360px;">
             <span class="material-symbols-rounded" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--neutral-500);font-size:18px;pointer-events:none;">search</span>
-            <input type="text"
-                   id="mvBusca"
-                   placeholder="Buscar por instituição..."
-                   oninput="filtrarMinhasVisitasLocal(this.value)"
+            <input type="text" id="mvBusca" placeholder="Buscar por instituição..." oninput="filtrarMinhasVisitasLocal(this.value)"
                    style="width:100%;padding:10px 44px 10px 38px;border:1px solid var(--neutral-200);border-radius:10px;font-family:inherit;font-size:13px;background:var(--neutral-0);color:var(--brand-navy);" />
             <button type="button" id="mvBuscaToggle" onclick="window.toggleBuscaAvancada()" title="Busca avançada"
                     style="position:absolute;right:6px;top:50%;transform:translateY(-50%);width:32px;height:32px;border-radius:8px;border:0;background:transparent;color:var(--neutral-500);cursor:pointer;display:flex;align-items:center;justify-content:center;">
               <span class="material-symbols-rounded" style="font-size:18px;">tune</span>
             </button>
           </div>
-        </div>
-
-        <!-- Sprint 9.32.13: chips de data -->
-        <div style="display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px;">
-          <button type="button" data-mv-data="todas" class="mv-chip${(window._mvFiltroData || 'todas') === 'todas' ? ' is-active' : ''}" onclick="window.aplicarFiltroDataMv('todas')">Todas</button>
-          <button type="button" data-mv-data="hoje" class="mv-chip${window._mvFiltroData === 'hoje' ? ' is-active' : ''}" onclick="window.aplicarFiltroDataMv('hoje')">Hoje</button>
-          <button type="button" data-mv-data="semana" class="mv-chip${window._mvFiltroData === 'semana' ? ' is-active' : ''}" onclick="window.aplicarFiltroDataMv('semana')">Esta semana</button>
-          <button type="button" data-mv-data="mes" class="mv-chip${window._mvFiltroData === 'mes' ? ' is-active' : ''}" onclick="window.aplicarFiltroDataMv('mes')">Este mês</button>
-          <button type="button" data-mv-data="custom" class="mv-chip${window._mvFiltroData === 'custom' ? ' is-active' : ''}" onclick="window.aplicarFiltroDataMv('custom')">Personalizado</button>
+          <!-- Pills 4 + cal-btn (igual variação B do mobile) -->
+          <div style="display:flex;gap:6px;align-items:center;">
+            <button type="button" data-mv-data="todas" class="mv-chip${(window._mvFiltroData || 'todas') === 'todas' ? ' is-active' : ''}" onclick="window.aplicarFiltroDataMv('todas')">Todas</button>
+            <button type="button" data-mv-data="hoje" class="mv-chip${window._mvFiltroData === 'hoje' ? ' is-active' : ''}" onclick="window.aplicarFiltroDataMv('hoje')">Hoje</button>
+            <button type="button" data-mv-data="semana" class="mv-chip${window._mvFiltroData === 'semana' ? ' is-active' : ''}" onclick="window.aplicarFiltroDataMv('semana')">Semana</button>
+            <button type="button" data-mv-data="mes" class="mv-chip${window._mvFiltroData === 'mes' ? ' is-active' : ''}" onclick="window.aplicarFiltroDataMv('mes')">Mês</button>
+            <button type="button" data-mv-data="custom" title="Período personalizado" onclick="window.aplicarFiltroDataMv('custom')"
+                    style="width:36px;height:34px;border:1px solid ${window._mvFiltroData === 'custom' ? 'var(--brand-navy)' : 'var(--neutral-200)'};border-radius:9px;background:${window._mvFiltroData === 'custom' ? 'var(--brand-navy)' : 'var(--neutral-0)'};color:${window._mvFiltroData === 'custom' ? '#fff' : 'var(--brand-navy)'};display:inline-flex;align-items:center;justify-content:center;cursor:pointer;font-family:inherit;">
+              <span class="material-symbols-rounded" style="font-size:18px;">date_range</span>
+            </button>
+          </div>
+          <button type="button" onclick="window.exportarMinhasVisitasCsv && exportarMinhasVisitasCsv()" style="margin-left:auto;padding:8px 14px;background:#fff;color:var(--brand-navy);border:1px solid var(--neutral-200);border-radius:8px;font-size:12.5px;font-weight:600;display:inline-flex;align-items:center;gap:5px;cursor:pointer;font-family:inherit;">
+            <span class="material-symbols-rounded" style="font-size:14px;">download</span>Exportar CSV
+          </button>
         </div>
 
         <div id="mvDataCustomBox" style="display:${window._mvFiltroData === 'custom' ? 'flex' : 'none'};gap:10px;margin:0 0 14px;align-items:center;max-width:460px;">
@@ -21295,8 +21325,18 @@ function renderVisitasDesktopNutri() {
           <span>Buscando também no resumo da visita</span>
         </div>
 
-        <div class="visits-list" id="visitasList" style="background:var(--neutral-0);">
-          <div style="padding:30px;text-align:center;color:var(--neutral-500);font-size:13px;">Carregando...</div>
+        <!-- Layout principal 30% / 70% -->
+        <div style="display:grid;grid-template-columns:30% 1fr;gap:14px;align-items:start;">
+          <div id="mvCalDesktop">
+            <div style="background:var(--neutral-50);border:1px solid var(--neutral-200);border-radius:12px;padding:14px;text-align:center;color:var(--neutral-500);font-size:12px;">Carregando calendário...</div>
+          </div>
+          <div>
+            <div id="mvDayHeader" style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--neutral-500);margin-bottom:6px;padding:0 4px;display:none;"></div>
+            <div class="visits-list" id="visitasList" style="background:transparent;border-radius:0;box-shadow:none;overflow:visible;">
+              <div style="padding:30px;text-align:center;color:var(--neutral-500);font-size:13px;">Carregando...</div>
+            </div>
+            <div id="mvTableFooter" style="font-size:11px;color:var(--neutral-500);margin-top:8px;text-align:right;padding:0 4px;"></div>
+          </div>
         </div>
       </div>
     </div>
@@ -24032,13 +24072,16 @@ function renderVisitas() {
           </button>
         </div>
 
-        <!-- Sprint 9.32.13: barra de filtros de data + estado da busca avançada -->
-        <div style="display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px;">
-          <button type="button" data-mv-data="todas" class="mv-chip${(window._mvFiltroData || 'todas') === 'todas' ? ' is-active' : ''}" onclick="window.aplicarFiltroDataMv('todas')">Todas</button>
-          <button type="button" data-mv-data="hoje" class="mv-chip${window._mvFiltroData === 'hoje' ? ' is-active' : ''}" onclick="window.aplicarFiltroDataMv('hoje')">Hoje</button>
-          <button type="button" data-mv-data="semana" class="mv-chip${window._mvFiltroData === 'semana' ? ' is-active' : ''}" onclick="window.aplicarFiltroDataMv('semana')">Esta semana</button>
-          <button type="button" data-mv-data="mes" class="mv-chip${window._mvFiltroData === 'mes' ? ' is-active' : ''}" onclick="window.aplicarFiltroDataMv('mes')">Este mês</button>
-          <button type="button" data-mv-data="custom" class="mv-chip${window._mvFiltroData === 'custom' ? ' is-active' : ''}" onclick="window.aplicarFiltroDataMv('custom')">Personalizado</button>
+        <!-- Sprint 9.32.295: variação B aprovada — 4 pills compactos + botão calendário pra personalizado -->
+        <div style="display:flex;gap:6px;margin:0 0 10px;align-items:center;">
+          <button type="button" data-mv-data="todas" class="mv-chip${(window._mvFiltroData || 'todas') === 'todas' ? ' is-active' : ''}" style="flex:1;padding:7px 6px;text-align:center;font-size:12px;" onclick="window.aplicarFiltroDataMv('todas')">Todas</button>
+          <button type="button" data-mv-data="hoje" class="mv-chip${window._mvFiltroData === 'hoje' ? ' is-active' : ''}" style="flex:1;padding:7px 6px;text-align:center;font-size:12px;" onclick="window.aplicarFiltroDataMv('hoje')">Hoje</button>
+          <button type="button" data-mv-data="semana" class="mv-chip${window._mvFiltroData === 'semana' ? ' is-active' : ''}" style="flex:1;padding:7px 6px;text-align:center;font-size:12px;" onclick="window.aplicarFiltroDataMv('semana')">Semana</button>
+          <button type="button" data-mv-data="mes" class="mv-chip${window._mvFiltroData === 'mes' ? ' is-active' : ''}" style="flex:1;padding:7px 6px;text-align:center;font-size:12px;" onclick="window.aplicarFiltroDataMv('mes')">Mês</button>
+          <button type="button" data-mv-data="custom" title="Período personalizado" onclick="window.aplicarFiltroDataMv('custom')"
+                  style="width:38px;height:36px;border:1px solid ${window._mvFiltroData === 'custom' ? 'var(--brand-navy)' : 'var(--neutral-200)'};border-radius:10px;background:${window._mvFiltroData === 'custom' ? 'var(--brand-navy)' : 'var(--neutral-0)'};color:${window._mvFiltroData === 'custom' ? '#fff' : 'var(--brand-navy)'};display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;font-family:inherit;">
+            <span class="material-symbols-rounded" style="font-size:18px;">date_range</span>
+          </button>
         </div>
 
         <!-- Inputs de data personalizada (escondidos até clicar em Personalizado) -->
@@ -24054,13 +24097,318 @@ function renderVisitas() {
           <span>Buscando também no resumo da visita</span>
         </div>
 
-        <div class="visits-list" id="visitasList" style="background:var(--neutral-0);">
+        <!-- Sprint 9.32.296: container sem fundo/borda — cada card de visita já é independente
+             (background, borda e radius próprios). Mantém a class .visits-list pra compat.
+             com seletores existentes mas neutraliza os estilos visuais do wrapper. -->
+        <div class="visits-list" id="visitasList" style="background:transparent;border-radius:0;box-shadow:none;overflow:visible;">
           <div style="padding:20px;text-align:center;color:var(--neutral-500);font-size:13px;">Carregando...</div>
         </div>
       </main>
       ${bottomNav('visits')}
     </div>
   `;
+}
+
+// ============================================================================
+// Sprint 9.32.299: Desktop nutri — calendário 30% + tabela 70%
+// ============================================================================
+window.mvSelecionarDiaCal = function(diaStr) {
+  // Toggle: clicar no mesmo dia desseleciona
+  if (window._mvCalDesktopDia === diaStr) window._mvCalDesktopDia = null;
+  else window._mvCalDesktopDia = diaStr;
+  carregarMinhasVisitas();
+};
+
+window.mvLimparDiaSel = function() {
+  window._mvCalDesktopDia = null;
+  carregarMinhasVisitas();
+};
+
+window.mvNavegarMesCal = function(delta) {
+  const [a, m] = window._mvCalDesktopMes.split('-').map(Number);
+  const dt = new Date(a, m - 1 + delta, 1);
+  window._mvCalDesktopMes = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}`;
+  // Limpa dia selecionado quando muda mês
+  window._mvCalDesktopDia = null;
+  carregarMinhasVisitas();
+};
+
+window.mvIrHoje = function() {
+  const hoje = new Date();
+  window._mvCalDesktopMes = `${hoje.getFullYear()}-${String(hoje.getMonth()+1).padStart(2,'0')}`;
+  window._mvCalDesktopDia = null;
+  carregarMinhasVisitas();
+};
+
+function _mvHorarioStr(v) {
+  if (v.horario_inicio) return v.horario_inicio.slice(0, 5);
+  if (v.checkin_timestamp) return new Date(v.checkin_timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  return '—';
+}
+
+function _mvDuracaoStr(v) {
+  if (v.horario_inicio && v.horario_termino) {
+    const [h1, m1] = v.horario_inicio.split(':').map(n => parseInt(n,10));
+    const [h2, m2] = v.horario_termino.split(':').map(n => parseInt(n,10));
+    const min = (h2*60 + m2) - (h1*60 + m1);
+    if (!isNaN(min) && min > 0) return min < 60 ? `${min} min` : `${Math.floor(min/60)}h ${min%60 ? (min%60) + 'm' : ''}`.trim();
+  }
+  if (v.checkin_timestamp && v.checkout_timestamp) {
+    const min = Math.round((new Date(v.checkout_timestamp) - new Date(v.checkin_timestamp)) / 60000);
+    if (min > 0) return min < 60 ? `${min} min` : `${Math.floor(min/60)}h ${min%60 ? (min%60) + 'm' : ''}`.trim();
+  }
+  return '';
+}
+
+function _mvDataLabel(dataStr) {
+  if (!dataStr) return '—';
+  const hoje = new Date();
+  const ontem = new Date(hoje); ontem.setDate(hoje.getDate() - 1);
+  const yymmdd = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  const meses = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+  const [a, m, d] = dataStr.split('-').map(Number);
+  const dt = new Date(a, m-1, d);
+  if (yymmdd(dt) === yymmdd(hoje)) return 'Hoje';
+  if (yymmdd(dt) === yymmdd(ontem)) return 'Ontem';
+  return `${d} ${meses[m-1]}`;
+}
+
+function _mvStatusPill(v) {
+  const cancelada = v.visita_realizada === false;
+  const reaberta = temReaberturaAtiva(v).ativa;
+  const base = 'display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:9999px;font-size:11px;font-weight:700;';
+  if (cancelada) return `<span style="${base}background:var(--status-danger-bg,#FCEBEB);color:#A32D2D;">Cancelada</span>`;
+  if (estaEmRevisao(v) || reaberta) return `<span style="${base}background:var(--status-warning-bg,#FAEEDA);color:var(--status-warning-dark,#854F0B);">Revisão</span>`;
+  if (v.status === 'completa' || v.status === 'aprovada_pos_revisao') return `<span style="${base}background:var(--status-success-bg,#E1F5EE);color:#0E6E47;">Concluída</span>`;
+  if (v.status === 'rascunho') return `<span style="${base}background:var(--neutral-100);color:var(--neutral-700);">Rascunho</span>`;
+  return '';
+}
+
+// Renderiza o HTML do calendário pra um mês específico
+function renderMvCalDesktopHTML(mesViz, diaSel, visitasPorDia) {
+  const [ano, mes] = mesViz.split('-').map(Number);
+  const primeiro = new Date(ano, mes - 1, 1);
+  const diaSemanaInicio = primeiro.getDay(); // 0 = dom
+  const ultimoDia = new Date(ano, mes, 0).getDate();
+  const ultimoMesAnt = new Date(ano, mes - 1, 0).getDate();
+  const hoje = new Date();
+  const yymmdd = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  const hojeStr = yymmdd(hoje);
+  const meses = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+
+  // Conta totais do mês visualizado
+  let totalMes = 0;
+  let totalMin = 0;
+  const hospitaisSet = new Set();
+  Object.entries(visitasPorDia).forEach(([d, vs]) => {
+    if (d.startsWith(mesViz)) {
+      totalMes += vs.length;
+      vs.forEach(v => {
+        if (v.instituicoes?.nome) hospitaisSet.add(v.instituicoes.nome);
+        if (v.checkin_timestamp && v.checkout_timestamp) {
+          totalMin += Math.round((new Date(v.checkout_timestamp) - new Date(v.checkin_timestamp)) / 60000);
+        } else if (v.horario_inicio && v.horario_termino) {
+          const [h1, m1] = v.horario_inicio.split(':').map(n => parseInt(n,10));
+          const [h2, m2] = v.horario_termino.split(':').map(n => parseInt(n,10));
+          const m = (h2*60 + m2) - (h1*60 + m1);
+          if (m > 0) totalMin += m;
+        }
+      });
+    }
+  });
+  const horasStr = totalMin > 0 ? `${Math.floor(totalMin/60)}h ${totalMin%60 ? (totalMin%60) + 'm' : ''}`.trim() : '0h';
+
+  // Helper de célula
+  const cell = (diaNum, mesOffset) => {
+    const dt = new Date(ano, mes - 1 + mesOffset, diaNum);
+    const dataStr = yymmdd(dt);
+    const muted = mesOffset !== 0;
+    const isHoje = !muted && dataStr === hojeStr;
+    const sel = !muted && dataStr === diaSel;
+    const lista = visitasPorDia[dataStr] || [];
+    const temFlag = lista.some(v => (
+      v.flag_sem_checkin || v.flag_sem_checkout || v.flag_gps_divergente || v.flag_horario_fora_margem
+    ));
+    let cls = 'mv-cal-cell';
+    if (muted) cls += ' muted';
+    if (isHoje) cls += ' today';
+    if (lista.length > 0 && !temFlag) cls += ' has-visit';
+    if (temFlag) cls += ' has-flag';
+    if (sel) cls += ' selected';
+    const onclick = muted ? '' : `onclick="window.mvSelecionarDiaCal('${dataStr}')"`;
+    const cnt = lista.length > 0 ? `<div class="mv-cal-cnt">${lista.length}</div>` : '';
+    return `<div class="${cls}" ${onclick}><div class="mv-cal-num">${diaNum}</div>${cnt}</div>`;
+  };
+
+  // Monta a grid
+  let cells = '';
+  // Dias do mês anterior pra preencher
+  for (let i = diaSemanaInicio - 1; i >= 0; i--) {
+    cells += cell(ultimoMesAnt - i, -1);
+  }
+  // Dias do mês atual
+  for (let d = 1; d <= ultimoDia; d++) {
+    cells += cell(d, 0);
+  }
+  // Dias do próximo mês pra completar a grid (até múltiplo de 7)
+  const totalCells = diaSemanaInicio + ultimoDia;
+  const restantes = (7 - (totalCells % 7)) % 7;
+  for (let d = 1; d <= restantes; d++) {
+    cells += cell(d, 1);
+  }
+
+  return `
+    <div style="background:#fff;border:1px solid var(--neutral-200);border-radius:12px;padding:14px 16px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <div style="font-family:var(--font-display,'Poppins');font-size:15px;font-weight:700;color:var(--brand-navy);">${meses[mes-1]} ${ano}</div>
+        <div style="display:inline-flex;gap:3px;">
+          <span onclick="window.mvNavegarMesCal(-1)" style="width:26px;height:26px;border-radius:6px;background:var(--neutral-100);color:var(--brand-navy);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;"><span class="material-symbols-rounded" style="font-size:14px;">chevron_left</span></span>
+          <span onclick="window.mvIrHoje()" title="Hoje" style="width:26px;height:26px;border-radius:6px;background:var(--neutral-100);color:var(--brand-navy);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;"><span class="material-symbols-rounded" style="font-size:13px;">today</span></span>
+          <span onclick="window.mvNavegarMesCal(1)" style="width:26px;height:26px;border-radius:6px;background:var(--neutral-100);color:var(--brand-navy);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;"><span class="material-symbols-rounded" style="font-size:14px;">chevron_right</span></span>
+        </div>
+      </div>
+      <div class="mv-cal-grid">
+        <div class="mv-cal-dayh">D</div><div class="mv-cal-dayh">S</div><div class="mv-cal-dayh">T</div><div class="mv-cal-dayh">Q</div><div class="mv-cal-dayh">Q</div><div class="mv-cal-dayh">S</div><div class="mv-cal-dayh">S</div>
+        ${cells}
+      </div>
+      <div style="display:flex;gap:10px;margin-top:12px;padding-top:10px;border-top:1px solid var(--neutral-150,#EDF0F4);font-size:10.5px;color:var(--neutral-600);flex-wrap:wrap;">
+        <span style="display:inline-flex;align-items:center;gap:4px;"><span style="width:8px;height:8px;border-radius:2px;background:var(--brand-lime);"></span>Visita ok</span>
+        <span style="display:inline-flex;align-items:center;gap:4px;"><span style="width:8px;height:8px;border-radius:2px;background:var(--status-warning);"></span>Com flag</span>
+        <span style="display:inline-flex;align-items:center;gap:4px;"><span style="width:8px;height:8px;border-radius:2px;background:var(--status-info);"></span>Hoje</span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:12px;">
+        <div style="background:var(--neutral-50);border-radius:7px;padding:7px 9px;">
+          <div style="font-size:9.5px;color:var(--neutral-500);text-transform:uppercase;letter-spacing:0.05em;font-weight:700;">No mês</div>
+          <div style="font-family:var(--font-display,'Poppins');font-size:14px;font-weight:700;color:var(--brand-navy);margin-top:2px;">${totalMes}</div>
+        </div>
+        <div style="background:var(--neutral-50);border-radius:7px;padding:7px 9px;">
+          <div style="font-size:9.5px;color:var(--neutral-500);text-transform:uppercase;letter-spacing:0.05em;font-weight:700;">Horas</div>
+          <div style="font-family:var(--font-display,'Poppins');font-size:14px;font-weight:700;color:var(--brand-navy);margin-top:2px;">${horasStr}</div>
+        </div>
+        <div style="background:var(--neutral-50);border-radius:7px;padding:7px 9px;">
+          <div style="font-size:9.5px;color:var(--neutral-500);text-transform:uppercase;letter-spacing:0.05em;font-weight:700;">Hospitais</div>
+          <div style="font-family:var(--font-display,'Poppins');font-size:14px;font-weight:700;color:var(--brand-navy);margin-top:2px;">${hospitaisSet.size}</div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// Renderiza a tabela desktop (8 colunas)
+function renderMvTabelaDesktopHTML(visitas) {
+  const head = `
+    <div class="mv-row mv-row-head">
+      <div>Data</div>
+      <div>Hospital</div>
+      <div>Endereço</div>
+      <div>Duração</div>
+      <div>Prof.</div>
+      <div>Flags</div>
+      <div>Status</div>
+      <div>Ação</div>
+    </div>
+  `;
+  const rows = visitas.map(v => {
+    const cancelada = v.visita_realizada === false;
+    const inst = v.instituicoes || {};
+    const dataStr = v.data_visita || (v.checkin_timestamp ? v.checkin_timestamp.split('T')[0] : '');
+    const dataFmt = `${_mvDataLabel(dataStr)} ${_mvHorarioStr(v)}`.trim();
+    const horario = _mvHorarioStr(v);
+    const duracao = _mvDuracaoStr(v);
+    const nFlags = (typeof getFlagsAtivas === 'function') ? getFlagsAtivas(v).length : 0;
+    const nProf = v.profissionais?.length || 0;
+    const nAnexos = v.visita_anexos && v.visita_anexos[0] ? (v.visita_anexos[0].count || 0) : 0;
+    const enderecoCurto = [inst.bairro, inst.cidade].filter(Boolean).join(' · ');
+
+    const clipTag = nAnexos > 0
+      ? (nAnexos === 1
+          ? `<span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;background:var(--status-info-bg,#E6F1FB);color:var(--status-info,#185FA5);border-radius:9999px;flex-shrink:0;" title="1 anexo"><span class="material-symbols-rounded" style="font-size:13px;">attach_file</span></span>`
+          : `<span style="display:inline-flex;align-items:center;justify-content:center;gap:2px;height:22px;min-width:22px;padding:0 7px;background:var(--status-info-bg,#E6F1FB);color:var(--status-info,#185FA5);border-radius:9999px;flex-shrink:0;font-size:10.5px;font-weight:700;" title="${nAnexos} anexos"><span class="material-symbols-rounded" style="font-size:13px;">attach_file</span>${nAnexos}</span>`)
+      : '';
+
+    const ehRascunho = v.status === 'rascunho' && !cancelada;
+    const acao = ehRascunho
+      ? `<span style="display:inline-flex;align-items:center;justify-content:center;padding:6px 10px;background:var(--brand-navy);color:#fff;border-radius:7px;font-size:11px;font-weight:600;"><span class="material-symbols-rounded" style="font-size:13px;">edit</span></span>`
+      : `<span class="material-symbols-rounded" style="color:var(--neutral-400);font-size:18px;">visibility</span>`;
+
+    const flagCnt = nFlags > 0
+      ? `<span style="background:var(--status-warning-bg,#FAEEDA);color:var(--status-warning-dark,#854F0B);padding:2px 8px;border-radius:9999px;font-size:11px;font-weight:700;display:inline-block;">${nFlags}</span>`
+      : `<span style="color:var(--neutral-300);">—</span>`;
+
+    return `
+      <a href="#/visitas/relatorio?id=${v.id}" class="mv-row" style="text-decoration:none;color:inherit;">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--neutral-600);">${dataFmt}</div>
+        <div style="display:flex;align-items:center;gap:8px;min-width:0;">
+          <div style="width:28px;height:28px;border-radius:7px;background:var(--neutral-100);color:var(--brand-navy);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;"><span class="material-symbols-rounded" style="font-size:15px;">${cancelada ? 'cancel' : 'local_hospital'}</span></div>
+          <span style="font-family:var(--font-display,'Poppins');font-weight:700;color:var(--brand-navy);font-size:13px;line-height:1.3;flex:1;min-width:0;word-break:break-word;">${(inst.nome || 'Instituição').replace(/"/g,'&quot;')}</span>
+          ${clipTag}
+        </div>
+        <div style="color:var(--neutral-500);font-size:11.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${enderecoCurto || '<span style="color:var(--neutral-300);">—</span>'}</div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--neutral-600);">${duracao || '<span style="color:var(--neutral-300);">—</span>'}</div>
+        <div>${nProf > 0 ? nProf : '<span style="color:var(--neutral-300);">—</span>'}</div>
+        <div>${flagCnt}</div>
+        <div>${_mvStatusPill(v)}</div>
+        <div>${acao}</div>
+      </a>
+    `;
+  }).join('');
+
+  return `<div class="mv-table-desktop">${head}${rows}</div>`;
+}
+
+// Função coordenadora — chamada do carregarMinhasVisitas quando detecta desktop
+function renderMvDesktopCalTabela(visitas, listEl) {
+  const calEl = document.getElementById('mvCalDesktop');
+  const dayHeaderEl = document.getElementById('mvDayHeader');
+  const tableFooterEl = document.getElementById('mvTableFooter');
+  if (!calEl || !listEl) return;
+
+  // Estado
+  const diaSel = window._mvCalDesktopDia;
+
+  // Indexa visitas por dia (pra colorir o calendário)
+  const visitasPorDia = {};
+  visitas.forEach(v => {
+    const d = v.data_visita || (v.checkin_timestamp ? v.checkin_timestamp.split('T')[0] : null);
+    if (!d) return;
+    if (!visitasPorDia[d]) visitasPorDia[d] = [];
+    visitasPorDia[d].push(v);
+  });
+
+  // Render calendário (mês atual visualizado)
+  calEl.innerHTML = renderMvCalDesktopHTML(window._mvCalDesktopMes, diaSel, visitasPorDia);
+
+  // Filtra por dia clicado pra tabela
+  let visitasTabela = visitas;
+  if (diaSel) {
+    visitasTabela = visitas.filter(v => {
+      const d = v.data_visita || (v.checkin_timestamp ? v.checkin_timestamp.split('T')[0] : null);
+      return d === diaSel;
+    });
+    if (dayHeaderEl) {
+      const meses = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+      const [a,m,d] = diaSel.split('-').map(Number);
+      const dataLbl = `${d} ${meses[m-1]} ${a}`;
+      dayHeaderEl.innerHTML = `Mostrando visitas de <strong style="color:var(--brand-navy);">${dataLbl}</strong> · ${visitasTabela.length} ${visitasTabela.length === 1 ? 'visita' : 'visitas'} <span style="margin-left:8px;font-size:10.5px;font-weight:600;color:var(--status-info);text-transform:none;letter-spacing:0;cursor:pointer;" onclick="event.preventDefault();window.mvLimparDiaSel()">× limpar</span>`;
+      dayHeaderEl.style.display = 'block';
+    }
+  } else {
+    if (dayHeaderEl) dayHeaderEl.style.display = 'none';
+  }
+
+  // Render tabela
+  if (visitasTabela.length === 0) {
+    listEl.innerHTML = `<div style="padding:36px;text-align:center;background:#fff;border:1px solid var(--neutral-200);border-radius:12px;color:var(--neutral-500);font-size:13px;">
+      <span class="material-symbols-rounded" style="font-size:32px;color:var(--neutral-400);">inbox</span>
+      <div style="margin-top:6px;">Nenhuma visita ${diaSel ? 'nesse dia' : 'no recorte atual'}</div>
+    </div>`;
+  } else {
+    listEl.innerHTML = renderMvTabelaDesktopHTML(visitasTabela);
+  }
+
+  if (tableFooterEl) {
+    tableFooterEl.textContent = `${visitas.length} visita${visitas.length === 1 ? '' : 's'} no total · ordenadas por data desc`;
+  }
 }
 
 // Carrega e renderiza visitas aplicando o filtro atual (Sprint 8.10)
@@ -24137,6 +24485,13 @@ async function carregarMinhasVisitas() {
       });
     }
 
+    // Sprint 9.32.299: detecta desktop (calendário existe) e renderiza calendário + tabela
+    const calEl = document.getElementById('mvCalDesktop');
+    if (calEl && typeof renderMvDesktopCalTabela === 'function') {
+      renderMvDesktopCalTabela(visitas, listEl);
+      return;
+    }
+
     if (visitas.length === 0) {
       // Empty state contextual por filtro
       const empties = {
@@ -24164,31 +24519,121 @@ async function carregarMinhasVisitas() {
       return;
     }
 
-    listEl.innerHTML = visitas.map(v => {
+    // Sprint 9.32.298: cards ricos (modelo da foto aprovada)
+    // Cada card: ícone + nome + endereço, badge de flag, meta (data+horário, duração),
+    // botões "Continuar rascunho" + ver (apenas em rascunho)
+
+    // Helper: label de data tipo "Hoje · 20:27" ou "Ontem · 14:30" ou "3 mai · 09:15"
+    const dataLabel = (v) => {
+      const dataStr = v.data_visita || (v.checkin_timestamp ? v.checkin_timestamp.split('T')[0] : null);
+      if (!dataStr) return '—';
+      const hoje = new Date();
+      const ontem = new Date(hoje); ontem.setDate(hoje.getDate() - 1);
+      const yymmdd = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      const meses = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+      const [a, m, d] = dataStr.split('-').map(Number);
+      const dt = new Date(a, m-1, d);
+      let prefix;
+      if (yymmdd(dt) === yymmdd(hoje)) prefix = 'Hoje';
+      else if (yymmdd(dt) === yymmdd(ontem)) prefix = 'Ontem';
+      else prefix = `${d} ${meses[m-1]}`;
+      const time = v.horario_inicio
+        ? v.horario_inicio.slice(0,5)
+        : (v.checkin_timestamp ? new Date(v.checkin_timestamp).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) : '');
+      return time ? `${prefix} · ${time}` : prefix;
+    };
+
+    // Status pill (canto direito superior do card)
+    const statusPill = (v) => {
       const cancelada = v.visita_realizada === false;
-      const reaberta = temReaberturaAtiva(v).ativa;  // Sprint 9.22.9
-      const motivoHtml = (cancelada && v.cancelamento_motivo)
-        ? `<div style="font-size:11.5px;color:var(--neutral-500);margin-top:4px;line-height:1.35;font-style:italic;display:flex;gap:4px;align-items:flex-start;"><span class="material-symbols-rounded" style="font-size:12px;flex-shrink:0;margin-top:1px;">info</span><span>${v.cancelamento_motivo.replace(/</g,'&lt;')}</span></div>`
+      const reaberta = temReaberturaAtiva(v).ativa;
+      const base = 'padding:3px 10px;border-radius:9999px;font-size:10.5px;font-weight:700;flex-shrink:0;';
+      if (cancelada) return `<span style="${base}background:var(--status-danger-bg,#FCEBEB);color:#A32D2D;">Cancelada</span>`;
+      if (estaEmRevisao(v) || reaberta) return `<span style="${base}background:var(--status-warning-bg,#FAEEDA);color:var(--status-warning-dark,#854F0B);">Revisão</span>`;
+      if (v.status === 'completa' || v.status === 'aprovada_pos_revisao') return `<span style="${base}background:var(--status-success-bg,#E1F5EE);color:#0E6E47;">Concluída</span>`;
+      if (v.status === 'rascunho') return `<span style="${base}background:var(--neutral-100);color:var(--neutral-700);">Rascunho</span>`;
+      return '';
+    };
+
+    let html = '';
+    visitas.forEach(v => {
+      const cancelada = v.visita_realizada === false;
+      const reaberta = temReaberturaAtiva(v).ativa;
+      const ehRascunho = v.status === 'rascunho' && !cancelada;
+      const ehCompleta = v.status === 'completa' || v.status === 'aprovada_pos_revisao';
+
+      // Endereço curto: bairro · cidade (ou só cidade se bairro vazio)
+      const inst = v.instituicoes || {};
+      const partsEnd = [];
+      if (inst.bairro) partsEnd.push(inst.bairro);
+      if (inst.cidade) partsEnd.push(inst.cidade);
+      const enderecoCurto = partsEnd.join(' · ');
+
+      // Duração com fallback pra checkin/checkout
+      let duracao = '';
+      if (v.horario_inicio && v.horario_termino) {
+        const [h1, m1] = v.horario_inicio.split(':').map(n => parseInt(n,10));
+        const [h2, m2] = v.horario_termino.split(':').map(n => parseInt(n,10));
+        const min = (h2*60 + m2) - (h1*60 + m1);
+        if (!isNaN(min) && min > 0) duracao = min < 60 ? `${min} min` : `${Math.floor(min/60)}h ${min%60 ? (min%60) + 'm' : ''}`.trim();
+      } else if (v.checkin_timestamp && v.checkout_timestamp) {
+        const min = Math.round((new Date(v.checkout_timestamp) - new Date(v.checkin_timestamp)) / 60000);
+        if (min > 0) duracao = min < 60 ? `${min} min` : `${Math.floor(min/60)}h ${min%60 ? (min%60) + 'm' : ''}`.trim();
+      }
+
+      const nFlags = (typeof getFlagsAtivas === 'function') ? getFlagsAtivas(v).length : 0;
+      const nProf = v.profissionais?.length || 0;
+
+      // Cor da borda lateral por status
+      let corBorda = 'var(--neutral-300)';
+      if (cancelada) corBorda = 'var(--status-danger,#E24B4A)';
+      else if (estaEmRevisao(v) || reaberta || nFlags > 0) corBorda = 'var(--status-warning,#EF9F27)';
+      else if (ehCompleta) corBorda = 'var(--status-success,#22A06B)';
+
+      const extra = `${v.resumo || ''}`.replace(/"/g, '&quot;').replace(/</g, '&lt;');
+
+      // Badge de flag (canto sup. direito) só quando tem flags
+      const flagBadge = nFlags > 0
+        ? `<span style="display:inline-flex;align-items:center;gap:3px;background:var(--status-warning-bg,#FAEEDA);color:var(--status-warning-dark,#854F0B);padding:3px 9px;border-radius:9999px;font-size:11px;font-weight:700;flex-shrink:0;"><span class="material-symbols-rounded" style="font-size:12px;">flag</span>${nFlags}</span>`
+        : statusPill(v);
+
+      // Botões de ação só pra rascunho (continuar) e completa/cancelada (ver)
+      const ctas = ehRascunho
+        ? `<div style="display:flex;gap:6px;margin-top:10px;">
+             <span style="flex:1;padding:9px;background:var(--brand-navy);color:#fff;border-radius:8px;font-size:12px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;gap:5px;">
+               <span class="material-symbols-rounded" style="font-size:14px;">edit</span>Continuar rascunho
+             </span>
+             <span style="padding:9px 12px;background:#fff;color:var(--brand-navy);border:1px solid var(--neutral-200);border-radius:8px;font-size:12px;font-weight:600;display:inline-flex;align-items:center;">
+               <span class="material-symbols-rounded" style="font-size:14px;">visibility</span>
+             </span>
+           </div>`
         : '';
-      // Sprint 9.32.13: campo extra pra busca avançada (não exibido no card)
-      // Sprint 9.32.15 fix: só `resumo` (observacoes/profissionais não são colunas diretas)
-      const extra = `${v.resumo || ''}`
-        .replace(/"/g, '&quot;')
-        .replace(/</g, '&lt;');
-      return `
-      <a href="#/visitas/relatorio?id=${v.id}" data-id="${v.id}" data-search-extra="${extra}" class="visits-list__item${reaberta ? ' visits-list__item--reaberta' : ''}">
-        <div class="visits-list__icon">
-          <span class="material-symbols-rounded">${cancelada ? 'cancel' : 'local_hospital'}</span>
-        </div>
-        <div class="visits-list__info">
-          <div class="visits-list__name">${(v.instituicoes?.nome || 'Instituição').replace(/"/g,'&quot;')}</div>
-          <div class="visits-list__time">${formatarTempoRelativo(v.data_visita + 'T' + (v.horario_inicio || '00:00:00'))}</div>
-          ${motivoHtml}
-        </div>
-        ${sbadgeForStatus(v)}
-      </a>
-    `;
-    }).join('');
+
+      html += `
+        <a href="#/visitas/relatorio?id=${v.id}" data-id="${v.id}" data-search-extra="${extra}"
+           class="visits-list__item"
+           style="background:#fff;border:1px solid var(--neutral-200);border-left:3px solid ${corBorda};border-radius:12px;padding:12px 14px;margin-bottom:10px;text-decoration:none;color:inherit;display:block;">
+          <div style="display:flex;gap:10px;align-items:flex-start;">
+            <div style="width:38px;height:38px;border-radius:10px;background:var(--neutral-100);color:var(--brand-navy);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;">
+              <span class="material-symbols-rounded">${cancelada ? 'cancel' : 'local_hospital'}</span>
+            </div>
+            <div style="flex:1;min-width:0;">
+              <div style="font-family:var(--font-display,'Poppins',sans-serif);font-size:14px;font-weight:700;color:var(--brand-navy);line-height:1.3;overflow:hidden;text-overflow:ellipsis;">${(inst.nome || 'Instituição').replace(/"/g,'&quot;')}</div>
+              ${enderecoCurto ? `<div style="font-size:11px;color:var(--neutral-500);margin-top:2px;">${enderecoCurto.replace(/</g,'&lt;')}</div>` : ''}
+            </div>
+            ${flagBadge}
+          </div>
+          <div style="display:flex;gap:14px;margin-top:10px;padding-top:10px;border-top:1px solid var(--neutral-100);font-size:11.5px;color:var(--neutral-600);flex-wrap:wrap;">
+            <span style="display:inline-flex;align-items:center;gap:4px;"><span class="material-symbols-rounded" style="font-size:13px;color:var(--neutral-500);">event</span>${dataLabel(v)}</span>
+            ${duracao ? `<span style="display:inline-flex;align-items:center;gap:4px;"><span class="material-symbols-rounded" style="font-size:13px;color:var(--neutral-500);">schedule</span>${duracao}</span>` : ''}
+            ${nProf > 0 ? `<span style="display:inline-flex;align-items:center;gap:4px;"><span class="material-symbols-rounded" style="font-size:13px;color:var(--neutral-500);">people</span>${nProf}</span>` : ''}
+            ${cancelada && v.cancelamento_motivo ? `<span style="font-style:italic;color:var(--neutral-500);width:100%;">${v.cancelamento_motivo.replace(/</g,'&lt;').slice(0,80)}${v.cancelamento_motivo.length > 80 ? '…' : ''}</span>` : ''}
+          </div>
+          ${ctas}
+        </a>
+      `;
+    });
+    listEl.innerHTML = html;
     // Destaca a visita se veio da busca global (?id=X)
     destacarItemDaURL('.visits-list__item[data-id="%ID%"]');
 
@@ -35762,7 +36207,7 @@ window.rejeitarObjetivoPendente = async function(id) {
 let FAT_DATA = null;
 let _fatDataPromise = null;
 // __FAT_VERSION_START__ — substituído pelo atualizar_index.py com hash do JSON
-const FAT_DATA_VERSION = 'bae644a1c6b7';
+const FAT_DATA_VERSION = '838ff343a99c';
 // __FAT_VERSION_END__
 const FAT_DATA_URL = 'faturamento_data_inline.json?v=' + FAT_DATA_VERSION;
 
