@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>4 Protótipos Mobile · Fila de Revisão</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0&family=Poppins:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" />
+  <style>
+    :root {
+      --brand-navy: #0A1F5C;
+      --brand-lime: #8BC63F;
+      --brand-lime-dark: #6FA62E;
+      --neutral-0: #FFFFFF;
+      --neutral-50: #F9FAFB;
+      --neutral-100: #F3F4F6;
+      --neutral-150: #EDF0F4;
+      --neutral-200: #E5E7EB;
+      --neutral-300: #D1D5DB;
+      --neutral-400: #9CA3AF;
+      --neutral-500: #6B7280;
+      --neutral-600: #4B5563;
+      --neutral-700: #374151;
+      --status-success: #22A06B;
+      --status-warning: #EF9F27;
+      --status-warning-bg: #FAEEDA;
+      --status-warning-dark: #854F0B;
+      --status-danger: #E24B4A;
+      --status-danger-bg: #FCEBEB;
+      --status-info: #185FA5;
+      --status-info-bg: #E6F1FB;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 32px 16px 60px;
+      background: #EEF1F4;
+      font-family: 'Inter', sans-serif;
+      color: var(--brand-navy);
+    }
+    .wrapper { max-width: 980px; margin: 0 auto; }
+    h1 {
+      font-family: 'Poppins', sans-serif;
+      font-weight: 700;
+      font-size: 22px;
+      margin: 0 0 6px;
+    }
+    .lead { font-size: 13.5px; color: var(--neutral-600); margin: 0 0 28px; line-height: 1.55; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 22px; }
+    .proto {
+      background: var(--neutral-50);
+      border: 1px solid var(--neutral-200);
+      border-radius: 18px;
+      padding: 18px;
+    }
+    .ptag {
+      display: inline-flex; align-items: center; gap: 7px;
+      font-size: 11px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.07em;
+      color: var(--neutral-600);
+      margin-bottom: 6px;
+    }
+    .pn {
+      font-family: 'Poppins', sans-serif;
+      font-size: 15px; font-weight: 600;
+      margin-bottom: 4px;
+    }
+    .pd { font-size: 12.5px; color: var(--neutral-600); margin-bottom: 14px; line-height: 1.5; }
+
+    /* Frame do mobile */
+    .device {
+      width: 380px;
+      max-width: 100%;
+      margin: 0 auto;
+      background: #fff;
+      border-radius: 22px;
+      overflow: hidden;
+      box-shadow: 0 8px 30px rgba(10,31,92,0.12);
+      border: 1px solid var(--neutral-200);
+    }
+    .device-bar {
+      background: var(--brand-navy);
+      color: #fff;
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .device-bar .ms { font-size: 22px; }
+    .device-bar .title { font-family: 'Poppins',sans-serif; font-size: 16px; font-weight: 700; flex: 1; }
+    .device-bar .back {
+      width: 32px; height: 32px; border-radius: 50%;
+      background: rgba(255,255,255,0.12);
+      display: inline-flex; align-items: center; justify-content: center;
+    }
+    .device-body { background: var(--neutral-50); padding: 14px; min-height: 540px; }
+    .ms { font-family: 'Material Symbols Rounded'; font-style: normal; line-height: 1; display: inline-block; vertical-align: middle; -webkit-font-feature-settings: 'liga'; }
+
+    /* Tabs base (mesmas em todos) */
+    .tabs {
+      display: flex;
+      background: #fff;
+      border-radius: 12px;
+      border: 1px solid var(--neutral-200);
+      padding: 3px;
+      margin-bottom: 12px;
+    }
+    .tab { flex: 1; text-align: center; padding: 8px 4px; border-radius: 9px; font-size: 11px; color: var(--neutral-500); font-weight: 600; cursor: pointer; }
+    .tab.active { background: #fff; color: var(--brand-navy); box-shadow: 0 1px 2px rgba(10,31,92,0.08); border: 1px solid var(--neutral-100); }
+    .tab .num { display: block; font-size: 13px; font-weight: 700; color: var(--brand-lime-dark); margin-top: 2px; }
+    .tab.active .num { color: var(--brand-navy); }
+
+    .search {
+      width: 100%;
+      padding: 9px 14px 9px 36px;
+      border: 1px solid var(--neutral-200);
+      border-radius: 10px;
+      font-family: inherit;
+      font-size: 12.5px;
+      background: #fff url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236B7280' stroke-width='2'><circle cx='11' cy='11' r='7'/><line x1='21' y1='21' x2='16.65' y2='16.65'/></svg>") no-repeat 12px center;
+      color: var(--brand-navy);
+      margin-bottom: 12px;
+    }
+
+    /* Card de visita base */
+    .vcard {
+      background: #fff;
+      border: 1px solid var(--neutral-200);
+      border-left: 3px solid var(--status-warning);
+      border-radius: 12px;
+      padding: 12px 14px;
+      margin-top: 10px;
+    }
+    .vcard-head { display: flex; align-items: flex-start; gap: 10px; }
+    .vcard-icon {
+      width: 36px; height: 36px;
+      border-radius: 10px;
+      background: var(--neutral-100);
+      color: var(--brand-navy);
+      display: inline-flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .vcard-info { flex: 1; min-width: 0; }
+    .vcard-name { font-family: 'Poppins',sans-serif; font-size: 14px; font-weight: 700; color: var(--brand-navy); }
+    .vcard-meta { font-size: 11.5px; color: var(--neutral-600); margin-top: 2px; }
+    .vcard-flag-cnt {
+      background: var(--status-warning-bg);
+      color: var(--status-warning-dark);
+      padding: 3px 9px;
+      border-radius: 9999px;
+      font-size: 11px; font-weight: 700;
+      display: inline-flex; align-items: center; gap: 4px;
+      flex-shrink: 0;
+    }
+    .vcard-flags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+    .vflag {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: var(--status-warning-bg);
+      color: var(--status-warning-dark);
+      padding: 3px 9px;
+      border-radius: 9999px;
+      font-size: 10.5px; font-weight: 600;
+    }
+    .vflag .ms { font-size: 12px; }
+    .vstatus {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: var(--neutral-100);
+      color: var(--neutral-700);
+      padding: 2px 9px;
+      border-radius: 9999px;
+      font-size: 10.5px; font-weight: 600;
+      margin-top: 6px;
+    }
+    .vstatus .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--neutral-400); }
+
+    /* === PROTO 1: Grid 2x2 === */
+    .p1-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .p1-chip {
+      display: flex; align-items: center; gap: 7px;
+      padding: 9px 11px;
+      background: #fff;
+      border: 1px solid var(--neutral-200);
+      border-radius: 10px;
+      font-size: 11.5px; font-weight: 600;
+      color: var(--neutral-500);
+      opacity: 0.6;
+    }
+    .p1-chip.on { opacity: 1; border: 1.5px solid; }
+    .p1-chip.on.danger { border-color: var(--status-danger); background: var(--status-danger-bg); color: #A32D2D; }
+    .p1-chip.on.warn { border-color: var(--status-warning); background: var(--status-warning-bg); color: var(--status-warning-dark); }
+    .p1-chip.on.deep { border-color: #EA580C; background: #FFF1E6; color: #9A3412; }
+    .p1-chip.on.info { border-color: var(--status-info); background: var(--status-info-bg); color: #0C447C; }
+    .p1-chip .dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; background: currentColor; }
+    .p1-chip .num { margin-left: auto; font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; background: var(--neutral-100); padding: 1px 6px; border-radius: 9999px; }
+    .p1-chip.on .num { background: rgba(255,255,255,0.7); }
+
+    /* === PROTO 2: Botão "Filtros" === */
+    .p2-row { display: flex; gap: 8px; margin-bottom: 12px; }
+    .p2-btn {
+      display: inline-flex; align-items: center; gap: 7px;
+      padding: 9px 14px;
+      background: #fff;
+      border: 1px solid var(--neutral-200);
+      border-radius: 10px;
+      font-size: 12.5px; font-weight: 600;
+      color: var(--brand-navy);
+      cursor: pointer;
+    }
+    .p2-btn .badge {
+      background: var(--brand-navy); color: #fff;
+      font-size: 10.5px;
+      padding: 1px 7px;
+      border-radius: 9999px;
+      font-weight: 700;
+    }
+    .p2-active-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+    .p2-active {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 3px 8px 3px 10px;
+      background: var(--status-warning-bg);
+      color: var(--status-warning-dark);
+      border-radius: 9999px;
+      font-size: 11px; font-weight: 600;
+    }
+    .p2-active .x { width: 14px; height: 14px; border-radius: 50%; background: rgba(0,0,0,0.07); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
+
+    /* === PROTO 3: Ícones circulares === */
+    .p3-row { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
+    .p3-chip {
+      flex: 1;
+      display: flex; flex-direction: column; align-items: center; gap: 4px;
+      padding: 8px 4px;
+      background: #fff;
+      border: 1px solid var(--neutral-200);
+      border-radius: 10px;
+      font-size: 10px; font-weight: 600;
+      color: var(--neutral-500);
+      text-align: center;
+      opacity: 0.6;
+    }
+    .p3-icon {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      background: var(--neutral-100);
+      color: var(--neutral-400);
+      display: inline-flex; align-items: center; justify-content: center;
+      position: relative;
+    }
+    .p3-icon .num {
+      position: absolute;
+      top: -3px; right: -3px;
+      background: var(--neutral-400);
+      color: #fff;
+      font-size: 9px;
+      font-weight: 700;
+      padding: 1px 5px;
+      border-radius: 9999px;
+      min-width: 16px;
+      text-align: center;
+    }
+    .p3-chip.on { opacity: 1; }
+    .p3-chip.on.danger .p3-icon { background: var(--status-danger-bg); color: var(--status-danger); }
+    .p3-chip.on.danger .p3-icon .num { background: var(--status-danger); }
+    .p3-chip.on.danger { color: #A32D2D; }
+    .p3-chip.on.warn .p3-icon { background: var(--status-warning-bg); color: var(--status-warning); }
+    .p3-chip.on.warn .p3-icon .num { background: var(--status-warning); }
+    .p3-chip.on.warn { color: var(--status-warning-dark); }
+    .p3-chip.on.deep .p3-icon { background: #FFF1E6; color: #EA580C; }
+    .p3-chip.on.deep .p3-icon .num { background: #EA580C; }
+    .p3-chip.on.deep { color: #9A3412; }
+    .p3-chip.on.info .p3-icon { background: var(--status-info-bg); color: var(--status-info); }
+    .p3-chip.on.info .p3-icon .num { background: var(--status-info); }
+    .p3-chip.on.info { color: #0C447C; }
+
+    /* === PROTO 4: Segmented compacto === */
+    .p4-bar {
+      display: flex;
+      background: #fff;
+      border: 1px solid var(--neutral-200);
+      border-radius: 10px;
+      padding: 3px;
+      margin-bottom: 12px;
+    }
+    .p4-seg {
+      flex: 1;
+      display: flex; flex-direction: column; align-items: center;
+      padding: 6px 2px;
+      border-radius: 7px;
+      font-size: 9.5px; font-weight: 600;
+      color: var(--neutral-500);
+      text-align: center;
+      cursor: pointer;
+    }
+    .p4-seg .num { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; color: var(--neutral-400); margin-bottom: 2px; }
+    .p4-seg .lbl { display: block; line-height: 1.2; }
+    .p4-seg.on { background: var(--status-warning-bg); color: var(--status-warning-dark); }
+    .p4-seg.on .num { color: var(--status-warning-dark); }
+    .p4-seg.on.danger { background: var(--status-danger-bg); color: #A32D2D; }
+    .p4-seg.on.danger .num { color: var(--status-danger); }
+    .p4-seg.on.deep { background: #FFF1E6; color: #9A3412; }
+    .p4-seg.on.deep .num { color: #EA580C; }
+    .p4-seg.on.info { background: var(--status-info-bg); color: #0C447C; }
+    .p4-seg.on.info .num { color: var(--status-info); }
+    .p4-seg.divider { flex: 0; padding: 0; width: 1px; background: var(--neutral-200); margin: 4px 0; }
+
+    .nota { background: var(--neutral-100); padding: 12px 16px; border-radius: 10px; font-size: 12.5px; color: var(--neutral-600); margin-top: 16px; }
+    .nota b { color: var(--brand-navy); }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <h1>4 Protótipos · Mobile Fila de Revisão</h1>
+    <p class="lead">Solucionando o cramping dos chips. Cada opção mostra os 4 tipos de flag (Sem check-in / GPS divergente / Fora da margem / Check-in manual) com o contador. Estado atual: GPS e Fora da margem ativos.</p>
+
+    <div class="grid">
+
+      <!-- PROTO 1 -->
+      <div class="proto">
+        <div class="ptag">Protótipo 1 · Grid 2×2</div>
+        <div class="pn">Chips em grid 2 colunas × 2 linhas</div>
+        <div class="pd">4 chips em 2 linhas, cada um ocupa metade da largura. Sem scroll. Texto cabe inteiro. Maior altura mas mais legível.</div>
+        <div class="device">
+          <div class="device-bar">
+            <span class="ms">menu</span>
+            <span class="back"><span class="ms" style="font-size:18px;">arrow_back_ios</span></span>
+            <span class="title">Fila de Revisão</span>
+            <span class="ms">search</span>
+          </div>
+          <div class="device-body">
+            <div class="tabs">
+              <span class="tab active">Com flags<span class="num">1</span></span>
+              <span class="tab">Em revisão<span class="num">0</span></span>
+              <span class="tab">Resolvidas<span class="num">0</span></span>
+              <span class="tab">Todas<span class="num">1</span></span>
+            </div>
+            <input class="search" placeholder="Filtrar por instituição, profissional..." />
+            <div class="p1-grid">
+              <div class="p1-chip"><span class="dot"></span>Sem check-in<span class="num">0</span></div>
+              <div class="p1-chip on warn"><span class="dot"></span>GPS divergente<span class="num">1</span></div>
+              <div class="p1-chip on deep"><span class="dot"></span>Fora da margem<span class="num">1</span></div>
+              <div class="p1-chip"><span class="dot"></span>Check-in manual<span class="num">0</span></div>
+            </div>
+            <div class="vcard">
+              <div class="vcard-head">
+                <div class="vcard-icon"><span class="ms">schedule</span></div>
+                <div class="vcard-info">
+                  <div class="vcard-name">Hospital Ana Costa</div>
+                  <div class="vcard-meta">Eduardo · Hoje · 20:27</div>
+                  <div class="vstatus"><span class="dot"></span>Rascunho</div>
+                </div>
+                <span class="vcard-flag-cnt"><span class="ms" style="font-size:13px;">flag</span>2</span>
+              </div>
+              <div class="vcard-flags">
+                <span class="vflag"><span class="ms">location_off</span>GPS divergente</span>
+                <span class="vflag"><span class="ms">schedule</span>Horário fora da margem</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PROTO 2 -->
+      <div class="proto">
+        <div class="ptag">Protótipo 2 · Botão "Filtros"</div>
+        <div class="pn">Botão único + chips ativos só</div>
+        <div class="pd">Só aparece um botão "Filtros (2)". Tap nele abre bottom sheet com checkbox dos tipos. Acima da lista, só os filtros ativos viram chips removíveis. Limpo, escala bem.</div>
+        <div class="device">
+          <div class="device-bar">
+            <span class="ms">menu</span>
+            <span class="back"><span class="ms" style="font-size:18px;">arrow_back_ios</span></span>
+            <span class="title">Fila de Revisão</span>
+            <span class="ms">search</span>
+          </div>
+          <div class="device-body">
+            <div class="tabs">
+              <span class="tab active">Com flags<span class="num">1</span></span>
+              <span class="tab">Em revisão<span class="num">0</span></span>
+              <span class="tab">Resolvidas<span class="num">0</span></span>
+              <span class="tab">Todas<span class="num">1</span></span>
+            </div>
+            <input class="search" placeholder="Filtrar por instituição, profissional..." />
+            <div class="p2-row">
+              <span class="p2-btn"><span class="ms" style="font-size:15px;">tune</span>Filtros<span class="badge">2</span></span>
+            </div>
+            <div class="p2-active-row">
+              <span class="p2-active">GPS divergente<span class="x"><span class="ms" style="font-size:10px;">close</span></span></span>
+              <span class="p2-active">Fora da margem<span class="x"><span class="ms" style="font-size:10px;">close</span></span></span>
+            </div>
+            <div class="vcard">
+              <div class="vcard-head">
+                <div class="vcard-icon"><span class="ms">schedule</span></div>
+                <div class="vcard-info">
+                  <div class="vcard-name">Hospital Ana Costa</div>
+                  <div class="vcard-meta">Eduardo · Hoje · 20:27</div>
+                  <div class="vstatus"><span class="dot"></span>Rascunho</div>
+                </div>
+                <span class="vcard-flag-cnt"><span class="ms" style="font-size:13px;">flag</span>2</span>
+              </div>
+              <div class="vcard-flags">
+                <span class="vflag"><span class="ms">location_off</span>GPS divergente</span>
+                <span class="vflag"><span class="ms">schedule</span>Horário fora da margem</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PROTO 3 -->
+      <div class="proto">
+        <div class="ptag">Protótipo 3 · Ícones circulares</div>
+        <div class="pn">Mini KPIs em ícones com número sobreposto</div>
+        <div class="pd">4 ícones circulares, cada um representa um tipo. Badge de número no canto. Compacto, visual, sem cortar. Funciona muito bem em mobile estilo "filtro de stories".</div>
+        <div class="device">
+          <div class="device-bar">
+            <span class="ms">menu</span>
+            <span class="back"><span class="ms" style="font-size:18px;">arrow_back_ios</span></span>
+            <span class="title">Fila de Revisão</span>
+            <span class="ms">search</span>
+          </div>
+          <div class="device-body">
+            <div class="tabs">
+              <span class="tab active">Com flags<span class="num">1</span></span>
+              <span class="tab">Em revisão<span class="num">0</span></span>
+              <span class="tab">Resolvidas<span class="num">0</span></span>
+              <span class="tab">Todas<span class="num">1</span></span>
+            </div>
+            <input class="search" placeholder="Filtrar por instituição, profissional..." />
+            <div class="p3-row">
+              <div class="p3-chip">
+                <div class="p3-icon"><span class="ms" style="font-size:16px;">do_not_disturb_on</span><span class="num">0</span></div>
+                Sem check-in
+              </div>
+              <div class="p3-chip on warn">
+                <div class="p3-icon"><span class="ms" style="font-size:16px;">location_off</span><span class="num">1</span></div>
+                GPS
+              </div>
+              <div class="p3-chip on deep">
+                <div class="p3-icon"><span class="ms" style="font-size:16px;">schedule</span><span class="num">1</span></div>
+                Fora margem
+              </div>
+              <div class="p3-chip">
+                <div class="p3-icon"><span class="ms" style="font-size:16px;">touch_app</span><span class="num">0</span></div>
+                Manual
+              </div>
+            </div>
+            <div class="vcard">
+              <div class="vcard-head">
+                <div class="vcard-icon"><span class="ms">schedule</span></div>
+                <div class="vcard-info">
+                  <div class="vcard-name">Hospital Ana Costa</div>
+                  <div class="vcard-meta">Eduardo · Hoje · 20:27</div>
+                  <div class="vstatus"><span class="dot"></span>Rascunho</div>
+                </div>
+                <span class="vcard-flag-cnt"><span class="ms" style="font-size:13px;">flag</span>2</span>
+              </div>
+              <div class="vcard-flags">
+                <span class="vflag"><span class="ms">location_off</span>GPS divergente</span>
+                <span class="vflag"><span class="ms">schedule</span>Horário fora da margem</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PROTO 4 -->
+      <div class="proto">
+        <div class="ptag">Protótipo 4 · Segmented com KPI</div>
+        <div class="pn">Barra única com número grande + label curto</div>
+        <div class="pd">Barra horizontal estilo segmented control, cada segmento mostra o número grande em cima e label curto embaixo. Caso clicado, vira "ativo" colorido. Tudo cabe sem scroll.</div>
+        <div class="device">
+          <div class="device-bar">
+            <span class="ms">menu</span>
+            <span class="back"><span class="ms" style="font-size:18px;">arrow_back_ios</span></span>
+            <span class="title">Fila de Revisão</span>
+            <span class="ms">search</span>
+          </div>
+          <div class="device-body">
+            <div class="tabs">
+              <span class="tab active">Com flags<span class="num">1</span></span>
+              <span class="tab">Em revisão<span class="num">0</span></span>
+              <span class="tab">Resolvidas<span class="num">0</span></span>
+              <span class="tab">Todas<span class="num">1</span></span>
+            </div>
+            <input class="search" placeholder="Filtrar por instituição, profissional..." />
+            <div class="p4-bar">
+              <span class="p4-seg"><span class="num">0</span><span class="lbl">Sem<br>check-in</span></span>
+              <span class="p4-seg divider"></span>
+              <span class="p4-seg on"><span class="num">1</span><span class="lbl">GPS<br>divergente</span></span>
+              <span class="p4-seg divider"></span>
+              <span class="p4-seg on deep"><span class="num">1</span><span class="lbl">Fora<br>margem</span></span>
+              <span class="p4-seg divider"></span>
+              <span class="p4-seg"><span class="num">0</span><span class="lbl">Check-in<br>manual</span></span>
+            </div>
+            <div class="vcard">
+              <div class="vcard-head">
+                <div class="vcard-icon"><span class="ms">schedule</span></div>
+                <div class="vcard-info">
+                  <div class="vcard-name">Hospital Ana Costa</div>
+                  <div class="vcard-meta">Eduardo · Hoje · 20:27</div>
+                  <div class="vstatus"><span class="dot"></span>Rascunho</div>
+                </div>
+                <span class="vcard-flag-cnt"><span class="ms" style="font-size:13px;">flag</span>2</span>
+              </div>
+              <div class="vcard-flags">
+                <span class="vflag"><span class="ms">location_off</span>GPS divergente</span>
+                <span class="vflag"><span class="ms">schedule</span>Horário fora da margem</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="nota">
+      <b>Tip:</b> me diz "quero o N" e implemento. Se quiser combinar (ex: tabs do 1 + filtro do 2), avisa.
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Variações · Minhas Visitas Mobile</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0&family=Poppins:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" />
+  <style>
+    :root {
+      --brand-navy: #0A1F5C;
+      --brand-lime: #8BC63F;
+      --brand-lime-dark: #6FA62E;
+      --neutral-50: #F9FAFB;
+      --neutral-100: #F3F4F6;
+      --neutral-200: #E5E7EB;
+      --neutral-300: #D1D5DB;
+      --neutral-400: #9CA3AF;
+      --neutral-500: #6B7280;
+      --neutral-600: #4B5563;
+      --neutral-700: #374151;
+      --status-success: #22A06B;
+      --status-success-bg: #E1F5EE;
+      --status-warning: #EF9F27;
+      --status-warning-bg: #FAEEDA;
+      --status-warning-dark: #854F0B;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 32px 16px 60px; background: #EEF1F4; font-family: 'Inter', sans-serif; color: var(--brand-navy); }
+    .wrapper { max-width: 1100px; margin: 0 auto; }
+    h1 { font-family: 'Poppins', sans-serif; font-weight: 700; font-size: 22px; margin: 0 0 6px; }
+    .lead { font-size: 13.5px; color: var(--neutral-600); margin: 0 0 28px; line-height: 1.55; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 22px; }
+    .proto { background: var(--neutral-50); border: 1px solid var(--neutral-200); border-radius: 18px; padding: 18px; }
+    .ptag { display: inline-flex; align-items: center; gap: 7px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--neutral-600); margin-bottom: 6px; }
+    .pn { font-family: 'Poppins', sans-serif; font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+    .pd { font-size: 12.5px; color: var(--neutral-600); margin-bottom: 14px; line-height: 1.5; }
+
+    .device { width: 380px; max-width: 100%; margin: 0 auto; background: #fff; border-radius: 22px; overflow: hidden; box-shadow: 0 8px 30px rgba(10,31,92,0.12); border: 1px solid var(--neutral-200); }
+    .device-bar { background: var(--brand-navy); color: #fff; padding: 14px 16px; display: flex; align-items: center; gap: 12px; }
+    .device-bar .ms { font-size: 22px; }
+    .device-bar .title { font-family: 'Poppins',sans-serif; font-size: 16px; font-weight: 700; flex: 1; }
+    .device-bar .back { width: 32px; height: 32px; border-radius: 50%; background: rgba(255,255,255,0.12); display: inline-flex; align-items: center; justify-content: center; }
+    .device-body { background: var(--neutral-50); padding: 14px; min-height: 600px; }
+    .ms { font-family: 'Material Symbols Rounded'; font-style: normal; line-height: 1; display: inline-block; vertical-align: middle; -webkit-font-feature-settings: 'liga'; }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+
+    .tabs { display: flex; background: #fff; border-radius: 12px; border: 1px solid var(--neutral-200); padding: 3px; margin-bottom: 12px; }
+    .tab { flex: 1; text-align: center; padding: 8px 4px; border-radius: 9px; font-size: 11px; color: var(--neutral-500); font-weight: 600; cursor: pointer; }
+    .tab.active { background: #fff; color: var(--brand-navy); box-shadow: 0 1px 2px rgba(10,31,92,0.08); border: 1px solid var(--neutral-100); }
+    .tab .num { display: block; font-size: 13px; font-weight: 700; color: var(--brand-lime-dark); margin-top: 2px; }
+    .tab.active .num { color: var(--brand-navy); }
+
+    .search { width: 100%; padding: 9px 14px 9px 36px; border: 1px solid var(--neutral-200); border-radius: 10px; font-family: inherit; font-size: 12.5px; background: #fff url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236B7280' stroke-width='2'><circle cx='11' cy='11' r='7'/><line x1='21' y1='21' x2='16.65' y2='16.65'/></svg>") no-repeat 12px center; color: var(--brand-navy); margin-bottom: 12px; }
+
+    /* === Pills (varios estilos) === */
+    .pill { padding: 7px 14px; border: 1px solid var(--neutral-200); border-radius: 9999px; font-size: 12px; color: var(--neutral-600); font-weight: 600; background: #fff; cursor: pointer; white-space: nowrap; flex-shrink: 0; font-family: inherit; }
+    .pill.active { background: var(--brand-navy); color: #fff; border-color: var(--brand-navy); }
+    .pill .ms { font-size: 13px; vertical-align: -2px; margin-right: 3px; }
+
+    /* Variação A: scroll horizontal */
+    .row-scroll { display: flex; gap: 6px; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 4px; margin-bottom: 12px; scrollbar-width: none; }
+    .row-scroll::-webkit-scrollbar { display: none; }
+
+    /* Variação B: 2 linhas com Personalizado destacado */
+    .row-2lines { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+
+    /* Variação C: 4 + ícone calendário */
+    .row-mixed { display: flex; gap: 6px; margin-bottom: 12px; align-items: center; }
+    .row-mixed .pill { flex: 1; padding: 7px 6px; text-align: center; font-size: 11.5px; }
+    .calendar-btn { width: 38px; height: 36px; border: 1px solid var(--neutral-200); border-radius: 10px; background: #fff; color: var(--brand-navy); display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; cursor: pointer; }
+    .calendar-btn.active { background: var(--brand-navy); color: #fff; border-color: var(--brand-navy); }
+
+    /* Variação D: Segmented control + Personalizado como pill abaixo */
+    .seg-bar { display: flex; background: #fff; border: 1px solid var(--neutral-200); border-radius: 10px; padding: 3px; margin-bottom: 8px; }
+    .seg-btn { flex: 1; padding: 6px 4px; border-radius: 7px; font-size: 11.5px; font-weight: 600; color: var(--neutral-600); text-align: center; cursor: pointer; }
+    .seg-btn.active { background: var(--brand-navy); color: #fff; }
+    .custom-row { display: flex; gap: 6px; margin-bottom: 12px; }
+
+    /* Cards estilo agrupamento por dia (Modelo 2) */
+    .day-h { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--neutral-500); margin: 14px 0 6px; padding: 0 4px; display: flex; align-items: center; gap: 6px; }
+    .day-h::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--brand-lime); }
+    .vc { background: #fff; border: 1px solid var(--neutral-200); border-radius: 10px; padding: 10px 12px; display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+    .vc-time { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--neutral-500); font-weight: 600; min-width: 38px; flex-shrink: 0; text-align: center; }
+    .vc-line { width: 2px; align-self: stretch; background: var(--brand-lime); border-radius: 1px; flex-shrink: 0; }
+    .vc-info { flex: 1; min-width: 0; }
+    .vc-name { font-family: 'Poppins',sans-serif; font-size: 13px; font-weight: 600; color: var(--brand-navy); }
+    .vc-sub { font-size: 11px; color: var(--neutral-500); margin-top: 2px; display: flex; gap: 8px; }
+    .vc-sub-item { display: inline-flex; align-items: center; gap: 3px; }
+    .vc-sub-item .ms { font-size: 11px; }
+    .vc-status { padding: 2px 8px; border-radius: 9999px; font-size: 10px; font-weight: 700; flex-shrink: 0; }
+    .vc-status.r { background: var(--neutral-100); color: var(--neutral-700); }
+    .vc-status.c { background: var(--status-success-bg); color: #0E6E47; }
+
+    /* Cards estilo Modelo 1 (cards ricos) */
+    .rc { background: #fff; border: 1px solid var(--neutral-200); border-left: 3px solid var(--neutral-300); border-radius: 12px; padding: 12px 14px; margin-bottom: 10px; }
+    .rc.flag { border-left-color: var(--status-warning); }
+    .rc.completa { border-left-color: var(--status-success); }
+    .rc-head { display: flex; gap: 10px; align-items: flex-start; }
+    .rc-icon { width: 38px; height: 38px; border-radius: 10px; background: var(--neutral-100); color: var(--brand-navy); display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .rc-name { font-family: 'Poppins',sans-serif; font-size: 14px; font-weight: 700; color: var(--brand-navy); }
+    .rc-addr { font-size: 11px; color: var(--neutral-500); margin-top: 2px; }
+    .rc-status { padding: 2px 8px; border-radius: 9999px; font-size: 10.5px; font-weight: 700; flex-shrink: 0; }
+    .rc-status.flag { background: var(--status-warning-bg); color: var(--status-warning-dark); }
+    .rc-status.c { background: var(--status-success-bg); color: #0E6E47; }
+    .rc-meta { display: flex; gap: 12px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--neutral-100); font-size: 11.5px; color: var(--neutral-600); }
+    .rc-meta-item { display: inline-flex; align-items: center; gap: 4px; }
+    .rc-meta-item .ms { font-size: 13px; color: var(--neutral-500); }
+    .rc-cta { display: flex; gap: 6px; margin-top: 10px; }
+    .rc-btn-prim { flex: 1; padding: 8px; background: var(--brand-navy); color: #fff; border: 0; border-radius: 8px; font-size: 12px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: 5px; font-family: inherit; }
+    .rc-btn-sec { padding: 8px 12px; background: #fff; color: var(--brand-navy); border: 1px solid var(--neutral-200); border-radius: 8px; font-size: 12px; font-weight: 600; font-family: inherit; }
+
+    .nota { background: var(--neutral-100); padding: 12px 16px; border-radius: 10px; font-size: 12.5px; color: var(--neutral-600); margin-top: 16px; }
+    .nota b { color: var(--brand-navy); }
+
+    .badge-custom { display: inline-flex; align-items: center; gap: 4px; padding: 7px 14px; border: 1.5px dashed var(--neutral-300); border-radius: 9999px; font-size: 12px; color: var(--brand-navy); font-weight: 600; background: var(--neutral-50); cursor: pointer; }
+    .badge-custom .ms { font-size: 14px; color: var(--neutral-500); }
+
+    .badge-active-custom { background: var(--brand-navy); color: #fff; border-style: solid; border-color: var(--brand-navy); }
+    .badge-active-custom .ms { color: var(--brand-lime); }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <h1>Variações · Minhas Visitas Mobile</h1>
+    <p class="lead">3 variações do <b>Modelo 2 (agrupado por dia)</b> com diferentes formas de encaixar os 5 filtros (Todas, Hoje, Esta semana, Este mês, Personalizado) + 1 versão atualizada do <b>Modelo 1 (cards ricos)</b> também com o Personalizado.</p>
+
+    <div class="grid">
+
+      <!-- VARIAÇÃO A: Modelo 2 + Scroll horizontal -->
+      <div class="proto">
+        <div class="ptag">Variação A · Modelo 2 + scroll horizontal</div>
+        <div class="pn">5 pills numa linha só, com scroll lateral se precisar</div>
+        <div class="pd">Pills idênticas (mesma altura/padding/borda). Numa tela 380px cabem todas, em telas estreitas vc rola lateral. Mais limpo visualmente.</div>
+        <div class="device">
+          <div class="device-bar">
+            <span class="ms">menu</span>
+            <span class="back"><span class="ms" style="font-size:18px;">arrow_back_ios</span></span>
+            <span class="title">Minhas visitas</span>
+            <span class="ms">search</span>
+          </div>
+          <div class="device-body">
+            <div class="tabs">
+              <span class="tab active">Todas<span class="num">12</span></span>
+              <span class="tab">Concl.<span class="num">9</span></span>
+              <span class="tab">Pend.<span class="num">2</span></span>
+              <span class="tab">Cancel.<span class="num">1</span></span>
+            </div>
+            <input class="search" placeholder="Buscar por instituição..." />
+            <div class="row-scroll">
+              <span class="pill active">Todas</span>
+              <span class="pill">Hoje</span>
+              <span class="pill">Esta semana</span>
+              <span class="pill">Este mês</span>
+              <span class="pill"><span class="ms">tune</span>Personalizado</span>
+            </div>
+            <div class="day-h">Hoje · 5 mai</div>
+            <div class="vc">
+              <div class="vc-time">20:27</div>
+              <div class="vc-line"></div>
+              <div class="vc-info">
+                <div class="vc-name">Hospital Ana Costa</div>
+                <div class="vc-sub">
+                  <span class="vc-sub-item"><span class="ms">schedule</span>3 min</span>
+                  <span class="vc-sub-item" style="color:var(--status-warning-dark);"><span class="ms">flag</span>2</span>
+                </div>
+              </div>
+              <span class="vc-status r">Rascunho</span>
+            </div>
+            <div class="day-h">Ontem · 4 mai</div>
+            <div class="vc">
+              <div class="vc-time">14:30</div>
+              <div class="vc-line"></div>
+              <div class="vc-info">
+                <div class="vc-name">Santa Casa de Santos</div>
+                <div class="vc-sub">
+                  <span class="vc-sub-item"><span class="ms">schedule</span>1h 12m</span>
+                  <span class="vc-sub-item"><span class="ms">people</span>3</span>
+                </div>
+              </div>
+              <span class="vc-status c">OK</span>
+            </div>
+            <div class="vc">
+              <div class="vc-time">09:15</div>
+              <div class="vc-line"></div>
+              <div class="vc-info">
+                <div class="vc-name">Hospital São José</div>
+                <div class="vc-sub">
+                  <span class="vc-sub-item"><span class="ms">schedule</span>45m</span>
+                </div>
+              </div>
+              <span class="vc-status c">OK</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- VARIAÇÃO B: Modelo 2 + 4 pills + ícone calendário -->
+      <div class="proto">
+        <div class="ptag">Variação B · 4 pills + ícone calendário</div>
+        <div class="pn">Personalizado vira botão de ícone (📅)</div>
+        <div class="pd">Os 4 períodos rápidos como pills divididos igualmente. Personalizado vira um botão quadrado com ícone de calendário ao final — quando ativo, mostra a data escolhida ao invés do ícone.</div>
+        <div class="device">
+          <div class="device-bar">
+            <span class="ms">menu</span>
+            <span class="back"><span class="ms" style="font-size:18px;">arrow_back_ios</span></span>
+            <span class="title">Minhas visitas</span>
+            <span class="ms">search</span>
+          </div>
+          <div class="device-body">
+            <div class="tabs">
+              <span class="tab active">Todas<span class="num">12</span></span>
+              <span class="tab">Concl.<span class="num">9</span></span>
+              <span class="tab">Pend.<span class="num">2</span></span>
+              <span class="tab">Cancel.<span class="num">1</span></span>
+            </div>
+            <input class="search" placeholder="Buscar por instituição..." />
+            <div class="row-mixed">
+              <span class="pill active">Todas</span>
+              <span class="pill">Hoje</span>
+              <span class="pill">Semana</span>
+              <span class="pill">Mês</span>
+              <span class="calendar-btn" title="Período personalizado"><span class="ms" style="font-size:18px;">date_range</span></span>
+            </div>
+            <div class="day-h">Hoje · 5 mai</div>
+            <div class="vc">
+              <div class="vc-time">20:27</div>
+              <div class="vc-line"></div>
+              <div class="vc-info">
+                <div class="vc-name">Hospital Ana Costa</div>
+                <div class="vc-sub">
+                  <span class="vc-sub-item"><span class="ms">schedule</span>3 min</span>
+                  <span class="vc-sub-item" style="color:var(--status-warning-dark);"><span class="ms">flag</span>2</span>
+                </div>
+              </div>
+              <span class="vc-status r">Rascunho</span>
+            </div>
+            <div class="day-h">Ontem · 4 mai</div>
+            <div class="vc">
+              <div class="vc-time">14:30</div>
+              <div class="vc-line"></div>
+              <div class="vc-info">
+                <div class="vc-name">Santa Casa de Santos</div>
+                <div class="vc-sub">
+                  <span class="vc-sub-item"><span class="ms">schedule</span>1h 12m</span>
+                  <span class="vc-sub-item"><span class="ms">people</span>3</span>
+                </div>
+              </div>
+              <span class="vc-status c">OK</span>
+            </div>
+            <div class="vc">
+              <div class="vc-time">09:15</div>
+              <div class="vc-line"></div>
+              <div class="vc-info">
+                <div class="vc-name">Hospital São José</div>
+                <div class="vc-sub">
+                  <span class="vc-sub-item"><span class="ms">schedule</span>45m</span>
+                </div>
+              </div>
+              <span class="vc-status c">OK</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- VARIAÇÃO C: Modelo 2 + Segmented + Personalizado -->
+      <div class="proto">
+        <div class="ptag">Variação C · Segmented + custom</div>
+        <div class="pn">Segmented control pros 4 períodos + Personalizado destacado abaixo</div>
+        <div class="pd">Os 4 períodos viram um segmented control compacto (estilo iOS). Personalizado fica na linha de baixo como pill tracejado (sinal "ative quando precisar"). Quando ativo, vira pill cheio mostrando o range escolhido.</div>
+        <div class="device">
+          <div class="device-bar">
+            <span class="ms">menu</span>
+            <span class="back"><span class="ms" style="font-size:18px;">arrow_back_ios</span></span>
+            <span class="title">Minhas visitas</span>
+            <span class="ms">search</span>
+          </div>
+          <div class="device-body">
+            <div class="tabs">
+              <span class="tab active">Todas<span class="num">12</span></span>
+              <span class="tab">Concl.<span class="num">9</span></span>
+              <span class="tab">Pend.<span class="num">2</span></span>
+              <span class="tab">Cancel.<span class="num">1</span></span>
+            </div>
+            <input class="search" placeholder="Buscar por instituição..." />
+            <div class="seg-bar">
+              <span class="seg-btn active">Todas</span>
+              <span class="seg-btn">Hoje</span>
+              <span class="seg-btn">Semana</span>
+              <span class="seg-btn">Mês</span>
+            </div>
+            <div class="custom-row">
+              <span class="badge-custom"><span class="ms">date_range</span>Período personalizado</span>
+            </div>
+            <div class="day-h">Hoje · 5 mai</div>
+            <div class="vc">
+              <div class="vc-time">20:27</div>
+              <div class="vc-line"></div>
+              <div class="vc-info">
+                <div class="vc-name">Hospital Ana Costa</div>
+                <div class="vc-sub">
+                  <span class="vc-sub-item"><span class="ms">schedule</span>3 min</span>
+                  <span class="vc-sub-item" style="color:var(--status-warning-dark);"><span class="ms">flag</span>2</span>
+                </div>
+              </div>
+              <span class="vc-status r">Rascunho</span>
+            </div>
+            <div class="day-h">Ontem · 4 mai</div>
+            <div class="vc">
+              <div class="vc-time">14:30</div>
+              <div class="vc-line"></div>
+              <div class="vc-info">
+                <div class="vc-name">Santa Casa de Santos</div>
+                <div class="vc-sub">
+                  <span class="vc-sub-item"><span class="ms">schedule</span>1h 12m</span>
+                  <span class="vc-sub-item"><span class="ms">people</span>3</span>
+                </div>
+              </div>
+              <span class="vc-status c">OK</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- VARIAÇÃO D: Modelo 1 + Personalizado -->
+      <div class="proto">
+        <div class="ptag">Variação D · Modelo 1 (cards ricos) + Personalizado</div>
+        <div class="pn">Cards ricos com ações + filtros uniformes em scroll horizontal</div>
+        <div class="pd">Mesmo modelo 1 que vc gostou (cards detalhados com botões "Continuar rascunho"), mas agora com os 5 filtros uniformes em scroll horizontal — incluindo Personalizado.</div>
+        <div class="device">
+          <div class="device-bar">
+            <span class="ms">menu</span>
+            <span class="back"><span class="ms" style="font-size:18px;">arrow_back_ios</span></span>
+            <span class="title">Minhas visitas</span>
+            <span class="ms">search</span>
+          </div>
+          <div class="device-body">
+            <div class="tabs">
+              <span class="tab active">Todas<span class="num">12</span></span>
+              <span class="tab">Concl.<span class="num">9</span></span>
+              <span class="tab">Pend.<span class="num">2</span></span>
+              <span class="tab">Cancel.<span class="num">1</span></span>
+            </div>
+            <input class="search" placeholder="Buscar por instituição..." />
+            <div class="row-scroll">
+              <span class="pill active">Todas</span>
+              <span class="pill">Hoje</span>
+              <span class="pill">Esta semana</span>
+              <span class="pill">Este mês</span>
+              <span class="pill"><span class="ms">tune</span>Personalizado</span>
+            </div>
+            <div class="rc flag">
+              <div class="rc-head">
+                <div class="rc-icon"><span class="ms">local_hospital</span></div>
+                <div style="flex:1;">
+                  <div class="rc-name">Hospital Ana Costa</div>
+                  <div class="rc-addr">Campo Grande · Santos</div>
+                </div>
+                <span class="rc-status flag"><span class="ms" style="font-size:11px;">flag</span> 2</span>
+              </div>
+              <div class="rc-meta">
+                <span class="rc-meta-item"><span class="ms">event</span>Hoje · 20:27</span>
+                <span class="rc-meta-item"><span class="ms">schedule</span>3 min</span>
+              </div>
+              <div class="rc-cta">
+                <button class="rc-btn-prim"><span class="ms" style="font-size:14px;">edit</span>Continuar rascunho</button>
+                <button class="rc-btn-sec"><span class="ms" style="font-size:14px;">visibility</span></button>
+              </div>
+            </div>
+            <div class="rc completa">
+              <div class="rc-head">
+                <div class="rc-icon"><span class="ms">local_hospital</span></div>
+                <div style="flex:1;">
+                  <div class="rc-name">Santa Casa de Santos</div>
+                  <div class="rc-addr">Centro · Santos</div>
+                </div>
+                <span class="rc-status c">Concluída</span>
+              </div>
+              <div class="rc-meta">
+                <span class="rc-meta-item"><span class="ms">event</span>Ontem · 14:30</span>
+                <span class="rc-meta-item"><span class="ms">schedule</span>1h 12m</span>
+                <span class="rc-meta-item"><span class="ms">people</span>3</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="nota">
+      <b>Tip:</b> me diz qual variação (A, B, C ou D) e implemento. Pode também combinar — por exemplo "filtros do A + cards do D" se quiser.
+    </div>
+
+  </div>
+</body>
+</html>
