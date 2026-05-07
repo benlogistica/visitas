@@ -7662,7 +7662,7 @@ body.va-banner-active { padding-top: 56px; }
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.313-mobile-chart-ano-vigente',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.316-modal-vendedor-filtro-periodo',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -36988,7 +36988,7 @@ window.rejeitarObjetivoPendente = async function(id) {
 let FAT_DATA = null;
 let _fatDataPromise = null;
 // __FAT_VERSION_START__ — substituído pelo atualizar_index.py com hash do JSON
-const FAT_DATA_VERSION = '11f01e2c656d';
+const FAT_DATA_VERSION = '5f7bb309f0f7';
 // __FAT_VERSION_END__
 const FAT_DATA_URL = 'faturamento_data_inline.json?v=' + FAT_DATA_VERSION;
 
@@ -38795,11 +38795,6 @@ window._fatAbrirVendedor = function(nome) {
     return;
   }
 
-  const total = dados.reduce((s, d) => s + d.faturamento, 0);
-  const totalNotas = dados.reduce((s, d) => s + d.qtd_notas, 0);
-  const ticket = totalNotas > 0 ? total / totalNotas : 0;
-  const max = Math.max(...dados.map(d => d.faturamento), 1);
-
   // Pega ranking geral (posição do vendedor) — sempre no contexto FILTRADO se houver
   const totVend = {};
   if (filtroAtivo) {
@@ -38812,18 +38807,8 @@ window._fatAbrirVendedor = function(nome) {
   const ranking = Object.entries(totVend).sort((a, b) => b[1] - a[1]);
   const posicao = ranking.findIndex(([n]) => n === nome) + 1;
 
-  // Tendência: ultimos 3 vs anteriores 3
-  let tendHtml = '';
-  if (dados.length >= 6) {
-    const u3 = dados.slice(-3).reduce((s, d) => s + d.faturamento, 0) / 3;
-    const a3 = dados.slice(-6, -3).reduce((s, d) => s + d.faturamento, 0) / 3;
-    if (a3 > 0) {
-      const delta = ((u3 / a3) - 1) * 100;
-      const cor = delta >= 0 ? 'var(--status-success)' : 'var(--status-danger)';
-      const seta = delta >= 0 ? '↑' : '↓';
-      tendHtml = `<div style="font-size:12px;color:${cor};font-weight:700;">${seta} ${Math.abs(delta).toFixed(1)}% (últ. 3 meses vs 3 anteriores)</div>`;
-    }
-  }
+  // Sprint 9.32.316: anos disponiveis pro filtro do modal
+  const anosDisponiveis = [...new Set(dados.map(d => d.ano_mes.slice(0,4)))].sort().reverse();
 
   // Modal
   const backdrop = document.createElement('div');
@@ -38844,6 +38829,17 @@ window._fatAbrirVendedor = function(nome) {
       </div>`
     : '';
 
+  // Sprint 9.32.316: filtro select pra periodo (Todo periodo / 2026 / 2025 / ...)
+  const periodoSelectHtml = anosDisponiveis.length > 1 ? `
+    <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+      <span class="material-symbols-rounded" style="font-size:16px;color:var(--neutral-500);">date_range</span>
+      <select id="fatVendedorPeriodo" style="padding:6px 10px;border:1px solid var(--neutral-200);border-radius:8px;font-size:12px;font-family:inherit;color:var(--brand-navy);font-weight:600;background:#fff;cursor:pointer;">
+        <option value="todos">Todo período</option>
+        ${anosDisponiveis.map(a => `<option value="${a}">${a}</option>`).join('')}
+      </select>
+    </div>
+  ` : '';
+
   backdrop.innerHTML = `
     <div style="background:var(--neutral-0);border-radius:16px;max-width:760px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 24px 60px rgba(0,0,0,0.25);">
       <!-- Header -->
@@ -38852,47 +38848,13 @@ window._fatAbrirVendedor = function(nome) {
           <div style="font-size:11px;color:var(--neutral-500);font-weight:700;letter-spacing:0.06em;text-transform:uppercase;">${tipo} · #${posicao} no ranking${filtroAtivo ? ' (no cliente)' : ''}</div>
           <div style="font-family:var(--font-display);font-size:20px;font-weight:700;color:var(--brand-navy);margin-top:2px;line-height:1.2;">${nome.replace(/</g,'&lt;')}</div>
         </div>
+        ${periodoSelectHtml}
         <button onclick="document.getElementById('fatVendedorModal').remove();" style="background:transparent;border:0;color:var(--neutral-500);cursor:pointer;font-size:24px;line-height:0;padding:8px;border-radius:50%;" title="Fechar">×</button>
       </div>
       ${contextoBadge}
 
-      <!-- KPIs -->
-      <div style="padding:18px 22px;display:grid;grid-template-columns:repeat(3,1fr);gap:12px;border-bottom:1px solid var(--neutral-200);">
-        <div>
-          <div style="font-size:10.5px;color:var(--neutral-500);font-weight:700;letter-spacing:0.06em;text-transform:uppercase;">Faturamento total</div>
-          <div style="font-family:var(--font-display);font-size:22px;font-weight:700;color:var(--brand-navy);margin-top:2px;">${_fmtMoeda(total)}</div>
-        </div>
-        <div>
-          <div style="font-size:10.5px;color:var(--neutral-500);font-weight:700;letter-spacing:0.06em;text-transform:uppercase;">Notas</div>
-          <div style="font-family:var(--font-display);font-size:22px;font-weight:700;color:var(--brand-navy);margin-top:2px;">${_fmtNum(totalNotas)}</div>
-        </div>
-        <div>
-          <div style="font-size:10.5px;color:var(--neutral-500);font-weight:700;letter-spacing:0.06em;text-transform:uppercase;">Ticket médio</div>
-          <div style="font-family:var(--font-display);font-size:22px;font-weight:700;color:var(--brand-navy);margin-top:2px;">${_fmtMoeda(ticket)}</div>
-        </div>
-      </div>
-
-      ${tendHtml ? `<div style="padding:12px 22px;background:var(--neutral-50);border-bottom:1px solid var(--neutral-200);">${tendHtml}</div>` : ''}
-
-      <!-- Evolução mensal (mini-bars) -->
-      <div style="padding:18px 22px;">
-        <div style="font-size:13px;font-weight:700;color:var(--brand-navy);margin-bottom:10px;">Evolução mensal (${dados.length} meses)</div>
-        <div style="display:flex;gap:6px;align-items:flex-end;height:140px;border-bottom:1.5px solid var(--neutral-200);padding-bottom:4px;">
-          ${dados.map(d => {
-            const h = Math.max((d.faturamento / max) * 100, 2);  // mínimo 2% pra sempre aparecer algo
-            const valLabel = _fmtMoeda(d.faturamento, true).replace('R$ ', '');
-            return `
-              <div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:stretch;height:100%;gap:3px;cursor:default;" title="${_mesLabel(d.ano_mes)}: ${_fmtMoeda(d.faturamento)} · ${d.qtd_notas} notas">
-                <div style="font-size:8.5px;color:var(--neutral-500);text-align:center;line-height:1;">${valLabel}</div>
-                <div style="background:linear-gradient(180deg,var(--brand-lime) 0%,var(--brand-lime-dark, #6FA62E) 100%);height:${h}%;min-height:3px;border-radius:3px 3px 0 0;"></div>
-              </div>
-            `;
-          }).join('')}
-        </div>
-        <div style="display:flex;gap:6px;margin-top:4px;">
-          ${dados.map(d => `<div style="flex:1;text-align:center;font-size:9px;color:var(--neutral-500);transform:rotate(-45deg);transform-origin:center top;height:30px;">${_mesLabel(d.ano_mes)}</div>`).join('')}
-        </div>
-      </div>
+      <!-- Conteudo dinamico (KPIs + tendencia + chart) -->
+      <div id="fatVendedorBody"></div>
 
       ${isND ? `
         <div style="margin:0 22px 18px;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.3);border-radius:10px;padding:12px 14px;">
@@ -38912,6 +38874,83 @@ window._fatAbrirVendedor = function(nome) {
     </div>
   `;
   document.body.appendChild(backdrop);
+
+  // Sprint 9.32.316: renderiza conteudo do modal baseado no filtro selecionado
+  function renderModalBody(filtroAno) {
+    const dadosFiltrados = (filtroAno && filtroAno !== 'todos')
+      ? dados.filter(d => d.ano_mes.startsWith(filtroAno + '-'))
+      : dados;
+    if (dadosFiltrados.length === 0) {
+      document.getElementById('fatVendedorBody').innerHTML = `
+        <div style="padding:40px 22px;text-align:center;color:var(--neutral-500);font-size:13px;">
+          Sem dados para este período.
+        </div>
+      `;
+      return;
+    }
+    const total = dadosFiltrados.reduce((s, d) => s + d.faturamento, 0);
+    const totalNotas = dadosFiltrados.reduce((s, d) => s + d.qtd_notas, 0);
+    const ticket = totalNotas > 0 ? total / totalNotas : 0;
+    const max = Math.max(...dadosFiltrados.map(d => d.faturamento), 1);
+
+    // Tendencia: so faz sentido com 6+ meses
+    let tendHtml = '';
+    if (dadosFiltrados.length >= 6) {
+      const u3 = dadosFiltrados.slice(-3).reduce((s, d) => s + d.faturamento, 0) / 3;
+      const a3 = dadosFiltrados.slice(-6, -3).reduce((s, d) => s + d.faturamento, 0) / 3;
+      if (a3 > 0) {
+        const delta = ((u3 / a3) - 1) * 100;
+        const cor = delta >= 0 ? 'var(--status-success)' : 'var(--status-danger)';
+        const seta = delta >= 0 ? '↑' : '↓';
+        tendHtml = `<div style="font-size:12px;color:${cor};font-weight:700;">${seta} ${Math.abs(delta).toFixed(1)}% (últ. 3 meses vs 3 anteriores)</div>`;
+      }
+    }
+
+    document.getElementById('fatVendedorBody').innerHTML = `
+      <div style="padding:18px 22px;display:grid;grid-template-columns:repeat(3,1fr);gap:12px;border-bottom:1px solid var(--neutral-200);">
+        <div>
+          <div style="font-size:10.5px;color:var(--neutral-500);font-weight:700;letter-spacing:0.06em;text-transform:uppercase;">Faturamento total</div>
+          <div style="font-family:var(--font-display);font-size:22px;font-weight:700;color:var(--brand-navy);margin-top:2px;">${_fmtMoeda(total)}</div>
+        </div>
+        <div>
+          <div style="font-size:10.5px;color:var(--neutral-500);font-weight:700;letter-spacing:0.06em;text-transform:uppercase;">Notas</div>
+          <div style="font-family:var(--font-display);font-size:22px;font-weight:700;color:var(--brand-navy);margin-top:2px;">${_fmtNum(totalNotas)}</div>
+        </div>
+        <div>
+          <div style="font-size:10.5px;color:var(--neutral-500);font-weight:700;letter-spacing:0.06em;text-transform:uppercase;">Ticket médio</div>
+          <div style="font-family:var(--font-display);font-size:22px;font-weight:700;color:var(--brand-navy);margin-top:2px;">${_fmtMoeda(ticket)}</div>
+        </div>
+      </div>
+      ${tendHtml ? `<div style="padding:12px 22px;background:var(--neutral-50);border-bottom:1px solid var(--neutral-200);">${tendHtml}</div>` : ''}
+      <div style="padding:18px 22px;">
+        <div style="font-size:13px;font-weight:700;color:var(--brand-navy);margin-bottom:10px;">Evolução mensal (${dadosFiltrados.length} ${dadosFiltrados.length === 1 ? 'mês' : 'meses'})</div>
+        <div style="display:flex;gap:6px;align-items:flex-end;height:140px;border-bottom:1.5px solid var(--neutral-200);padding-bottom:4px;">
+          ${dadosFiltrados.map(d => {
+            const h = Math.max((d.faturamento / max) * 100, 2);
+            const valLabel = _fmtMoeda(d.faturamento, true).replace('R$ ', '');
+            return `
+              <div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:stretch;height:100%;gap:3px;cursor:default;" title="${_mesLabel(d.ano_mes)}: ${_fmtMoeda(d.faturamento)} · ${d.qtd_notas} notas">
+                <div style="font-size:8.5px;color:var(--neutral-500);text-align:center;line-height:1;">${valLabel}</div>
+                <div style="background:linear-gradient(180deg,var(--brand-lime) 0%,var(--brand-lime-dark, #6FA62E) 100%);height:${h}%;min-height:3px;border-radius:3px 3px 0 0;"></div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+        <div style="display:flex;gap:6px;margin-top:4px;">
+          ${dadosFiltrados.map(d => `<div style="flex:1;text-align:center;font-size:9px;color:var(--neutral-500);transform:rotate(-45deg);transform-origin:center top;height:30px;">${_mesLabel(d.ano_mes)}</div>`).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  // Render inicial (sem filtro)
+  renderModalBody('todos');
+
+  // Liga onchange do select pra re-renderizar
+  const selPeriodo = document.getElementById('fatVendedorPeriodo');
+  if (selPeriodo) {
+    selPeriodo.addEventListener('change', (e) => renderModalBody(e.target.value));
+  }
 };
 
 // Drill-down: abre modal com detalhes do cliente
@@ -39167,7 +39206,7 @@ window._fatAbrirMarca = function(nomeMarca) {
                   <div style="flex:1;min-width:0;">
                     <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
                       <div style="font-size:12px;color:var(--brand-navy);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${(p['Descrição do Produto'] || '—').replace(/</g,'&lt;')}</div>
-                      <div style="font-family:var(--font-display);font-size:12.5px;font-weight:700;color:var(--brand-navy);flex-shrink:0;">${_fmtMoeda(p.faturamento, true)}</div>
+                      <div style="font-family:var(--font-display);font-size:12.5px;font-weight:700;color:var(--brand-navy);flex-shrink:0;">${_fmtMoeda(p.faturamento)}</div>
                     </div>
                     <div style="height:4px;background:var(--neutral-100);border-radius:2px;margin-top:4px;overflow:hidden;">
                       <div style="height:100%;width:${pctP}%;background:linear-gradient(90deg,var(--brand-lime),var(--brand-lime-dark,#6FA62E));"></div>
@@ -39496,7 +39535,7 @@ function _fatRenderBannerND() {
       <span class="material-symbols-rounded" style="font-size:22px;color:#D97706;flex-shrink:0;margin-top:1px;">warning_amber</span>
       <div style="flex:1;min-width:0;">
         <div style="font-size:13px;font-weight:700;color:var(--brand-navy);margin-bottom:3px;">
-          Vendedor "N/D" representa ${pct.toFixed(1)}% do faturamento (${_fmtMoeda(totND, true)})
+          Vendedor "N/D" representa ${pct.toFixed(1)}% do faturamento (${_fmtMoeda(totND)})
         </div>
         <div style="font-size:12px;color:var(--neutral-600);line-height:1.5;">
           São ${_fmtNum(FAT_DATA.vendedor_mes.filter(v => v.Vendedor === 'N/D').reduce((s,v) => s + v.qtd_notas, 0))} notas sem vendedor identificado no sistema de origem.
@@ -39674,7 +39713,7 @@ function _fatRenderConsignado() {
     kpisEl.innerHTML = `
       <div style="background:linear-gradient(135deg,#F59E0B 0%,#92400E 100%);color:#fff;border-radius:12px;padding:14px 16px;">
         <div style="font-size:10.5px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;opacity:0.9;">Total consignado</div>
-        <div style="font-family:var(--font-display);font-size:24px;font-weight:700;margin-top:3px;">${_fmtMoeda(totalCons, true)}</div>
+        <div style="font-family:var(--font-display);font-size:24px;font-weight:700;margin-top:3px;">${_fmtMoeda(totalCons)}</div>
         ${tendenciaHtml ? `<div style="margin-top:4px;">${tendenciaHtml}</div>` : ''}
       </div>
       <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:12px;padding:14px 16px;">
@@ -39836,7 +39875,7 @@ function _fatRenderConsignado() {
             <div style="flex:1;min-width:0;">
               <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:3px;">
                 <div style="font-size:12.5px;color:var(--brand-navy);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;">${(c['Cliente (Nome Fantasia)'] || '—').replace(/</g,'&lt;')}</div>
-                <div style="font-family:var(--font-display);font-size:13px;font-weight:700;color:#92400E;flex-shrink:0;">${_fmtMoeda(c.valor_consignado, true)}</div>
+                <div style="font-family:var(--font-display);font-size:13px;font-weight:700;color:#92400E;flex-shrink:0;">${_fmtMoeda(c.valor_consignado)}</div>
               </div>
               <div style="height:6px;background:var(--neutral-100);border-radius:9999px;overflow:hidden;margin-bottom:4px;">
                 <div style="height:100%;width:${pct}%;background:linear-gradient(90deg,#F59E0B,#92400E);transition:width 280ms ease-out;"></div>
@@ -39869,7 +39908,7 @@ function _fatRenderConsignado() {
             <div style="flex:1;min-width:0;">
               <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:3px;">
                 <div style="font-size:12.5px;color:var(--brand-navy);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;">${desc}</div>
-                <div style="font-family:var(--font-display);font-size:13px;font-weight:700;color:#92400E;flex-shrink:0;">${_fmtMoeda(p.valor_consignado, true)}</div>
+                <div style="font-family:var(--font-display);font-size:13px;font-weight:700;color:#92400E;flex-shrink:0;">${_fmtMoeda(p.valor_consignado)}</div>
               </div>
               <div style="height:6px;background:var(--neutral-100);border-radius:9999px;overflow:hidden;margin-bottom:4px;">
                 <div style="height:100%;width:${pct}%;background:linear-gradient(90deg,#F59E0B,#92400E);transition:width 280ms ease-out;"></div>
@@ -39942,7 +39981,7 @@ function _fatRenderComparacao() {
     <div style="grid-column:1/-1;font-size:11px;color:var(--neutral-500);margin-bottom:-4px;">
       <strong>Atual:</strong> ${periodoU} · <strong>Anterior:</strong> ${periodoA}
     </div>
-    ${card('Faturamento', _fmtMoeda(tU.faturamento, true), deltaPct(tU.faturamento, tA.faturamento))}
+    ${card('Faturamento', _fmtMoeda(tU.faturamento), deltaPct(tU.faturamento, tA.faturamento))}
     ${card('Notas emitidas', _fmtNum(tU.notas), deltaPct(tU.notas, tA.notas))}
     ${card('Ticket médio', _fmtMoeda(tkU), deltaPct(tkU, tkA))}
     ${card('Itens vendidos', _fmtNum(tU.itens), deltaPct(tU.itens, tA.itens))}
@@ -40027,19 +40066,19 @@ function _fatRenderAbc() {
       <div style="font-size:11px;color:var(--status-danger);font-weight:700;letter-spacing:0.08em;">CLASSE A · 80%</div>
       <div style="font-family:var(--font-display);font-size:22px;font-weight:700;color:var(--brand-navy);margin-top:3px;line-height:1.1;">${grupoA.length}</div>
       <div style="font-size:10.5px;color:var(--neutral-600);margin-top:2px;">clientes prioritários</div>
-      <div style="font-size:11px;color:var(--neutral-500);margin-top:6px;">${_fmtMoeda(totA, true)}</div>
+      <div style="font-size:11px;color:var(--neutral-500);margin-top:6px;">${_fmtMoeda(totA)}</div>
     </div>
     <div style="border:2px solid var(--status-warning);background:rgba(245,158,11,0.05);border-radius:12px;padding:12px 14px;">
       <div style="font-size:11px;color:#B45309;font-weight:700;letter-spacing:0.08em;">CLASSE B · 15%</div>
       <div style="font-family:var(--font-display);font-size:22px;font-weight:700;color:var(--brand-navy);margin-top:3px;line-height:1.1;">${grupoB.length}</div>
       <div style="font-size:10.5px;color:var(--neutral-600);margin-top:2px;">relevância média</div>
-      <div style="font-size:11px;color:var(--neutral-500);margin-top:6px;">${_fmtMoeda(totB, true)}</div>
+      <div style="font-size:11px;color:var(--neutral-500);margin-top:6px;">${_fmtMoeda(totB)}</div>
     </div>
     <div style="border:2px solid var(--neutral-300,#CBD5E1);background:rgba(100,116,139,0.04);border-radius:12px;padding:12px 14px;">
       <div style="font-size:11px;color:var(--neutral-600);font-weight:700;letter-spacing:0.08em;">CLASSE C · 5%</div>
       <div style="font-family:var(--font-display);font-size:22px;font-weight:700;color:var(--brand-navy);margin-top:3px;line-height:1.1;">${grupoC.length}</div>
       <div style="font-size:10.5px;color:var(--neutral-600);margin-top:2px;">cauda longa</div>
-      <div style="font-size:11px;color:var(--neutral-500);margin-top:6px;">${_fmtMoeda(totC, true)}</div>
+      <div style="font-size:11px;color:var(--neutral-500);margin-top:6px;">${_fmtMoeda(totC)}</div>
     </div>
   `;
 
@@ -40486,10 +40525,10 @@ function _fatRenderInsights() {
       icone: 'schedule',
       titulo: `Hospitais dormentes (${R.dormenteDias}+ dias)`,
       valor: `${dormentes.length} cliente${dormentes.length !== 1 ? 's' : ''}`,
-      descricao: `Representam <strong>${_fmtMoeda(dormentesFatTotal, true)}</strong> de faturamento histórico. Sem compras há ${R.dormenteDias}+ dias — alto risco de churn.`,
+      descricao: `Representam <strong>${_fmtMoeda(dormentesFatTotal)}</strong> de faturamento histórico. Sem compras há ${R.dormenteDias}+ dias — alto risco de churn.`,
       lista: dormentes.slice(0, 5).map(d => ({
         label: `${d.nome.slice(0, 32)} · ${d.diasSemComprar}d`,
-        valor: _fmtMoeda(d.faturamento, true),
+        valor: _fmtMoeda(d.faturamento),
       })),
       cta: dormentes.length > 5 ? `+ ${dormentes.length - 5} outros dormentes` : '',
       dadosModal: { tipo: 'dormentes', items: dormentes, tituloModal: `Hospitais dormentes (${R.dormenteDias}+ dias)`, tom },
@@ -40507,7 +40546,7 @@ function _fatRenderInsights() {
       descricao: `Compraram pela 1ª vez nos últimos 6 meses e já estão acima da média do top 50. Momento de nutrir o relacionamento.`,
       lista: emAceleracao.slice(0, 5).map(c => ({
         label: `${c.nome.slice(0, 32)}`,
-        valor: _fmtMoeda(c.faturamento, true),
+        valor: _fmtMoeda(c.faturamento),
       })),
       dadosModal: { tipo: 'aceleracao', items: emAceleracao, tituloModal: 'Em aceleração', tom: 'success' },
     }));
@@ -40524,7 +40563,7 @@ function _fatRenderInsights() {
       descricao: `Primeira compra nos últimos ${R.novoDias} dias. Taxa de onboarding é crítica — aproxime-se rápido.`,
       lista: novos.slice(0, 5).map(n => ({
         label: `${n.nome.slice(0, 32)} · ${n.diasDesdeEntrada}d`,
-        valor: _fmtMoeda(n.faturamento, true),
+        valor: _fmtMoeda(n.faturamento),
       })),
       dadosModal: { tipo: 'novos', items: novos, tituloModal: `Novos entrantes (${R.novoDias}d)`, tom: 'success' },
     }));
@@ -40541,7 +40580,7 @@ function _fatRenderInsights() {
       descricao: `Clientes dormentes com faturamento <strong>acima da média do top 50</strong>. Priorize retomada — cada um vale atenção individual.`,
       lista: dormentesRelevantes.slice(0, 5).map(d => ({
         label: `${d.nome.slice(0, 32)} · ${d.diasSemComprar}d sem comprar`,
-        valor: _fmtMoeda(d.faturamento, true),
+        valor: _fmtMoeda(d.faturamento),
       })),
       cta: '⚠ Agendar contato comercial urgente',
       dadosModal: { tipo: 'prioritarias', items: dormentesRelevantes, tituloModal: 'Quedas prioritárias (alto valor)', tom: 'danger' },
@@ -40638,7 +40677,7 @@ function _fatRenderInsights() {
       tom: tomDev,
       icone: 'assignment_return',
       titulo: 'Pico de devoluções',
-      valor: _fmtMoeda(picoDev.valor_devolucao, true),
+      valor: _fmtMoeda(picoDev.valor_devolucao),
       descricao: `<strong>${anoMesFmt}</strong> registrou o maior valor devolvido (${devRatio.toFixed(1)}x a média). ${devRatio > 2 ? 'Investigar causas pode reduzir recorrência.' : 'Dentro da variação esperada.'}`,
       sparkHtml: sparkDev,
     }));
@@ -40658,7 +40697,7 @@ function _fatRenderInsights() {
       icone: ultVsMediaPct > 0 ? 'show_chart' : 'trending_down',
       titulo: `Último mês vs média`,
       valor: `${ultVsMediaPct >= 0 ? '+' : ''}${ultVsMediaPct.toFixed(1)}%`,
-      descricao: `<strong>${anoMesUlt}</strong> faturou ${_fmtMoeda(ultMesObj.faturamento, true)}, ${ultVsMediaPct > 0 ? 'acima' : 'abaixo'} da média dos meses anteriores (${_fmtMoeda(mediaAnoAnt, true)}).`,
+      descricao: `<strong>${anoMesUlt}</strong> faturou ${_fmtMoeda(ultMesObj.faturamento)}, ${ultVsMediaPct > 0 ? 'acima' : 'abaixo'} da média dos meses anteriores (${_fmtMoeda(mediaAnoAnt)}).`,
       sparkHtml: sparkEvol,
     }));
   }
@@ -40674,7 +40713,7 @@ function _fatRenderInsights() {
       descricao: `<strong>SP</strong> concentra ${pctSP.toFixed(1)}% do faturamento. ${pctGeo(pctSP)} Outros estados mostram demanda ainda inexplorada.`,
       lista: outros.slice(0, 4).map(e => ({
         label: `${e.Estado} · ${_fmtNum(e.qtd_clientes)} clientes`,
-        valor: _fmtMoeda(e.faturamento, true),
+        valor: _fmtMoeda(e.faturamento),
       })),
     }));
   }
@@ -41124,13 +41163,13 @@ function _fatRenderDevolucoes() {
     kpisEl.innerHTML = [
       kpiCard(
         'Total devoluções',
-        _fmtMoeda(metaDev, true),
+        _fmtMoeda(metaDev),
         `${taxaMedia.toFixed(2)}% do faturamento`,
         '#A32D2D',
       ),
       kpiCard(
         'Último mês',
-        _fmtMoeda(ultimoVal, true),
+        _fmtMoeda(ultimoVal),
         taxaUltimo > 0
           ? `${taxaUltimo.toFixed(2)}% · ${diffVsMedia >= 0 ? '↑' : '↓'} ${Math.abs(diffVsMedia).toFixed(0)}% vs média`
           : 'sem dados',
@@ -41324,14 +41363,14 @@ function _fatRenderDevolucoes() {
             <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;">
               <div style="font-weight:600;font-size:12.5px;color:var(--brand-navy);">${esc(e.Empresa)}</div>
               <div style="font-size:11px;color:var(--neutral-600);">
-                <strong style="color:#A32D2D;">${_fmtMoeda(e.valor_devolucao, true)}</strong>
+                <strong style="color:#A32D2D;">${_fmtMoeda(e.valor_devolucao)}</strong>
                 <span style="margin-left:6px;color:${taxa > 2 ? '#A32D2D' : 'var(--neutral-500)'};font-weight:600;">${taxa.toFixed(2)}%</span>
               </div>
             </div>
             <div style="height:6px;background:var(--neutral-100);border-radius:3px;overflow:hidden;">
               <div style="height:100%;width:${pct}%;background:${corBarra};border-radius:3px;"></div>
             </div>
-            <div style="font-size:10.5px;color:var(--neutral-500);margin-top:4px;">${e.qtd} notas · Fat: ${fatEmp ? _fmtMoeda(fatEmp.faturamento, true) : '—'}</div>
+            <div style="font-size:10.5px;color:var(--neutral-500);margin-top:4px;">${e.qtd} notas · Fat: ${fatEmp ? _fmtMoeda(fatEmp.faturamento) : '—'}</div>
           </div>
         `;
       }).join('');
@@ -41361,7 +41400,7 @@ function _fatRenderDevolucoes() {
               <div style="height:100%;width:${pct}%;background:#E24B4A;border-radius:3px;"></div>
             </div>
             <div style="flex:0 0 100px;text-align:right;">
-              <strong style="color:#A32D2D;">${_fmtMoeda(m.valor_devolucao, true)}</strong>
+              <strong style="color:#A32D2D;">${_fmtMoeda(m.valor_devolucao)}</strong>
               <span style="color:${taxa > 5 ? '#A32D2D' : 'var(--neutral-500)'};margin-left:4px;font-size:10px;">${taxa > 0 ? taxa.toFixed(1) + '%' : ''}</span>
             </div>
           </div>
@@ -41443,7 +41482,7 @@ function _fatDevRenderProdutos() {
           </div>
         </div>
         <div style="flex:0 0 auto;text-align:right;">
-          <div style="font-weight:700;color:#A32D2D;">${_fmtMoeda(p.valor_devolucao, true)}</div>
+          <div style="font-weight:700;color:#A32D2D;">${_fmtMoeda(p.valor_devolucao)}</div>
           <div style="font-size:10px;color:var(--neutral-500);">${p.qtd_notas} nota${p.qtd_notas > 1 ? 's' : ''}</div>
         </div>
       </div>
@@ -41490,7 +41529,7 @@ function _fatDevRenderCidades() {
           </div>
         </div>
         <div style="flex:0 0 auto;text-align:right;">
-          <div style="font-weight:700;color:#A32D2D;">${_fmtMoeda(c.valor_devolucao, true)}</div>
+          <div style="font-weight:700;color:#A32D2D;">${_fmtMoeda(c.valor_devolucao)}</div>
           <div style="font-size:10px;color:var(--neutral-500);">${c.qtd_notas} nota${c.qtd_notas > 1 ? 's' : ''}</div>
         </div>
       </div>
@@ -41866,7 +41905,7 @@ window._fatAbrirModalInsight = function(id) {
           <div style="font-size:10.5px;color:var(--neutral-500);margin-top:2px;">${esc(d.cidade || '—')}${d.estado ? ' · ' + d.estado : ''}</div>
         </div>
         <div style="text-align:right;font-family:var(--font-mono);font-size:11.5px;color:${t.cor};font-weight:700;">${d.diasSemComprar}d</div>
-        <div style="text-align:right;font-family:var(--font-mono);font-size:12px;font-weight:700;color:var(--brand-navy);">${_fmtMoeda(d.faturamento, true)}</div>
+        <div style="text-align:right;font-family:var(--font-mono);font-size:12px;font-weight:700;color:var(--brand-navy);">${_fmtMoeda(d.faturamento)}</div>
       </div>
     `).join('');
   } else if (['aceleracao', 'novos'].includes(data.tipo)) {
@@ -41879,7 +41918,7 @@ window._fatAbrirModalInsight = function(id) {
             <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(c.nome)}</div>
             <div style="font-size:10.5px;color:var(--neutral-500);margin-top:2px;">${esc(c.cidade || '—')}${c.estado ? ' · ' + c.estado : ''}${sub ? ' · ' + sub : ''}</div>
           </div>
-          <div style="text-align:right;font-family:var(--font-mono);font-size:12px;font-weight:700;color:${t.cor};">${_fmtMoeda(c.faturamento, true)}</div>
+          <div style="text-align:right;font-family:var(--font-mono);font-size:12px;font-weight:700;color:${t.cor};">${_fmtMoeda(c.faturamento)}</div>
         </div>
       `;
     }).join('');
@@ -41891,7 +41930,7 @@ window._fatAbrirModalInsight = function(id) {
           <div style="font-family:var(--font-mono);font-size:11px;color:var(--neutral-500);font-weight:700;">${i + 1}</div>
           <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:12.5px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(c.nome)}</div>
           <div style="text-align:right;font-family:var(--font-mono);font-size:11.5px;color:${t.cor};font-weight:700;">${sinal}${c.trendPct.toFixed(0)}%</div>
-          <div style="text-align:right;font-family:var(--font-mono);font-size:12px;color:var(--brand-navy);font-weight:700;">${_fmtMoeda(c.total, true)}</div>
+          <div style="text-align:right;font-family:var(--font-mono);font-size:12px;color:var(--brand-navy);font-weight:700;">${_fmtMoeda(c.total)}</div>
         </div>
       `;
     }).join('');
@@ -41903,7 +41942,7 @@ window._fatAbrirModalInsight = function(id) {
           <div style="font-family:var(--font-mono);font-size:11px;color:var(--neutral-500);font-weight:700;">${i + 1}</div>
           <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:12.5px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(m.Marca || m.nome)}</div>
           <div style="text-align:right;font-family:var(--font-mono);font-size:11.5px;color:${t.cor};font-weight:700;">${sinal}${m.trendPct.toFixed(0)}%</div>
-          <div style="text-align:right;font-family:var(--font-mono);font-size:12px;color:var(--brand-navy);font-weight:700;">${_fmtMoeda(m.total || m.faturamento, true)}</div>
+          <div style="text-align:right;font-family:var(--font-mono);font-size:12px;color:var(--brand-navy);font-weight:700;">${_fmtMoeda(m.total || m.faturamento)}</div>
         </div>
       `;
     }).join('');
@@ -42372,7 +42411,7 @@ function _fatRender() {
     // Sprint 9.32.313: indica recorte de ano vigente (mobile)
     const recorteLabel = _fatRecortadoLabel ? `<span style="display:inline-flex;align-items:center;gap:4px;background:var(--brand-lime-bg,#E9F4D9);color:var(--brand-lime-dark,#6FA62E);padding:2px 7px;border-radius:9999px;font-size:10.5px;font-weight:700;margin-right:6px;"><span class="material-symbols-rounded" style="font-size:11px;">filter_alt</span>${_fatRecortadoLabel}</span>` : '';
     document.getElementById('fatEvolStats').innerHTML =
-      `${recorteLabel}${ctxLabel}Média: <strong style="color:var(--brand-navy);">${_fmtMoeda(media, true)}</strong>/mês · Pico: <strong style="color:var(--brand-lime-dark,#6FA62E);">${_fmtMoeda(max.faturamento, true)}</strong> em ${max.ano_mes ? _mesLabel(max.ano_mes) : '—'}`;
+      `${recorteLabel}${ctxLabel}Média: <strong style="color:var(--brand-navy);">${_fmtMoeda(media)}</strong>/mês · Pico: <strong style="color:var(--brand-lime-dark,#6FA62E);">${_fmtMoeda(max.faturamento)}</strong> em ${max.ano_mes ? _mesLabel(max.ano_mes) : '—'}`;
   }
 
   // Top Vendedores ====
@@ -42416,7 +42455,7 @@ function _fatRender() {
                 ${v.nome.replace(/</g,'&lt;')}
                 <span class="material-symbols-rounded" style="font-size:13px;color:var(--neutral-400);">open_in_new</span>
               </div>
-              <div style="font-family:var(--font-display);font-size:14px;font-weight:700;color:var(--brand-navy);flex-shrink:0;margin-left:8px;">${_fmtMoeda(v.faturamento, true)}</div>
+              <div style="font-family:var(--font-display);font-size:14px;font-weight:700;color:var(--brand-navy);flex-shrink:0;margin-left:8px;">${_fmtMoeda(v.faturamento)}</div>
             </div>
             <div class="fat-bar"><div class="fat-bar__fill" style="width:${pct}%;"></div></div>
             <div style="font-size:10.5px;color:var(--neutral-500);margin-top:2px;display:flex;justify-content:space-between;">
@@ -42483,7 +42522,7 @@ function _fatRender() {
           legend: { display: false },
           tooltip: {
             callbacks: {
-              label: (ctx) => `${ctx.label}: ${_fmtMoeda(ctx.raw, true)}`
+              label: (ctx) => `${ctx.label}: ${_fmtMoeda(ctx.raw)}`
             }
           }
         },
@@ -42562,7 +42601,7 @@ function _fatRender() {
               <span style="width:10px;height:10px;border-radius:50%;background:${cor.dot};flex-shrink:0;"></span>
               <span style="font-size:12.5px;color:var(--brand-navy);font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${e.Empresa.replace(/</g,'&lt;')}</span>
             </div>
-            <div style="font-family:var(--font-display);font-size:14px;font-weight:700;color:var(--brand-navy);flex-shrink:0;">${_fmtMoeda(e.faturamento, true)}</div>
+            <div style="font-family:var(--font-display);font-size:14px;font-weight:700;color:var(--brand-navy);flex-shrink:0;">${_fmtMoeda(e.faturamento)}</div>
           </div>
           <div style="height:8px;background:var(--neutral-100);border-radius:9999px;overflow:hidden;">
             <div style="height:100%;width:${pct}%;background:${cor.bar};transition:width 280ms;"></div>
@@ -42576,7 +42615,7 @@ function _fatRender() {
     }).join('') + `
       <div style="border-top:1px solid var(--neutral-100);margin-top:10px;padding-top:8px;display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--neutral-500);">
         <span>Total das empresas</span>
-        <strong style="color:var(--brand-navy);font-family:var(--font-display);font-size:13px;">${_fmtMoeda(totalEmp, true)}</strong>
+        <strong style="color:var(--brand-navy);font-family:var(--font-display);font-size:13px;">${_fmtMoeda(totalEmp)}</strong>
       </div>
     `;
   }
@@ -42640,7 +42679,7 @@ function _fatRender() {
               </div>
             </div>
             <div style="text-align:right;flex-shrink:0;">
-              <div style="font-family:var(--font-display);font-size:16px;font-weight:700;color:${m.cor};line-height:1.1;">${_fmtMoeda(p.faturamento, true)}</div>
+              <div style="font-family:var(--font-display);font-size:16px;font-weight:700;color:${m.cor};line-height:1.1;">${_fmtMoeda(p.faturamento)}</div>
               <div style="font-size:10px;color:var(--neutral-500);margin-top:2px;">${pct.toFixed(1)}% do total</div>
             </div>
           </div>
@@ -42741,7 +42780,7 @@ function _fatRender() {
             <div class="fat-bar"><div class="fat-bar__fill" style="width:${pct}%;"></div></div>
             <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:4px;">
               <div style="font-size:10.5px;color:var(--neutral-500);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;">${c.Cidade || '—'}/${c.Estado || '—'} · ${_fmtNum(c.qtd_notas)} notas</div>
-              <div style="font-family:var(--font-display);font-size:12.5px;font-weight:700;color:var(--brand-navy);flex-shrink:0;">${_fmtMoeda(c.faturamento, true)}</div>
+              <div style="font-family:var(--font-display);font-size:12.5px;font-weight:700;color:var(--brand-navy);flex-shrink:0;">${_fmtMoeda(c.faturamento)}</div>
             </div>
           </div>
         </div>
@@ -42790,7 +42829,7 @@ function _fatRender() {
           <div style="flex:1;min-width:0;">
             <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:3px;">
               <div style="font-size:11.5px;color:var(--neutral-600);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;">${_fmtNum(e.qtd_clientes)} clientes</div>
-              <div style="font-family:var(--font-display);font-size:12px;font-weight:700;color:var(--brand-navy);flex-shrink:0;">${_fmtMoeda(e.faturamento, true)}</div>
+              <div style="font-family:var(--font-display);font-size:12px;font-weight:700;color:var(--brand-navy);flex-shrink:0;">${_fmtMoeda(e.faturamento)}</div>
             </div>
             <div class="fat-bar"><div class="fat-bar__fill" style="width:${pct}%;"></div></div>
           </div>
@@ -42865,7 +42904,7 @@ function _fatRender() {
                 <div style="font-size:12.5px;color:var(--brand-navy);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${(p['Descrição do Produto'] || '—').replace(/</g,'&lt;')}</div>
                 <div style="font-size:10.5px;color:var(--neutral-500);">${(p.Marca || '—').replace(/</g,'&lt;')} · ${_fmtNum(p.qtd_itens)} unidades</div>
               </div>
-              <div style="font-family:var(--font-display);font-size:13px;font-weight:700;color:var(--brand-navy);flex-shrink:0;">${_fmtMoeda(p.faturamento, true)}</div>
+              <div style="font-family:var(--font-display);font-size:13px;font-weight:700;color:var(--brand-navy);flex-shrink:0;">${_fmtMoeda(p.faturamento)}</div>
             </div>
             <div class="fat-bar"><div class="fat-bar__fill" style="width:${pct}%;"></div></div>
           </div>
