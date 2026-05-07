@@ -7662,7 +7662,7 @@ body.va-banner-active { padding-top: 56px; }
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.323-chart-evolucao-liquido',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.324-empresa-rateio-devolucao-vendedor',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -36988,7 +36988,7 @@ window.rejeitarObjetivoPendente = async function(id) {
 let FAT_DATA = null;
 let _fatDataPromise = null;
 // __FAT_VERSION_START__ — substituído pelo atualizar_index.py com hash do JSON
-const FAT_DATA_VERSION = '8ee33aad2d09';
+const FAT_DATA_VERSION = 'ae508bbfa7f3';
 // __FAT_VERSION_END__
 const FAT_DATA_URL = 'faturamento_data_inline.json?v=' + FAT_DATA_VERSION;
 
@@ -42739,6 +42739,22 @@ function _fatRender() {
           e.ticket_medio = e.qtd_notas > 0 ? e.faturamento / e.qtd_notas : 0;
         }
       });
+    }
+    // Sprint 9.32.324: filtro vendedor ativo — aplica taxa proporcional pra total bater com KPI liquido
+    else if (f2.vendedor && f2.vendedor !== 'todos' && FAT_DATA.vendedor_devolucao_mes) {
+      // Total de devolucao do vendedor no periodo
+      const totalDevVend = FAT_DATA.vendedor_devolucao_mes
+        .filter(vd => vd.Vendedor === f2.vendedor && mesesSetEmp.has(vd.ano_mes))
+        .reduce((s, vd) => s + (vd.valor_devolucao || 0), 0);
+      // Total de faturamento bruto distribuido pelas empresas (ja agregado em dadosEmp)
+      const totalFatBrutoEmp = dadosEmp.reduce((s, e) => s + e.faturamento, 0);
+      if (totalFatBrutoEmp > 0 && totalDevVend > 0) {
+        const taxa = totalDevVend / totalFatBrutoEmp;
+        dadosEmp.forEach(e => {
+          e.faturamento = e.faturamento * (1 - taxa);
+          e.ticket_medio = e.qtd_notas > 0 ? e.faturamento / e.qtd_notas : 0;
+        });
+      }
     }
     dadosEmp.sort((a, b) => b.faturamento - a.faturamento);
 
@@ -51057,6 +51073,7 @@ window.exportarProfCSV = async function() {
     listEl.innerHTML = `<div style="padding:20px;color:var(--status-danger);">Erro: ${err.message}</div>`;
   }
 }
+
 
 // Filtro local nos cards já renderizados
 window.filtrarProfLocal = function(termo) {
