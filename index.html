@@ -1339,7 +1339,10 @@ a {
   padding: calc(env(safe-area-inset-top, 12px) + 12px) 20px 14px;
   position: sticky;
   top: 0;
-  z-index: 30;
+  /* Sprint 9.32.304: bumpado de 30 → 1100 pra ficar acima do mapa Leaflet
+     (panes/controles do Leaflet vão até z-index 1000 — antes o topbar sumia atrás do mapa
+     ao rolar a tela). Mantém abaixo do modal-backdrop (9999) e banner global (9000). */
+  z-index: 1100;
 }
 
 .mbar__row {
@@ -7332,7 +7335,8 @@ body.va-banner-active { padding-top: 56px; }
   flex-shrink: 0;
   position: sticky;
   top: 0;
-  z-index: 10;
+  /* Sprint 9.32.304: bumpado de 10 → 1100 pra ficar acima do Leaflet (controles em 1000) */
+  z-index: 1100;
 }
 .ds-topbar__title-wrap { flex: 1; min-width: 0; }
 .ds-topbar__title {
@@ -7655,7 +7659,7 @@ body.va-banner-active { padding-top: 56px; }
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.303-ocultar-decisao-nutri',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.304-fix-zindex-topbar-mapa',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
