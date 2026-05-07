@@ -4029,6 +4029,86 @@ a {
 }
 .btn-cancel-link:hover { color: var(--status-danger); }
 
+/* Sprint 9.32.300: banner global de visita ativa (V5 — escala cor por tempo decorrido)
+   Aparece em todas as telas do nutri quando há check-in sem checkout no banco.
+   Lime até 2h → amarelo de 2h a 4h → vermelho 4h+ com shake.
+   Click no banner leva pra /checkin/ativo (botão de finalizar). */
+#vaBannerSlot {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 9000;
+}
+.va-banner {
+  padding: 10px 16px;
+  display: flex; align-items: center; gap: 10px;
+  cursor: pointer;
+  transition: background 0.4s;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+.va-banner.calmo { background: linear-gradient(90deg, #EAF3DE 0%, #D9EAB6 100%); border-bottom: 1px solid #97C459; }
+.va-banner.atencao { background: linear-gradient(90deg, #FAEEDA 0%, #F4D9A1 100%); border-bottom: 1px solid #EF9F27; }
+.va-banner.urgente { background: linear-gradient(90deg, #FCEBEB 0%, #F7C1C1 100%); border-bottom: 1px solid #E24B4A; }
+.va-icon {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.va-banner.calmo .va-icon { background: var(--brand-lime); color: var(--brand-navy); }
+.va-banner.atencao .va-icon { background: #EF9F27; color: #fff; }
+.va-banner.urgente .va-icon { background: #E24B4A; color: #fff; animation: vaShake 0.6s infinite; }
+@keyframes vaShake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-2px); }
+  75% { transform: translateX(2px); }
+}
+.va-info { flex: 1; min-width: 0; line-height: 1.3; }
+.va-label { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
+.va-banner.calmo .va-label { color: #3B6D11; }
+.va-banner.atencao .va-label { color: #854F0B; }
+.va-banner.urgente .va-label { color: #791F1F; }
+.va-name { font-family: 'Poppins', sans-serif; font-size: 13px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.va-banner.calmo .va-name { color: #173404; }
+.va-banner.atencao .va-name { color: #854F0B; }
+.va-banner.urgente .va-name { color: #501313; }
+.va-time {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px; font-weight: 700;
+  padding: 4px 9px;
+  background: rgba(255,255,255,0.55);
+  border-radius: 7px;
+  flex-shrink: 0;
+}
+.va-banner.calmo .va-time { color: #173404; }
+.va-banner.atencao .va-time { color: #854F0B; }
+.va-banner.urgente .va-time { color: #501313; }
+.va-cta {
+  padding: 7px 14px;
+  border-radius: 9999px;
+  font-size: 12.5px; font-weight: 700;
+  display: inline-flex; align-items: center; gap: 5px;
+  flex-shrink: 0;
+  border: 0; cursor: pointer; font-family: inherit;
+}
+.va-banner.calmo .va-cta { background: var(--brand-navy); color: #fff; }
+.va-banner.atencao .va-cta { background: #854F0B; color: #fff; }
+.va-banner.urgente .va-cta { background: #E24B4A; color: #fff; }
+/* Mobile: encolher um pouco pra caber */
+@media (max-width: 480px) {
+  .va-banner { padding: 8px 12px; gap: 8px; }
+  .va-icon { width: 28px; height: 28px; }
+  .va-icon .material-symbols-rounded { font-size: 16px !important; }
+  .va-label { font-size: 9.5px; }
+  .va-name { font-size: 12px; }
+  .va-time { font-size: 11.5px; padding: 3px 7px; }
+  .va-cta { padding: 6px 11px; font-size: 11.5px; }
+  .va-cta-text { display: none; }
+}
+body.va-banner-active { padding-top: 56px; }
+@media (max-width: 480px) {
+  body.va-banner-active { padding-top: 50px; }
+}
+
 /* Active visit card */
 .active-card {
   background: var(--neutral-0);
@@ -7575,7 +7655,7 @@ a {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.299-desktop-calendario-tabela',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.300-banner-visita-ativa',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -10988,6 +11068,143 @@ async function criarCheckin({ institucaoId, userPos, objetivoId, observacoes, ch
 
   return data;
 }
+
+// Sprint 9.32.300: banner global de visita ativa (V5)
+// Aparece no topo de qualquer tela quando há check-in sem checkout. Cross-platform — busca DB.
+// Cor escala lime → amarelo → vermelho conforme tempo. Click leva pra /checkin/ativo.
+
+function _vaBannerSlot() {
+  let slot = document.getElementById('vaBannerSlot');
+  if (!slot) {
+    slot = document.createElement('div');
+    slot.id = 'vaBannerSlot';
+    document.body.insertBefore(slot, document.body.firstChild);
+  }
+  return slot;
+}
+
+function _vaBannerHTML(visita) {
+  if (!visita || !visita.checkin_timestamp) return '';
+  const checkin = new Date(visita.checkin_timestamp);
+  const minutos = Math.max(0, Math.floor((Date.now() - checkin.getTime()) / 60000));
+  const horas = Math.floor(minutos / 60);
+  const mm = String(minutos % 60).padStart(2, '0');
+  const tempoStr = horas > 0 ? `${String(horas).padStart(2,'0')}h${mm}` : `${mm}min`;
+
+  let estado = 'calmo';
+  let label = 'Check-in ativo';
+  let icone = 'my_location';
+  let ctaTxt = 'Finalizar';
+  if (minutos >= 240) { // 4h+
+    estado = 'urgente';
+    label = 'Urgente · será auto-fechado em breve';
+    icone = 'warning';
+    ctaTxt = 'Finalizar agora';
+  } else if (minutos >= 120) { // 2h+
+    estado = 'atencao';
+    label = 'Atenção · check-in há tempo';
+    icone = 'schedule';
+  }
+
+  const inst = (visita.instituicoes?.nome || 'Instituição').replace(/"/g, '&quot;');
+  return `
+    <div class="va-banner ${estado}" onclick="window.location.hash='#/checkin/ativo'">
+      <div class="va-icon"><span class="material-symbols-rounded" style="font-size:18px;">${icone}</span></div>
+      <div class="va-info">
+        <div class="va-label">${label}</div>
+        <div class="va-name">${inst}</div>
+      </div>
+      <div class="va-time">${tempoStr}</div>
+      <button class="va-cta" onclick="event.stopPropagation();window.location.hash='#/checkin/ativo'">
+        <span class="material-symbols-rounded" style="font-size:14px;">arrow_forward</span>
+        <span class="va-cta-text">${ctaTxt}</span>
+      </button>
+    </div>
+  `;
+}
+
+// Cache pra evitar refetch desnecessário em re-renders rápidos do router
+let _vaBannerCache = { visita: null, fetchedAt: 0 };
+const VA_CACHE_MS = 30000; // 30s
+
+async function atualizarBannerVisitaAtiva({ force = false } = {}) {
+  const slot = _vaBannerSlot();
+  const user = (typeof getCurrentUser === 'function') ? getCurrentUser() : null;
+  if (!user) {
+    slot.innerHTML = '';
+    document.body.classList.remove('va-banner-active');
+    _vaBannerCache = { visita: null, fetchedAt: 0 };
+    return;
+  }
+
+  // Banner é só pro nutri (admin/super_admin não tem visitas próprias)
+  // Mas se admin estiver simulando nutri (SIMULAR_NUTRI=1), também mostra
+  const ehNutri = user.perfil === 'nutricionista';
+  const simulando = sessionStorage.getItem('SIMULAR_NUTRI') === '1';
+  if (!ehNutri && !simulando) {
+    slot.innerHTML = '';
+    document.body.classList.remove('va-banner-active');
+    return;
+  }
+
+  // Usa cache se ainda fresco e não é forced
+  let visita = _vaBannerCache.visita;
+  const cacheValido = (Date.now() - _vaBannerCache.fetchedAt) < VA_CACHE_MS;
+  if (force || !cacheValido) {
+    try {
+      visita = await getVisitaAtiva();
+      _vaBannerCache = { visita, fetchedAt: Date.now() };
+    } catch (e) {
+      // mantém cache se falhar
+    }
+  }
+
+  if (visita) {
+    slot.innerHTML = _vaBannerHTML(visita);
+    document.body.classList.add('va-banner-active');
+  } else {
+    slot.innerHTML = '';
+    document.body.classList.remove('va-banner-active');
+  }
+}
+
+// Timer global: refetch a cada 60s + re-render a cada 60s pra atualizar o tempo
+let _vaBannerInterval = null;
+function startBannerVisitaAtivaWatcher() {
+  if (_vaBannerInterval) return; // já rodando
+  _vaBannerInterval = setInterval(() => {
+    atualizarBannerVisitaAtiva({ force: true });
+  }, 60000); // 60s
+  // Atualização imediata
+  atualizarBannerVisitaAtiva({ force: true });
+}
+
+function stopBannerVisitaAtivaWatcher() {
+  if (_vaBannerInterval) {
+    clearInterval(_vaBannerInterval);
+    _vaBannerInterval = null;
+  }
+  const slot = document.getElementById('vaBannerSlot');
+  if (slot) slot.innerHTML = '';
+  document.body.classList.remove('va-banner-active');
+  _vaBannerCache = { visita: null, fetchedAt: 0 };
+}
+
+// beforeunload: avisa se tentar fechar a aba com visita ativa (proteção extra desktop)
+window.addEventListener('beforeunload', (ev) => {
+  if (_vaBannerCache.visita) {
+    ev.preventDefault();
+    ev.returnValue = ''; // browsers ignoram a mensagem custom mas mostram alert padrão
+    return '';
+  }
+});
+
+// Quando a aba volta a ficar visível (depois de iOS/Android matar/suspender), refetch
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
+    atualizarBannerVisitaAtiva({ force: true });
+  }
+});
 
 async function getVisitaAtiva() {
   if (!db) return null;
@@ -19391,6 +19608,15 @@ function router() {
     setTimeout(() => atualizarBadgeNotificacoes(), 200);
   }
 
+  // Sprint 9.32.300: banner global de visita ativa — atualiza a cada navegação
+  // (cobre o caso "iOS matou app, reabriu em outra rota" — banner re-aparece)
+  if (getCurrentUser()) {
+    if (typeof startBannerVisitaAtivaWatcher === 'function') startBannerVisitaAtivaWatcher();
+    if (typeof atualizarBannerVisitaAtiva === 'function') atualizarBannerVisitaAtiva();
+  } else {
+    if (typeof stopBannerVisitaAtivaWatcher === 'function') stopBannerVisitaAtivaWatcher();
+  }
+
   // Pós-render: aplica máscaras e listeners dinâmicos
   applyMasks(app);
 
@@ -23598,6 +23824,8 @@ window.handleConfirmCheckin = async function() {
     } else {
       setFlash('info', 'Check-in registrado (GPS indisponível).');
     }
+    // Sprint 9.32.300: invalida cache do banner pra ele aparecer imediatamente
+    if (typeof _vaBannerCache !== 'undefined') _vaBannerCache = { visita: null, fetchedAt: 0 };
     window.location.hash = '#/checkin/ativo';
   } catch (err) {
     alert('Erro ao registrar check-in: ' + err.message);
@@ -23750,6 +23978,9 @@ window.handleCheckoutAtivo = async function() {
   // Sprint 9.22.5: limpa cache da visita ativa
   window._activeVisitaId = null;
   window._activeVisitaCache = null;
+  // Sprint 9.32.300: invalida cache do banner global pra ele sumir imediatamente
+  if (typeof _vaBannerCache !== 'undefined') _vaBannerCache = { visita: null, fetchedAt: Date.now() };
+  if (typeof atualizarBannerVisitaAtiva === 'function') atualizarBannerVisitaAtiva();
 
   if (escolha === 'agora') {
     window.location.replace(`#/visitas/relatorio?id=${visitaId}`);
@@ -36207,7 +36438,7 @@ window.rejeitarObjetivoPendente = async function(id) {
 let FAT_DATA = null;
 let _fatDataPromise = null;
 // __FAT_VERSION_START__ — substituído pelo atualizar_index.py com hash do JSON
-const FAT_DATA_VERSION = '838ff343a99c';
+const FAT_DATA_VERSION = '5646e06a2403';
 // __FAT_VERSION_END__
 const FAT_DATA_URL = 'faturamento_data_inline.json?v=' + FAT_DATA_VERSION;
 
