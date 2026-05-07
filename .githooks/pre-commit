@@ -1,0 +1,30 @@
+#!/bin/sh
+# ===================================================================
+# pre-commit hook
+# Roda scripts/validate-index.ps1 antes de cada commit.
+# Bloqueia commit se index.html estiver corrompido (truncado, etc).
+#
+# Ativacao: rode setup-hooks.bat UMA vez, ou manualmente:
+#   git config core.hooksPath .githooks
+# ===================================================================
+
+# So roda se index.html foi staged
+if ! git diff --cached --name-only | grep -q '^index\.html$'; then
+  exit 0
+fi
+
+echo ""
+echo "[pre-commit] Validando index.html..."
+
+# Roda o script PowerShell. Funciona em Git Bash do Windows (PowerShell sempre disponivel).
+powershell -ExecutionPolicy Bypass -NoProfile -File "scripts/validate-index.ps1"
+RESULT=$?
+
+if [ $RESULT -ne 0 ]; then
+  echo ""
+  echo "[pre-commit] Commit BLOQUEADO. Veja erros acima."
+  echo "             Para forcar commit (NAO recomendado): git commit --no-verify"
+  exit 1
+fi
+
+exit 0

@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Protótipo · Estados de Revisão (Rascunho vs Finalizada)</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0&family=Poppins:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" />
+  <style>
+    :root {
+      --brand-navy: #0A1F5C;
+      --brand-lime: #8BC63F;
+      --brand-lime-dark: #6FA62E;
+      --neutral-100: #F3F4F6;
+      --neutral-150: #EDF0F4;
+      --neutral-200: #E5E7EB;
+      --neutral-300: #D1D5DB;
+      --neutral-400: #9CA3AF;
+      --neutral-500: #6B7280;
+      --neutral-600: #4B5563;
+      --neutral-700: #374151;
+      --status-success: #22A06B;
+      --status-success-bg: #E1F5EE;
+      --status-warning: #EF9F27;
+      --status-warning-bg: #FAEEDA;
+      --status-warning-dark: #854F0B;
+      --status-info: #185FA5;
+      --status-info-bg: #E6F1FB;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 32px 16px 60px; background: #EEF1F4; font-family: 'Inter', sans-serif; color: var(--brand-navy); }
+    .wrapper { max-width: 1280px; margin: 0 auto; }
+    h1 { font-family: 'Poppins',sans-serif; font-weight: 700; font-size: 22px; margin: 0 0 6px; }
+    .lead { font-size: 13.5px; color: var(--neutral-600); margin: 0 0 24px; line-height: 1.55; max-width: 880px; }
+    .ms { font-family: 'Material Symbols Rounded'; font-style: normal; line-height: 1; display: inline-block; vertical-align: middle; -webkit-font-feature-settings: 'liga'; }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+
+    /* Tabela de regras */
+    .rules { background: #fff; border: 1px solid var(--neutral-200); border-radius: 12px; padding: 0; overflow: hidden; margin-bottom: 24px; }
+    .rules-row { display: grid; grid-template-columns: 200px 1fr 130px 130px 130px; gap: 14px; padding: 12px 18px; align-items: center; border-top: 1px solid var(--neutral-100); font-size: 12.5px; }
+    .rules-row.head { background: var(--neutral-100); font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--neutral-500); font-weight: 700; padding: 11px 18px; border-top: 0; }
+    .rule-name { font-family: 'Poppins',sans-serif; font-weight: 700; color: var(--brand-navy); font-size: 13px; }
+    .rule-desc { color: var(--neutral-600); }
+    .rule-badge { padding: 3px 10px; border-radius: 9999px; font-size: 10.5px; font-weight: 700; text-align: center; display: inline-block; }
+    .rule-badge.lock { background: var(--neutral-100); color: var(--neutral-700); }
+    .rule-badge.warn { background: var(--status-warning-bg); color: var(--status-warning-dark); }
+    .rule-badge.go { background: var(--status-success-bg); color: #0E6E47; }
+    .rule-badge.no { background: #FCEBEB; color: #A32D2D; }
+
+    /* Card simulado */
+    .card { background: #fff; border: 1px solid var(--neutral-200); border-radius: 12px; overflow: hidden; margin-bottom: 18px; }
+    .card-header { padding: 14px 18px; border-bottom: 1px solid var(--neutral-150); display: flex; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+    .avatar { width: 36px; height: 36px; border-radius: 9px; background: var(--brand-navy); color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; flex-shrink: 0; }
+    .h-name { font-family: 'Poppins',sans-serif; font-size: 15px; font-weight: 700; color: var(--brand-navy); display: inline-flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .h-meta { font-size: 11.5px; color: var(--neutral-500); margin-top: 3px; font-family: 'JetBrains Mono', monospace; }
+    .h-badge { padding: 3px 10px; border-radius: 9999px; font-size: 10.5px; font-weight: 700; }
+    .badge-flags { background: var(--status-warning-bg); color: var(--status-warning-dark); margin-left: auto; }
+
+    /* Banners de estado */
+    .state-banner { padding: 10px 18px; display: flex; align-items: center; gap: 10px; font-size: 12.5px; line-height: 1.4; border-bottom: 1px solid var(--neutral-150); }
+    .state-banner .ms { font-size: 18px; flex-shrink: 0; }
+    .state-banner.rascunho { background: linear-gradient(90deg, #FEF4E1 0%, #FAEEDA 100%); color: var(--status-warning-dark); }
+    .state-banner.finalizada-aberta { background: linear-gradient(90deg, #E6F1FB 0%, #DCE9F8 100%); color: #0C447C; }
+    .state-banner.finalizada-fechada { background: linear-gradient(90deg, #E1F5EE 0%, #D6F0E5 100%); color: #0E6E47; }
+    .state-banner.em-revisao { background: linear-gradient(90deg, #FAEEDA 0%, #F4D9A1 100%); color: var(--status-warning-dark); }
+    .state-banner b { font-weight: 700; }
+    .state-banner .pill {
+      background: rgba(255,255,255,0.6);
+      padding: 2px 8px;
+      border-radius: 9999px;
+      font-size: 10.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      flex-shrink: 0;
+    }
+
+    /* Body do card */
+    .body-flags { padding: 8px 18px; display: flex; gap: 6px; flex-wrap: wrap; }
+    .flag { background: var(--status-warning-bg); color: var(--status-warning-dark); padding: 4px 10px; border-radius: 9999px; font-size: 11px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; }
+    .flag .ms { font-size: 13px; }
+    .body-resumo { padding: 12px 18px; font-size: 12.5px; color: var(--neutral-700); background: var(--neutral-100); border-radius: 8px; margin: 0 18px 14px; line-height: 1.5; }
+
+    /* Footer com ações */
+    .actions { padding: 12px 18px; display: flex; gap: 8px; align-items: center; border-top: 1px solid var(--neutral-150); }
+    .btn { height: 36px; padding: 0 14px; border-radius: 9999px; font-size: 12.5px; font-weight: 600; display: inline-flex; align-items: center; gap: 5px; border: 0; cursor: pointer; font-family: inherit; }
+    .btn-detalhes { background: transparent; color: var(--neutral-600); border: 1px solid var(--neutral-200); }
+    .btn-revisar { background: var(--brand-navy); color: #fff; }
+    .btn-aprovar { background: var(--brand-lime-dark); color: #fff; }
+    .btn-aprovar.warn { background: var(--status-warning); color: #fff; }
+    .btn-disabled { background: var(--neutral-200); color: var(--neutral-500); cursor: not-allowed; }
+    .spacer { flex: 1; }
+
+    .proto-tag { display: inline-flex; align-items: center; gap: 7px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--neutral-500); margin-bottom: 6px; padding: 0 4px; }
+    .proto-desc { font-size: 12.5px; color: var(--neutral-600); margin: 0 4px 12px; line-height: 1.55; max-width: 800px; }
+
+    .nota { background: var(--neutral-100); padding: 14px 18px; border-radius: 10px; font-size: 12.5px; color: var(--neutral-600); margin-top: 16px; line-height: 1.6; }
+    .nota b { color: var(--brand-navy); }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <h1>Protótipo · 4 Estados de Revisão</h1>
+    <p class="lead">Visual e regras diferentes pra cada estado. Janela de 72h vale tanto pra Rascunho quanto pra Finalizada (proteção pro nutri editar). Diferença está no <b>quanto a regra é restritiva</b>.</p>
+
+    <!-- TABELA DE REGRAS -->
+    <h2 style="font-family:'Poppins',sans-serif;font-size:16px;margin:18px 0 10px;">Regras por estado</h2>
+    <div class="rules">
+      <div class="rules-row head">
+        <div>Estado</div>
+        <div>Quando aparece</div>
+        <div>Solicitar revisão</div>
+        <div>Aprovar</div>
+        <div>Janela 72h</div>
+      </div>
+
+      <div class="rules-row">
+        <div class="rule-name">Rascunho ativo</div>
+        <div class="rule-desc">Nutri clicou "Salvar como rascunho e sair" — ainda preenchendo. Status no banco: <span class="mono">rascunho</span>.</div>
+        <div><span class="rule-badge go">Liberado</span></div>
+        <div><span class="rule-badge lock">Bloqueado</span></div>
+        <div>Conta. Ao expirar → Rascunho fechado pelo cron, vira Finalizada</div>
+      </div>
+
+      <div class="rules-row">
+        <div class="rule-name">Finalizada · janela aberta</div>
+        <div class="rule-desc">Nutri clicou "Finalizar relatório" mas ainda dentro das 72h. Status: <span class="mono">completa</span>, dentro da janela.</div>
+        <div><span class="rule-badge go">Liberado</span></div>
+        <div><span class="rule-badge warn">Liberado com aviso</span></div>
+        <div>Conta. Profissional ainda pode editar.</div>
+      </div>
+
+      <div class="rules-row">
+        <div class="rule-name">Finalizada · janela fechada</div>
+        <div class="rule-desc">Mais de 72h após check-in. Status: <span class="mono">completa</span>, fora da janela.</div>
+        <div><span class="rule-badge go">Liberado</span></div>
+        <div><span class="rule-badge go">Liberado</span></div>
+        <div>Já expirou. Profissional não pode mais editar.</div>
+      </div>
+
+      <div class="rules-row">
+        <div class="rule-name">Em revisão (devolvida)</div>
+        <div class="rule-desc">Admin já pediu revisão. Status: <span class="mono">rascunho</span> + <span class="mono">revisao_motivo</span> setado.</div>
+        <div><span class="rule-badge no">Oculto</span></div>
+        <div><span class="rule-badge lock">Bloqueado</span></div>
+        <div>Pausada — recomeça quando nutri reenvia</div>
+      </div>
+    </div>
+
+    <!-- ESTADO 1: RASCUNHO -->
+    <div class="proto-tag">Estado 1 · Rascunho ativo</div>
+    <h2 style="font-family:'Poppins',sans-serif;font-size:16px;margin:0 4px 6px;">📝 Rascunho — profissional ainda preenchendo</h2>
+    <p class="proto-desc">Banner amarelo "📝 Rascunho · ainda preenchendo · janela até 08/05, 20:27". Aprovar bloqueado (admin não pode aprovar relatório que nem foi finalizado). Devolver liberado.</p>
+    <div class="card">
+      <div class="card-header">
+        <div class="avatar">EM</div>
+        <div style="flex:1;min-width:0;">
+          <div class="h-name">Eduardo Marques · Hospital Ana Costa</div>
+          <div class="h-meta">5 mai · 20:27 · #VST-7111FA80</div>
+        </div>
+        <span class="h-badge badge-flags">2 FLAGS · ATENÇÃO</span>
+      </div>
+      <div class="state-banner rascunho">
+        <span class="ms">edit_note</span>
+        <div>
+          <b>Rascunho</b> · profissional ainda preenchendo o relatório · janela até <b>08/05, 20:27</b>
+        </div>
+        <span class="pill">Rascunho</span>
+      </div>
+      <div class="body-flags">
+        <span class="flag"><span class="ms">location_off</span>GPS divergente</span>
+        <span class="flag"><span class="ms">schedule</span>Horário fora da margem</span>
+      </div>
+      <div class="body-resumo">"Teste de gravação, verificando o funcionamento. Cheguei aqui no hospital às 16 horas e estou aguardando a direção..."</div>
+      <div class="actions">
+        <button class="btn btn-detalhes"><span class="ms" style="font-size:14px;">visibility</span>Ver detalhes</button>
+        <div class="spacer"></div>
+        <button class="btn btn-revisar"><span class="ms" style="font-size:14px;">rate_review</span>Solicitar revisão</button>
+        <button class="btn btn-disabled" disabled title="Aguarde profissional finalizar o relatório"><span class="ms" style="font-size:14px;">lock</span>Aguardando profissional</button>
+      </div>
+    </div>
+
+
+    <!-- ESTADO 2: FINALIZADA · JANELA ABERTA -->
+    <div class="proto-tag">Estado 2 · Finalizada · janela aberta (recomendado)</div>
+    <h2 style="font-family:'Poppins',sans-serif;font-size:16px;margin:0 4px 6px;">✓ Finalizado — profissional ainda pode editar até X</h2>
+    <p class="proto-desc">Banner azul claro "✓ Relatório finalizado · ainda editável até 08/05, 20:27". Aprovar liberado mas em <b>amarelo de atenção</b> com modal de confirmação ao clicar ("Profissional ainda pode editar — aprovar agora trava o relatório. Continuar?"). Devolver liberado.</p>
+    <div class="card">
+      <div class="card-header">
+        <div class="avatar">EM</div>
+        <div style="flex:1;min-width:0;">
+          <div class="h-name">Eduardo Marques · Hospital Ana Costa</div>
+          <div class="h-meta">5 mai · 20:27 · #VST-7111FA80</div>
+        </div>
+        <span class="h-badge badge-flags">2 FLAGS · ATENÇÃO</span>
+      </div>
+      <div class="state-banner finalizada-aberta">
+        <span class="ms">check_circle</span>
+        <div>
+          <b>Relatório finalizado</b> · profissional ainda pode editar até <b>08/05, 20:27</b> (72h após check-in)
+        </div>
+        <span class="pill">Finalizado · editável</span>
+      </div>
+      <div class="body-flags">
+        <span class="flag"><span class="ms">location_off</span>GPS divergente</span>
+        <span class="flag"><span class="ms">schedule</span>Horário fora da margem</span>
+      </div>
+      <div class="body-resumo">"Teste de gravação, verificando o funcionamento. Cheguei aqui no hospital às 16 horas e estou aguardando a direção..."</div>
+      <div class="actions">
+        <button class="btn btn-detalhes"><span class="ms" style="font-size:14px;">visibility</span>Ver detalhes</button>
+        <div class="spacer"></div>
+        <button class="btn btn-revisar"><span class="ms" style="font-size:14px;">rate_review</span>Solicitar revisão</button>
+        <button class="btn btn-aprovar warn" title="Profissional ainda pode editar — clique pra confirmar"><span class="ms" style="font-size:14px;">warning</span>Aprovar mesmo assim</button>
+      </div>
+    </div>
+
+
+    <!-- ESTADO 3: FINALIZADA · JANELA FECHADA -->
+    <div class="proto-tag">Estado 3 · Finalizada · janela fechada</div>
+    <h2 style="font-family:'Poppins',sans-serif;font-size:16px;margin:0 4px 6px;">✓ Finalizado — pronto pra aprovação</h2>
+    <p class="proto-desc">Banner verde "✓ Pronto pra aprovação · janela editável já expirou". Aprovar liberado normal (verde). Devolver liberado.</p>
+    <div class="card">
+      <div class="card-header">
+        <div class="avatar">EM</div>
+        <div style="flex:1;min-width:0;">
+          <div class="h-name">Eduardo Marques · Hospital Ana Costa</div>
+          <div class="h-meta">5 mai · 20:27 · #VST-7111FA80</div>
+        </div>
+        <span class="h-badge badge-flags">2 FLAGS · ATENÇÃO</span>
+      </div>
+      <div class="state-banner finalizada-fechada">
+        <span class="ms">verified</span>
+        <div>
+          <b>Pronto pra aprovação</b> · janela editável do profissional já expirou (3+ dias após check-in)
+        </div>
+        <span class="pill">Finalizado</span>
+      </div>
+      <div class="body-flags">
+        <span class="flag"><span class="ms">location_off</span>GPS divergente</span>
+        <span class="flag"><span class="ms">schedule</span>Horário fora da margem</span>
+      </div>
+      <div class="body-resumo">"Teste de gravação, verificando o funcionamento. Cheguei aqui no hospital às 16 horas e estou aguardando a direção..."</div>
+      <div class="actions">
+        <button class="btn btn-detalhes"><span class="ms" style="font-size:14px;">visibility</span>Ver detalhes</button>
+        <div class="spacer"></div>
+        <button class="btn btn-revisar"><span class="ms" style="font-size:14px;">rate_review</span>Solicitar revisão</button>
+        <button class="btn btn-aprovar"><span class="ms" style="font-size:14px;">check</span>Aprovar visita</button>
+      </div>
+    </div>
+
+
+    <!-- ESTADO 4: EM REVISÃO -->
+    <div class="proto-tag">Estado 4 · Em revisão (já devolvida)</div>
+    <h2 style="font-family:'Poppins',sans-serif;font-size:16px;margin:0 4px 6px;">↩ Devolvida ao profissional</h2>
+    <p class="proto-desc">Banner amarelo escuro "Devolvida · há minutos · Motivo: ...". Solicitar revisão <b>oculto</b> (já foi pedido). Aprovar bloqueado em "Aguardando profissional". Devolver mostra "Já devolvida" disabled.</p>
+    <div class="card">
+      <div class="card-header">
+        <div class="avatar">PL</div>
+        <div style="flex:1;min-width:0;">
+          <div class="h-name">Paula Lopes · Nutricionais</div>
+          <div class="h-meta">6 mai · 16:12 · #VST-94ABE8E4</div>
+        </div>
+        <span class="h-badge" style="background:var(--status-warning-bg);color:var(--status-warning-dark);margin-left:auto;">AGUARDANDO</span>
+      </div>
+      <div class="state-banner em-revisao">
+        <span class="ms">undo</span>
+        <div>
+          <b>Devolvida ao profissional</b> · há minutos<br>
+          <span style="font-style:italic;font-size:11.5px;">Motivo: "seu relatório nao estava claro e contém muitos erros de portugues"</span>
+        </div>
+        <span class="pill">Em revisão</span>
+      </div>
+      <div class="body-flags">
+        <span class="flag"><span class="ms">schedule</span>Horário fora da margem</span>
+        <span class="flag"><span class="ms">touch_app</span>Check-in manual</span>
+      </div>
+      <div class="actions">
+        <button class="btn btn-detalhes"><span class="ms" style="font-size:14px;">visibility</span>Ver detalhes</button>
+        <div class="spacer"></div>
+        <button class="btn btn-disabled" disabled title="Visita já foi devolvida — aguarde o profissional revisar"><span class="ms" style="font-size:14px;">lock</span>Aguardando profissional</button>
+      </div>
+    </div>
+
+
+    <div class="nota">
+      <b>Comportamento técnico do que muda:</b><br>
+      • Hoje a regra dos 72h <b>só vale pra status='rascunho'</b>. Vai passar a valer também pra status='completa' (até 72h após check-in).<br>
+      • Hoje admin pode aprovar 'completa' direto. Vai passar por <b>modal de confirmação</b> "Profissional ainda pode editar até X — continuar?" se ainda tiver janela aberta.<br>
+      • Hoje banner mostra "Em andamento" pros dois casos. Vai diferenciar visualmente: amarelo (rascunho) vs azul (finalizada com janela) vs verde (pronta).<br>
+      • Hoje detalhe da visita não mostra nada sobre a janela. Vai mostrar o mesmo banner do card.<br>
+      • <b>"Aprovar mesmo assim"</b> (estado 2): botão fica amarelo, click abre modal de confirmação dupla.
+    </div>
+
+    <div class="nota" style="background:#FAFEF5;border-left:3px solid var(--brand-lime);">
+      <b>Tip:</b> aprovação ao confirmar — implemento os 4 estados em todas as telas (card mobile, card desktop, detalhe da visita), com banners idênticos e regras de aprovação consistentes.
+    </div>
+
+  </div>
+</body>
+</html>

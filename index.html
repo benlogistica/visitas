@@ -6171,6 +6171,9 @@ body.va-banner-active { padding-top: 56px; }
 .review-card--warning  { border-left-color: var(--status-warning); }
 .review-card--info     { border-left-color: var(--status-info); }
 .review-card--in-review { border-left-color: var(--status-info); background: linear-gradient(90deg, rgba(37,99,235,0.04) 0%, var(--neutral-0) 100%); }
+/* Sprint 9.32.311: estados visuais novos no mobile */
+.review-card--rascunho-ativo { border-left-color: #38426B !important; }
+.review-card--finalizada-aberta { border-left-color: #5EA948 !important; }
 
 .review-card__header {
   display: flex;
@@ -7659,7 +7662,7 @@ body.va-banner-active { padding-top: 56px; }
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.304-fix-zindex-topbar-mapa',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.313-mobile-chart-ano-vigente',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -14923,6 +14926,14 @@ function renderAdminRevisaoDesktop() {
       ordenacao: 'severidade',  // 'severidade' | 'data_desc' | 'data_asc'
     };
   }
+  // Sprint 9.32.307: restaura toggle "Ocultar rascunhos" da sessão
+  if (window._reviewDesktopHideRascunhos === undefined) {
+    try {
+      window._reviewDesktopHideRascunhos = sessionStorage.getItem('reviewDesktop_hideRascunhos') === '1';
+    } catch (e) {
+      window._reviewDesktopHideRascunhos = false;
+    }
+  }
 
   setTimeout(() => {
     atualizarBadgesSidebarDesktop();
@@ -14997,8 +15008,14 @@ function renderAdminRevisaoDesktop() {
         <div style="width:1px;height:42px;background:var(--neutral-200);"></div>
 
         <!-- Chips de flag (Sprint 9.32.283: container com id pra re-render do estado on/off) -->
+        <!-- Sprint 9.32.310: ícone (i) ao lado do label abre banner explicando as flags -->
         <div style="display:flex;flex-direction:column;gap:4px;">
-          <div style="font-size:10.5px;font-weight:600;color:var(--neutral-500);text-transform:uppercase;letter-spacing:0.05em;">Tipo de flag</div>
+          <div style="display:flex;align-items:center;gap:6px;font-size:10.5px;font-weight:600;color:var(--neutral-500);text-transform:uppercase;letter-spacing:0.05em;">
+            Tipo de flag
+            <span onclick="window.toggleBannerInfoFlags()" title="O que são essas flags?" style="width:18px;height:18px;border-radius:50%;background:var(--neutral-100);color:var(--neutral-500);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;font-size:11px;transition:all 150ms;" onmouseover="this.style.background='var(--brand-navy)';this.style.color='#fff';" onmouseout="this.style.background='var(--neutral-100)';this.style.color='var(--neutral-500)';">
+              <span class="material-symbols-rounded" style="font-size:13px;">info</span>
+            </span>
+          </div>
           <div id="dsdRevChipsBar" style="display:flex;gap:8px;flex-wrap:wrap;">
             ${flagChips.map(c => window._dsdRevRenderChip(c, s.flags.has(c.k))).join('')}
           </div>
@@ -15006,7 +15023,61 @@ function renderAdminRevisaoDesktop() {
 
         <div style="flex:1;"></div>
 
+        <!-- Sprint 9.32.307: toggle pra ocultar visitas em Rascunho ativo -->
+        <button id="dsdRevToggleRascunho" onclick="toggleOcultarRascunhosDesktop()" style="display:inline-flex;align-items:center;gap:8px;padding:7px 12px;background:${(window._reviewDesktopHideRascunhos === true) ? 'var(--brand-navy)' : 'var(--neutral-0)'};border:1px solid ${(window._reviewDesktopHideRascunhos === true) ? 'var(--brand-navy)' : 'var(--neutral-200)'};border-radius:9999px;cursor:pointer;font-size:12.5px;color:${(window._reviewDesktopHideRascunhos === true) ? '#fff' : 'var(--neutral-700)'};font-weight:600;font-family:inherit;">
+          <span style="width:28px;height:16px;border-radius:9999px;background:${(window._reviewDesktopHideRascunhos === true) ? 'var(--brand-lime)' : 'var(--neutral-300)'};position:relative;flex-shrink:0;display:inline-block;">
+            <span style="position:absolute;top:1.5px;left:${(window._reviewDesktopHideRascunhos === true) ? '13px' : '1.5px'};width:13px;height:13px;border-radius:50%;background:#fff;transition:left 150ms;"></span>
+          </span>
+          Ocultar rascunhos
+        </button>
+
         <button onclick="limparFiltrosRevisaoDesktop()" style="background:transparent;border:0;color:var(--neutral-500);font-size:12.5px;font-weight:600;font-family:inherit;cursor:pointer;text-decoration:underline;text-underline-offset:3px;">Limpar filtros</button>
+      </div>
+
+      <!-- Sprint 9.32.310: banner expansível com explicação dos tipos de flag -->
+      <div id="dsdRevInfoFlagsBanner" style="display:none;background:linear-gradient(120deg,#EAF3DE 0%,#DCE9C5 100%);border:1px solid #97C459;border-radius:10px;overflow:hidden;">
+        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;padding:14px 16px;">
+          <div style="display:flex;gap:10px;align-items:flex-start;">
+            <div style="width:28px;height:28px;border-radius:8px;background:rgba(226,75,74,0.15);color:var(--status-danger);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;">
+              <span class="material-symbols-rounded" style="font-size:16px;">do_not_disturb_on</span>
+            </div>
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:12px;font-weight:700;color:var(--brand-navy);margin-bottom:2px;">Sem check-in</div>
+              <div style="font-size:11.5px;color:var(--neutral-700);line-height:1.4;">Profissional não registrou entrada e/ou saída no app. Pode indicar visita não declarada ou esquecimento.</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:flex-start;">
+            <div style="width:28px;height:28px;border-radius:8px;background:rgba(239,159,39,0.15);color:var(--status-warning-dark);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;">
+              <span class="material-symbols-rounded" style="font-size:16px;">location_off</span>
+            </div>
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:12px;font-weight:700;color:var(--brand-navy);margin-bottom:2px;">GPS divergente</div>
+              <div style="font-size:11.5px;color:var(--neutral-700);line-height:1.4;">No check-in, o GPS estava fora do raio do hospital. Pode ser estacionamento, deslocamento ou problema de sinal.</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:flex-start;">
+            <div style="width:28px;height:28px;border-radius:8px;background:rgba(234,88,12,0.15);color:#EA580C;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;">
+              <span class="material-symbols-rounded" style="font-size:16px;">schedule</span>
+            </div>
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:12px;font-weight:700;color:var(--brand-navy);margin-bottom:2px;">Fora da margem</div>
+              <div style="font-size:11.5px;color:var(--neutral-700);line-height:1.4;">Horário declarado no relatório não bate com a janela de tolerância do check-in/check-out registrados.</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:flex-start;">
+            <div style="width:28px;height:28px;border-radius:8px;background:rgba(24,95,165,0.15);color:var(--status-info);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;">
+              <span class="material-symbols-rounded" style="font-size:16px;">touch_app</span>
+            </div>
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:12px;font-weight:700;color:var(--brand-navy);margin-bottom:2px;">Check-in manual</div>
+              <div style="font-size:11.5px;color:var(--neutral-700);line-height:1.4;">Profissional fez check-in sem GPS ativo. Válido, mas exige verificação extra (sem prova de localização).</div>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 16px;background:rgba(255,255,255,0.5);border-top:1px solid rgba(151,196,89,0.4);font-size:11.5px;">
+          <span onclick="window.toggleBannerInfoFlags()" style="color:#3B6D11;cursor:pointer;font-weight:600;">Fechar</span>
+          <span onclick="window.dismissBannerInfoFlags()" style="color:#3B6D11;cursor:pointer;font-weight:700;">✓ Entendi · não mostrar de novo</span>
+        </div>
       </div>
 
       <!-- Barra de contagem + ações em massa -->
@@ -15141,6 +15212,11 @@ async function carregarAdminRevisaoDesktop() {
         const temAlgumLigado = Array.from(v._chipKeys).some(k => state.flags.has(k));
         return temAlgumLigado;
       });
+    }
+
+    // Sprint 9.32.307: toggle "Ocultar rascunhos" — exclui visitas em rascunho_ativo
+    if (window._reviewDesktopHideRascunhos === true && typeof getEstadoRevisao === 'function') {
+      filtradas = filtradas.filter(v => getEstadoRevisao(v) !== 'rascunho_ativo');
     }
 
     // Sprint 9.15.2: ordenação dinâmica (severidade padrão, ou data asc/desc)
@@ -15289,6 +15365,8 @@ function renderVisitCardDesktop(v) {
   //  - aguardandoCorrecao: devolvida e ainda com o nutri (revisao_motivo + !resolvida_em + status='rascunho')
   const foiReaberta = !!(v.revisao_motivo && v.revisao_resolvida_em);
   const aguardandoCorrecao = !!(v.revisao_motivo && !v.revisao_resolvida_em && v.status === 'rascunho');
+  // Sprint 9.32.307: estado de revisão pra cor da borda (rascunho_ativo = navy-tinted)
+  const _estadoRevCard = (typeof getEstadoRevisao === 'function') ? getEstadoRevisao(v) : null;
   let bannerReabertaHtml = '';
   if (foiReaberta || aguardandoCorrecao) {
     const motivo = (v.revisao_motivo || '').replace(/"/g, '&quot;').replace(/</g, '&lt;');
@@ -15327,8 +15405,21 @@ function renderVisitCardDesktop(v) {
     }
   }
 
+  // Sprint 9.32.307: borda lateral navy-tinted pra rascunho_ativo (visualmente diferente da devolvida amarela)
+  // Sprint 9.32.311: borda lateral verde clara pra finalizada_aberta
+  const _bordaCorLateral = foiReaberta ? '#7F77DD'
+    : aguardandoCorrecao ? '#BA7517'
+    : (_estadoRevCard === 'rascunho_ativo') ? '#38426B'
+    : (_estadoRevCard === 'finalizada_aberta') ? '#5EA948'
+    : nivelStyle.borda;
+  const _bordaCorBox = foiReaberta ? '#CECBF6'
+    : aguardandoCorrecao ? '#FAC775'
+    : (_estadoRevCard === 'rascunho_ativo') ? '#C5CCDA'
+    : (_estadoRevCard === 'finalizada_aberta') ? '#BDDBA9'
+    : 'var(--neutral-200)';
+
   return `
-    <div style="background:#fff;border-radius:12px;border:1px solid ${foiReaberta ? '#CECBF6' : aguardandoCorrecao ? '#FAC775' : 'var(--neutral-200)'};border-left:4px solid ${foiReaberta ? '#7F77DD' : aguardandoCorrecao ? '#BA7517' : nivelStyle.borda};box-shadow:0 1px 3px rgba(10,31,92,0.04);padding:20px;display:flex;flex-direction:column;gap:14px;">
+    <div style="background:#fff;border-radius:12px;border:1px solid ${_bordaCorBox};border-left:4px solid ${_bordaCorLateral};box-shadow:0 1px 3px rgba(10,31,92,0.04);padding:20px;display:flex;flex-direction:column;gap:14px;">
       ${bannerReabertaHtml}
       <!-- Header: avatar + nome + hospital + badge -->
       <div style="display:flex;align-items:flex-start;gap:14px;">
@@ -15355,15 +15446,32 @@ function renderVisitCardDesktop(v) {
       <!-- Flags -->
       ${flagsHtml ? `<div style="display:flex;gap:6px;flex-wrap:wrap;">${flagsHtml}</div>` : ''}
 
-      <!-- Sprint 9.32.59: badge "Em andamento" pra rascunhos dentro da janela de 72h (sem permitir aprovar) -->
-      ${v._emAndamento ? `
-        <div style="background:#FEF3C7;border:1px solid rgba(245,158,11,0.4);border-radius:10px;padding:10px 12px;display:flex;align-items:center;gap:10px;">
-          <span class="material-symbols-rounded" style="font-size:20px;color:#B45309;flex-shrink:0;">edit_note</span>
-          <div style="flex:1;font-size:12.5px;color:#92400E;line-height:1.4;">
-            <strong>Em andamento</strong> — profissional ainda pode editar até <strong>${v._janelaExpira ? v._janelaExpira.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'}</strong>. Aguarde finalização ou expiração da janela pra aprovar.
+      <!-- Sprint 9.32.306: 4 estados de revisão (rascunho ativo, finalizada aberta/fechada, em revisão) -->
+      ${(() => {
+        const est = getEstadoRevisao(v);
+        const expiraJan = _janelaEditExpiraEm(v);
+        const expFmt = expiraJan ? expiraJan.toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' }) : '—';
+        if (est === 'rascunho_ativo') return `
+          <div style="background:linear-gradient(to right,#EEF0F5,#DEE2EC);border:1px solid #C5CCDA;border-radius:10px;padding:10px 12px;display:flex;align-items:center;gap:10px;">
+            <span class="material-symbols-rounded" style="font-size:20px;color:#38426B;flex-shrink:0;">edit_note</span>
+            <div style="flex:1;font-size:12.5px;color:#1E2A4D;line-height:1.4;">
+              <strong>Rascunho</strong> · profissional ainda preenchendo o relatório · janela até <strong>${expFmt}</strong>
+            </div>
+            <span style="background:var(--brand-navy);color:#fff;padding:3px 9px;border-radius:5px;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:0.4px;flex-shrink:0;">Rascunho</span>
           </div>
-        </div>
-      ` : ''}
+        `;
+        if (est === 'finalizada_aberta') return `
+          <div style="background:#ECF6E5;border:1px solid #BDDBA9;border-radius:10px;padding:10px 12px;display:flex;align-items:center;gap:10px;">
+            <span class="material-symbols-rounded" style="font-size:20px;color:#5EA948;flex-shrink:0;">check_circle</span>
+            <div style="flex:1;font-size:12.5px;color:#2F5A22;line-height:1.4;">
+              <strong>Relatório finalizado</strong> · profissional ainda pode editar até <strong>${expFmt}</strong> (72h pós checkout)
+            </div>
+            <span style="background:rgba(255,255,255,0.7);padding:2px 8px;border-radius:9999px;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:#2F5A22;flex-shrink:0;">Finalizado · editável</span>
+          </div>
+        `;
+        // finalizada_fechada e em_revisao não mostram esse banner aqui (em_revisao já tem o seu próprio)
+        return '';
+      })()}
 
       <!-- Conteúdo: resumo + mini-map -->
       <div style="display:grid;grid-template-columns:${mapHtml ? '1fr 320px' : '1fr'};gap:16px;">
@@ -15371,25 +15479,35 @@ function renderVisitCardDesktop(v) {
         ${mapHtml}
       </div>
 
-      <!-- Ações -->
-      <div style="display:flex;gap:8px;align-items:center;padding-top:14px;border-top:1px solid var(--neutral-100);">
-        <a href="#/admin/revisao/detalhe?id=${v.id}" style="height:38px;padding:0 16px;border-radius:9999px;font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:6px;text-decoration:none;background:transparent;color:var(--neutral-600);border:1px solid var(--neutral-200);">
-          <span class="material-symbols-rounded" style="font-size:16px;">visibility</span>Ver detalhes
-        </a>
-        <div style="flex:1;"></div>
-        <button onclick="manterEmRevisaoDesktop('${v.id}')" style="height:38px;padding:0 16px;border-radius:9999px;font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:6px;cursor:pointer;background:var(--brand-navy);color:#fff;border:0;font-family:inherit;">
-          <span class="material-symbols-rounded" style="font-size:16px;">rate_review</span>Solicitar revisão
-        </button>
-        ${v._emAndamento ? `
-          <button disabled title="Aguarde o profissional finalizar ou a janela de 72h expirar" style="height:38px;padding:0 16px;border-radius:9999px;font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:6px;background:var(--neutral-200);color:var(--neutral-500);border:0;font-family:inherit;cursor:not-allowed;">
-            <span class="material-symbols-rounded" style="font-size:16px;">lock</span>Aguardando profissional
-          </button>
-        ` : `
-          <button onclick="aprovarVisitaRapidaDesktop('${v.id}')" style="height:38px;padding:0 16px;border-radius:9999px;font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:6px;cursor:pointer;background:var(--brand-lime);color:#fff;border:0;font-family:inherit;">
-            <span class="material-symbols-rounded" style="font-size:16px;">check</span>${v._nivel === 'critical' ? 'Aprovar mesmo assim' : 'Aprovar'}
-          </button>
-        `}
-      </div>
+      <!-- Ações: regras por estado (Sprint 9.32.306) -->
+      ${(() => {
+        const est = getEstadoRevisao(v);
+        const verDetalhes = `<a href="#/admin/revisao/detalhe?id=${v.id}" style="height:38px;padding:0 16px;border-radius:9999px;font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:6px;text-decoration:none;background:transparent;color:var(--neutral-600);border:1px solid var(--neutral-200);"><span class="material-symbols-rounded" style="font-size:16px;">visibility</span>Ver detalhes</a>`;
+        const btnSolicitar = `<button onclick="manterEmRevisaoDesktop('${v.id}')" style="height:38px;padding:0 16px;border-radius:9999px;font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:6px;cursor:pointer;background:var(--brand-navy);color:#fff;border:0;font-family:inherit;"><span class="material-symbols-rounded" style="font-size:16px;">rate_review</span>Solicitar revisão</button>`;
+        const btnAguardando = (titulo) => `<button disabled title="${titulo}" style="height:38px;padding:0 16px;border-radius:9999px;font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:6px;background:var(--neutral-200);color:var(--neutral-500);border:0;font-family:inherit;cursor:not-allowed;"><span class="material-symbols-rounded" style="font-size:16px;">lock</span>Aguardando profissional</button>`;
+        const btnAprovarNormal = `<button onclick="aprovarVisitaRapidaDesktop('${v.id}')" style="height:38px;padding:0 16px;border-radius:9999px;font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:6px;cursor:pointer;background:var(--brand-lime);color:var(--brand-navy);border:0;font-family:inherit;"><span class="material-symbols-rounded" style="font-size:16px;">check</span>${v._nivel === 'critical' ? 'Aprovar mesmo assim' : 'Aprovar'}</button>`;
+        const btnAprovarComAviso = `<button onclick="aprovarVisitaComAvisoJanela('${v.id}')" title="Profissional ainda pode editar — clique pra confirmar" style="height:38px;padding:0 16px;border-radius:9999px;font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:6px;cursor:pointer;background:#EF9F27;color:#fff;border:0;font-family:inherit;"><span class="material-symbols-rounded" style="font-size:16px;">warning</span>Aprovar mesmo assim</button>`;
+
+        let acoes = '';
+        if (est === 'rascunho_ativo') {
+          // Sprint 9.32.309: rascunho ainda em preenchimento — sem revisão nem devolução
+          acoes = btnAguardando('Aguarde o profissional finalizar o relatório');
+        } else if (est === 'finalizada_aberta') {
+          acoes = `${btnSolicitar} ${btnAprovarComAviso}`;
+        } else if (est === 'finalizada_fechada') {
+          acoes = `${btnSolicitar} ${btnAprovarNormal}`;
+        } else if (est === 'em_revisao') {
+          acoes = btnAguardando('Visita já foi devolvida — aguarde o profissional revisar');
+        }
+
+        return `
+          <div style="display:flex;gap:8px;align-items:center;padding-top:14px;border-top:1px solid var(--neutral-100);">
+            ${verDetalhes}
+            <div style="flex:1;"></div>
+            ${acoes}
+          </div>
+        `;
+      })()}
     </div>
   `;
 }
@@ -15548,9 +15666,105 @@ window.desligarFlagRevisaoDesktop = function(k) {
 window.limparFiltrosRevisaoDesktop = function() {
   window._reviewDesktopState.nutri = 'todos';
   window._reviewDesktopState.flags = new Set(['noCheckin', 'gps', 'time', 'manual']);
+  // Sprint 9.32.307: limpar filtros também desliga "ocultar rascunhos"
+  window._reviewDesktopHideRascunhos = false;
+  try { sessionStorage.removeItem('reviewDesktop_hideRascunhos'); } catch (e) {}
   const sel = document.getElementById('dsdRevNutriSelect');
   if (sel) sel.value = 'todos';
+  // Atualiza visual do toggle pra estado OFF
+  const btn = document.getElementById('dsdRevToggleRascunho');
+  if (btn) {
+    btn.style.background = 'var(--neutral-0)';
+    btn.style.borderColor = 'var(--neutral-200)';
+    btn.style.color = 'var(--neutral-700)';
+    const switchTrack = btn.querySelector('span');
+    if (switchTrack) {
+      switchTrack.style.background = 'var(--neutral-300)';
+      const thumb = switchTrack.querySelector('span');
+      if (thumb) thumb.style.left = '1.5px';
+    }
+  }
   carregarAdminRevisaoDesktop();
+};
+
+// Sprint 9.32.310: banner expansível explicando tipos de flag
+window.toggleBannerInfoFlags = function() {
+  const banner = document.getElementById('dsdRevInfoFlagsBanner');
+  if (!banner) return;
+  banner.style.display = banner.style.display === 'none' ? 'block' : 'none';
+};
+
+window.dismissBannerInfoFlags = function() {
+  const banner = document.getElementById('dsdRevInfoFlagsBanner');
+  if (banner) banner.style.display = 'none';
+  try { localStorage.setItem('reviewDesktop_dismissInfoFlags', '1'); } catch (e) {}
+};
+
+// Sprint 9.32.307: toggle pra ocultar visitas em Rascunho ativo (status='rascunho' sem revisao_motivo)
+window.toggleOcultarRascunhosDesktop = function() {
+  window._reviewDesktopHideRascunhos = !(window._reviewDesktopHideRascunhos === true);
+  const on = window._reviewDesktopHideRascunhos === true;
+  try { sessionStorage.setItem('reviewDesktop_hideRascunhos', on ? '1' : '0'); } catch (e) {}
+
+  // Atualiza visual do toggle direto no DOM (carregarAdminRevisaoDesktop só re-renderiza a lista)
+  const btn = document.getElementById('dsdRevToggleRascunho');
+  if (btn) {
+    btn.style.background = on ? 'var(--brand-navy)' : 'var(--neutral-0)';
+    btn.style.borderColor = on ? 'var(--brand-navy)' : 'var(--neutral-200)';
+    btn.style.color = on ? '#fff' : 'var(--neutral-700)';
+    const switchTrack = btn.querySelector('span');
+    if (switchTrack) {
+      switchTrack.style.background = on ? 'var(--brand-lime)' : 'var(--neutral-300)';
+      const thumb = switchTrack.querySelector('span');
+      if (thumb) thumb.style.left = on ? '13px' : '1.5px';
+    }
+  }
+
+  carregarAdminRevisaoDesktop();
+};
+
+// Sprint 9.32.306: aprovar visita finalizada com janela 72h ainda aberta
+// Mostra modal extra avisando que profissional ainda pode editar — admin decide se aprova mesmo
+window.aprovarVisitaComAvisoJanela = async function(visitaId) {
+  if (await bloqueioSimulacao('aprovar visita')) return;
+  // Pega visita do cache pra mostrar a data de expiração
+  const todas = window._reviewDesktopCurrent || [];
+  const v = todas.find(x => x.id === visitaId);
+  let extraInfo = '';
+  if (v) {
+    const expira = _janelaEditExpiraEm(v);
+    if (expira) {
+      const fmt = expira.toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
+      extraInfo = ` Janela de edição vai até <strong>${fmt}</strong>.`;
+    }
+  }
+  const ok = await showModalConfirmacao({
+    icone: 'warning',
+    iconeCor: 'warning',
+    titulo: 'Aprovar mesmo assim?',
+    subtitulo: `O profissional ainda pode estar editando o relatório.${extraInfo} Aprovar agora <strong>trava a visita</strong> — o profissional não conseguirá mais alterar.`,
+    btnConfirmar: 'Sim, aprovar agora',
+    btnCancelar: 'Cancelar',
+  });
+  if (!ok) return;
+  // Reusa o fluxo normal de aprovação (que já tem 2º modal de confirmação)
+  // Pra evitar 2 confirmações em seguida, chamamos o backend direto:
+  const user = getCurrentUser();
+  try {
+    const { error } = await db.from('visitas').update({
+      status: 'aprovada_pos_revisao',
+      revisao_resolvida_em: new Date().toISOString(),
+      revisor_resolveu_id: user.id,
+      revisao_expira_em: null,
+      atualizado_em: new Date().toISOString(),
+    }).eq('id', visitaId);
+    if (error) throw new Error(error.message);
+    setFlash('success', 'Visita aprovada.');
+    if (typeof carregarAdminRevisaoDesktop === 'function') carregarAdminRevisaoDesktop();
+    if (typeof atualizarBadgesSidebarDesktop === 'function') atualizarBadgesSidebarDesktop();
+  } catch (err) {
+    setFlash('error', 'Erro ao aprovar: ' + err.message);
+  }
 };
 
 // Aprovar visita direto do card (sem ir pra detalhe)
@@ -15601,17 +15815,20 @@ window.manterEmRevisaoDesktop = async function(visitaId) {
   if (!motivo) return;
   const user = getCurrentUser();
   try {
+    // Sprint 9.32.306: seta prazo de 72h pra resposta da revisão
+    const expiraEm = new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString();
     const { data, error } = await db.from('visitas').update({
       status: 'rascunho',
       revisao_solicitada_por: user.id,
       revisao_solicitada_em: new Date().toISOString(),
       revisao_resolvida_em: null,
       revisao_motivo: motivo,
+      revisao_expira_em: expiraEm,
       atualizado_em: new Date().toISOString(),
     }).eq('id', visitaId).select();
     if (error) throw new Error(error.message);
     if (!data || data.length === 0) throw new Error('Update não afetou nenhum registro.');
-    setFlash('success', 'Visita devolvida pro profissional.');
+    setFlash('success', 'Visita devolvida pro profissional. Ele tem 72h pra responder.');
     carregarAdminRevisaoDesktop();
     atualizarBadgesSidebarDesktop();
   } catch (err) {
@@ -18357,8 +18574,10 @@ async function finalizarRelatorio(visitaId, dados) {
   // Sprint 9.32.117: quando uma visita devolvida é reenviada pelo nutri,
   // MANTÉM revisao_motivo (pra histórico/banner "2ª revisão") e marca revisao_resolvida_em=agora.
   // Antes apagava tudo, e perdíamos a info de que a visita já tinha passado por revisão.
+  // Sprint 9.32.306: limpa também revisao_expira_em (prazo da revisão já não conta mais)
   if (dados.foiDevolvida) {
     payload.revisao_resolvida_em = new Date().toISOString();
+    payload.revisao_expira_em = null;
     // Mantém revisao_motivo, revisao_solicitada_por e revisao_solicitada_em pra histórico
   }
 
@@ -18776,6 +18995,48 @@ function estaEmRevisao(v) {
   return v.status === 'rascunho'
       && !!v.revisao_motivo
       && !v.revisao_resolvida_em;
+}
+
+// ============================================================================
+// Sprint 9.32.306: 4 estados visuais de uma visita pro admin revisar
+//
+//   1. rascunho_ativo       → status='rascunho', dentro de 72h pós checkout, SEM revisao
+//   2. finalizada_aberta    → status='completa', dentro de 72h pós checkout
+//   3. finalizada_fechada   → status='completa', fora das 72h (ou sem checkout)
+//   4. em_revisao           → status='rascunho' + revisao_motivo (devolvida)
+//
+// Janela 72h conta a partir de auto_checkout_em (cron) OU checkout_timestamp (nutri),
+// o que existir primeiro. ANTES contava do checkin_timestamp — injusto pro nutri,
+// uma visita longa "comia" tempo da janela.
+// ============================================================================
+const _JANELA_EDIT_MS = 72 * 60 * 60 * 1000; // 72h
+
+function _baseJanelaEdit(v) {
+  if (!v) return null;
+  const ts = v.auto_checkout_em || v.checkout_timestamp;
+  return ts ? new Date(ts) : null;
+}
+
+function _janelaEditExpiraEm(v) {
+  const base = _baseJanelaEdit(v);
+  return base ? new Date(base.getTime() + _JANELA_EDIT_MS) : null;
+}
+
+function _janelaEditAberta(v) {
+  const expira = _janelaEditExpiraEm(v);
+  if (!expira) return false;
+  return expira.getTime() > Date.now();
+}
+
+function getEstadoRevisao(v) {
+  if (!v) return null;
+  if (estaEmRevisao(v)) return 'em_revisao';
+  if (v.status === 'rascunho' && _janelaEditAberta(v)) return 'rascunho_ativo';
+  if (v.status === 'completa' || v.status === 'aprovada_pos_revisao') {
+    return _janelaEditAberta(v) ? 'finalizada_aberta' : 'finalizada_fechada';
+  }
+  // Fallback: rascunho fora da janela ou status estranho
+  return 'finalizada_fechada';
 }
 
 // Sprint 9.6: helper pra checar se a visita tem reabertura ATIVA (janela aberta)
@@ -32108,6 +32369,101 @@ function renderAdminRevisao() {
                  style="width:100%;padding:10px 14px 10px 38px;border:1px solid var(--neutral-200);border-radius:10px;font-family:inherit;font-size:13px;background:var(--neutral-0);color:var(--brand-navy);" />
         </div>
 
+        <!-- Sprint 9.32.311: toggle "Ocultar rascunhos" mobile -->
+        ${(() => {
+          const on = !!window._reviewMobileHideRascunhos;
+          const btnBg = on ? '#EEF0F5' : '#fff';
+          const btnBd = on ? '#C5CCDA' : 'var(--neutral-200)';
+          const btnFg = on ? '#1E2A4D' : 'var(--neutral-700)';
+          const swBg = on ? '#38426B' : 'var(--neutral-300)';
+          const thLeft = on ? '16px' : '2px';
+          const ic = on ? 'visibility_off' : 'visibility';
+          const icFg = on ? '#38426B' : 'var(--neutral-500)';
+          const lbl = on ? 'Rascunhos ocultos' : 'Mostrando rascunhos em andamento';
+          return `
+        <button id="mobRevToggleRascunho" onclick="toggleOcultarRascunhosMobile()"
+                style="display:flex;width:100%;align-items:center;justify-content:space-between;gap:8px;margin:8px 0 8px;padding:9px 12px;background:${btnBg};border:1px solid ${btnBd};border-radius:10px;font-family:inherit;font-size:12px;color:${btnFg};cursor:pointer;">
+          <span style="display:inline-flex;align-items:center;gap:8px;">
+            <span class="material-symbols-rounded" id="mobRevToggleIcon" style="font-size:16px;color:${icFg};">${ic}</span>
+            <span id="mobRevToggleLabel">${lbl}</span>
+          </span>
+          <span id="mobRevToggleSwitch" style="position:relative;width:32px;height:18px;border-radius:9999px;background:${swBg};flex-shrink:0;transition:background 150ms;">
+            <span id="mobRevToggleThumb" style="position:absolute;top:2px;left:${thLeft};width:14px;height:14px;border-radius:50%;background:#fff;transition:left 150ms;"></span>
+          </span>
+        </button>
+          `;
+        })()}
+
+        <!-- Sprint 9.32.312: legenda dos tipos de flag — banner expansível verde -->
+        ${(() => {
+          let dismissed = false;
+          try { dismissed = localStorage.getItem('reviewMobile_dismissInfoFlags') === '1'; } catch (e) {}
+          if (dismissed) return '';
+          const open = !!window._mobRevLegendOpen;
+          const triggerStyle = `display:${open ? 'none' : 'flex'};width:100%;align-items:center;gap:8px;margin:0 0 8px;padding:9px 12px;background:#EAF3DE;border:1px solid #97C459;border-radius:10px;font-family:inherit;cursor:pointer;`;
+          const cardStyle = `display:${open ? 'block' : 'none'};background:linear-gradient(120deg,#EAF3DE 0%,#DCE9C5 100%);border:1px solid #97C459;border-radius:10px;overflow:hidden;margin:0 0 8px;`;
+          return `
+        <button id="mobRevLegendTrigger" onclick="toggleBannerInfoFlagsMobile()" style="${triggerStyle}">
+          <span style="width:22px;height:22px;border-radius:50%;background:#97C459;color:#fff;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <span class="material-symbols-rounded" style="font-size:14px;">info</span>
+          </span>
+          <span style="flex:1;font-size:12px;font-weight:600;color:#3B6D11;text-align:left;">O que cada flag significa?</span>
+          <span class="material-symbols-rounded" style="color:#3B6D11;font-size:18px;">expand_more</span>
+        </button>
+        <div id="mobRevLegendCard" style="${cardStyle}">
+          <div onclick="toggleBannerInfoFlagsMobile()" style="display:flex;align-items:center;gap:10px;padding:11px 14px;cursor:pointer;">
+            <span style="width:22px;height:22px;border-radius:50%;background:#97C459;color:#fff;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;">
+              <span class="material-symbols-rounded" style="font-size:14px;">info</span>
+            </span>
+            <span style="flex:1;font-size:12.5px;font-weight:700;color:#3B6D11;">O que cada flag significa?</span>
+            <span class="material-symbols-rounded" style="color:#3B6D11;font-size:20px;">expand_less</span>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:10px;padding:4px 14px 12px;">
+            <div style="display:flex;gap:10px;align-items:flex-start;">
+              <div style="width:28px;height:28px;border-radius:8px;background:rgba(218,57,73,0.15);color:var(--status-danger);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <span class="material-symbols-rounded" style="font-size:16px;">do_not_disturb_on</span>
+              </div>
+              <div>
+                <div style="font-size:12.5px;font-weight:700;color:var(--brand-navy);margin-bottom:2px;">Sem check-in</div>
+                <div style="font-size:11.5px;color:var(--neutral-700);line-height:1.4;">Profissional não registrou entrada e/ou saída no app. Pode indicar visita não declarada ou esquecimento.</div>
+              </div>
+            </div>
+            <div style="display:flex;gap:10px;align-items:flex-start;">
+              <div style="width:28px;height:28px;border-radius:8px;background:rgba(239,159,39,0.15);color:var(--status-warning-dark,#854F0B);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <span class="material-symbols-rounded" style="font-size:16px;">location_off</span>
+              </div>
+              <div>
+                <div style="font-size:12.5px;font-weight:700;color:var(--brand-navy);margin-bottom:2px;">GPS divergente</div>
+                <div style="font-size:11.5px;color:var(--neutral-700);line-height:1.4;">No check-in, o GPS estava fora do raio do hospital. Pode ser estacionamento, deslocamento ou problema de sinal.</div>
+              </div>
+            </div>
+            <div style="display:flex;gap:10px;align-items:flex-start;">
+              <div style="width:28px;height:28px;border-radius:8px;background:rgba(234,88,12,0.15);color:#EA580C;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <span class="material-symbols-rounded" style="font-size:16px;">schedule</span>
+              </div>
+              <div>
+                <div style="font-size:12.5px;font-weight:700;color:var(--brand-navy);margin-bottom:2px;">Fora da margem</div>
+                <div style="font-size:11.5px;color:var(--neutral-700);line-height:1.4;">Horário declarado no relatório não bate com a janela de tolerância do check-in/check-out registrados.</div>
+              </div>
+            </div>
+            <div style="display:flex;gap:10px;align-items:flex-start;">
+              <div style="width:28px;height:28px;border-radius:8px;background:rgba(24,95,165,0.15);color:var(--status-info);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <span class="material-symbols-rounded" style="font-size:16px;">touch_app</span>
+              </div>
+              <div>
+                <div style="font-size:12.5px;font-weight:700;color:var(--brand-navy);margin-bottom:2px;">Check-in manual</div>
+                <div style="font-size:11.5px;color:var(--neutral-700);line-height:1.4;">Profissional fez check-in sem GPS ativo. Válido, mas exige verificação extra (sem prova de localização).</div>
+              </div>
+            </div>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 14px;background:rgba(255,255,255,0.5);border-top:1px solid rgba(151,196,89,0.4);font-size:11.5px;">
+            <span onclick="toggleBannerInfoFlagsMobile()" style="color:#3B6D11;cursor:pointer;font-weight:600;">Fechar</span>
+            <span onclick="dismissBannerInfoFlagsMobile()" style="color:#3B6D11;cursor:pointer;font-weight:700;">✓ Entendi · não mostrar de novo</span>
+          </div>
+        </div>
+          `;
+        })()}
+
         <!-- Sprint 9.32.293: chips em ícones circulares (Protótipo 3) — número em badge sobre o ícone -->
         <div style="display:flex;justify-content:space-between;gap:8px;margin:8px 0 12px;" id="mobRevChipsBar">
           ${flagChipsMob.map(c => {
@@ -32149,16 +32505,75 @@ window.trocarFlagMobileRevisao = function(k) {
   carregarFilaRevisao();
 };
 
+// Sprint 9.32.311: toggle "Ocultar rascunhos em andamento" mobile
+// Estado persistido em localStorage (igual desktop usa sessionStorage, mas mobile usa local pra durar)
+try {
+  const _stored = localStorage.getItem('reviewMobile_hideRascunhos');
+  if (_stored === '1') window._reviewMobileHideRascunhos = true;
+} catch (e) { /* localStorage indisponível, ignora */ }
+
+// Sprint 9.32.312: legenda dos tipos de flag — banner expansível verde no mobile
+window.toggleBannerInfoFlagsMobile = function() {
+  window._mobRevLegendOpen = !window._mobRevLegendOpen;
+  const trigger = document.getElementById('mobRevLegendTrigger');
+  const card = document.getElementById('mobRevLegendCard');
+  if (trigger) trigger.style.display = window._mobRevLegendOpen ? 'none' : 'flex';
+  if (card) card.style.display = window._mobRevLegendOpen ? 'block' : 'none';
+};
+
+window.dismissBannerInfoFlagsMobile = function() {
+  try { localStorage.setItem('reviewMobile_dismissInfoFlags', '1'); } catch (e) {}
+  const trigger = document.getElementById('mobRevLegendTrigger');
+  const card = document.getElementById('mobRevLegendCard');
+  if (trigger) trigger.remove();
+  if (card) card.remove();
+  window._mobRevLegendOpen = false;
+};
+
+window.toggleOcultarRascunhosMobile = function() {
+  window._reviewMobileHideRascunhos = !window._reviewMobileHideRascunhos;
+  try { localStorage.setItem('reviewMobile_hideRascunhos', window._reviewMobileHideRascunhos ? '1' : '0'); } catch (e) {}
+  // Atualiza visual do botão
+  const btn = document.getElementById('mobRevToggleRascunho');
+  const sw = document.getElementById('mobRevToggleSwitch');
+  const thumb = document.getElementById('mobRevToggleThumb');
+  const icon = document.getElementById('mobRevToggleIcon');
+  const lbl = document.getElementById('mobRevToggleLabel');
+  if (btn && sw && thumb && icon && lbl) {
+    if (window._reviewMobileHideRascunhos) {
+      btn.style.background = '#EEF0F5';
+      btn.style.borderColor = '#C5CCDA';
+      btn.style.color = '#1E2A4D';
+      sw.style.background = '#38426B';
+      thumb.style.left = '16px';
+      icon.textContent = 'visibility_off';
+      icon.style.color = '#38426B';
+      lbl.textContent = 'Rascunhos ocultos';
+    } else {
+      btn.style.background = '#fff';
+      btn.style.borderColor = 'var(--neutral-200)';
+      btn.style.color = 'var(--neutral-700)';
+      sw.style.background = 'var(--neutral-300)';
+      thumb.style.left = '2px';
+      icon.textContent = 'visibility';
+      icon.style.color = 'var(--neutral-500)';
+      lbl.textContent = 'Mostrando rascunhos em andamento';
+    }
+  }
+  carregarFilaRevisao();
+};
+
 async function carregarFilaRevisao() {
   const listEl = document.getElementById('reviewList');
   if (!listEl) return;
 
   try {
     // Carrega counts + lista em paralelo
-    const [counts, visitas] = await Promise.all([
+    const [counts, visitasRaw] = await Promise.all([
       contarVisitasPorFiltro(),
       listarVisitasAdmin(window._reviewFilter || 'com_flags'),
     ]);
+    let visitas = visitasRaw;
 
     // Atualiza counts dos tabs
     if (document.getElementById('cntComFlags')) document.getElementById('cntComFlags').textContent = counts.com_flags;
@@ -32186,24 +32601,17 @@ async function carregarFilaRevisao() {
       return;
     }
 
-    // Sprint 9.32.78: detecta "em andamento" (rascunho com janela ativa de 72h) — igual desktop
-    const HORAS_JANELA = 72;
-    const limiteMs = HORAS_JANELA * 60 * 60 * 1000;
-    const agora = Date.now();
+    // Sprint 9.32.311: usa getEstadoRevisao pros 4 estados (igual desktop)
     visitas.forEach(v => {
       v._flags = getFlagsAtivas(v);
       v._nivel = getNivelCritico(v._flags);
       v._peso = (v._flags.filter(f => f.nivel === 'critical').length * 100)
               + (v._flags.filter(f => f.nivel === 'warning').length * 10)
               + v._flags.length;
-      const checkinTs = v.checkin_timestamp ? new Date(v.checkin_timestamp).getTime() : null;
-      v._emAndamento = (
-        v.status === 'rascunho' &&
-        checkinTs &&
-        (agora - checkinTs) < limiteMs &&
-        !v.revisao_motivo
-      );
-      v._janelaExpira = checkinTs ? new Date(checkinTs + limiteMs) : null;
+      v._estadoRev = getEstadoRevisao(v);
+      v._janelaExpira = _janelaEditExpiraEm(v);
+      // back-compat: _emAndamento usado pelo restante do código (filtro busca local etc)
+      v._emAndamento = (v._estadoRev === 'rascunho_ativo');
       // Sprint 9.32.292: mapeia chip keys (igual desktop) pra filtro de Tipo de flag mobile
       v._chipKeys = new Set();
       if (v.flag_sem_checkin || v.flag_sem_checkout) v._chipKeys.add('noCheckin');
@@ -32211,6 +32619,11 @@ async function carregarFilaRevisao() {
       if (v.flag_horario_fora_margem) v._chipKeys.add('time');
       if (v.checkin_manual) v._chipKeys.add('manual');
     });
+
+    // Sprint 9.32.311: aplica toggle "Ocultar rascunhos em andamento"
+    if (window._reviewMobileHideRascunhos) {
+      visitas = visitas.filter(v => v._estadoRev !== 'rascunho_ativo');
+    }
 
     // Sprint 9.32.293: conta visitas por chip e re-renderiza os chips em ícones circulares (Protótipo 3)
     const chipCountsMob = { noCheckin: 0, gps: 0, time: 0, manual: 0 };
@@ -32268,10 +32681,12 @@ async function carregarFilaRevisao() {
 
     listEl.innerHTML = visitasFiltradas.map(v => {
       const nivel = v._nivel || 'info';
-      // Classe especial pra visitas em revisão (devolvidas pro profissional) ou em andamento (janela ativa)
+      const est = v._estadoRev;
+      // Sprint 9.32.311: classe baseada nos 4 estados de revisão
       let cardClass;
-      if (v._emAndamento) cardClass = 'review-card--in-progress';
-      else if (estaEmRevisao(v)) cardClass = 'review-card--in-review';
+      if (est === 'rascunho_ativo') cardClass = 'review-card--rascunho-ativo';
+      else if (est === 'em_revisao') cardClass = 'review-card--in-review';
+      else if (est === 'finalizada_aberta') cardClass = 'review-card--finalizada-aberta';
       else cardClass = `review-card--${nivel}`;
       const dataFmt = v.checkin_timestamp ? formatarTempoRelativo(v.checkin_timestamp) : (v.data_visita || '—');
       const nutriNome = v.usuarios?.nome || v.nutricionista?.nome || '—';
@@ -32284,16 +32699,26 @@ async function carregarFilaRevisao() {
       const maisFlags = v._flags.length > 3 ? `<span class="review-flag review-flag--info">+${v._flags.length - 3}</span>` : '';
       const flagCountClass = nivel === 'critical' ? 'review-card__flag-count--critical' : 'review-card__flag-count--warning';
 
-      // Banner de "Em andamento" no topo (idem desktop)
+      // Sprint 9.32.311: banner por estado — navy-tinted (rascunho), verde (finalizada aberta)
       const expiraFmt = v._janelaExpira
         ? v._janelaExpira.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
         : '—';
-      const emAndamentoBanner = v._emAndamento ? `
-        <div style="background:#FEF4E1;border:1px solid #F4B73B;border-radius:8px;padding:8px 10px;margin-bottom:8px;font-size:11.5px;color:#92400E;line-height:1.4;display:flex;gap:6px;align-items:flex-start;">
-          <span class="material-symbols-rounded" style="font-size:16px;flex-shrink:0;margin-top:1px;">hourglass_top</span>
-          <div><strong>Em andamento</strong> — profissional ainda pode editar até <strong>${expiraFmt}</strong>. Aguarde finalização ou expiração da janela pra aprovar.</div>
-        </div>
-      ` : '';
+      let estadoBanner = '';
+      if (est === 'rascunho_ativo') {
+        estadoBanner = `
+          <div style="background:#EEF0F5;border:1px solid #C5CCDA;border-radius:8px;padding:8px 10px;margin-bottom:8px;font-size:11.5px;color:#1E2A4D;line-height:1.4;display:flex;gap:6px;align-items:flex-start;">
+            <span class="material-symbols-rounded" style="font-size:16px;flex-shrink:0;margin-top:1px;color:#38426B;">edit_note</span>
+            <div><strong>Em andamento</strong> — profissional ainda pode editar até <strong>${expiraFmt}</strong>.</div>
+          </div>
+        `;
+      } else if (est === 'finalizada_aberta') {
+        estadoBanner = `
+          <div style="background:#ECF6E5;border:1px solid #BDDBA9;border-radius:8px;padding:8px 10px;margin-bottom:8px;font-size:11.5px;color:#2F5A22;line-height:1.4;display:flex;gap:6px;align-items:flex-start;">
+            <span class="material-symbols-rounded" style="font-size:16px;flex-shrink:0;margin-top:1px;color:#5EA948;">check_circle</span>
+            <div><strong>Finalizada</strong> — janela 72h aberta até <strong>${expiraFmt}</strong>.</div>
+          </div>
+        `;
+      }
 
       // Sprint 9.32.118: layout B mobile — banner roxo/âmbar + avatar com foto do nutri (substitui ícone do hospital)
       const fotoUrl = v.usuarios?.foto_url || null;
@@ -32352,20 +32777,19 @@ async function carregarFilaRevisao() {
       }
 
       // Sobrescreve cardClass se for reaberta/aguardando — borda lateral roxa/âmbar
+      // Sprint 9.32.311: rascunho_ativo e finalizada_aberta também ganham borda própria via cardClass
       let cardStyleExtra = '';
       if (foiReabertaM) cardStyleExtra = 'border-left:4px solid #7F77DD;border-color:#CECBF6;';
       else if (aguardandoCorrecaoM) cardStyleExtra = 'border-left:4px solid #BA7517;border-color:#FAC775;';
+      else if (est === 'rascunho_ativo') cardStyleExtra = 'border-color:#C5CCDA;';
+      else if (est === 'finalizada_aberta') cardStyleExtra = 'border-color:#BDDBA9;';
 
       return `
-        <a href="#/admin/revisao/detalhe?id=${v.id}" class="review-card ${cardClass}" style="${v._emAndamento ? 'opacity:0.85;' : ''}${cardStyleExtra}">
-          ${emAndamentoBanner}
+        <a href="#/admin/revisao/detalhe?id=${v.id}" class="review-card ${cardClass}" style="${cardStyleExtra}">
+          ${estadoBanner}
           ${bannerReabertaM}
           <div class="review-card__header">
-            ${v._emAndamento ? `
-              <div class="review-card__icon">
-                <span class="material-symbols-rounded">schedule</span>
-              </div>
-            ` : avatarMobile}
+            ${avatarMobile}
             <div class="review-card__info">
               <div class="review-card__inst">${(v.instituicoes?.nome || 'Instituição').replace(/"/g,'&quot;')}</div>
               <div class="review-card__meta">
@@ -33307,12 +33731,39 @@ function renderReviewDetailContent(v, opts = {}) {
     </div>
   `;
 
-  // ===== Banner contextual de revisão/aprovação =====
-  const bannerRevisaoHtml = v.revisao_motivo && !v.revisao_resolvida_em ? `
+  // ===== Banner contextual: revisão / janela aberta / aprovado =====
+  // Sprint 9.32.306: usa getEstadoRevisao pra os 4 estados
+  const _estadoRev = getEstadoRevisao(v);
+  const _expiraJan = _janelaEditExpiraEm(v);
+  const _expFmt = _expiraJan ? _expiraJan.toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' }) : '—';
+  let bannerEstadoExtra = '';
+  if (!ocultarAcoes) {
+    if (_estadoRev === 'rascunho_ativo') {
+      bannerEstadoExtra = `
+        <div class="report-lock-warning" style="background:linear-gradient(to right,#EEF0F5,#DEE2EC);border-color:#C5CCDA;color:#1E2A4D;margin-bottom:14px;">
+          <span class="material-symbols-rounded" style="color:#38426B;">edit_note</span>
+          <div>
+            <strong>Rascunho</strong> · profissional ainda preenchendo o relatório · janela até <strong>${_expFmt}</strong> (72h pós checkout).
+          </div>
+        </div>
+      `;
+    } else if (_estadoRev === 'finalizada_aberta') {
+      bannerEstadoExtra = `
+        <div class="report-lock-warning" style="background:#ECF6E5;border-color:#BDDBA9;color:#2F5A22;margin-bottom:14px;">
+          <span class="material-symbols-rounded" style="color:#5EA948;">check_circle</span>
+          <div>
+            <strong>Relatório finalizado</strong> · profissional ainda pode editar até <strong>${_expFmt}</strong> (72h pós checkout). Aprovar agora trava a visita.
+          </div>
+        </div>
+      `;
+    }
+  }
+  const bannerRevisaoHtml = bannerEstadoExtra + (v.revisao_motivo && !v.revisao_resolvida_em ? `
     <div class="report-lock-warning" style="background:#FEF4E1;border-color:rgba(245,158,11,0.3);color:#92400E;margin-bottom:14px;">
       <span class="material-symbols-rounded" style="color:var(--status-warning);">rate_review</span>
       <div>
         <strong>Revisão solicitada ${v.status === 'rascunho' ? '— aguardando correção do profissional.' : '.'}</strong> ${v.revisor_solicitou?.nome ? `Por ${v.revisor_solicitou.nome}` : 'Por admin'}${v.revisao_solicitada_em ? ` em ${formatarDataCurta(v.revisao_solicitada_em)}` : ''}.
+        ${v.revisao_expira_em ? `<div style="font-size:11.5px;margin-top:4px;color:#854F0B;">⏱ Prazo pra resposta: <strong>${new Date(v.revisao_expira_em).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' })}</strong> ${new Date(v.revisao_expira_em).getTime() < Date.now() ? '<span style="color:#A32D2D;font-weight:700;">· EXPIRADO</span>' : ''}</div>` : ''}
         <div style="margin-top:6px;background:var(--neutral-0);border-radius:6px;padding:8px 10px;font-style:italic;color:var(--brand-navy);">
           "${v.revisao_motivo.replace(/"/g,'&quot;')}"
         </div>
@@ -33325,7 +33776,7 @@ function renderReviewDetailContent(v, opts = {}) {
         <strong>Visita aprovada pós-revisão.</strong> Resolvida por ${v.revisor_resolveu?.nome || 'admin'} em ${v.revisao_resolvida_em ? formatarDataCurta(v.revisao_resolvida_em) : '—'}.
       </div>
     </div>
-  ` : '';
+  ` : '');
 
   // ===== Card de divergências (esquerda) =====
   const divergenciasHtml = flags.length > 0 ? `
@@ -33512,25 +33963,53 @@ function renderReviewDetailContent(v, opts = {}) {
     </div>
   `;
 
-  // ===== Decisão final navy no rodapé =====
-  const decisaoHtml = podeAgir ? `
-    <div class="rdv-decisao">
-      <div class="rdv-decisao-info">
-        <strong class="title">Decisão final</strong>
-        ${flags.length > 0
-          ? `<strong style="color:#fff;">${flags.length} ${flags.length === 1 ? 'divergência' : 'divergências'}</strong> detectada${flags.length === 1 ? '' : 's'}. Aprove se tudo estiver conforme, ou devolva pro profissional revisar.`
-          : 'Aprove se tudo estiver conforme, ou devolva pro profissional ajustar.'}
+  // ===== Decisão final navy no rodapé (Sprint 9.32.306: regras por estado) =====
+  let decisaoHtml = '';
+  if (podeAgir) {
+    const _est = getEstadoRevisao(v);
+    const _expFmt2 = _expiraJan ? _expiraJan.toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' }) : '—';
+
+    let infoTxt;
+    let acoesHtml;
+
+    if (_est === 'rascunho_ativo') {
+      // Sprint 9.32.309: rascunho ainda em preenchimento — sem devolver nem aprovar
+      infoTxt = `<strong style="color:#fff;">Aguardando finalização</strong> · profissional ainda preenchendo o relatório (janela até ${_expFmt2}). Não é possível aprovar nem devolver agora.`;
+      acoesHtml = `
+        <button class="rdv-btn-aprovar" disabled style="opacity:0.5;cursor:not-allowed;background:rgba(255,255,255,0.15);color:rgba(255,255,255,0.7);"><span class="material-symbols-rounded" style="font-size:17px;">lock</span>Aguardando profissional</button>
+      `;
+    } else if (_est === 'finalizada_aberta') {
+      infoTxt = `${flags.length > 0 ? `<strong style="color:#fff;">${flags.length} ${flags.length === 1 ? 'divergência' : 'divergências'}</strong> detectada${flags.length === 1 ? '' : 's'}. ` : ''}<strong style="color:#FBC177;">⚠ Profissional ainda pode editar até ${_expFmt2}</strong> — aprovar agora trava a visita.`;
+      acoesHtml = `
+        <button class="rdv-btn-devolver" onclick="handleDevolverAoNutri()"><span class="material-symbols-rounded" style="font-size:16px;">undo</span>Devolver</button>
+        <button class="rdv-btn-aprovar" onclick="handleAprovarVisitaComAviso()" style="background:#EF9F27;color:#fff;"><span class="material-symbols-rounded" style="font-size:17px;">warning</span>Aprovar mesmo assim</button>
+      `;
+    } else if (_est === 'em_revisao') {
+      infoTxt = `<strong style="color:#fff;">Em revisão</strong> · visita já foi devolvida ao profissional. Aguarde a resposta antes de decidir.`;
+      acoesHtml = `
+        <button class="rdv-btn-aprovar" disabled style="opacity:0.5;cursor:not-allowed;background:rgba(255,255,255,0.15);color:rgba(255,255,255,0.7);"><span class="material-symbols-rounded" style="font-size:17px;">lock</span>Aguardando profissional</button>
+      `;
+    } else {
+      // finalizada_fechada — fluxo padrão
+      infoTxt = flags.length > 0
+        ? `<strong style="color:#fff;">${flags.length} ${flags.length === 1 ? 'divergência' : 'divergências'}</strong> detectada${flags.length === 1 ? '' : 's'}. Aprove se tudo estiver conforme, ou devolva pro profissional revisar.`
+        : 'Aprove se tudo estiver conforme, ou devolva pro profissional ajustar.';
+      acoesHtml = `
+        <button class="rdv-btn-devolver" onclick="handleDevolverAoNutri()"><span class="material-symbols-rounded" style="font-size:16px;">undo</span>Devolver</button>
+        <button class="rdv-btn-aprovar" onclick="handleAprovarVisita()"><span class="material-symbols-rounded" style="font-size:17px;">verified</span>Aprovar visita</button>
+      `;
+    }
+
+    decisaoHtml = `
+      <div class="rdv-decisao">
+        <div class="rdv-decisao-info">
+          <strong class="title">Decisão final</strong>
+          ${infoTxt}
+        </div>
+        ${acoesHtml}
       </div>
-      <button class="rdv-btn-devolver" onclick="handleDevolverAoNutri()">
-        <span class="material-symbols-rounded" style="font-size:16px;">undo</span>
-        Devolver
-      </button>
-      <button class="rdv-btn-aprovar" onclick="handleAprovarVisita()">
-        <span class="material-symbols-rounded" style="font-size:17px;">verified</span>
-        ${estaEmRevisao(v) ? 'Aprovar esta visita' : 'Aprovar visita'}
-      </button>
-    </div>
-  ` : '';
+    `;
+  }
 
   return `
     ${heroHtml}
@@ -34053,6 +34532,24 @@ function formatarDataCompleta(ts) {
    Ações admin: aprovar, enviar pra revisão, devolver
    ========================================================================== */
 
+// Sprint 9.32.306: aprovar visita com aviso prévio sobre janela de edição aberta
+window.handleAprovarVisitaComAviso = async function() {
+  const v = window._currentReviewVisita;
+  const expira = v ? _janelaEditExpiraEm(v) : null;
+  const fmt = expira ? expira.toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' }) : '—';
+  const ok = await showModalConfirmacao({
+    icone: 'warning',
+    iconeCor: 'warning',
+    titulo: 'Aprovar mesmo assim?',
+    subtitulo: `O profissional ainda pode estar editando o relatório (janela até <strong>${fmt}</strong>). Aprovar agora <strong>trava a visita</strong> — o profissional não conseguirá mais alterar.`,
+    btnConfirmar: 'Sim, aprovar agora',
+    btnCancelar: 'Cancelar',
+  });
+  if (!ok) return;
+  // Reusa o fluxo normal a partir daqui (que tem 2º modal "imutável após aprovação")
+  return window.handleAprovarVisita();
+};
+
 window.handleAprovarVisita = async function() {
   const v = window._currentReviewVisita;
   if (!v) return;
@@ -34073,6 +34570,7 @@ window.handleAprovarVisita = async function() {
       status: 'aprovada_pos_revisao',
       revisao_resolvida_por: user.id,
       revisao_resolvida_em: new Date().toISOString(),
+      revisao_expira_em: null,  // Sprint 9.32.306: limpa prazo (revisão resolvida)
       atualizado_em: new Date().toISOString(),
     }).eq('id', v.id).select();
     if (error) throw new Error(error.message || 'Falha ao atualizar visita');
@@ -34144,18 +34642,21 @@ window.handleDevolverAoNutri = async function() {
 
   const user = getCurrentUser();
   try {
+    // Sprint 9.32.306: seta prazo de 72h pra resposta da revisão
+    const expiraEm = new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString();
     const { data, error } = await db.from('visitas').update({
       status: 'rascunho',
       revisao_motivo: motivo,
       revisao_solicitada_por: user.id,
       revisao_solicitada_em: new Date().toISOString(),
+      revisao_expira_em: expiraEm,
       atualizado_em: new Date().toISOString(),
     }).eq('id', v.id).select();
     if (error) throw new Error(error.message || 'Falha ao atualizar visita');
     if (!data || data.length === 0) {
       throw new Error('Update não afetou nenhum registro. Verifique as políticas RLS da tabela visitas no Supabase.');
     }
-    setFlash('success', 'Visita devolvida pro profissional.');
+    setFlash('success', 'Visita devolvida pro profissional. Ele tem 72h pra responder.');
     window.location.hash = '#/admin/revisao';
   } catch (err) {
     alert('Erro ao devolver: ' + err.message);
@@ -41753,8 +42254,23 @@ function _fatRender() {
   // Chart Evolução ====
   // Sempre mostra todo o range de meses (ignora filtro de mês isolado)
   // Quando mês selecionado: barra desse mês fica colorida normal, outras esmaecidas
-  const mensalChart = _fatFiltrarMensal({ ignorarMes: true });
+  let mensalChart = _fatFiltrarMensal({ ignorarMes: true });
   const mesIsolado = (window._fatFiltro.mes && window._fatFiltro.mes !== 'todos') ? window._fatFiltro.mes : null;
+
+  // Sprint 9.32.313: no mobile, recorta o gráfico pro ano vigente (Jan→atual)
+  // Desktop mantém visão completa (Jan/25 até hoje). Mobile fica visualmente limpo, sem labels rotacionadas.
+  const _fatMobileAnoVigente = (typeof isDesktop === 'function' ? !isDesktop() : window.innerWidth < 1024);
+  let _fatRecortadoLabel = '';
+  if (_fatMobileAnoVigente) {
+    const _anoAtual = new Date().getFullYear();
+    const _prefixo = String(_anoAtual) + '-';
+    const _mensalAnoVigente = mensalChart.filter(m => (m.ano_mes || '').startsWith(_prefixo));
+    if (_mensalAnoVigente.length > 0) {
+      mensalChart = _mensalAnoVigente;
+      _fatRecortadoLabel = `Ano vigente · ${_anoAtual}`;
+    }
+    // Se ano vigente vazio (improvável), mantém série completa como fallback
+  }
 
   const ctx = document.getElementById('fatChartEvol');
   if (ctx && typeof Chart !== 'undefined') {
@@ -41853,8 +42369,10 @@ function _fatRender() {
     const media = mensalChart.length > 0 ? total / mensalChart.length : 0;
     const max = mensalChart.reduce((mx, m) => m.faturamento > mx.faturamento ? m : mx, { faturamento: 0, ano_mes: '' });
     const ctxLabel = mesIsolado ? `<span style="color:var(--brand-lime-dark,#6FA62E);font-weight:700;">⬤ ${_mesLabel(mesIsolado)} em destaque</span> · ` : '';
+    // Sprint 9.32.313: indica recorte de ano vigente (mobile)
+    const recorteLabel = _fatRecortadoLabel ? `<span style="display:inline-flex;align-items:center;gap:4px;background:var(--brand-lime-bg,#E9F4D9);color:var(--brand-lime-dark,#6FA62E);padding:2px 7px;border-radius:9999px;font-size:10.5px;font-weight:700;margin-right:6px;"><span class="material-symbols-rounded" style="font-size:11px;">filter_alt</span>${_fatRecortadoLabel}</span>` : '';
     document.getElementById('fatEvolStats').innerHTML =
-      `${ctxLabel}Média: <strong style="color:var(--brand-navy);">${_fmtMoeda(media, true)}</strong>/mês · Pico: <strong style="color:var(--brand-lime-dark,#6FA62E);">${_fmtMoeda(max.faturamento, true)}</strong> em ${max.ano_mes ? _mesLabel(max.ano_mes) : '—'}`;
+      `${recorteLabel}${ctxLabel}Média: <strong style="color:var(--brand-navy);">${_fmtMoeda(media, true)}</strong>/mês · Pico: <strong style="color:var(--brand-lime-dark,#6FA62E);">${_fmtMoeda(max.faturamento, true)}</strong> em ${max.ano_mes ? _mesLabel(max.ano_mes) : '—'}`;
   }
 
   // Top Vendedores ====
