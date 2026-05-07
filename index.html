@@ -7655,7 +7655,7 @@ body.va-banner-active { padding-top: 56px; }
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.302-banner-em-todas-telas',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.303-ocultar-decisao-nutri',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -33265,14 +33265,16 @@ function renderAdminRevisaoDetalheDesktop() {
 
 // Sprint 9.32.288: redesign completo do painel de detalhes da visita (Protótipo 5)
 // Hero com banda de alerta + grid 2 colunas + decisão navy no rodapé
-function renderReviewDetailContent(v) {
+// Sprint 9.32.303: opts.ocultarAcoes esconde a "Decisão final" (pra view do nutri, que não aprova)
+function renderReviewDetailContent(v, opts = {}) {
+  const { ocultarAcoes = false } = opts;
   const flags = getFlagsAtivas(v);
   const checkinFmt = v.checkin_timestamp ? formatarDataCompleta(v.checkin_timestamp) : '—';
   const checkoutFmt = v.checkout_timestamp ? formatarDataCompleta(v.checkout_timestamp) : '—';
   const duracao = calcularDuracaoMin(v.checkin_timestamp, v.checkout_timestamp);
   const nutriNome = v.nutricionista?.nome || '—';
   const instName = v.instituicoes?.nome || 'Instituição';
-  const podeAgir = v.status !== 'aprovada_pos_revisao';
+  const podeAgir = v.status !== 'aprovada_pos_revisao' && !ocultarAcoes;
   const dataCurta = v.checkin_timestamp ? formatarDataCurta(v.checkin_timestamp) : '—';
 
   // ===== HERO com banda de alerta no topo (se tem flags) =====
@@ -33579,7 +33581,8 @@ function renderRelatorioConsolidadoNutri(visita, opts = {}) {
   }
 
   // Renderiza o conteúdo principal (mesma estrutura do admin, mas filtramos blocos abaixo)
-  let conteudoAdmin = renderReviewDetailContent(v);
+  // Sprint 9.32.303: oculta "Decisão final" (Aprovar/Devolver) — só admin decide, nutri não
+  let conteudoAdmin = renderReviewDetailContent(v, { ocultarAcoes: true });
 
   // Remove o bloco de "Ações admin" (já está vazio se v.status === 'aprovada_pos_revisao',
   // mas quando ainda tá em rascunho, aparece os botões aprovar/devolver — não queremos isso pro nutri)

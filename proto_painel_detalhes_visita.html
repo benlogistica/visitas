@@ -1,0 +1,1112 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>5 Protótipos · Painel Detalhes da Visita</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0&family=Poppins:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" />
+  <style>
+    :root {
+      --brand-navy: #0A1F5C;
+      --brand-navy-soft: #1E3A8A;
+      --brand-lime: #8BC63F;
+      --brand-lime-dark: #6FA62E;
+      --neutral-0: #FFFFFF;
+      --neutral-50: #F9FAFB;
+      --neutral-75: #F4F5F7;
+      --neutral-100: #F3F4F6;
+      --neutral-150: #EDF0F4;
+      --neutral-200: #E5E7EB;
+      --neutral-300: #D1D5DB;
+      --neutral-400: #9CA3AF;
+      --neutral-500: #6B7280;
+      --neutral-600: #4B5563;
+      --neutral-700: #374151;
+      --neutral-900: #111827;
+      --status-success: #22A06B;
+      --status-success-bg: #E7F5EE;
+      --status-warning: #EF9F27;
+      --status-warning-bg: #FAEEDA;
+      --status-warning-dark: #854F0B;
+      --status-danger: #E24B4A;
+      --status-danger-bg: #FCEBEB;
+      --status-info: #185FA5;
+      --status-info-bg: #E6F1FB;
+      --shadow-sm: 0 1px 2px rgba(10,31,92,0.04);
+      --shadow-md: 0 4px 16px rgba(10,31,92,0.06);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 32px 20px 80px;
+      background: #EEF1F4;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      color: var(--brand-navy);
+    }
+    .wrapper { max-width: 1240px; margin: 0 auto; }
+    .doc-h1 {
+      font-family: 'Poppins', sans-serif;
+      font-weight: 700;
+      font-size: 24px;
+      margin: 0 0 6px;
+    }
+    .doc-lead { font-size: 14px; color: var(--neutral-600); margin: 0 0 32px; line-height: 1.55; }
+
+    .proto {
+      background: var(--neutral-50);
+      border: 1px solid var(--neutral-200);
+      border-radius: 18px;
+      padding: 22px 24px 26px;
+      margin-bottom: 28px;
+    }
+    .proto-tag {
+      display: inline-flex; align-items: center; gap: 7px;
+      font-size: 11px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.08em;
+      color: var(--neutral-600);
+      background: var(--neutral-150); padding: 5px 12px; border-radius: 9999px;
+      margin-bottom: 10px;
+    }
+    .proto-title {
+      font-family: 'Poppins', sans-serif;
+      font-size: 20px; font-weight: 600; margin: 0 0 4px;
+    }
+    .proto-desc {
+      font-size: 13px; color: var(--neutral-600);
+      margin: 0 0 18px; line-height: 1.55; max-width: 720px;
+    }
+    .proto-frame {
+      background: #FFFFFF;
+      border-radius: 14px;
+      padding: 0;
+      overflow: hidden;
+      box-shadow: var(--shadow-md);
+      border: 1px solid var(--neutral-200);
+    }
+    .ms { font-family: 'Material Symbols Rounded'; font-weight: normal; font-style: normal; line-height: 1; letter-spacing: normal; text-transform: none; display: inline-block; white-space: nowrap; direction: ltr; -webkit-font-feature-settings: 'liga'; -webkit-font-smoothing: antialiased; vertical-align: middle; }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+
+    /* Topbar mock — mesmo pra todos */
+    .topbar {
+      background: #fff;
+      border-bottom: 1px solid var(--neutral-200);
+      padding: 14px 22px;
+      display: flex; align-items: center; gap: 16px;
+    }
+    .topbar-titles { flex: 1; }
+    .topbar h1 {
+      font-family: 'Poppins', sans-serif;
+      font-size: 20px; font-weight: 700;
+      margin: 0; color: var(--brand-navy);
+    }
+    .topbar .crumb { font-size: 11.5px; color: var(--neutral-400); margin-top: 2px; }
+    .topbar .crumb b { color: var(--neutral-500); font-weight: 500; }
+    .back-btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 7px 14px 7px 10px;
+      border: 1.5px solid var(--brand-navy);
+      background: #fff; color: var(--brand-navy);
+      font-size: 12.5px; font-weight: 600;
+      border-radius: 9999px;
+      text-decoration: none;
+      cursor: pointer;
+    }
+
+    /* Container of fake content per proto */
+    .body-area { padding: 22px 26px 26px; background: #F8FAFC; }
+
+    /* Common card */
+    .card {
+      background: #fff;
+      border: 1px solid var(--neutral-200);
+      border-radius: 12px;
+      padding: 16px 18px;
+    }
+    .card-h {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 11px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.06em;
+      color: var(--neutral-500);
+      margin-bottom: 10px;
+    }
+    .card-h .ms { font-size: 16px; color: var(--brand-navy); }
+
+    /* Status pills */
+    .pill { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 9999px; font-size: 11px; font-weight: 600; }
+    .pill-rascunho { background: var(--neutral-100); color: var(--neutral-700); }
+    .pill-warning { background: var(--status-warning-bg); color: var(--status-warning-dark); }
+    .pill-success { background: var(--status-success-bg); color: #0E6E47; }
+    .pill-danger { background: var(--status-danger-bg); color: #A32D2D; }
+
+    .dot { width: 6px; height: 6px; border-radius: 50%; }
+
+    /* Divergencia row */
+    .div-row {
+      display: flex; align-items: flex-start; gap: 12px;
+      padding: 12px 14px;
+      background: var(--status-warning-bg);
+      border-radius: 10px;
+      margin-bottom: 8px;
+    }
+    .div-row .icon {
+      width: 28px; height: 28px; border-radius: 8px;
+      background: rgba(239,159,39,0.18);
+      color: var(--status-warning-dark);
+      display: inline-flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .div-title { font-size: 13px; font-weight: 600; color: var(--status-warning-dark); margin-bottom: 2px; }
+    .div-desc { font-size: 12px; color: var(--neutral-700); line-height: 1.4; }
+
+    /* Map fake */
+    .map-fake {
+      background: linear-gradient(135deg, #E8F0E5 0%, #F2EDD7 50%, #E8E0CE 100%);
+      border-radius: 10px;
+      height: 200px;
+      position: relative;
+      overflow: hidden;
+    }
+    .map-fake::before {
+      content: '';
+      position: absolute; inset: 0;
+      background-image:
+        repeating-linear-gradient(0deg, rgba(150,135,100,0.08) 0 1px, transparent 1px 28px),
+        repeating-linear-gradient(90deg, rgba(150,135,100,0.08) 0 1px, transparent 1px 28px);
+    }
+    .map-fake::after {
+      content: '';
+      position: absolute;
+      width: 280px; height: 130px;
+      background: rgba(255,217,150,0.25);
+      border-radius: 50%;
+      filter: blur(40px);
+      top: 30px; right: 80px;
+    }
+    .map-pin {
+      position: absolute;
+      width: 16px; height: 16px;
+      border-radius: 50%;
+      border: 3px solid #fff;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+    }
+    .map-toggles {
+      display: inline-flex; gap: 2px;
+      background: rgba(255,255,255,0.95);
+      padding: 4px;
+      border-radius: 9999px;
+      border: 1px solid var(--neutral-200);
+      margin-bottom: 8px;
+    }
+    .map-toggle {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 4px 10px;
+      font-size: 11.5px; font-weight: 600;
+      color: var(--neutral-600);
+      border-radius: 9999px;
+      cursor: pointer;
+    }
+    .map-toggle.active { background: var(--brand-navy); color: #fff; }
+    .map-toggle .dot { width: 7px; height: 7px; }
+
+    /* Field rows (key-value) */
+    .kv {
+      display: grid; grid-template-columns: max-content 1fr;
+      gap: 12px 18px;
+      font-size: 12.5px;
+    }
+    .kv-label { color: var(--neutral-500); font-weight: 500; }
+    .kv-value { color: var(--brand-navy); font-weight: 500; }
+
+    /* === PROTO 1: Editorial em camadas === */
+    .p1-hero {
+      background: #fff;
+      border-radius: 16px;
+      padding: 22px 24px;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 18px;
+      border: 1px solid var(--neutral-200);
+      margin-bottom: 18px;
+    }
+    .p1-hero-inst { display: flex; align-items: center; gap: 14px; }
+    .p1-hero-icon {
+      width: 52px; height: 52px;
+      background: var(--brand-navy);
+      color: #fff;
+      border-radius: 12px;
+      display: inline-flex; align-items: center; justify-content: center;
+    }
+    .p1-hero-name {
+      font-family: 'Poppins', sans-serif;
+      font-size: 22px; font-weight: 700;
+      color: var(--brand-navy);
+      margin: 0;
+    }
+    .p1-hero-meta { display: flex; gap: 18px; margin-top: 6px; font-size: 12.5px; color: var(--neutral-600); }
+    .p1-hero-meta-item { display: inline-flex; align-items: center; gap: 5px; }
+    .p1-hero-meta-item .ms { font-size: 14px; color: var(--neutral-500); }
+    .p1-hero-side { text-align: right; display: flex; flex-direction: column; gap: 6px; align-items: flex-end; }
+    .p1-grid { display: grid; grid-template-columns: 1.7fr 1fr; gap: 18px; align-items: start; }
+    .p1-decisao {
+      background: linear-gradient(135deg, #FAFEF5 0%, #F0F7E6 100%);
+      border: 1.5px solid #C0DD97;
+      border-radius: 14px;
+      padding: 18px;
+      position: sticky; top: 18px;
+    }
+    .p1-decisao-h { font-family: 'Poppins', sans-serif; font-size: 14px; font-weight: 700; color: var(--brand-navy); margin-bottom: 4px; }
+    .p1-decisao-sub { font-size: 12px; color: var(--neutral-600); line-height: 1.5; margin-bottom: 14px; }
+    .p1-aprovar {
+      width: 100%; padding: 12px;
+      background: var(--status-success); color: #fff;
+      border: 0; border-radius: 10px;
+      font-size: 13.5px; font-weight: 600;
+      cursor: pointer; font-family: inherit;
+      display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+      margin-bottom: 8px;
+    }
+    .p1-devolver {
+      width: 100%; padding: 12px;
+      background: #fff; color: var(--status-warning-dark);
+      border: 1.5px solid var(--neutral-300); border-radius: 10px;
+      font-size: 13px; font-weight: 600;
+      cursor: pointer; font-family: inherit;
+      display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+    }
+    .p1-section { margin-bottom: 14px; }
+
+    /* === PROTO 2: Single column · clean === */
+    .p2-stack { display: flex; flex-direction: column; gap: 12px; }
+    .p2-hero {
+      background: var(--brand-navy);
+      color: #fff;
+      border-radius: 14px;
+      padding: 20px 24px;
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 18px; align-items: center;
+    }
+    .p2-hero-icon {
+      width: 48px; height: 48px;
+      background: rgba(255,255,255,0.12);
+      color: #fff;
+      border-radius: 12px;
+      display: inline-flex; align-items: center; justify-content: center;
+    }
+    .p2-hero-name { font-family: 'Poppins', sans-serif; font-size: 19px; font-weight: 700; }
+    .p2-hero-sub { font-size: 12.5px; color: rgba(255,255,255,0.7); margin-top: 3px; }
+    .p2-stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+    .p2-stat {
+      background: #fff;
+      border: 1px solid var(--neutral-200);
+      border-radius: 10px;
+      padding: 12px 14px;
+    }
+    .p2-stat-label { font-size: 10.5px; color: var(--neutral-500); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700; }
+    .p2-stat-value { font-family: 'Poppins', sans-serif; font-size: 16px; font-weight: 600; color: var(--brand-navy); margin-top: 4px; }
+    .p2-stat-sub { font-size: 11px; color: var(--neutral-500); margin-top: 2px; }
+    .p2-bar {
+      position: sticky; bottom: 0;
+      background: rgba(255,255,255,0.97);
+      backdrop-filter: blur(8px);
+      border-top: 1px solid var(--neutral-200);
+      padding: 12px 18px;
+      display: flex; align-items: center; justify-content: space-between;
+      margin: 0 -26px -26px;
+    }
+    .p2-bar-info { font-size: 12px; color: var(--neutral-600); }
+    .p2-bar-info b { color: var(--status-warning-dark); font-weight: 600; }
+    .p2-bar-actions { display: flex; gap: 8px; }
+    .p2-bar-aprovar {
+      padding: 10px 22px; background: var(--status-success); color: #fff;
+      border: 0; border-radius: 9999px; font-size: 13px; font-weight: 600;
+      cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
+    }
+    .p2-bar-devolver {
+      padding: 10px 18px; background: #fff; color: var(--status-warning-dark);
+      border: 1.5px solid var(--status-warning); border-radius: 9999px;
+      font-size: 13px; font-weight: 600;
+      cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
+    }
+
+    /* === PROTO 3: Tabs/Abas === */
+    .p3-hero {
+      background: #fff;
+      border: 1px solid var(--neutral-200);
+      border-radius: 14px 14px 0 0;
+      border-bottom: 0;
+      padding: 18px 22px;
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 14px; align-items: center;
+    }
+    .p3-tabs {
+      background: #fff;
+      border-left: 1px solid var(--neutral-200);
+      border-right: 1px solid var(--neutral-200);
+      padding: 0 22px;
+      display: flex; gap: 24px;
+      border-bottom: 1px solid var(--neutral-200);
+    }
+    .p3-tab {
+      padding: 11px 0;
+      font-size: 13px; font-weight: 600;
+      color: var(--neutral-500);
+      border-bottom: 2px solid transparent;
+      cursor: pointer;
+      display: inline-flex; gap: 6px; align-items: center;
+    }
+    .p3-tab.active { color: var(--brand-navy); border-bottom-color: var(--brand-lime); }
+    .p3-tab .badge { background: var(--neutral-100); color: var(--neutral-600); font-size: 10.5px; padding: 1px 7px; border-radius: 9999px; font-weight: 700; }
+    .p3-tab.active .badge { background: var(--status-warning-bg); color: var(--status-warning-dark); }
+    .p3-content {
+      background: #fff;
+      border: 1px solid var(--neutral-200);
+      border-top: 0;
+      border-radius: 0 0 14px 14px;
+      padding: 20px 22px;
+    }
+    .p3-grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: 18px; align-items: start; }
+    .p3-decisao {
+      background: var(--brand-navy);
+      color: #fff;
+      border-radius: 12px;
+      padding: 16px 18px;
+    }
+    .p3-decisao-h {
+      font-family: 'Poppins', sans-serif;
+      font-size: 14px; font-weight: 700;
+      margin-bottom: 6px; color: #fff;
+    }
+    .p3-decisao-sub { font-size: 12px; color: rgba(255,255,255,0.7); line-height: 1.5; margin-bottom: 14px; }
+    .p3-decisao-actions { display: flex; flex-direction: column; gap: 8px; }
+    .p3-aprovar {
+      padding: 11px; background: var(--brand-lime); color: var(--brand-navy);
+      border: 0; border-radius: 9px; font-size: 13.5px; font-weight: 700;
+      cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+    }
+    .p3-devolver {
+      padding: 11px; background: rgba(255,255,255,0.08); color: #fff;
+      border: 1px solid rgba(255,255,255,0.25); border-radius: 9px;
+      font-size: 13px; font-weight: 600;
+      cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+    }
+
+    /* === PROTO 4: Timeline jornada === */
+    .p4-hero {
+      background: linear-gradient(135deg, var(--brand-navy) 0%, #1E3A8A 100%);
+      color: #fff;
+      border-radius: 14px;
+      padding: 24px 26px;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 18px; align-items: center;
+      margin-bottom: 18px;
+    }
+    .p4-hero-name {
+      font-family: 'Poppins', sans-serif;
+      font-size: 22px; font-weight: 700;
+    }
+    .p4-hero-meta {
+      display: flex; gap: 22px; margin-top: 8px;
+      font-size: 12.5px; color: rgba(255,255,255,0.75);
+    }
+    .p4-hero-meta-item { display: inline-flex; align-items: center; gap: 5px; }
+    .p4-hero-meta-item .ms { color: rgba(255,255,255,0.5); }
+    .p4-actions { display: flex; gap: 8px; }
+    .p4-aprovar {
+      padding: 11px 22px; background: var(--brand-lime); color: var(--brand-navy);
+      border: 0; border-radius: 9999px;
+      font-size: 13.5px; font-weight: 700;
+      cursor: pointer; display: inline-flex; align-items: center; gap: 7px;
+    }
+    .p4-devolver {
+      padding: 11px 18px; background: rgba(255,255,255,0.08); color: #fff;
+      border: 1px solid rgba(255,255,255,0.25); border-radius: 9999px;
+      font-size: 13px; font-weight: 600;
+      cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
+    }
+    .p4-timeline {
+      background: #fff;
+      border: 1px solid var(--neutral-200);
+      border-radius: 14px;
+      padding: 22px 26px;
+      position: relative;
+    }
+    .p4-line {
+      position: absolute;
+      left: 38px; top: 50px; bottom: 50px;
+      width: 2px;
+      background: linear-gradient(180deg, var(--brand-lime) 0%, var(--neutral-300) 50%, var(--status-warning) 100%);
+    }
+    .p4-event {
+      display: grid;
+      grid-template-columns: 36px 1fr;
+      gap: 18px;
+      margin-bottom: 22px;
+      position: relative;
+    }
+    .p4-event:last-child { margin-bottom: 0; }
+    .p4-event-dot {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      border: 3px solid #fff;
+      box-shadow: 0 0 0 1.5px var(--neutral-300);
+      display: inline-flex; align-items: center; justify-content: center;
+      background: #fff;
+      position: relative;
+      z-index: 2;
+    }
+    .p4-event.checkin .p4-event-dot { box-shadow: 0 0 0 1.5px #2563EB; color: #2563EB; }
+    .p4-event.checkout .p4-event-dot { box-shadow: 0 0 0 1.5px #F59E0B; color: #F59E0B; }
+    .p4-event.flag .p4-event-dot { box-shadow: 0 0 0 1.5px var(--status-warning); color: var(--status-warning-dark); }
+    .p4-event.activity .p4-event-dot { box-shadow: 0 0 0 1.5px var(--brand-lime-dark); color: var(--brand-lime-dark); }
+    .p4-event-time { font-size: 11px; color: var(--neutral-500); margin-bottom: 2px; font-weight: 600; }
+    .p4-event-title { font-family: 'Poppins', sans-serif; font-size: 14px; font-weight: 600; color: var(--brand-navy); }
+    .p4-event-body { font-size: 12.5px; color: var(--neutral-700); margin-top: 4px; line-height: 1.5; }
+
+    /* === PROTO 5: Hero compact + grid === */
+    .p5-hero {
+      background: #fff;
+      border: 1px solid var(--neutral-200);
+      border-radius: 14px;
+      padding: 0;
+      overflow: hidden;
+      margin-bottom: 14px;
+    }
+    .p5-hero-band {
+      background: linear-gradient(120deg, #EAF3DE 0%, #FAEEDA 100%);
+      padding: 14px 22px;
+      border-bottom: 1px solid var(--neutral-150);
+      display: flex; align-items: center; gap: 10px;
+    }
+    .p5-hero-band-icon {
+      width: 26px; height: 26px; border-radius: 50%;
+      background: rgba(255,255,255,0.7);
+      display: inline-flex; align-items: center; justify-content: center;
+      color: var(--status-warning-dark);
+    }
+    .p5-hero-band-text { font-size: 12.5px; color: var(--brand-navy); }
+    .p5-hero-band-text b { font-weight: 700; }
+    .p5-hero-body {
+      padding: 22px 24px;
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 18px; align-items: center;
+    }
+    .p5-hero-icon {
+      width: 56px; height: 56px;
+      background: var(--brand-navy);
+      color: #fff;
+      border-radius: 14px;
+      display: inline-flex; align-items: center; justify-content: center;
+    }
+    .p5-hero-name {
+      font-family: 'Poppins', sans-serif;
+      font-size: 22px; font-weight: 700;
+      color: var(--brand-navy);
+    }
+    .p5-hero-meta { display: flex; gap: 16px; margin-top: 6px; font-size: 12.5px; color: var(--neutral-600); }
+    .p5-grid {
+      display: grid;
+      grid-template-columns: 1.3fr 1fr;
+      gap: 14px;
+    }
+    .p5-section {
+      background: #fff;
+      border: 1px solid var(--neutral-200);
+      border-radius: 12px;
+      padding: 16px 18px;
+    }
+    .p5-decisao {
+      background: var(--brand-navy);
+      color: #fff;
+      border-radius: 14px;
+      padding: 18px 20px;
+      margin-top: 14px;
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      gap: 14px; align-items: center;
+    }
+    .p5-decisao-info { font-size: 12.5px; color: rgba(255,255,255,0.85); line-height: 1.4; }
+    .p5-decisao-info b { color: #fff; font-weight: 600; }
+    .p5-decisao .p4-aprovar { background: var(--brand-lime); }
+    .p5-decisao .p4-devolver { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.25); color: #fff; }
+
+    /* Resumo block */
+    .resumo {
+      background: var(--neutral-50);
+      border-left: 3px solid var(--brand-lime);
+      padding: 12px 14px;
+      border-radius: 0 8px 8px 0;
+      font-size: 12.5px;
+      color: var(--neutral-700);
+      line-height: 1.5;
+    }
+
+    .row-divider { height: 1px; background: var(--neutral-150); margin: 14px 0; }
+
+    .nota { background: var(--neutral-100); padding: 14px 18px; border-radius: 10px; font-size: 12.5px; color: var(--neutral-600); margin-top: 8px; }
+    .nota b { color: var(--brand-navy); }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <h1 class="doc-h1">5 Protótipos · Detalhes da Visita</h1>
+    <p class="doc-lead">Cada protótipo abaixo é uma reformulação completa do painel de detalhes, mantendo todos os mesmos dados e ações. Variam estrutura, hierarquia e estilo visual. Escolha um (ou misture pedaços) e me diz qual implementar.</p>
+
+    <!-- ============================================================ -->
+    <!-- PROTOTIPO 1 — Editorial em camadas (sidebar de decisão sticky) -->
+    <!-- ============================================================ -->
+    <div class="proto">
+      <span class="proto-tag">Protótipo 1 · Editorial 2 colunas</span>
+      <h2 class="proto-title">Sidebar com decisão sempre à vista</h2>
+      <p class="proto-desc">Conteúdo principal à esquerda (todo o relatório, mapa, divergências) e barra lateral compacta à direita com a decisão sempre visível enquanto vc rola. Bom pra aprovar várias visitas em sequência.</p>
+
+      <div class="proto-frame">
+        <div class="topbar">
+          <div class="topbar-titles">
+            <h1>Detalhes da visita</h1>
+            <div class="crumb"><b>Admin</b> › <b>Revisão</b> › <b>Detalhes</b></div>
+          </div>
+          <a class="back-btn"><span class="ms" style="font-size:14px;">arrow_back</span> Voltar</a>
+        </div>
+
+        <div class="body-area">
+
+          <!-- Hero -->
+          <div class="p1-hero">
+            <div class="p1-hero-inst">
+              <div class="p1-hero-icon"><span class="ms" style="font-size:24px;">local_hospital</span></div>
+              <div>
+                <div class="p1-hero-name">Hospital Ana Costa</div>
+                <div class="p1-hero-meta">
+                  <span class="p1-hero-meta-item"><span class="ms">person</span> Eduardo Marques</span>
+                  <span class="p1-hero-meta-item"><span class="ms">schedule</span> 3 min</span>
+                  <span class="p1-hero-meta-item"><span class="ms">event</span> 5 mai 2026</span>
+                </div>
+              </div>
+            </div>
+            <div class="p1-hero-side">
+              <span class="pill pill-rascunho"><span class="dot" style="background:var(--neutral-400);"></span> Rascunho</span>
+              <span class="pill pill-warning">2 divergências</span>
+            </div>
+          </div>
+
+          <!-- Grid: conteúdo + sidebar -->
+          <div class="p1-grid">
+            <div>
+              <!-- Divergências -->
+              <div class="card p1-section">
+                <div class="card-h"><span class="ms">flag</span> Divergências detectadas (2)</div>
+                <div class="div-row">
+                  <div class="icon"><span class="ms" style="font-size:16px;">location_off</span></div>
+                  <div>
+                    <div class="div-title">GPS divergente</div>
+                    <div class="div-desc">Check-in foi feito a 633 m do raio do hospital.</div>
+                  </div>
+                </div>
+                <div class="div-row" style="margin-bottom:0;">
+                  <div class="icon"><span class="ms" style="font-size:16px;">schedule</span></div>
+                  <div>
+                    <div class="div-title">Horário fora da margem</div>
+                    <div class="div-desc">Horário declarado está fora da janela de tolerância do check-in.</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Check-in / out -->
+              <div class="card p1-section" style="margin-top:14px;">
+                <div class="card-h"><span class="ms">my_location</span> Check-in / Check-out</div>
+                <div class="kv" style="margin-bottom:14px;">
+                  <span class="kv-label">Check-in</span>
+                  <span class="kv-value mono">5 mai 2026 · 20:27</span>
+                  <span class="kv-label">Check-out</span>
+                  <span class="kv-value mono">5 mai 2026 · 20:30</span>
+                  <span class="kv-label">Endereço entrada</span>
+                  <span class="kv-value">Rua João Carvalhal Filho · Campo Grande · Santos</span>
+                  <span class="kv-label">Precisão GPS</span>
+                  <span class="kv-value">±21 m</span>
+                </div>
+                <div class="map-toggles">
+                  <span class="map-toggle"><span class="dot" style="background:#8BC63F;"></span>Local</span>
+                  <span class="map-toggle active"><span class="dot" style="background:#fff;"></span>Check-in</span>
+                  <span class="map-toggle"><span class="dot" style="background:#F59E0B;"></span>Check-out</span>
+                </div>
+                <div class="map-fake">
+                  <span class="map-pin" style="background:#2563EB;left:42%;top:35%;"></span>
+                  <span class="map-pin" style="background:#8BC63F;right:18%;bottom:25%;"></span>
+                </div>
+                <div style="font-size:11px;color:var(--neutral-500);text-align:center;margin-top:6px;">Check-in a aprox. <b style="color:var(--status-warning-dark);font-weight:600;">633 m</b> do local</div>
+              </div>
+
+              <!-- Relatório -->
+              <div class="card p1-section" style="margin-top:14px;">
+                <div class="card-h"><span class="ms">description</span> Relatório</div>
+                <div class="kv" style="margin-bottom:14px;">
+                  <span class="kv-label">Empresa representada</span>
+                  <span class="kv-value" style="color:var(--status-warning-dark);">⚠ Não informada</span>
+                  <span class="kv-label">Horário declarado</span>
+                  <span class="kv-value mono">20:27:15 → 20:30:17 · 3 min</span>
+                  <span class="kv-label">Visita realizada</span>
+                  <span class="kv-value" style="color:var(--neutral-400);">—</span>
+                  <span class="kv-label">Profissionais</span>
+                  <span class="kv-value" style="color:var(--neutral-400);">Nenhum registrado</span>
+                  <span class="kv-label">Objetivos</span>
+                  <span class="kv-value" style="color:var(--neutral-400);">Nenhum registrado</span>
+                </div>
+                <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.05em;color:var(--neutral-500);font-weight:700;margin-bottom:6px;">Resumo da reunião <span style="color:var(--neutral-400);font-weight:500;text-transform:none;letter-spacing:0;">· 34 palavras</span></div>
+                <div class="resumo">Teste de gravação, verificando o funcionamento. Cheguei aqui no hospital às 16 horas e estou aguardando a direção. Me informaram que há uma reunião em andamento e vai atrasar por volta de duas horas.</div>
+                <div class="row-divider"></div>
+                <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.05em;color:var(--neutral-500);font-weight:700;margin-bottom:6px;">Próximos passos</div>
+                <div style="font-size:12.5px;color:var(--neutral-400);font-style:italic;">Sem próximos passos registrados.</div>
+              </div>
+            </div>
+
+            <!-- Sidebar decisão sticky -->
+            <div>
+              <div class="p1-decisao">
+                <div class="p1-decisao-h">Decisão final</div>
+                <div class="p1-decisao-sub"><b style="color:var(--status-warning-dark);">2 divergências</b> detectadas. Revise o mapa e o resumo antes de decidir.</div>
+                <button class="p1-aprovar"><span class="ms" style="font-size:16px;">verified</span> Aprovar visita</button>
+                <button class="p1-devolver"><span class="ms" style="font-size:16px;">undo</span> Devolver pro profissional</button>
+                <div class="row-divider"></div>
+                <div style="font-size:11px;color:var(--neutral-500);text-transform:uppercase;letter-spacing:0.05em;font-weight:700;margin-bottom:8px;">Resumo rápido</div>
+                <div style="font-size:12px;color:var(--neutral-700);line-height:1.55;">
+                  <strong style="color:var(--brand-navy);">Hospital Ana Costa</strong><br/>
+                  Eduardo Marques · 5 mai · 20:27<br/>
+                  Duração: <span class="mono">3 min</span><br/>
+                  GPS: 633 m do alvo
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+
+    <!-- ============================================================ -->
+    <!-- PROTOTIPO 2 — Single column · KPI top + sticky bottom bar     -->
+    <!-- ============================================================ -->
+    <div class="proto">
+      <span class="proto-tag">Protótipo 2 · Linear com KPIs</span>
+      <h2 class="proto-title">Hero escuro + 4 KPIs + barra de ações sticky</h2>
+      <p class="proto-desc">Hero navy com info da visita, 4 cards de KPI horizontais (duração, distância, divergências, status), depois conteúdo em coluna única e barra de aprovar/devolver fixa no fim. Estilo painel admin moderno.</p>
+
+      <div class="proto-frame">
+        <div class="topbar">
+          <div class="topbar-titles">
+            <h1>Detalhes da visita</h1>
+            <div class="crumb"><b>Admin</b> › <b>Revisão</b> › <b>Detalhes</b></div>
+          </div>
+          <a class="back-btn"><span class="ms" style="font-size:14px;">arrow_back</span> Voltar</a>
+        </div>
+
+        <div class="body-area" style="padding-bottom:0;">
+          <div class="p2-stack">
+
+            <div class="p2-hero">
+              <div class="p2-hero-icon"><span class="ms" style="font-size:24px;">local_hospital</span></div>
+              <div>
+                <div class="p2-hero-name">Hospital Ana Costa</div>
+                <div class="p2-hero-sub">Eduardo Marques · 5 mai 2026 · Santos / SP</div>
+              </div>
+              <span class="pill" style="background:rgba(255,255,255,0.12);color:#fff;">Rascunho</span>
+            </div>
+
+            <div class="p2-stat-grid">
+              <div class="p2-stat">
+                <div class="p2-stat-label">Duração</div>
+                <div class="p2-stat-value">3 min</div>
+                <div class="p2-stat-sub">20:27 → 20:30</div>
+              </div>
+              <div class="p2-stat" style="border-color:var(--status-warning);background:var(--status-warning-bg);">
+                <div class="p2-stat-label" style="color:var(--status-warning-dark);">Divergências</div>
+                <div class="p2-stat-value" style="color:var(--status-warning-dark);">2</div>
+                <div class="p2-stat-sub" style="color:var(--status-warning-dark);">GPS · Horário</div>
+              </div>
+              <div class="p2-stat">
+                <div class="p2-stat-label">Distância</div>
+                <div class="p2-stat-value">633 m</div>
+                <div class="p2-stat-sub">±21 m precisão</div>
+              </div>
+              <div class="p2-stat">
+                <div class="p2-stat-label">Resumo</div>
+                <div class="p2-stat-value">34 palavras</div>
+                <div class="p2-stat-sub">Sem próx. passos</div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-h"><span class="ms">flag</span> Divergências detectadas</div>
+              <div class="div-row">
+                <div class="icon"><span class="ms" style="font-size:16px;">location_off</span></div>
+                <div>
+                  <div class="div-title">GPS divergente</div>
+                  <div class="div-desc">Check-in foi feito a 633 m do raio do hospital.</div>
+                </div>
+              </div>
+              <div class="div-row" style="margin-bottom:0;">
+                <div class="icon"><span class="ms" style="font-size:16px;">schedule</span></div>
+                <div>
+                  <div class="div-title">Horário fora da margem</div>
+                  <div class="div-desc">Horário declarado está fora da janela de tolerância do check-in.</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-h"><span class="ms">my_location</span> Localização</div>
+              <div class="map-toggles">
+                <span class="map-toggle"><span class="dot" style="background:#8BC63F;"></span>Local</span>
+                <span class="map-toggle active"><span class="dot" style="background:#fff;"></span>Check-in</span>
+                <span class="map-toggle"><span class="dot" style="background:#F59E0B;"></span>Check-out</span>
+              </div>
+              <div class="map-fake" style="height:220px;">
+                <span class="map-pin" style="background:#2563EB;left:42%;top:35%;"></span>
+                <span class="map-pin" style="background:#8BC63F;right:18%;bottom:25%;"></span>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-h"><span class="ms">description</span> Relatório</div>
+              <div class="kv" style="margin-bottom:14px;">
+                <span class="kv-label">Empresa representada</span>
+                <span class="kv-value" style="color:var(--status-warning-dark);">⚠ Não informada</span>
+                <span class="kv-label">Horário declarado</span>
+                <span class="kv-value mono">20:27:15 → 20:30:17</span>
+                <span class="kv-label">Visita realizada</span>
+                <span class="kv-value" style="color:var(--neutral-400);">—</span>
+              </div>
+              <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.05em;color:var(--neutral-500);font-weight:700;margin-bottom:6px;">Resumo da reunião</div>
+              <div class="resumo">Teste de gravação, verificando o funcionamento. Cheguei aqui no hospital às 16 horas e estou aguardando a direção. Me informaram que há uma reunião em andamento e vai atrasar por volta de duas horas.</div>
+            </div>
+          </div>
+
+          <!-- Sticky bottom bar -->
+          <div class="p2-bar">
+            <div class="p2-bar-info">
+              <strong>Hospital Ana Costa</strong> ·
+              <b>2 divergências</b> · revise antes de decidir
+            </div>
+            <div class="p2-bar-actions">
+              <button class="p2-bar-devolver"><span class="ms" style="font-size:16px;">undo</span> Devolver</button>
+              <button class="p2-bar-aprovar"><span class="ms" style="font-size:16px;">verified</span> Aprovar visita</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- ============================================================ -->
+    <!-- PROTOTIPO 3 — Tabs/Abas com decisão lateral                   -->
+    <!-- ============================================================ -->
+    <div class="proto">
+      <span class="proto-tag">Protótipo 3 · Tabs + Decisão navy</span>
+      <h2 class="proto-title">Header + abas (Resumo / Localização / Relatório / Histórico)</h2>
+      <p class="proto-desc">Tabs no topo segregam o conteúdo, lista limpa e foco em uma seção por vez. Card "Decisão final" navy escuro à direita pra contrastar e chamar atenção.</p>
+
+      <div class="proto-frame">
+        <div class="topbar">
+          <div class="topbar-titles">
+            <h1>Detalhes da visita</h1>
+            <div class="crumb"><b>Admin</b> › <b>Revisão</b> › <b>Detalhes</b></div>
+          </div>
+          <a class="back-btn"><span class="ms" style="font-size:14px;">arrow_back</span> Voltar</a>
+        </div>
+
+        <div class="body-area">
+
+          <div class="p3-hero">
+            <div class="p1-hero-icon" style="width:46px;height:46px;border-radius:11px;"><span class="ms" style="font-size:22px;">local_hospital</span></div>
+            <div>
+              <div style="font-family:'Poppins',sans-serif;font-size:18px;font-weight:700;color:var(--brand-navy);">Hospital Ana Costa</div>
+              <div style="font-size:12px;color:var(--neutral-600);margin-top:2px;">
+                Eduardo Marques · 5 mai 2026, 20:27 · 3 min
+              </div>
+            </div>
+            <span class="pill pill-rascunho">Rascunho</span>
+          </div>
+
+          <div class="p3-tabs">
+            <span class="p3-tab"><span class="ms" style="font-size:16px;">summarize</span> Resumo</span>
+            <span class="p3-tab active"><span class="ms" style="font-size:16px;">flag</span> Divergências <span class="badge">2</span></span>
+            <span class="p3-tab"><span class="ms" style="font-size:16px;">my_location</span> Localização</span>
+            <span class="p3-tab"><span class="ms" style="font-size:16px;">description</span> Relatório</span>
+            <span class="p3-tab"><span class="ms" style="font-size:16px;">history</span> Histórico</span>
+          </div>
+
+          <div class="p3-content">
+            <div class="p3-grid">
+
+              <div>
+                <h3 style="font-family:'Poppins',sans-serif;font-size:15px;margin:0 0 10px;color:var(--brand-navy);">Divergências detectadas</h3>
+                <div class="div-row">
+                  <div class="icon"><span class="ms" style="font-size:16px;">location_off</span></div>
+                  <div>
+                    <div class="div-title">GPS divergente · 633 m do alvo</div>
+                    <div class="div-desc">O check-in foi registrado fora do raio definido pra esse hospital. Pode indicar que o profissional ainda estava no estacionamento, ou que houve marcação manual.</div>
+                  </div>
+                </div>
+                <div class="div-row" style="margin-bottom:0;">
+                  <div class="icon"><span class="ms" style="font-size:16px;">schedule</span></div>
+                  <div>
+                    <div class="div-title">Horário fora da margem</div>
+                    <div class="div-desc">O horário declarado pelo profissional não bate com o intervalo do check-in/check-out registrados pelo sistema.</div>
+                  </div>
+                </div>
+
+                <div class="row-divider"></div>
+
+                <h3 style="font-family:'Poppins',sans-serif;font-size:14px;margin:0 0 8px;color:var(--brand-navy);">Outros pontos de atenção</h3>
+                <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                  <span class="pill pill-warning">Empresa não informada</span>
+                  <span class="pill pill-warning">Sem profissionais</span>
+                  <span class="pill pill-warning">Sem objetivos</span>
+                  <span class="pill pill-warning">Sem próximos passos</span>
+                </div>
+              </div>
+
+              <div class="p3-decisao">
+                <div class="p3-decisao-h">Decisão final</div>
+                <div class="p3-decisao-sub">Revise antes de aprovar — essa visita tem <strong style="color:var(--brand-lime);">2 divergências</strong> e várias informações em branco.</div>
+                <div class="p3-decisao-actions">
+                  <button class="p3-aprovar"><span class="ms" style="font-size:16px;">verified</span> Aprovar visita</button>
+                  <button class="p3-devolver"><span class="ms" style="font-size:16px;">undo</span> Devolver pro profissional</button>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+
+    <!-- ============================================================ -->
+    <!-- PROTOTIPO 4 — Timeline/jornada                                -->
+    <!-- ============================================================ -->
+    <div class="proto">
+      <span class="proto-tag">Protótipo 4 · Timeline</span>
+      <h2 class="proto-title">Linha do tempo da visita</h2>
+      <p class="proto-desc">Vê a visita como uma sequência de eventos: check-in → atividades → check-out → divergências apontadas. Conta a história completa em ordem cronológica, fácil de auditar.</p>
+
+      <div class="proto-frame">
+        <div class="topbar">
+          <div class="topbar-titles">
+            <h1>Detalhes da visita</h1>
+            <div class="crumb"><b>Admin</b> › <b>Revisão</b> › <b>Detalhes</b></div>
+          </div>
+          <a class="back-btn"><span class="ms" style="font-size:14px;">arrow_back</span> Voltar</a>
+        </div>
+
+        <div class="body-area">
+
+          <div class="p4-hero">
+            <div>
+              <div class="p4-hero-name">Hospital Ana Costa</div>
+              <div class="p4-hero-meta">
+                <span class="p4-hero-meta-item"><span class="ms">person</span> Eduardo Marques</span>
+                <span class="p4-hero-meta-item"><span class="ms">event</span> 5 mai 2026</span>
+                <span class="p4-hero-meta-item"><span class="ms">schedule</span> 3 min</span>
+                <span class="p4-hero-meta-item"><span class="ms">flag</span> 2 divergências</span>
+              </div>
+            </div>
+            <div class="p4-actions">
+              <button class="p4-devolver"><span class="ms" style="font-size:15px;">undo</span> Devolver</button>
+              <button class="p4-aprovar"><span class="ms" style="font-size:16px;">verified</span> Aprovar</button>
+            </div>
+          </div>
+
+          <div class="p4-timeline">
+            <div class="p4-line"></div>
+
+            <div class="p4-event checkin">
+              <div class="p4-event-dot"><span class="ms" style="font-size:18px;">login</span></div>
+              <div>
+                <div class="p4-event-time">20:27 · 5 mai 2026</div>
+                <div class="p4-event-title">Check-in</div>
+                <div class="p4-event-body">
+                  Rua João Carvalhal Filho · Campo Grande · Santos<br/>
+                  <span class="mono" style="color:var(--neutral-500);">-23.95500, -46.33918</span> · ±21 m precisão
+                </div>
+              </div>
+            </div>
+
+            <div class="p4-event flag">
+              <div class="p4-event-dot"><span class="ms" style="font-size:18px;">location_off</span></div>
+              <div>
+                <div class="p4-event-time">Detectado automaticamente</div>
+                <div class="p4-event-title" style="color:var(--status-warning-dark);">GPS divergente · 633 m fora do raio</div>
+                <div class="p4-event-body">Check-in registrado a 633 m do ponto cadastrado pra esse hospital.</div>
+              </div>
+            </div>
+
+            <div class="p4-event activity">
+              <div class="p4-event-dot"><span class="ms" style="font-size:18px;">edit_note</span></div>
+              <div>
+                <div class="p4-event-time">Durante a visita · 3 min</div>
+                <div class="p4-event-title">Resumo registrado · 34 palavras</div>
+                <div class="p4-event-body">
+                  <div class="resumo" style="margin-top:8px;">Teste de gravação, verificando o funcionamento. Cheguei aqui no hospital às 16 horas e estou aguardando a direção. Me informaram que há uma reunião em andamento e vai atrasar por volta de duas horas.</div>
+                  <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;">
+                    <span class="pill pill-warning">Sem profissionais</span>
+                    <span class="pill pill-warning">Sem objetivos</span>
+                    <span class="pill pill-warning">Sem próximos passos</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="p4-event flag">
+              <div class="p4-event-dot"><span class="ms" style="font-size:18px;">schedule</span></div>
+              <div>
+                <div class="p4-event-time">Detectado automaticamente</div>
+                <div class="p4-event-title" style="color:var(--status-warning-dark);">Horário declarado fora da margem</div>
+                <div class="p4-event-body">O horário informado pelo profissional (20:27:15 → 20:30:17) não bate com a janela de tolerância do check-in/out registrados.</div>
+              </div>
+            </div>
+
+            <div class="p4-event checkout">
+              <div class="p4-event-dot"><span class="ms" style="font-size:18px;">logout</span></div>
+              <div>
+                <div class="p4-event-time">20:30 · 5 mai 2026</div>
+                <div class="p4-event-title">Check-out</div>
+                <div class="p4-event-body">
+                  Mesmo local · <span class="mono" style="color:var(--neutral-500);">-23.95494, -46.33915</span><br/>
+                  Duração total: 3 min
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+
+    <!-- ============================================================ -->
+    <!-- PROTOTIPO 5 — Hero compacto + grid                            -->
+    <!-- ============================================================ -->
+    <div class="proto">
+      <span class="proto-tag">Protótipo 5 · Hero + grid de cards</span>
+      <h2 class="proto-title">Banner de alerta no topo + grid 2 colunas + decisão navy no fim</h2>
+      <p class="proto-desc">Hero com banda colorida em cima quando tem divergências (alerta proeminente), depois 2 colunas com seções como cards. Decisão final como faixa navy no rodapé. Visualmente mais "produto SaaS" — bom pra apresentar.</p>
+
+      <div class="proto-frame">
+        <div class="topbar">
+          <div class="topbar-titles">
+            <h1>Detalhes da visita</h1>
+            <div class="crumb"><b>Admin</b> › <b>Revisão</b> › <b>Detalhes</b></div>
+          </div>
+          <a class="back-btn"><span class="ms" style="font-size:14px;">arrow_back</span> Voltar</a>
+        </div>
+
+        <div class="body-area">
+
+          <div class="p5-hero">
+            <div class="p5-hero-band">
+              <div class="p5-hero-band-icon"><span class="ms" style="font-size:14px;">flag</span></div>
+              <div class="p5-hero-band-text"><b>2 divergências</b> detectadas — GPS divergente e horário fora da margem.</div>
+            </div>
+            <div class="p5-hero-body">
+              <div class="p5-hero-icon"><span class="ms" style="font-size:26px;">local_hospital</span></div>
+              <div>
+                <div class="p5-hero-name">Hospital Ana Costa</div>
+                <div class="p5-hero-meta">
+                  <span class="p1-hero-meta-item"><span class="ms">person</span> Eduardo Marques</span>
+                  <span class="p1-hero-meta-item"><span class="ms">event</span> 5 mai 2026 · 20:27</span>
+                  <span class="p1-hero-meta-item"><span class="ms">schedule</span> 3 min</span>
+                </div>
+              </div>
+              <span class="pill pill-rascunho">Rascunho</span>
+            </div>
+          </div>
+
+          <div class="p5-grid">
+            <div>
+              <div class="p5-section">
+                <div class="card-h"><span class="ms">flag</span> Divergências (2)</div>
+                <div class="div-row">
+                  <div class="icon"><span class="ms" style="font-size:16px;">location_off</span></div>
+                  <div>
+                    <div class="div-title">GPS divergente</div>
+                    <div class="div-desc">Check-in feito a 633 m do raio do hospital.</div>
+                  </div>
+                </div>
+                <div class="div-row" style="margin-bottom:0;">
+                  <div class="icon"><span class="ms" style="font-size:16px;">schedule</span></div>
+                  <div>
+                    <div class="div-title">Horário fora da margem</div>
+                    <div class="div-desc">Declarado fora da janela de tolerância do check-in.</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="p5-section" style="margin-top:14px;">
+                <div class="card-h"><span class="ms">description</span> Relatório</div>
+                <div class="kv" style="margin-bottom:14px;">
+                  <span class="kv-label">Empresa</span>
+                  <span class="kv-value" style="color:var(--status-warning-dark);">Não informada</span>
+                  <span class="kv-label">Horário declarado</span>
+                  <span class="kv-value mono">20:27:15 → 20:30:17</span>
+                  <span class="kv-label">Profissionais</span>
+                  <span class="kv-value" style="color:var(--neutral-400);">Nenhum</span>
+                  <span class="kv-label">Objetivos</span>
+                  <span class="kv-value" style="color:var(--neutral-400);">Nenhum</span>
+                </div>
+                <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.05em;color:var(--neutral-500);font-weight:700;margin-bottom:6px;">Resumo · 34 palavras</div>
+                <div class="resumo">Teste de gravação, verificando o funcionamento. Cheguei aqui no hospital às 16 horas e estou aguardando a direção. Me informaram que há uma reunião em andamento e vai atrasar por volta de duas horas.</div>
+              </div>
+            </div>
+
+            <div>
+              <div class="p5-section">
+                <div class="card-h"><span class="ms">my_location</span> Localização</div>
+                <div class="kv" style="margin-bottom:12px;font-size:11.5px;">
+                  <span class="kv-label">Check-in</span>
+                  <span class="kv-value mono">5 mai · 20:27</span>
+                  <span class="kv-label">Check-out</span>
+                  <span class="kv-value mono">5 mai · 20:30</span>
+                  <span class="kv-label">Distância</span>
+                  <span class="kv-value" style="color:var(--status-warning-dark);">633 m do alvo</span>
+                  <span class="kv-label">Precisão</span>
+                  <span class="kv-value">±21 m</span>
+                </div>
+                <div class="map-toggles" style="margin-bottom:6px;">
+                  <span class="map-toggle"><span class="dot" style="background:#8BC63F;"></span>Local</span>
+                  <span class="map-toggle active"><span class="dot" style="background:#fff;"></span>Check-in</span>
+                  <span class="map-toggle"><span class="dot" style="background:#F59E0B;"></span>Check-out</span>
+                </div>
+                <div class="map-fake" style="height:200px;">
+                  <span class="map-pin" style="background:#2563EB;left:42%;top:35%;"></span>
+                  <span class="map-pin" style="background:#8BC63F;right:18%;bottom:25%;"></span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="p5-decisao">
+            <div class="p5-decisao-info">
+              <b>Decisão final</b> — 2 divergências e relatório com várias lacunas. Vc pode aprovar mesmo assim, ou devolver pro profissional revisar.
+            </div>
+            <button class="p4-devolver"><span class="ms" style="font-size:15px;">undo</span> Devolver</button>
+            <button class="p4-aprovar"><span class="ms" style="font-size:16px;">verified</span> Aprovar visita</button>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <div class="nota">
+      <b>Tip:</b> me diz "quero o N" (1 a 5) e implemento direto. Se quiser misturar (ex.: header do 5 + timeline do 4 + decisão do 3), também é possível.
+    </div>
+
+  </div>
+</body>
+</html>

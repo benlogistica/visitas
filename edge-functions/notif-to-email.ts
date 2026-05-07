@@ -1,5 +1,5 @@
 // =============================================================================
-// Edge Function: notif-to-email   |   versão 9.32.235
+// Edge Function: notif-to-email   |   versão 9.32.276
 // =============================================================================
 // Source-of-truth do código que está deployado no Supabase
 //   (Edge Functions → notif-to-email → Via Editor).
@@ -164,9 +164,10 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
       { auth: { autoRefreshToken: false, persistSession: false } }
     );
+    // Sprint 9.32.276: traz tb email_prefs pra respeitar opt-out individual
     const { data: user, error: errUser } = await supabase
       .from("usuarios")
-      .select("id, nome, email, status")
+      .select("id, nome, email, status, email_prefs")
       .eq("id", record.user_id)
       .maybeSingle();
 
@@ -192,6 +193,19 @@ Deno.serve(async (req) => {
     if (!meta) {
       // Tipo desconhecido — pula sem erro
       return new Response(JSON.stringify({ ok: true, skipped: `tipo "${record.tipo}" sem template` }), {
+        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Sprint 9.32.276: respeita opt-out individual do usuário (email_prefs).
+    // email_prefs é jsonb tipo { "tipo_x": false, "tipo_y": true }.
+    // - NULL/undefined → recebe TUDO (default)
+    // - Chave do tipo ausente → recebe (default)
+    // - Chave === false → NÃO recebe e-mail (sininho continua sempre)
+    if (user.email_prefs && typeof user.email_prefs === "object" && user.email_prefs[record.tipo] === false) {
+      return new Response(JSON.stringify({
+        ok: true, skipped: `opt-out individual do tipo "${record.tipo}"`, user_id: user.id,
+      }), {
         status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }

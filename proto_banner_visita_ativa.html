@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Protótipo · Banner Visita Ativa</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0&family=Poppins:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" />
+  <style>
+    :root {
+      --brand-navy: #0A1F5C;
+      --brand-lime: #8BC63F;
+      --brand-lime-dark: #6FA62E;
+      --neutral-50: #F9FAFB;
+      --neutral-100: #F3F4F6;
+      --neutral-150: #EDF0F4;
+      --neutral-200: #E5E7EB;
+      --neutral-300: #D1D5DB;
+      --neutral-400: #9CA3AF;
+      --neutral-500: #6B7280;
+      --neutral-600: #4B5563;
+      --neutral-700: #374151;
+      --status-success: #22A06B;
+      --status-warning: #EF9F27;
+      --status-warning-bg: #FAEEDA;
+      --status-warning-dark: #854F0B;
+      --status-danger: #E24B4A;
+      --status-danger-bg: #FCEBEB;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; padding: 32px 16px 60px;
+      background: #EEF1F4;
+      font-family: 'Inter', sans-serif;
+      color: var(--brand-navy);
+    }
+    .wrapper { max-width: 1240px; margin: 0 auto; }
+    h1 { font-family: 'Poppins',sans-serif; font-weight: 700; font-size: 22px; margin: 0 0 6px; }
+    .lead { font-size: 13.5px; color: var(--neutral-600); margin: 0 0 28px; line-height: 1.55; max-width: 880px; }
+    .ms { font-family: 'Material Symbols Rounded'; font-style: normal; line-height: 1; display: inline-block; vertical-align: middle; -webkit-font-feature-settings: 'liga'; }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+
+    .proto { background: var(--neutral-50); border: 1px solid var(--neutral-200); border-radius: 18px; padding: 18px 20px 22px; margin-bottom: 24px; }
+    .ptag { display: inline-flex; align-items: center; gap: 7px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--neutral-600); margin-bottom: 6px; }
+    .pn { font-family: 'Poppins',sans-serif; font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+    .pd { font-size: 12.5px; color: var(--neutral-600); margin-bottom: 16px; line-height: 1.55; max-width: 760px; }
+
+    /* Mobile frame */
+    .mob { display: inline-block; width: 380px; max-width: 100%; vertical-align: top; margin-right: 12px; margin-bottom: 12px; }
+    .mob-frame { background: #fff; border-radius: 22px; overflow: hidden; box-shadow: 0 8px 30px rgba(10,31,92,0.12); border: 1px solid var(--neutral-200); }
+    .mob-bar { background: var(--brand-navy); color: #fff; padding: 12px 16px; display: flex; align-items: center; gap: 10px; font-family: 'Poppins',sans-serif; font-size: 15px; font-weight: 700; }
+    .mob-bar .ms { font-size: 22px; }
+    .mob-body { background: var(--neutral-50); padding: 14px; min-height: 360px; }
+    .mob-card { background: #fff; border: 1px solid var(--neutral-200); border-radius: 10px; padding: 12px 14px; margin-bottom: 8px; }
+    .mob-card-name { font-family: 'Poppins',sans-serif; font-size: 13px; font-weight: 700; }
+    .mob-card-meta { font-size: 11.5px; color: var(--neutral-500); margin-top: 3px; }
+
+    /* Desktop frame */
+    .desk { background: #fff; border-radius: 14px; overflow: hidden; box-shadow: 0 4px 16px rgba(10,31,92,0.06); border: 1px solid var(--neutral-200); margin-bottom: 14px; }
+    .desk-side { background: var(--neutral-50); border-right: 1px solid var(--neutral-200); padding: 12px; width: 200px; flex-shrink: 0; font-size: 12px; }
+    .desk-side-item { padding: 7px 10px; border-radius: 7px; color: var(--neutral-600); display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+    .desk-side-item.active { background: #fff; color: var(--brand-navy); font-weight: 600; box-shadow: 0 1px 2px rgba(10,31,92,0.05); }
+    .desk-grid { display: flex; min-height: 200px; }
+    .desk-content { flex: 1; padding: 18px; }
+    .desk-h2 { font-family: 'Poppins',sans-serif; font-size: 17px; font-weight: 700; margin: 0 0 10px; }
+    .desk-fake-card { background: var(--neutral-50); border: 1px solid var(--neutral-200); border-radius: 10px; padding: 12px 14px; margin-bottom: 8px; font-size: 12.5px; color: var(--neutral-600); }
+
+    /* === BANNERS - 5 variações === */
+
+    /* V1 — Lime calmo (estado normal) */
+    .b1 {
+      background: linear-gradient(90deg, #EAF3DE 0%, #D9EAB6 100%);
+      border-bottom: 1px solid #97C459;
+      padding: 10px 16px;
+      display: flex; align-items: center; gap: 10px;
+      cursor: pointer;
+    }
+    .b1-icon { width: 32px; height: 32px; border-radius: 50%; background: var(--brand-lime); color: var(--brand-navy); display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 0 0 4px rgba(139,198,63,0.25); animation: pulseGreen 2s infinite; }
+    @keyframes pulseGreen {
+      0%, 100% { box-shadow: 0 0 0 4px rgba(139,198,63,0.25); }
+      50% { box-shadow: 0 0 0 7px rgba(139,198,63,0.05); }
+    }
+    .b1-info { flex: 1; min-width: 0; line-height: 1.3; }
+    .b1-label { font-size: 10.5px; color: #3B6D11; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
+    .b1-name { font-family: 'Poppins',sans-serif; font-size: 13px; font-weight: 700; color: #173404; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .b1-time { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; color: #173404; padding: 4px 9px; background: rgba(255,255,255,0.55); border-radius: 7px; flex-shrink: 0; }
+    .b1-cta { padding: 7px 14px; background: var(--brand-navy); color: #fff; border-radius: 9999px; font-size: 12.5px; font-weight: 700; display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0; }
+
+    /* V2 — Navy escuro elegante (system bar) */
+    .b2 {
+      background: var(--brand-navy);
+      color: #fff;
+      padding: 10px 16px;
+      display: flex; align-items: center; gap: 10px;
+      cursor: pointer;
+    }
+    .b2-pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--brand-lime); flex-shrink: 0; box-shadow: 0 0 0 4px rgba(139,198,63,0.3); animation: pulseLime 1.5s infinite; }
+    @keyframes pulseLime {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(139,198,63,0.6); }
+      70% { box-shadow: 0 0 0 8px rgba(139,198,63,0); }
+    }
+    .b2-info { flex: 1; min-width: 0; line-height: 1.3; }
+    .b2-label { font-size: 10.5px; color: rgba(255,255,255,0.65); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
+    .b2-name { font-family: 'Poppins',sans-serif; font-size: 13.5px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .b2-time { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; color: var(--brand-lime); flex-shrink: 0; }
+    .b2-cta { padding: 7px 14px; background: var(--brand-lime); color: var(--brand-navy); border-radius: 9999px; font-size: 12.5px; font-weight: 700; display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0; }
+
+    /* V3 — Mini ribbon discreto */
+    .b3 {
+      background: #fff;
+      border-bottom: 2px solid var(--brand-lime);
+      padding: 7px 14px;
+      display: flex; align-items: center; gap: 8px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    .b3-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--brand-lime); flex-shrink: 0; animation: pulseLime 1.5s infinite; }
+    .b3-text { flex: 1; min-width: 0; color: var(--brand-navy); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .b3-text b { font-weight: 700; }
+    .b3-time { font-family: 'JetBrains Mono', monospace; font-weight: 700; color: var(--brand-lime-dark); flex-shrink: 0; }
+    .b3-arrow { color: var(--brand-navy); font-size: 16px; flex-shrink: 0; }
+
+    /* V4 — Banner com ações duplas */
+    .b4 {
+      background: linear-gradient(90deg, #EAF3DE 0%, #FFFFFF 100%);
+      border-bottom: 1px solid var(--brand-lime);
+      padding: 10px 14px;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .b4-icon { width: 30px; height: 30px; border-radius: 8px; background: var(--brand-lime); color: var(--brand-navy); display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .b4-info { flex: 1; min-width: 0; line-height: 1.25; }
+    .b4-name { font-family: 'Poppins',sans-serif; font-size: 13px; font-weight: 700; color: var(--brand-navy); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .b4-meta { font-size: 11px; color: var(--neutral-600); margin-top: 1px; }
+    .b4-meta .mono { font-weight: 700; color: var(--brand-lime-dark); }
+    .b4-cta-prim { padding: 7px 13px; background: var(--brand-navy); color: #fff; border-radius: 8px; font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0; cursor: pointer; }
+    .b4-cta-sec { padding: 7px 11px; background: #fff; color: var(--brand-navy); border: 1px solid var(--neutral-200); border-radius: 8px; font-size: 12px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0; cursor: pointer; }
+
+    /* V5 — Banner que muda cor por tempo */
+    .b5 {
+      padding: 10px 16px;
+      display: flex; align-items: center; gap: 10px;
+      cursor: pointer;
+      transition: background 0.4s;
+    }
+    .b5.calmo { background: linear-gradient(90deg, #EAF3DE 0%, #D9EAB6 100%); border-bottom: 1px solid #97C459; }
+    .b5.atencao { background: linear-gradient(90deg, #FAEEDA 0%, #F4D9A1 100%); border-bottom: 1px solid #EF9F27; }
+    .b5.urgente { background: linear-gradient(90deg, #FCEBEB 0%, #F7C1C1 100%); border-bottom: 1px solid var(--status-danger); }
+    .b5-icon { width: 32px; height: 32px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .b5.calmo .b5-icon { background: var(--brand-lime); color: var(--brand-navy); }
+    .b5.atencao .b5-icon { background: var(--status-warning); color: #fff; }
+    .b5.urgente .b5-icon { background: var(--status-danger); color: #fff; animation: shake 0.6s infinite; }
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-2px); }
+      75% { transform: translateX(2px); }
+    }
+    .b5-info { flex: 1; min-width: 0; line-height: 1.3; }
+    .b5-label { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
+    .b5.calmo .b5-label { color: #3B6D11; }
+    .b5.atencao .b5-label { color: var(--status-warning-dark); }
+    .b5.urgente .b5-label { color: #791F1F; }
+    .b5-name { font-family: 'Poppins',sans-serif; font-size: 13px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .b5.calmo .b5-name { color: #173404; }
+    .b5.atencao .b5-name { color: var(--status-warning-dark); }
+    .b5.urgente .b5-name { color: #501313; }
+    .b5-time { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; padding: 4px 9px; background: rgba(255,255,255,0.55); border-radius: 7px; flex-shrink: 0; }
+    .b5-cta { padding: 7px 14px; border-radius: 9999px; font-size: 12.5px; font-weight: 700; display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0; }
+    .b5.calmo .b5-cta { background: var(--brand-navy); color: #fff; }
+    .b5.atencao .b5-cta { background: var(--status-warning-dark); color: #fff; }
+    .b5.urgente .b5-cta { background: var(--status-danger); color: #fff; }
+
+    .nota { background: var(--neutral-100); padding: 14px 18px; border-radius: 10px; font-size: 12.5px; color: var(--neutral-600); margin-top: 16px; line-height: 1.6; }
+    .nota b { color: var(--brand-navy); }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <h1>Protótipo · Banner de Visita Ativa</h1>
+    <p class="lead">Banner que aparece no topo de TODA tela do nutri (mobile e desktop) quando há check-in sem checkout. 5 variações de estilo + demo de mudança de cor por tempo decorrido.</p>
+
+    <!-- ============ V1 LIME CALMO ============ -->
+    <div class="proto">
+      <div class="ptag">Variação 1 · Lime calmo (estado padrão até 2h)</div>
+      <div class="pn">Banner suave verde com pulse no ícone</div>
+      <div class="pd">Aparece sempre que tem visita ativa. Click no banner → vai pra tela de checkout. Visual leve, não competindo demais com o conteúdo.</div>
+
+      <div class="mob">
+        <div style="font-size:11px;color:var(--neutral-500);margin-bottom:6px;font-weight:700;">📱 Mobile · qualquer tela do nutri</div>
+        <div class="mob-frame">
+          <div class="b1">
+            <div class="b1-icon"><span class="ms" style="font-size:18px;">my_location</span></div>
+            <div class="b1-info">
+              <div class="b1-label">Check-in ativo</div>
+              <div class="b1-name">Hospital Ana Costa</div>
+            </div>
+            <div class="b1-time">01:23</div>
+            <div class="b1-cta">Finalizar <span class="ms" style="font-size:14px;">arrow_forward</span></div>
+          </div>
+          <div class="mob-bar"><span class="ms">menu</span> Minhas visitas</div>
+          <div class="mob-body">
+            <div class="mob-card"><div class="mob-card-name">Hospital Ana Costa</div><div class="mob-card-meta">Hoje · 20:27 · Em andamento</div></div>
+            <div class="mob-card"><div class="mob-card-name">Santa Casa</div><div class="mob-card-meta">Ontem · 14:30 · 1h 12m</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:inline-block;vertical-align:top;width:calc(100% - 400px);min-width:300px;">
+        <div style="font-size:11px;color:var(--neutral-500);margin-bottom:6px;font-weight:700;">🖥 Desktop</div>
+        <div class="desk">
+          <div class="b1">
+            <div class="b1-icon"><span class="ms" style="font-size:18px;">my_location</span></div>
+            <div class="b1-info">
+              <div class="b1-label">Check-in ativo</div>
+              <div class="b1-name">Hospital Ana Costa · Campo Grande, Santos</div>
+            </div>
+            <div class="b1-time">01:23:42</div>
+            <div class="b1-cta">Finalizar visita <span class="ms" style="font-size:14px;">arrow_forward</span></div>
+          </div>
+          <div class="desk-grid">
+            <div class="desk-side">
+              <div class="desk-side-item"><span class="ms" style="font-size:16px;">home</span>Início</div>
+              <div class="desk-side-item active"><span class="ms" style="font-size:16px;">location_on</span>Visitas</div>
+              <div class="desk-side-item"><span class="ms" style="font-size:16px;">calendar_month</span>Agenda</div>
+              <div class="desk-side-item"><span class="ms" style="font-size:16px;">bar_chart</span>Indicadores</div>
+            </div>
+            <div class="desk-content">
+              <div class="desk-h2">Minhas visitas</div>
+              <div class="desk-fake-card">↳ tabela de visitas aqui (sem perder o banner em cima)</div>
+              <div class="desk-fake-card">↳ outra linha</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- ============ V2 NAVY ELEGANTE ============ -->
+    <div class="proto">
+      <div class="ptag">Variação 2 · Navy escuro (system bar)</div>
+      <div class="pn">Estilo "barra de sistema" — discreto mas premium</div>
+      <div class="pd">Banner navy escuro com indicador lime pulsante. Estilo "GitHub deploy in progress" / "Spotify tocando". Combina com o topbar navy do app.</div>
+
+      <div class="mob">
+        <div style="font-size:11px;color:var(--neutral-500);margin-bottom:6px;font-weight:700;">📱 Mobile</div>
+        <div class="mob-frame">
+          <div class="b2">
+            <span class="b2-pulse"></span>
+            <div class="b2-info">
+              <div class="b2-label">Check-in ativo</div>
+              <div class="b2-name">Hospital Ana Costa</div>
+            </div>
+            <div class="b2-time">01:23</div>
+            <div class="b2-cta">Finalizar</div>
+          </div>
+          <div class="mob-bar"><span class="ms">menu</span> Agenda</div>
+          <div class="mob-body">
+            <div class="mob-card"><div class="mob-card-name">Hoje · 5 mai</div><div class="mob-card-meta">2 visitas agendadas</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:inline-block;vertical-align:top;width:calc(100% - 400px);min-width:300px;">
+        <div style="font-size:11px;color:var(--neutral-500);margin-bottom:6px;font-weight:700;">🖥 Desktop</div>
+        <div class="desk">
+          <div class="b2">
+            <span class="b2-pulse"></span>
+            <div class="b2-info">
+              <div class="b2-label">Check-in ativo</div>
+              <div class="b2-name">Hospital Ana Costa · iniciado às 20:27</div>
+            </div>
+            <div class="b2-time">01:23:42</div>
+            <div class="b2-cta"><span class="ms" style="font-size:14px;">stop_circle</span>Finalizar visita</div>
+          </div>
+          <div class="desk-grid">
+            <div class="desk-side">
+              <div class="desk-side-item"><span class="ms" style="font-size:16px;">home</span>Início</div>
+              <div class="desk-side-item"><span class="ms" style="font-size:16px;">location_on</span>Visitas</div>
+              <div class="desk-side-item active"><span class="ms" style="font-size:16px;">calendar_month</span>Agenda</div>
+            </div>
+            <div class="desk-content">
+              <div class="desk-h2">Agenda</div>
+              <div class="desk-fake-card">Compromissos da semana</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- ============ V3 MINI RIBBON ============ -->
+    <div class="proto">
+      <div class="ptag">Variação 3 · Mini ribbon discreto</div>
+      <div class="pn">Faixa fininha (32px) — máxima economia de espaço</div>
+      <div class="pd">Banner ultra-fino com bullet pulsante + texto. Visualmente mínimo, ideal pra não atrapalhar telas com pouco espaço vertical (mobile pequeno).</div>
+
+      <div class="mob">
+        <div style="font-size:11px;color:var(--neutral-500);margin-bottom:6px;font-weight:700;">📱 Mobile</div>
+        <div class="mob-frame">
+          <div class="b3">
+            <span class="b3-dot"></span>
+            <span class="b3-text"><b>Check-in</b> · Hospital Ana Costa</span>
+            <span class="b3-time">01:23</span>
+            <span class="ms b3-arrow">arrow_forward_ios</span>
+          </div>
+          <div class="mob-bar"><span class="ms">menu</span> Indicadores</div>
+          <div class="mob-body">
+            <div class="mob-card"><div class="mob-card-name">Visitas no mês</div><div class="mob-card-meta">12</div></div>
+            <div class="mob-card"><div class="mob-card-name">Horas em campo</div><div class="mob-card-meta">14h 23m</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:inline-block;vertical-align:top;width:calc(100% - 400px);min-width:300px;">
+        <div style="font-size:11px;color:var(--neutral-500);margin-bottom:6px;font-weight:700;">🖥 Desktop</div>
+        <div class="desk">
+          <div class="b3">
+            <span class="b3-dot"></span>
+            <span class="b3-text"><b>Check-in ativo</b> · Hospital Ana Costa · iniciado às 20:27</span>
+            <span class="b3-time">01:23:42</span>
+            <span class="ms b3-arrow">arrow_forward_ios</span>
+          </div>
+          <div class="desk-grid">
+            <div class="desk-side">
+              <div class="desk-side-item"><span class="ms" style="font-size:16px;">home</span>Início</div>
+              <div class="desk-side-item active"><span class="ms" style="font-size:16px;">bar_chart</span>Indicadores</div>
+            </div>
+            <div class="desk-content">
+              <div class="desk-h2">Indicadores</div>
+              <div class="desk-fake-card">Gráficos do mês</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- ============ V4 BANNER COM 2 AÇÕES ============ -->
+    <div class="proto">
+      <div class="ptag">Variação 4 · Banner com 2 ações</div>
+      <div class="pn">Continuar relatório + Finalizar lado a lado</div>
+      <div class="pd">Mostra 2 ações: "Anotar" abre o relatório (continua na tela), "Finalizar" leva pro checkout. Útil porque a Paula disse que quer poder anotar SEM perder o checkout.</div>
+
+      <div class="mob">
+        <div style="font-size:11px;color:var(--neutral-500);margin-bottom:6px;font-weight:700;">📱 Mobile</div>
+        <div class="mob-frame">
+          <div class="b4">
+            <div class="b4-icon"><span class="ms" style="font-size:18px;">my_location</span></div>
+            <div class="b4-info">
+              <div class="b4-name">Hospital Ana Costa</div>
+              <div class="b4-meta">Check-in há <span class="mono">01:23</span></div>
+            </div>
+            <span class="b4-cta-sec"><span class="ms" style="font-size:13px;">edit_note</span></span>
+            <span class="b4-cta-prim"><span class="ms" style="font-size:13px;">stop_circle</span>Finalizar</span>
+          </div>
+          <div class="mob-bar"><span class="ms">menu</span> Itens padronizados</div>
+          <div class="mob-body">
+            <div class="mob-card"><div class="mob-card-name">Suplemento X</div><div class="mob-card-meta">Categoria · Marca</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:inline-block;vertical-align:top;width:calc(100% - 400px);min-width:300px;">
+        <div style="font-size:11px;color:var(--neutral-500);margin-bottom:6px;font-weight:700;">🖥 Desktop</div>
+        <div class="desk">
+          <div class="b4">
+            <div class="b4-icon"><span class="ms" style="font-size:18px;">my_location</span></div>
+            <div class="b4-info">
+              <div class="b4-name">Hospital Ana Costa · Campo Grande, Santos</div>
+              <div class="b4-meta">Iniciada às 20:27 · Há <span class="mono">01:23:42</span></div>
+            </div>
+            <span class="b4-cta-sec"><span class="ms" style="font-size:13px;">edit_note</span>Anotar relatório</span>
+            <span class="b4-cta-prim"><span class="ms" style="font-size:13px;">stop_circle</span>Finalizar visita</span>
+          </div>
+          <div class="desk-grid">
+            <div class="desk-side">
+              <div class="desk-side-item active"><span class="ms" style="font-size:16px;">inventory_2</span>Itens padronizados</div>
+            </div>
+            <div class="desk-content">
+              <div class="desk-h2">Itens padronizados</div>
+              <div class="desk-fake-card">Catálogo de itens</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- ============ V5 BANNER QUE ESCALA POR TEMPO ============ -->
+    <div class="proto">
+      <div class="ptag">Variação 5 · Cor escala por tempo decorrido</div>
+      <div class="pn">Visual lime → laranja → vermelho conforme passa tempo</div>
+      <div class="pd">Mesmo banner, mas a cor muda automaticamente: <strong style="color:#3B6D11;">verde até 2h</strong> → <strong style="color:var(--status-warning-dark);">amarelo de 2h a 4h</strong> → <strong style="color:#791F1F;">vermelho 4h+</strong> (com leve "shake" no ícone). Combina com banner persistente — adiciona urgência visual.</div>
+
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <div style="font-size:11px;color:var(--neutral-500);font-weight:700;">▼ Calmo (00:00 a 02:00)</div>
+        <div style="background:#fff;border-radius:10px;border:1px solid var(--neutral-200);overflow:hidden;">
+          <div class="b5 calmo">
+            <div class="b5-icon"><span class="ms" style="font-size:18px;">my_location</span></div>
+            <div class="b5-info">
+              <div class="b5-label">Check-in ativo</div>
+              <div class="b5-name">Hospital Ana Costa</div>
+            </div>
+            <div class="b5-time">01:23</div>
+            <div class="b5-cta">Finalizar <span class="ms" style="font-size:14px;">arrow_forward</span></div>
+          </div>
+        </div>
+
+        <div style="font-size:11px;color:var(--neutral-500);font-weight:700;margin-top:8px;">▼ Atenção (02:00 a 04:00)</div>
+        <div style="background:#fff;border-radius:10px;border:1px solid var(--neutral-200);overflow:hidden;">
+          <div class="b5 atencao">
+            <div class="b5-icon"><span class="ms" style="font-size:18px;">schedule</span></div>
+            <div class="b5-info">
+              <div class="b5-label">Atenção · Check-in há tempo</div>
+              <div class="b5-name">Hospital Ana Costa</div>
+            </div>
+            <div class="b5-time">02:47</div>
+            <div class="b5-cta">Finalizar <span class="ms" style="font-size:14px;">arrow_forward</span></div>
+          </div>
+        </div>
+
+        <div style="font-size:11px;color:var(--neutral-500);font-weight:700;margin-top:8px;">▼ Urgente (4h+ — auto-fechamento próximo)</div>
+        <div style="background:#fff;border-radius:10px;border:1px solid var(--neutral-200);overflow:hidden;">
+          <div class="b5 urgente">
+            <div class="b5-icon"><span class="ms" style="font-size:18px;">warning</span></div>
+            <div class="b5-info">
+              <div class="b5-label">Urgente · será auto-fechado em breve</div>
+              <div class="b5-name">Hospital Ana Costa</div>
+            </div>
+            <div class="b5-time">05:12</div>
+            <div class="b5-cta">Finalizar agora <span class="ms" style="font-size:14px;">arrow_forward</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="nota">
+      <b>Comportamento técnico do banner (qualquer variação):</b><br>
+      • Aparece em <b>todas as telas do nutri</b> (mobile + desktop) quando há visita ativa no banco<br>
+      • <b>Cross-platform:</b> se Paula fizer check-in no PC, ao abrir no iPhone o banner aparece (busca <code>getVisitaAtiva()</code>)<br>
+      • <b>Re-verificação automática</b> a cada 60s — se outra plataforma fechar a visita, banner some<br>
+      • <b>Click no banner</b> leva pra <code>/checkin/ativo</code> (botão de checkout)<br>
+      • <b>Não bloqueia navegação</b> — permite continuar usando o app sem perder visibilidade<br>
+      • <b>Sobrevive iOS matar o app:</b> ao reabrir em qualquer rota, banner re-renderiza<br>
+      • <b>beforeunload warning</b> (desktop): se tentar fechar a aba com visita ativa, browser pergunta "tem certeza?"
+    </div>
+
+    <div class="nota" style="background:#FAFEF5;border-left:3px solid var(--brand-lime);">
+      <b>Tip:</b> me diz qual variação (1, 2, 3, 4 ou 5) e implemento. Pode mesclar — ex: "estrutura da V1 + ações da V4 + escala de cor da V5".
+    </div>
+
+  </div>
+</body>
+</html>
