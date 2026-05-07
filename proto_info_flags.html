@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Protótipo · Info dos Tipos de Flag</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0&family=Poppins:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" />
+  <style>
+    :root {
+      --brand-navy: #0A1F5C;
+      --brand-lime: #8BC63F;
+      --neutral-100: #F3F4F6;
+      --neutral-150: #EDF0F4;
+      --neutral-200: #E5E7EB;
+      --neutral-300: #D1D5DB;
+      --neutral-400: #9CA3AF;
+      --neutral-500: #6B7280;
+      --neutral-600: #4B5563;
+      --neutral-700: #374151;
+      --status-warning: #EF9F27;
+      --status-warning-bg: #FAEEDA;
+      --status-warning-dark: #854F0B;
+      --status-info: #185FA5;
+      --status-info-bg: #E6F1FB;
+      --status-danger: #E24B4A;
+      --status-danger-bg: #FCEBEB;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 32px 16px 60px; background: #EEF1F4; font-family: 'Inter', sans-serif; color: var(--brand-navy); }
+    .wrapper { max-width: 1280px; margin: 0 auto; }
+    h1 { font-family: 'Poppins',sans-serif; font-weight: 700; font-size: 22px; margin: 0 0 6px; }
+    .lead { font-size: 13.5px; color: var(--neutral-600); margin: 0 0 24px; line-height: 1.55; }
+    .ms { font-family: 'Material Symbols Rounded'; font-style: normal; line-height: 1; display: inline-block; vertical-align: middle; -webkit-font-feature-settings: 'liga'; }
+
+    .proto { background: #F9FAFB; border: 1px solid var(--neutral-200); border-radius: 18px; padding: 18px 20px 22px; margin-bottom: 22px; }
+    .ptag { display: inline-flex; align-items: center; gap: 7px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--neutral-600); margin-bottom: 6px; }
+    .pn { font-family: 'Poppins',sans-serif; font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+    .pd { font-size: 12.5px; color: var(--neutral-600); margin-bottom: 14px; line-height: 1.55; }
+
+    .filter-bar { background: #fff; border: 1px solid var(--neutral-200); border-radius: 12px; padding: 14px 18px; min-height: 80px; }
+    .filter-row { display: flex; align-items: flex-end; gap: 14px; flex-wrap: wrap; }
+    .group { display: flex; flex-direction: column; gap: 5px; }
+    .label-row { display: flex; align-items: center; gap: 6px; font-size: 10.5px; font-weight: 700; color: var(--neutral-500); text-transform: uppercase; letter-spacing: 0.05em; }
+    .info-icon { width: 16px; height: 16px; border-radius: 50%; background: var(--neutral-100); color: var(--neutral-500); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.15s; }
+    .info-icon:hover { background: var(--brand-navy); color: #fff; }
+    .info-icon.active { background: var(--brand-navy); color: #fff; }
+
+    .select { background: #fff; padding: 8px 36px 8px 14px; border: 1px solid var(--neutral-200); border-radius: 10px; font-family: inherit; font-size: 13px; color: var(--brand-navy); }
+
+    .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+    .chip { display: inline-flex; align-items: center; gap: 5px; padding: 6px 11px; border-radius: 9999px; font-size: 12px; font-weight: 600; height: 30px; border: 1px solid; position: relative; }
+    .chip-dot { width: 6px; height: 6px; border-radius: 50%; }
+    .chip-num { font-family: 'JetBrains Mono', monospace; font-size: 10.5px; padding: 1px 7px; border-radius: 9999px; font-weight: 700; }
+    .chip-x { width: 14px; height: 14px; border-radius: 50%; background: rgba(0,0,0,0.06); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
+    .chip.danger { background: var(--status-danger-bg); color: #A32D2D; border-color: rgba(226,75,74,0.25); }
+    .chip.danger .chip-dot { background: var(--status-danger); }
+    .chip.danger .chip-num { background: #fff; color: var(--status-danger); }
+    .chip.warning { background: var(--status-warning-bg); color: var(--status-warning-dark); border-color: rgba(239,159,39,0.25); }
+    .chip.warning .chip-dot { background: var(--status-warning); }
+    .chip.warning .chip-num { background: #fff; color: var(--status-warning-dark); }
+    .chip.deep-orange { background: #FFF1E6; color: #9A3412; border-color: rgba(234,88,12,0.25); }
+    .chip.deep-orange .chip-dot { background: #EA580C; }
+    .chip.deep-orange .chip-num { background: #fff; color: #9A3412; }
+    .chip.info { background: var(--status-info-bg); color: #0C447C; border-color: rgba(24,95,165,0.25); }
+    .chip.info .chip-dot { background: var(--status-info); }
+    .chip.info .chip-num { background: #fff; color: var(--status-info); }
+
+    /* === Variação A: Tooltip simples ao hover === */
+    .va-icon { position: relative; }
+    .va-tooltip {
+      position: absolute; top: calc(100% + 8px); left: 0;
+      background: var(--brand-navy); color: #fff;
+      padding: 10px 14px; border-radius: 10px;
+      font-size: 12px; line-height: 1.5;
+      width: 320px; max-width: 90vw;
+      box-shadow: 0 6px 16px rgba(10,31,92,0.2);
+      z-index: 10;
+      display: none;
+    }
+    .va-icon:hover .va-tooltip { display: block; }
+    .va-tooltip::before { content: ''; position: absolute; top: -6px; left: 8px; width: 12px; height: 12px; background: var(--brand-navy); transform: rotate(45deg); }
+    .va-tooltip-row { display: flex; gap: 8px; padding: 6px 0; border-top: 1px solid rgba(255,255,255,0.15); }
+    .va-tooltip-row:first-of-type { border-top: 0; }
+    .va-tooltip-row b { color: var(--brand-lime); }
+
+    /* === Variação B: Popover ao clicar === */
+    .vb-popover {
+      position: absolute; top: calc(100% + 10px); left: 0;
+      background: #fff; border: 1px solid var(--neutral-200);
+      border-radius: 12px; padding: 14px;
+      width: 380px; max-width: 92vw;
+      box-shadow: 0 10px 30px rgba(10,31,92,0.15);
+      z-index: 10;
+    }
+    .vb-popover::before { content: ''; position: absolute; top: -7px; left: 10px; width: 12px; height: 12px; background: #fff; transform: rotate(45deg); border-left: 1px solid var(--neutral-200); border-top: 1px solid var(--neutral-200); }
+    .vb-row { display: flex; gap: 10px; padding: 8px 0; border-top: 1px solid var(--neutral-100); }
+    .vb-row:first-of-type { border-top: 0; padding-top: 0; }
+    .vb-row:last-of-type { padding-bottom: 0; }
+    .vb-icon { width: 32px; height: 32px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .vb-icon.danger { background: var(--status-danger-bg); color: var(--status-danger); }
+    .vb-icon.warning { background: var(--status-warning-bg); color: var(--status-warning-dark); }
+    .vb-icon.deep { background: #FFF1E6; color: #EA580C; }
+    .vb-icon.info { background: var(--status-info-bg); color: var(--status-info); }
+    .vb-text { flex: 1; }
+    .vb-title { font-family: 'Poppins',sans-serif; font-size: 13px; font-weight: 700; color: var(--brand-navy); margin-bottom: 3px; }
+    .vb-desc { font-size: 11.5px; color: var(--neutral-600); line-height: 1.4; }
+
+    /* === Variação C: Modal completo === */
+    .vc-overlay { position: fixed; inset: 0; background: rgba(10,31,92,0.4); display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 100; }
+    .vc-modal { background: #fff; border-radius: 16px; padding: 0; max-width: 560px; width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,0.3); overflow: hidden; }
+    .vc-modal-h { background: linear-gradient(120deg, #0A1F5C 0%, #1E3A8A 100%); color: #fff; padding: 18px 22px; display: flex; align-items: center; gap: 12px; }
+    .vc-modal-h .ms { font-size: 24px; }
+    .vc-modal-h-title { font-family: 'Poppins',sans-serif; font-size: 17px; font-weight: 700; flex: 1; }
+    .vc-modal-h-close { width: 32px; height: 32px; border-radius: 50%; background: rgba(255,255,255,0.15); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
+    .vc-modal-body { padding: 18px 22px; }
+    .vc-row { display: flex; gap: 14px; padding: 14px 0; border-top: 1px solid var(--neutral-100); }
+    .vc-row:first-of-type { border-top: 0; padding-top: 4px; }
+    .vc-row:last-of-type { padding-bottom: 4px; }
+    .vc-icon { width: 40px; height: 40px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .vc-icon.danger { background: var(--status-danger-bg); color: var(--status-danger); }
+    .vc-icon.warning { background: var(--status-warning-bg); color: var(--status-warning-dark); }
+    .vc-icon.deep { background: #FFF1E6; color: #EA580C; }
+    .vc-icon.info { background: var(--status-info-bg); color: var(--status-info); }
+    .vc-text { flex: 1; }
+    .vc-title { font-family: 'Poppins',sans-serif; font-size: 14px; font-weight: 700; color: var(--brand-navy); margin-bottom: 4px; display: flex; align-items: center; gap: 7px; }
+    .vc-pill { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 5px; text-transform: uppercase; letter-spacing: 0.05em; }
+    .vc-pill.alta { background: var(--status-danger); color: #fff; }
+    .vc-pill.media { background: var(--status-warning); color: #fff; }
+    .vc-pill.baixa { background: var(--status-info); color: #fff; }
+    .vc-desc { font-size: 12.5px; color: var(--neutral-600); line-height: 1.5; }
+
+    /* === Variação D: Tooltips individuais por chip === */
+    .vd-chip-info {
+      width: 14px; height: 14px; border-radius: 50%;
+      background: rgba(0,0,0,0.1); color: inherit;
+      display: inline-flex; align-items: center; justify-content: center;
+      cursor: help; flex-shrink: 0;
+      font-size: 10px; font-weight: 700;
+    }
+    .vd-chip { position: relative; }
+    .vd-tip {
+      position: absolute; bottom: calc(100% + 6px); left: 0;
+      background: var(--brand-navy); color: #fff;
+      padding: 8px 12px; border-radius: 8px;
+      font-size: 11.5px; line-height: 1.45;
+      width: 260px; max-width: 90vw;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      z-index: 10;
+      display: none;
+    }
+    .vd-chip:hover .vd-tip { display: block; }
+    .vd-tip::after { content: ''; position: absolute; bottom: -6px; left: 12px; width: 12px; height: 12px; background: var(--brand-navy); transform: rotate(45deg); }
+
+    /* === Variação E: Banner expansível === */
+    .ve-banner {
+      background: linear-gradient(120deg, #EAF3DE 0%, #DCE9C5 100%);
+      border: 1px solid #97C459;
+      border-radius: 10px;
+      margin-top: 14px;
+      overflow: hidden;
+    }
+    .ve-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 12px 14px; }
+    .ve-row { display: flex; gap: 8px; align-items: flex-start; }
+    .ve-icon { width: 26px; height: 26px; border-radius: 7px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .ve-icon.danger { background: rgba(226,75,74,0.15); color: var(--status-danger); }
+    .ve-icon.warning { background: rgba(239,159,39,0.15); color: var(--status-warning-dark); }
+    .ve-icon.deep { background: rgba(234,88,12,0.15); color: #EA580C; }
+    .ve-icon.info { background: rgba(24,95,165,0.15); color: var(--status-info); }
+    .ve-text { flex: 1; min-width: 0; }
+    .ve-title { font-size: 11.5px; font-weight: 700; color: var(--brand-navy); margin-bottom: 1px; }
+    .ve-desc { font-size: 10.5px; color: var(--neutral-700); line-height: 1.35; }
+    .ve-close-link { padding: 6px 12px; background: rgba(255,255,255,0.5); border-top: 1px solid rgba(151,196,89,0.4); font-size: 11px; color: #3B6D11; text-align: center; cursor: pointer; font-weight: 600; }
+
+    .nota { background: var(--neutral-100); padding: 14px 18px; border-radius: 10px; font-size: 12.5px; color: var(--neutral-600); margin-top: 16px; line-height: 1.6; }
+    .nota b { color: var(--brand-navy); }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <h1>Protótipo · Info dos Tipos de Flag</h1>
+    <p class="lead">Ícone que ao clicar/hover explica cada flag pra usuários novos. 5 opções de UX diferentes.</p>
+
+    <!-- VARIAÇÃO A: Tooltip simples ao hover -->
+    <div class="proto">
+      <div class="ptag">Variação A · Tooltip ao hover</div>
+      <div class="pn">Hover no ícone (i) e abre balão escuro com explicações</div>
+      <div class="pd">Mais simples. Hover sobre o (i) abre tooltip com todas as 4 flags + uma linha cada. Sem click. Bem leve, mas funciona só em desktop (mobile não tem hover).</div>
+      <div class="filter-bar">
+        <div class="filter-row">
+          <div class="group">
+            <span class="label-row">Profissional</span>
+            <select class="select"><option>Todos</option></select>
+          </div>
+          <div class="group">
+            <span class="label-row">
+              Tipo de flag
+              <span class="va-icon">
+                <span class="info-icon"><span class="ms" style="font-size:11px;">info</span></span>
+                <span class="va-tooltip">
+                  <div class="va-tooltip-row"><b>Sem check-in</b> · profissional não fez entrada/saída no app</div>
+                  <div class="va-tooltip-row"><b>GPS divergente</b> · check-in fora do raio do hospital</div>
+                  <div class="va-tooltip-row"><b>Fora da margem</b> · horário declarado não bate com check-in/out</div>
+                  <div class="va-tooltip-row"><b>Check-in manual</b> · entrada sem GPS (marcação manual)</div>
+                </span>
+              </span>
+            </span>
+            <div class="chips">
+              <span class="chip danger"><span class="chip-dot"></span>Sem check-in <span class="chip-num">0</span></span>
+              <span class="chip warning"><span class="chip-dot"></span>GPS divergente <span class="chip-num">1</span></span>
+              <span class="chip deep-orange"><span class="chip-dot"></span>Fora da margem <span class="chip-num">4</span></span>
+              <span class="chip info"><span class="chip-dot"></span>Check-in manual <span class="chip-num">1</span></span>
+            </div>
+          </div>
+          <div style="margin-left:auto;font-size:11.5px;color:var(--neutral-500);">Limpar filtros</div>
+        </div>
+      </div>
+      <p style="font-size:11.5px;color:var(--neutral-500);margin:10px 4px 0;font-style:italic;">↑ Passa o mouse sobre o (i) — não funciona em mobile</p>
+    </div>
+
+
+    <!-- VARIAÇÃO B: Popover ao clicar -->
+    <div class="proto">
+      <div class="ptag">Variação B · Popover ao clicar</div>
+      <div class="pn">Click no ícone abre painel branco com lista detalhada</div>
+      <div class="pd">Click no (i) abre popover branco com ícone colorido + título + descrição pra cada flag. Click fora fecha. Funciona em desktop e mobile. Boa quantidade de info.</div>
+      <div class="filter-bar">
+        <div class="filter-row">
+          <div class="group">
+            <span class="label-row">Profissional</span>
+            <select class="select"><option>Todos</option></select>
+          </div>
+          <div class="group" style="position:relative;">
+            <span class="label-row">
+              Tipo de flag
+              <span class="info-icon active"><span class="ms" style="font-size:11px;">info</span></span>
+            </span>
+            <div class="chips">
+              <span class="chip danger"><span class="chip-dot"></span>Sem check-in <span class="chip-num">0</span></span>
+              <span class="chip warning"><span class="chip-dot"></span>GPS divergente <span class="chip-num">1</span></span>
+              <span class="chip deep-orange"><span class="chip-dot"></span>Fora da margem <span class="chip-num">4</span></span>
+              <span class="chip info"><span class="chip-dot"></span>Check-in manual <span class="chip-num">1</span></span>
+            </div>
+            <!-- Popover (renderizado aberto pra demo) -->
+            <div class="vb-popover">
+              <div class="vb-row">
+                <div class="vb-icon danger"><span class="ms" style="font-size:18px;">do_not_disturb_on</span></div>
+                <div class="vb-text">
+                  <div class="vb-title">Sem check-in</div>
+                  <div class="vb-desc">O profissional não registrou entrada e/ou saída no app. Pode indicar visita não declarada ou esquecimento.</div>
+                </div>
+              </div>
+              <div class="vb-row">
+                <div class="vb-icon warning"><span class="ms" style="font-size:18px;">location_off</span></div>
+                <div class="vb-text">
+                  <div class="vb-title">GPS divergente</div>
+                  <div class="vb-desc">No check-in, o GPS estava fora do raio definido pra esse hospital. Pode ser estacionamento, deslocamento ou problema de sinal.</div>
+                </div>
+              </div>
+              <div class="vb-row">
+                <div class="vb-icon deep"><span class="ms" style="font-size:18px;">schedule</span></div>
+                <div class="vb-text">
+                  <div class="vb-title">Fora da margem</div>
+                  <div class="vb-desc">O horário declarado não bate com a janela de tolerância do check-in/out. Pode haver inconsistência no relatório.</div>
+                </div>
+              </div>
+              <div class="vb-row">
+                <div class="vb-icon info"><span class="ms" style="font-size:18px;">touch_app</span></div>
+                <div class="vb-text">
+                  <div class="vb-title">Check-in manual</div>
+                  <div class="vb-desc">O profissional marcou entrada sem GPS ativo. Válido, mas exige verificação extra (sem prova de localização).</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div style="margin-left:auto;font-size:11.5px;color:var(--neutral-500);">Limpar filtros</div>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- VARIAÇÃO C: Modal completo -->
+    <div class="proto">
+      <div class="ptag">Variação C · Modal completo</div>
+      <div class="pn">Click abre modal centralizado com explicação detalhada + nível de severidade</div>
+      <div class="pd">Click no (i) abre modal grande com cabeçalho navy. Cada flag tem ícone, título, badge de severidade (alta/média/baixa) e descrição completa. Mais "manual de instruções". Bom pra onboarding.</div>
+      <div class="filter-bar">
+        <div class="filter-row">
+          <div class="group">
+            <span class="label-row">Profissional</span>
+            <select class="select"><option>Todos</option></select>
+          </div>
+          <div class="group">
+            <span class="label-row">
+              Tipo de flag
+              <span class="info-icon active"><span class="ms" style="font-size:11px;">info</span></span>
+            </span>
+            <div class="chips">
+              <span class="chip danger"><span class="chip-dot"></span>Sem check-in <span class="chip-num">0</span></span>
+              <span class="chip warning"><span class="chip-dot"></span>GPS divergente <span class="chip-num">1</span></span>
+              <span class="chip deep-orange"><span class="chip-dot"></span>Fora da margem <span class="chip-num">4</span></span>
+              <span class="chip info"><span class="chip-dot"></span>Check-in manual <span class="chip-num">1</span></span>
+            </div>
+          </div>
+          <div style="margin-left:auto;font-size:11.5px;color:var(--neutral-500);">Limpar filtros</div>
+        </div>
+      </div>
+      <p style="font-size:11.5px;color:var(--neutral-500);margin:10px 4px 14px;font-style:italic;">↓ Modal que abre ao clicar (mostrado aqui pra preview):</p>
+      <div style="background:rgba(10,31,92,0.05);border-radius:12px;padding:20px;display:flex;justify-content:center;">
+        <div class="vc-modal" style="margin:0;">
+          <div class="vc-modal-h">
+            <span class="ms">flag</span>
+            <span class="vc-modal-h-title">Tipos de divergência (flags)</span>
+            <span class="vc-modal-h-close"><span class="ms" style="font-size:18px;">close</span></span>
+          </div>
+          <div class="vc-modal-body">
+            <div class="vc-row">
+              <div class="vc-icon danger"><span class="ms" style="font-size:20px;">do_not_disturb_on</span></div>
+              <div class="vc-text">
+                <div class="vc-title">Sem check-in <span class="vc-pill alta">Alta</span></div>
+                <div class="vc-desc">O profissional não registrou entrada e/ou saída no app. Pode indicar visita não declarada, esquecimento ou problema técnico no celular.</div>
+              </div>
+            </div>
+            <div class="vc-row">
+              <div class="vc-icon warning"><span class="ms" style="font-size:20px;">location_off</span></div>
+              <div class="vc-text">
+                <div class="vc-title">GPS divergente <span class="vc-pill media">Média</span></div>
+                <div class="vc-desc">No momento do check-in, o GPS do celular estava fora do raio definido pra esse hospital. Pode indicar que o profissional ainda estava no estacionamento, em deslocamento ou problemas com o sinal de GPS.</div>
+              </div>
+            </div>
+            <div class="vc-row">
+              <div class="vc-icon deep"><span class="ms" style="font-size:20px;">schedule</span></div>
+              <div class="vc-text">
+                <div class="vc-title">Fora da margem <span class="vc-pill media">Média</span></div>
+                <div class="vc-desc">O horário declarado pelo profissional no relatório não bate com a janela de tolerância do check-in/check-out registrados pelo sistema. Pode indicar inconsistência ou esquecimento de atualizar o horário.</div>
+              </div>
+            </div>
+            <div class="vc-row">
+              <div class="vc-icon info"><span class="ms" style="font-size:20px;">touch_app</span></div>
+              <div class="vc-text">
+                <div class="vc-title">Check-in manual <span class="vc-pill baixa">Baixa</span></div>
+                <div class="vc-desc">O profissional fez o check-in sem GPS ativo (marcou manualmente). Embora válido, exige verificação extra — não há comprovação de localização.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- VARIAÇÃO D: Tooltips individuais -->
+    <div class="proto">
+      <div class="ptag">Variação D · Tooltip por chip</div>
+      <div class="pn">Cada chip ganha um (?) próprio com tooltip ao hover</div>
+      <div class="pd">Sem ícone central. Cada chip tem um (?) no canto que abre tooltip específico daquele tipo. Mais distribuído, info chega na hora certa. Não polui se vc só quer saber sobre 1 flag.</div>
+      <div class="filter-bar">
+        <div class="filter-row">
+          <div class="group">
+            <span class="label-row">Profissional</span>
+            <select class="select"><option>Todos</option></select>
+          </div>
+          <div class="group">
+            <span class="label-row">Tipo de flag</span>
+            <div class="chips">
+              <span class="chip danger vd-chip"><span class="chip-dot"></span>Sem check-in <span class="chip-num">0</span><span class="vd-chip-info">?</span>
+                <span class="vd-tip">Profissional não fez entrada e/ou saída no app. Pode indicar visita não declarada ou esquecimento.</span>
+              </span>
+              <span class="chip warning vd-chip"><span class="chip-dot"></span>GPS divergente <span class="chip-num">1</span><span class="vd-chip-info">?</span>
+                <span class="vd-tip">No check-in, o GPS estava fora do raio do hospital. Pode ser estacionamento, deslocamento ou sinal fraco.</span>
+              </span>
+              <span class="chip deep-orange vd-chip"><span class="chip-dot"></span>Fora da margem <span class="chip-num">4</span><span class="vd-chip-info">?</span>
+                <span class="vd-tip">Horário declarado não bate com check-in/out registrado. Pode ser inconsistência no relatório.</span>
+              </span>
+              <span class="chip info vd-chip"><span class="chip-dot"></span>Check-in manual <span class="chip-num">1</span><span class="vd-chip-info">?</span>
+                <span class="vd-tip">Profissional marcou entrada sem GPS. Válido, mas sem prova de localização.</span>
+              </span>
+            </div>
+          </div>
+          <div style="margin-left:auto;font-size:11.5px;color:var(--neutral-500);">Limpar filtros</div>
+        </div>
+      </div>
+      <p style="font-size:11.5px;color:var(--neutral-500);margin:10px 4px 0;font-style:italic;">↑ Passa o mouse sobre o (?) de cada chip pra ver o tooltip</p>
+    </div>
+
+
+    <!-- VARIAÇÃO E: Banner expansível -->
+    <div class="proto">
+      <div class="ptag">Variação E · Banner expansível</div>
+      <div class="pn">Click no (i) abre painel verde abaixo dos chips com explicações lado a lado</div>
+      <div class="pd">Mais didático. Click no (i) revela um painel verde claro embaixo da barra de filtros, explicando todas as 4 flags em grid 2x2. Persiste até o user clicar "Entendi". Pode salvar preferência (não mostrar de novo).</div>
+      <div class="filter-bar">
+        <div class="filter-row">
+          <div class="group">
+            <span class="label-row">Profissional</span>
+            <select class="select"><option>Todos</option></select>
+          </div>
+          <div class="group">
+            <span class="label-row">
+              Tipo de flag
+              <span class="info-icon active"><span class="ms" style="font-size:11px;">info</span></span>
+            </span>
+            <div class="chips">
+              <span class="chip danger"><span class="chip-dot"></span>Sem check-in <span class="chip-num">0</span></span>
+              <span class="chip warning"><span class="chip-dot"></span>GPS divergente <span class="chip-num">1</span></span>
+              <span class="chip deep-orange"><span class="chip-dot"></span>Fora da margem <span class="chip-num">4</span></span>
+              <span class="chip info"><span class="chip-dot"></span>Check-in manual <span class="chip-num">1</span></span>
+            </div>
+          </div>
+          <div style="margin-left:auto;font-size:11.5px;color:var(--neutral-500);">Limpar filtros</div>
+        </div>
+        <div class="ve-banner">
+          <div class="ve-grid">
+            <div class="ve-row">
+              <div class="ve-icon danger"><span class="ms" style="font-size:14px;">do_not_disturb_on</span></div>
+              <div class="ve-text">
+                <div class="ve-title">Sem check-in</div>
+                <div class="ve-desc">Não registrou entrada e/ou saída no app.</div>
+              </div>
+            </div>
+            <div class="ve-row">
+              <div class="ve-icon warning"><span class="ms" style="font-size:14px;">location_off</span></div>
+              <div class="ve-text">
+                <div class="ve-title">GPS divergente</div>
+                <div class="ve-desc">Check-in fora do raio do hospital.</div>
+              </div>
+            </div>
+            <div class="ve-row">
+              <div class="ve-icon deep"><span class="ms" style="font-size:14px;">schedule</span></div>
+              <div class="ve-text">
+                <div class="ve-title">Fora da margem</div>
+                <div class="ve-desc">Horário declarado não bate com check-in/out.</div>
+              </div>
+            </div>
+            <div class="ve-row">
+              <div class="ve-icon info"><span class="ms" style="font-size:14px;">touch_app</span></div>
+              <div class="ve-text">
+                <div class="ve-title">Check-in manual</div>
+                <div class="ve-desc">Marcou entrada sem GPS ativo.</div>
+              </div>
+            </div>
+          </div>
+          <div class="ve-close-link">✓ Entendi · não mostrar de novo</div>
+        </div>
+      </div>
+    </div>
+
+
+    <div class="nota">
+      <b>Resumo das opções:</b><br>
+      • <b>A — Tooltip hover</b>: simples, leve. Não funciona em mobile.<br>
+      • <b>B — Popover click</b>: equilibrado. Boa quantidade de info, funciona em desktop+mobile.<br>
+      • <b>C — Modal completo</b>: didático, com badge de severidade. Bom pra onboarding.<br>
+      • <b>D — Tooltip por chip</b>: distribuído. Info na hora certa, sem poluir.<br>
+      • <b>E — Banner expansível</b>: mais visual, persistente. Pode "ensinar" todos os tipos de uma vez.<br>
+      <br>
+      Me diz qual prefere — sugiro <b>B</b> (equilíbrio) ou <b>C</b> (mais informativo) se for pra educar bastante.
+    </div>
+  </div>
+</body>
+</html>

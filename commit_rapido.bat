@@ -59,6 +59,21 @@ if exist "index.html" (
     git add index.html >nul 2>&1
 )
 
+REM ---- Sprint 9.32.313: valida index.html ANTES de commitar -----------
+REM Detecta truncagem (final do arquivo perdido), tags desbalanceadas, etc.
+REM Mesmo que o git pre-commit hook faca a mesma checagem, rodamos aqui
+REM tambem como dupla protecao (e pra mostrar o erro ANTES de pedir mensagem).
+if exist "scripts\validate-index.ps1" (
+    powershell -ExecutionPolicy Bypass -NoProfile -File "scripts\validate-index.ps1"
+    if errorlevel 1 (
+        echo.
+        echo [ERRO] Validacao do index.html falhou. Commit cancelado.
+        echo        Corrija o arquivo antes de tentar de novo.
+        pause
+        exit /b 1
+    )
+)
+
 REM ---- Mostra o que mudou -------------------------------------------
 echo Mudancas pendentes:
 echo ----------------------------------------------------------------------
