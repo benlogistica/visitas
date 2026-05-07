@@ -7662,7 +7662,7 @@ body.va-banner-active { padding-top: 56px; }
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.326-normalizacao-unificada',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.327-fix-mutacao-chart',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -36988,7 +36988,7 @@ window.rejeitarObjetivoPendente = async function(id) {
 let FAT_DATA = null;
 let _fatDataPromise = null;
 // __FAT_VERSION_START__ — substituído pelo atualizar_index.py com hash do JSON
-const FAT_DATA_VERSION = '62cb60492f3f';
+const FAT_DATA_VERSION = '1236c8540bcb';
 // __FAT_VERSION_END__
 const FAT_DATA_URL = 'faturamento_data_inline.json?v=' + FAT_DATA_VERSION;
 
@@ -42416,11 +42416,12 @@ function _fatRender() {
         _devsPorMesChart[d.ano_mes] = (_devsPorMesChart[d.ano_mes] || 0) + (d.valor_devolucao || 0);
       });
     }
-    // Mutar mensalChart pra cada bucket virar liquido
-    mensalChart.forEach(m => {
-      const dev = _devsPorMesChart[m.ano_mes] || 0;
-      m.faturamento = (m.faturamento || 0) - dev;
-    });
+    // Sprint 9.32.327: usa map-clone em vez de mutate, pra nao poluir mensal/FAT_DATA.mensal
+    // (mensalChart compartilhava referencia de objetos com mensal e FAT_DATA.mensal via .slice())
+    mensalChart = mensalChart.map(m => ({
+      ...m,
+      faturamento: (m.faturamento || 0) - (_devsPorMesChart[m.ano_mes] || 0),
+    }));
   }
 
   const ctx = document.getElementById('fatChartEvol');
@@ -51079,8 +51080,6 @@ window.filtrarProfLocal = function(termo) {
   const cards = document.querySelectorAll('#admProfList .visits-list__item');
   cards.forEach(card => {
     if (!t) { card.style.display = ''; return; }
-    const texto = card.textContent.toLowerCase();
-    card.style.display = texto.includes(t) ? '' : 'none';
   });
 };
 
