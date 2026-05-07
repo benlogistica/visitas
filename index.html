@@ -7662,7 +7662,7 @@ body.va-banner-active { padding-top: 56px; }
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.320-vendedor-pessoa-pf-pj-fix-nomes',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.321-liquido-em-todos-os-cards',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -36988,7 +36988,7 @@ window.rejeitarObjetivoPendente = async function(id) {
 let FAT_DATA = null;
 let _fatDataPromise = null;
 // __FAT_VERSION_START__ — substituído pelo atualizar_index.py com hash do JSON
-const FAT_DATA_VERSION = 'ae7aa3aa2ffa';
+const FAT_DATA_VERSION = 'a431d4779ad3';
 // __FAT_VERSION_END__
 const FAT_DATA_URL = 'faturamento_data_inline.json?v=' + FAT_DATA_VERSION;
 
@@ -38788,6 +38788,21 @@ window._fatAbrirVendedor = function(nome) {
     dados = FAT_DATA.vendedor_mes
       .filter(v => v.Vendedor === nome)
       .sort((a, b) => a.ano_mes.localeCompare(b.ano_mes));
+  }
+
+  // Sprint 9.32.321: subtrai devolucoes do faturamento de cada mes pra mostrar liquido
+  if (FAT_DATA.vendedor_devolucao_mes && !filtroAtivo) {
+    const devolucoesPorMes = {};
+    FAT_DATA.vendedor_devolucao_mes
+      .filter(vd => vd.Vendedor === nome)
+      .forEach(vd => {
+        devolucoesPorMes[vd.ano_mes] = (vd.valor_devolucao || 0);
+      });
+    dados.forEach(d => {
+      if (devolucoesPorMes[d.ano_mes]) {
+        d.faturamento = (d.faturamento || 0) - devolucoesPorMes[d.ano_mes];
+      }
+    });
   }
 
   if (dados.length === 0) {
@@ -42500,6 +42515,16 @@ function _fatRender() {
         vendedoresPeriodo[v.Vendedor].qtd_notas += v.qtd_notas;
       });
   }
+  // Sprint 9.32.321: subtrai devolucoes por vendedor pra mostrar liquido no ranking
+  if (FAT_DATA.vendedor_devolucao_mes) {
+    FAT_DATA.vendedor_devolucao_mes
+      .filter(vd => mensal.some(m => m.ano_mes === vd.ano_mes))
+      .forEach(vd => {
+        if (vendedoresPeriodo[vd.Vendedor]) {
+          vendedoresPeriodo[vd.Vendedor].faturamento -= (vd.valor_devolucao || 0);
+        }
+      });
+  }
   const vendArr = Object.entries(vendedoresPeriodo)
     .map(([nome, v]) => ({ nome, ...v, ticket: v.qtd_notas > 0 ? v.faturamento / v.qtd_notas : 0 }))
     .sort((a, b) => b.faturamento - a.faturamento);
@@ -42667,6 +42692,21 @@ function _fatRender() {
       dadosEmp = Object.values(agg).map(e => ({ ...e, ticket_medio: e.qtd_notas > 0 ? e.faturamento / e.qtd_notas : 0 }));
     } else {
       dadosEmp = FAT_DATA.empresa_total.slice();
+    }
+    // Sprint 9.32.321: subtrai devolucoes de empresa pra mostrar liquido
+    if (FAT_DATA.devolucoes_empresa_mes && !(f2.cliente && f2.cliente !== 'todos') && !(f2.vendedor && f2.vendedor !== 'todos')) {
+      const devolPorEmp = {};
+      FAT_DATA.devolucoes_empresa_mes
+        .filter(de => mesesSetEmp.has(de.ano_mes))
+        .forEach(de => {
+          devolPorEmp[de.Empresa] = (devolPorEmp[de.Empresa] || 0) + (de.valor_devolucao || 0);
+        });
+      dadosEmp.forEach(e => {
+        if (devolPorEmp[e.Empresa]) {
+          e.faturamento -= devolPorEmp[e.Empresa];
+          e.ticket_medio = e.qtd_notas > 0 ? e.faturamento / e.qtd_notas : 0;
+        }
+      });
     }
     dadosEmp.sort((a, b) => b.faturamento - a.faturamento);
 
@@ -50750,6 +50790,131 @@ async function carregarProfissionaisAdmin() {
   if (!listEl) return;
   try {
     // Carrega TODOS os profissionais (inclusive desativados), com nome da instituição
+    const { data: todos, error } = await db
+      .from('profissionais')
+      .select('*, instituicoes(nome)')
+      .order('nome');
+    if (error) throw new Error(error.message);
+
+    const ativos      = (todos || []).filter(p => p.ativo !== false);
+    const desativados = (todos || []).filter(p => p.ativo === false);
+
+    // Atualiza contadores das abas
+    const cnt = (id, n) => { const el = document.getElementById(id); if (el) el.textContent = n; };
+    cnt('cntProfAtivos',      ativos.length);
+    cnt('cntProfDesativados', desativados.length);
+
+    // Se não há NENHUM profissional, mostra onboarding + seed
+    if ((todos || []).length === 0) {
+      listEl.innerHTML = `
+        <div class="empty-state" style="margin:0;">
+          <div class="empty-state__icon">
+            <span class="material-symbols-rounded">stethoscope</span>
+          </div>
+          <div class="empty-state__title">Nenhum profissional cadastrado</div>
+          <div class="empty-state__desc">Cadastre um profissional de saúde (médico, enfermeiro, nutricionista) agora, ou popule com ~15 pra testar rápido.</div>
+          <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:8px;">
+            <button class="btn-auth btn-auth--primary" onclick="novoProfissionalAdmin()" style="display:inline-flex;text-decoration:none;width:auto;padding:12px 22px;min-height:auto;">
+              <span class="material-symbols-rounded" style="font-size:20px">person_add</span>
+              Cadastrar agora
+            </button>
+            <button class="btn-auth btn-auth--secondary" onclick="seedProfissionaisTeste()" style="display:inline-flex;text-decoration:none;width:auto;padding:12px 22px;min-height:auto;">
+              <span class="material-symbols-rounded" style="font-size:20px">auto_awesome</span>
+              Popular de teste
+            </button>
+          </div>
+        </div>
+      `;
+      const cntAba = document.getElementById('profContadorAba');
+      if (cntAba) cntAba.textContent = '';
+      return;
+    }
+
+    // Aplica filtro de aba
+    const filtro = window._profFilter || 'ativos';
+    const profs = filtro === 'desativados' ? desativados : ativos;
+
+    // Contador contextual da aba
+    const cntAba = document.getElementById('profContadorAba');
+    if (cntAba) {
+      const label = filtro === 'desativados' ? 'desativado(s)' : 'ativo(s)';
+      cntAba.innerHTML = profs.length > 0
+        ? `<strong>${profs.length}</strong> ${label}`
+        : '';
+    }
+
+    // Empty state contextual por aba
+    if (profs.length === 0) {
+      const empties = {
+        ativos: {
+          icon: 'stethoscope',
+          titulo: 'Nenhum profissional ativo',
+          desc: 'Cadastre um novo pelo botão acima.',
+        },
+        desativados: {
+          icon: 'person_off',
+          titulo: 'Nenhum desativado',
+          desc: 'Profissionais que você desativar aparecem aqui pra poder reativar.',
+        },
+      };
+      const e = empties[filtro];
+      listEl.innerHTML = `
+        <div class="empty-state" style="margin:0;">
+          <div class="empty-state__icon"><span class="material-symbols-rounded">${e.icon}</span></div>
+          <div class="empty-state__title">${e.titulo}</div>
+          <div class="empty-state__desc">${e.desc}</div>
+        </div>
+      `;
+      return;
+    }
+
+    // Renderiza cards (lista flat, hospital no subtítulo)
+    listEl.innerHTML = profs.map(p => {
+      const cardOpacity = p.ativo === false ? 'opacity:0.6;' : '';
+      const instName = p.instituicoes?.nome || 'Sem instituição';
+      return `
+        <div class="visits-list__item" data-id="${p.id}" onclick="editarProfissionalAdmin('${p.id}')" style="cursor:pointer;${cardOpacity}">
+          <div class="prof-dropdown-item__avatar" style="flex-shrink:0;">${iniciais(p.nome)}</div>
+          <div class="visits-list__info" style="min-width:0;">
+            <div class="visits-list__name" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+              <span style="min-width:0;overflow:hidden;text-overflow:ellipsis;">${p.nome.replace(/"/g,'&quot;')}</span>
+              <span style="font-size:10.5px;color:var(--brand-navy);background:var(--neutral-100);padding:2px 7px;border-radius:9999px;font-weight:600;">${labelProfissao(p)}</span>
+            </div>
+            <div class="visits-list__time" style="font-family:var(--font-body);">
+              <span class="material-symbols-rounded" style="font-size:13px;vertical-align:-2px;color:var(--neutral-400);">local_hospital</span>
+              ${instName.replace(/"/g,'&quot;')}
+            </div>
+          </div>
+          <span class="material-symbols-rounded" style="color:var(--neutral-300);font-size:18px;margin-left:4px;">chevron_right</span>
+        </div>
+      `;
+    }).join('');
+
+    // Destaca item vindo de busca global (?id=X)
+    destacarItemDaURL('#admProfList .visits-list__item[data-id="%ID%"]');
+
+    // Reaplica busca se houver texto digitado
+    const inp = document.getElementById('profBusca');
+    if (inp && inp.value) filtrarProfLocal(inp.value);
+  } catch (err) {
+    listEl.innerHTML = `<div style="padding:20px;color:var(--status-danger);">Erro: ${err.message}</div>`;
+  }
+}
+
+// Filtro local nos cards já renderizados
+window.filtrarProfLocal = function(termo) {
+  const t = (termo || '').trim().toLowerCase();
+  const cards = document.querySelectorAll('#admProfList .visits-list__item');
+  cards.forEach(card => {
+    if (!t) { card.style.display = ''; return; }
+    const texto = card.textContent.toLowerCase();
+    card.style.display = texto.includes(t) ? '' : 'none';
+  });
+};
+
+// Export CSV da aba atual
+window.exportarProfCSV = async function() {
+  try {
     const { data: todos, error } = await db
       .from('profissionais')
       .select('*, instituicoes(nome)')
