@@ -7662,7 +7662,7 @@ body.va-banner-active { padding-top: 56px; }
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.316-modal-vendedor-filtro-periodo',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.319-vendedor-cross-tables',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -36988,7 +36988,7 @@ window.rejeitarObjetivoPendente = async function(id) {
 let FAT_DATA = null;
 let _fatDataPromise = null;
 // __FAT_VERSION_START__ — substituído pelo atualizar_index.py com hash do JSON
-const FAT_DATA_VERSION = '5f7bb309f0f7';
+const FAT_DATA_VERSION = '8ddc6dbc2131';
 // __FAT_VERSION_END__
 const FAT_DATA_URL = 'faturamento_data_inline.json?v=' + FAT_DATA_VERSION;
 
@@ -38875,12 +38875,18 @@ window._fatAbrirVendedor = function(nome) {
   `;
   document.body.appendChild(backdrop);
 
-  // Sprint 9.32.316: renderiza conteudo do modal baseado no filtro selecionado
-  function renderModalBody(filtroAno) {
-    const dadosFiltrados = (filtroAno && filtroAno !== 'todos')
-      ? dados.filter(d => d.ano_mes.startsWith(filtroAno + '-'))
+  // Sprint 9.32.316: filtro por ano (select)
+  // Sprint 9.32.318: clique numa barra do chart filtra KPIs naquele mes (toggle)
+  let _filtroAnoModal = 'todos';
+  let _mesSelecionadoModal = null;
+
+  function renderModalBody() {
+    // Aplica filtro de ano (escopo do chart)
+    const dadosNoAno = (_filtroAnoModal && _filtroAnoModal !== 'todos')
+      ? dados.filter(d => d.ano_mes.startsWith(_filtroAnoModal + '-'))
       : dados;
-    if (dadosFiltrados.length === 0) {
+
+    if (dadosNoAno.length === 0) {
       document.getElementById('fatVendedorBody').innerHTML = `
         <div style="padding:40px 22px;text-align:center;color:var(--neutral-500);font-size:13px;">
           Sem dados para este período.
@@ -38888,16 +38894,28 @@ window._fatAbrirVendedor = function(nome) {
       `;
       return;
     }
-    const total = dadosFiltrados.reduce((s, d) => s + d.faturamento, 0);
-    const totalNotas = dadosFiltrados.reduce((s, d) => s + d.qtd_notas, 0);
-    const ticket = totalNotas > 0 ? total / totalNotas : 0;
-    const max = Math.max(...dadosFiltrados.map(d => d.faturamento), 1);
 
-    // Tendencia: so faz sentido com 6+ meses
+    // Sprint 9.32.318: se ha mes selecionado, KPIs olham so aquele mes; senao, todo o ano filtrado
+    const dadosKpi = _mesSelecionadoModal
+      ? dadosNoAno.filter(d => d.ano_mes === _mesSelecionadoModal)
+      : dadosNoAno;
+
+    // Se o mes selecionado nao existe no ano filtrado, limpa selecao
+    if (_mesSelecionadoModal && dadosKpi.length === 0) {
+      _mesSelecionadoModal = null;
+      return renderModalBody();
+    }
+
+    const total = dadosKpi.reduce((s, d) => s + d.faturamento, 0);
+    const totalNotas = dadosKpi.reduce((s, d) => s + d.qtd_notas, 0);
+    const ticket = totalNotas > 0 ? total / totalNotas : 0;
+    const max = Math.max(...dadosNoAno.map(d => d.faturamento), 1);
+
+    // Tendencia: so faz sentido com 6+ meses E sem mes selecionado
     let tendHtml = '';
-    if (dadosFiltrados.length >= 6) {
-      const u3 = dadosFiltrados.slice(-3).reduce((s, d) => s + d.faturamento, 0) / 3;
-      const a3 = dadosFiltrados.slice(-6, -3).reduce((s, d) => s + d.faturamento, 0) / 3;
+    if (!_mesSelecionadoModal && dadosNoAno.length >= 6) {
+      const u3 = dadosNoAno.slice(-3).reduce((s, d) => s + d.faturamento, 0) / 3;
+      const a3 = dadosNoAno.slice(-6, -3).reduce((s, d) => s + d.faturamento, 0) / 3;
       if (a3 > 0) {
         const delta = ((u3 / a3) - 1) * 100;
         const cor = delta >= 0 ? 'var(--status-success)' : 'var(--status-danger)';
@@ -38906,10 +38924,26 @@ window._fatAbrirVendedor = function(nome) {
       }
     }
 
+    // Sprint 9.32.318: chip mostrando mes selecionado (com botao X pra limpar)
+    const chipMesHtml = _mesSelecionadoModal ? `
+      <div style="padding:10px 22px;background:#F0F7E4;border-bottom:1px solid #D4E8B5;display:flex;align-items:center;gap:8px;font-size:12px;">
+        <span class="material-symbols-rounded" style="font-size:16px;color:var(--brand-lime-dark,#6FA62E);">filter_alt</span>
+        <span style="color:#3F7D0F;">Mostrando dados de <strong>${_mesLabel(_mesSelecionadoModal)}</strong></span>
+        <button onclick="window._fatLimparMesModal()" style="margin-left:auto;background:transparent;border:1px solid #97C459;color:#3F7D0F;padding:3px 9px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:4px;">
+          <span class="material-symbols-rounded" style="font-size:13px;">close</span>Ver tudo
+        </button>
+      </div>
+    ` : '';
+
+    const tituloKpi = _mesSelecionadoModal
+      ? `Faturamento em ${_mesLabel(_mesSelecionadoModal)}`
+      : 'Faturamento total';
+
     document.getElementById('fatVendedorBody').innerHTML = `
+      ${chipMesHtml}
       <div style="padding:18px 22px;display:grid;grid-template-columns:repeat(3,1fr);gap:12px;border-bottom:1px solid var(--neutral-200);">
         <div>
-          <div style="font-size:10.5px;color:var(--neutral-500);font-weight:700;letter-spacing:0.06em;text-transform:uppercase;">Faturamento total</div>
+          <div style="font-size:10.5px;color:var(--neutral-500);font-weight:700;letter-spacing:0.06em;text-transform:uppercase;">${tituloKpi}</div>
           <div style="font-family:var(--font-display);font-size:22px;font-weight:700;color:var(--brand-navy);margin-top:2px;">${_fmtMoeda(total)}</div>
         </div>
         <div>
@@ -38923,33 +38957,64 @@ window._fatAbrirVendedor = function(nome) {
       </div>
       ${tendHtml ? `<div style="padding:12px 22px;background:var(--neutral-50);border-bottom:1px solid var(--neutral-200);">${tendHtml}</div>` : ''}
       <div style="padding:18px 22px;">
-        <div style="font-size:13px;font-weight:700;color:var(--brand-navy);margin-bottom:10px;">Evolução mensal (${dadosFiltrados.length} ${dadosFiltrados.length === 1 ? 'mês' : 'meses'})</div>
+        <div style="font-size:13px;font-weight:700;color:var(--brand-navy);margin-bottom:4px;">Evolução mensal (${dadosNoAno.length} ${dadosNoAno.length === 1 ? 'mês' : 'meses'})</div>
+        <div style="font-size:10.5px;color:var(--neutral-500);margin-bottom:10px;">Toque numa barra pra filtrar os indicadores acima</div>
         <div style="display:flex;gap:6px;align-items:flex-end;height:140px;border-bottom:1.5px solid var(--neutral-200);padding-bottom:4px;">
-          ${dadosFiltrados.map(d => {
+          ${dadosNoAno.map(d => {
             const h = Math.max((d.faturamento / max) * 100, 2);
             const valLabel = _fmtMoeda(d.faturamento, true).replace('R$ ', '');
+            const isSelecionado = _mesSelecionadoModal === d.ano_mes;
+            const temSelecao = !!_mesSelecionadoModal;
+            // Visual: selecionado = darker, ativo. Outros (com selecao) = dimmed. Default = normal
+            const opacityBar = !temSelecao ? '1' : (isSelecionado ? '1' : '0.3');
+            const corBar = isSelecionado
+              ? 'linear-gradient(180deg,#5A8C28 0%,#3F7D0F 100%)'
+              : 'linear-gradient(180deg,var(--brand-lime) 0%,var(--brand-lime-dark, #6FA62E) 100%)';
+            const corLabel = !temSelecao ? 'var(--neutral-500)' : (isSelecionado ? 'var(--brand-navy)' : 'var(--neutral-400)');
+            const fontWeight = isSelecionado ? '700' : '400';
             return `
-              <div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:stretch;height:100%;gap:3px;cursor:default;" title="${_mesLabel(d.ano_mes)}: ${_fmtMoeda(d.faturamento)} · ${d.qtd_notas} notas">
-                <div style="font-size:8.5px;color:var(--neutral-500);text-align:center;line-height:1;">${valLabel}</div>
-                <div style="background:linear-gradient(180deg,var(--brand-lime) 0%,var(--brand-lime-dark, #6FA62E) 100%);height:${h}%;min-height:3px;border-radius:3px 3px 0 0;"></div>
+              <div onclick="window._fatToggleMesModal('${d.ano_mes}')"
+                   style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:stretch;height:100%;gap:3px;cursor:pointer;opacity:${opacityBar};transition:opacity 180ms;"
+                   title="${_mesLabel(d.ano_mes)}: ${_fmtMoeda(d.faturamento)} · ${d.qtd_notas} notas · clique pra filtrar">
+                <div style="font-size:8.5px;color:${corLabel};text-align:center;line-height:1;font-weight:${fontWeight};">${valLabel}</div>
+                <div style="background:${corBar};height:${h}%;min-height:3px;border-radius:3px 3px 0 0;"></div>
               </div>
             `;
           }).join('')}
         </div>
         <div style="display:flex;gap:6px;margin-top:4px;">
-          ${dadosFiltrados.map(d => `<div style="flex:1;text-align:center;font-size:9px;color:var(--neutral-500);transform:rotate(-45deg);transform-origin:center top;height:30px;">${_mesLabel(d.ano_mes)}</div>`).join('')}
+          ${dadosNoAno.map(d => {
+            const isSelecionado = _mesSelecionadoModal === d.ano_mes;
+            const cor = isSelecionado ? 'var(--brand-navy)' : 'var(--neutral-500)';
+            const fw = isSelecionado ? '700' : '400';
+            return `<div style="flex:1;text-align:center;font-size:9px;color:${cor};font-weight:${fw};transform:rotate(-45deg);transform-origin:center top;height:30px;">${_mesLabel(d.ano_mes)}</div>`;
+          }).join('')}
         </div>
       </div>
     `;
   }
 
-  // Render inicial (sem filtro)
-  renderModalBody('todos');
+  // Sprint 9.32.318: handlers globais pra clique nas barras / limpar selecao
+  window._fatToggleMesModal = function(anoMes) {
+    _mesSelecionadoModal = (_mesSelecionadoModal === anoMes) ? null : anoMes;
+    renderModalBody();
+  };
+  window._fatLimparMesModal = function() {
+    _mesSelecionadoModal = null;
+    renderModalBody();
+  };
 
-  // Liga onchange do select pra re-renderizar
+  // Render inicial (sem filtros)
+  renderModalBody();
+
+  // Liga onchange do select de ano pra re-renderizar
   const selPeriodo = document.getElementById('fatVendedorPeriodo');
   if (selPeriodo) {
-    selPeriodo.addEventListener('change', (e) => renderModalBody(e.target.value));
+    selPeriodo.addEventListener('change', (e) => {
+      _filtroAnoModal = e.target.value;
+      _mesSelecionadoModal = null; // limpa selecao de mes ao trocar ano
+      renderModalBody();
+    });
   }
 };
 
@@ -42486,6 +42551,18 @@ function _fatRender() {
         aggM[cm.Marca].qtd_itens += (cm.qtd_itens || 0);
       });
     marcasArr = Object.values(aggM).sort((a, b) => b.faturamento - a.faturamento).slice(0, 8);
+  }
+  // Sprint 9.32.319: filtro de vendedor usa vendedor_marca_mes
+  else if (_fM.vendedor && _fM.vendedor !== 'todos' && FAT_DATA.vendedor_marca_mes) {
+    const aggM = {};
+    FAT_DATA.vendedor_marca_mes
+      .filter(vm => vm.Vendedor === _fM.vendedor && mesesSetM.has(vm.ano_mes))
+      .forEach(vm => {
+        if (!aggM[vm.Marca]) aggM[vm.Marca] = { Marca: vm.Marca, faturamento: 0, qtd_notas: 0, qtd_itens: 0 };
+        aggM[vm.Marca].faturamento += vm.faturamento;
+        aggM[vm.Marca].qtd_notas += vm.qtd_notas;
+      });
+    marcasArr = Object.values(aggM).sort((a, b) => b.faturamento - a.faturamento).slice(0, 8);
   } else if (_fPerM && FAT_DATA.marcas_mes) {
     const aggM = {};
     FAT_DATA.marcas_mes
@@ -42565,6 +42642,18 @@ function _fatRender() {
         });
       dadosEmp = Object.values(agg).map(e => ({ ...e, ticket_medio: e.qtd_notas > 0 ? e.faturamento / e.qtd_notas : 0 }));
     }
+    // 1.5) Sprint 9.32.319: filtro de vendedor — usa vendedor_empresa_mes (cross-table nova)
+    else if (f2.vendedor && f2.vendedor !== 'todos' && FAT_DATA.vendedor_empresa_mes) {
+      const agg = {};
+      FAT_DATA.vendedor_empresa_mes
+        .filter(ve => ve.Vendedor === f2.vendedor && mesesSetEmp.has(ve.ano_mes))
+        .forEach(ve => {
+          if (!agg[ve.Empresa]) agg[ve.Empresa] = { Empresa: ve.Empresa, faturamento: 0, qtd_notas: 0 };
+          agg[ve.Empresa].faturamento += ve.faturamento;
+          agg[ve.Empresa].qtd_notas += ve.qtd_notas;
+        });
+      dadosEmp = Object.values(agg).map(e => ({ ...e, ticket_medio: e.qtd_notas > 0 ? e.faturamento / e.qtd_notas : 0 }));
+    }
     // 2) Filtro de período/mês — agrega empresa_mes pelo recorte
     else if (temFiltroPeriodoEmp && FAT_DATA.empresa_mes) {
       const agg = {};
@@ -42617,6 +42706,15 @@ function _fatRender() {
         <span>Total das empresas</span>
         <strong style="color:var(--brand-navy);font-family:var(--font-display);font-size:13px;">${_fmtMoeda(totalEmp)}</strong>
       </div>
+      ${consignadoPeriodo > 0 ? `
+        <div style="margin-top:10px;padding:10px 12px;background:#FEF7E6;border:1px solid #FCE0A8;border-radius:10px;display:flex;gap:8px;align-items:flex-start;font-size:11.5px;color:#92400E;line-height:1.4;">
+          <span class="material-symbols-rounded" style="font-size:16px;color:#BA7517;flex-shrink:0;margin-top:1px;">info</span>
+          <div>
+            <strong style="color:#633806;font-weight:700;">Consignado / remessa: ${_fmtMoeda(consignadoPeriodo)}</strong><br>
+            Esse valor está incluído no Faturamento Bruto do topo, mas não é atribuído a nenhuma empresa específica.
+          </div>
+        </div>
+      ` : ''}
     `;
   }
 
@@ -42729,6 +42827,37 @@ function _fatRender() {
         top = [];
         posicaoLabel = `<div style="font-size:11.5px;color:var(--neutral-500);font-style:italic;padding:8px;">Cliente filtrado não encontrado no período.</div>`;
       }
+    } else if (window._fatFiltro.vendedor && window._fatFiltro.vendedor !== 'todos' && FAT_DATA.cliente_vendedor_mes) {
+      // Sprint 9.32.319: filtro de vendedor usa cliente_vendedor_mes (ja existia)
+      const _vendTC = window._fatFiltro.vendedor;
+      const _fTCv = window._fatFiltro;
+      const temPerTCv = (_fTCv.periodo && _fTCv.periodo !== 'todos') || (_fTCv.mes && _fTCv.mes !== 'todos');
+      const mesesSetTCv = _fatDevMesesFiltrados();
+      const metaTCv = {};
+      (FAT_DATA.clientes_lista || []).forEach(c => { metaTCv[c.cnpj] = c; });
+      const aggTCv = {};
+      FAT_DATA.cliente_vendedor_mes.forEach(cv => {
+        if (cv.Vendedor !== _vendTC) return;
+        if (temPerTCv && !mesesSetTCv.has(cv.ano_mes)) return;
+        const cnpj = cv['CNPJ/CPF'];
+        if (!aggTCv[cnpj]) {
+          const m = metaTCv[cnpj] || {};
+          aggTCv[cnpj] = {
+            'Cliente (Nome Fantasia)': m.nome || '—',
+            'CNPJ/CPF': cnpj,
+            Cidade: m.cidade || '—',
+            Estado: m.estado || '—',
+            faturamento: 0,
+            qtd_notas: 0,
+          };
+        }
+        aggTCv[cnpj].faturamento += cv.faturamento;
+        aggTCv[cnpj].qtd_notas += cv.qtd_notas || 0;
+      });
+      top = Object.values(aggTCv)
+        .filter(c => c.faturamento > 0)
+        .sort((a, b) => b.faturamento - a.faturamento)
+        .slice(0, 15);
     } else {
       // Sprint 9.32.89: aplica filtro de período recalculando de clientes_mes
       const _fTC = window._fatFiltro;
@@ -42802,6 +42931,21 @@ function _fatRender() {
       } else {
         topEst = [];
       }
+    } else if (window._fatFiltro.vendedor && window._fatFiltro.vendedor !== 'todos' && FAT_DATA.vendedor_estado_mes) {
+      // Sprint 9.32.319: filtro de vendedor usa vendedor_estado_mes
+      const _vendE = window._fatFiltro.vendedor;
+      const _fEv = window._fatFiltro;
+      const temPerEv = (_fEv.periodo && _fEv.periodo !== 'todos') || (_fEv.mes && _fEv.mes !== 'todos');
+      const mesesSetEv = _fatDevMesesFiltrados();
+      const aggEv = {};
+      FAT_DATA.vendedor_estado_mes.forEach(ve => {
+        if (ve.Vendedor !== _vendE) return;
+        if (temPerEv && !mesesSetEv.has(ve.ano_mes)) return;
+        if (!aggEv[ve.Estado]) aggEv[ve.Estado] = { Estado: ve.Estado, faturamento: 0, qtd_clientes: 0 };
+        aggEv[ve.Estado].faturamento += ve.faturamento;
+        aggEv[ve.Estado].qtd_clientes = Math.max(aggEv[ve.Estado].qtd_clientes, ve.qtd_clientes);
+      });
+      topEst = Object.values(aggEv).filter(e => e.faturamento > 0).sort((a, b) => b.faturamento - a.faturamento).slice(0, 10);
     } else {
       // Sprint 9.32.89: filtro de período recalcula de estados_mes
       const _fE = window._fatFiltro;
@@ -42867,6 +43011,28 @@ function _fatRender() {
           aggP[k].qtd_itens += (cp.qtd_itens || 0);
         });
       top = Object.values(aggP).sort((a, b) => b.faturamento - a.faturamento).slice(0, limit);
+    } else if (window._fatFiltro.vendedor && window._fatFiltro.vendedor !== 'todos' && FAT_DATA.vendedor_produto_mes) {
+      // Sprint 9.32.319: filtro de vendedor usa vendedor_produto_mes
+      const _vendP = window._fatFiltro.vendedor;
+      const _fPv = window._fatFiltro;
+      const temPerPv = (_fPv.periodo && _fPv.periodo !== 'todos') || (_fPv.mes && _fPv.mes !== 'todos');
+      const mesesSetPv = _fatDevMesesFiltrados();
+      const aggPv = {};
+      FAT_DATA.vendedor_produto_mes.forEach(vp => {
+        if (vp.Vendedor !== _vendP) return;
+        if (temPerPv && !mesesSetPv.has(vp.ano_mes)) return;
+        const k = vp['Código do Produto'];
+        if (!aggPv[k]) aggPv[k] = {
+          'Código do Produto': k,
+          'Descrição do Produto': vp['Descrição do Produto'],
+          'Marca': vp.Marca,
+          faturamento: 0,
+          qtd_itens: 0,
+        };
+        aggPv[k].faturamento += vp.faturamento;
+        aggPv[k].qtd_itens += (vp.qtd_itens || 0);
+      });
+      top = Object.values(aggPv).sort((a, b) => b.faturamento - a.faturamento).slice(0, limit);
     } else {
       // Sprint 9.32.89: filtro de período recalcula de produtos_mes
       const _fP = window._fatFiltro;
