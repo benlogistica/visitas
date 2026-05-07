@@ -7655,7 +7655,7 @@ body.va-banner-active { padding-top: 56px; }
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.300-banner-visita-ativa',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.302-banner-em-todas-telas',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -11107,21 +11107,60 @@ function _vaBannerHTML(visita) {
   }
 
   const inst = (visita.instituicoes?.nome || 'Instituição').replace(/"/g, '&quot;');
+  // Sprint 9.32.301: click no corpo abre tela ativa; click no botão dispara checkout direto (com GPS)
   return `
-    <div class="va-banner ${estado}" onclick="window.location.hash='#/checkin/ativo'">
+    <div class="va-banner ${estado}" onclick="vaAbrirTelaAtiva()">
       <div class="va-icon"><span class="material-symbols-rounded" style="font-size:18px;">${icone}</span></div>
       <div class="va-info">
         <div class="va-label">${label}</div>
         <div class="va-name">${inst}</div>
       </div>
       <div class="va-time">${tempoStr}</div>
-      <button class="va-cta" onclick="event.stopPropagation();window.location.hash='#/checkin/ativo'">
-        <span class="material-symbols-rounded" style="font-size:14px;">arrow_forward</span>
+      <button class="va-cta" onclick="event.stopPropagation();vaFinalizarDireto()">
+        <span class="material-symbols-rounded" style="font-size:14px;">stop_circle</span>
         <span class="va-cta-text">${ctaTxt}</span>
       </button>
     </div>
   `;
 }
+
+// Sprint 9.32.301: navega pra tela ativa (a partir do click no corpo do banner)
+// Sprint 9.32.302: se já tá na tela ativa, banner aparece mas click no corpo não faz nada
+window.vaAbrirTelaAtiva = function() {
+  if ((window.location.hash || '').startsWith('#/checkin/ativo')) return;
+  window.location.hash = '#/checkin/ativo';
+};
+
+// Sprint 9.32.301: dispara checkout direto a partir do banner (1-click flow)
+// Setup: prepara window._activeVisitaId/Cache (que handleCheckoutAtivo precisa) e chama o handler
+window.vaFinalizarDireto = async function() {
+  if (typeof bloqueioSimulacao === 'function' && await bloqueioSimulacao('finalizar check-in')) return;
+
+  // Pega visita do cache do banner (já buscamos recentemente). Se não tem, força refetch.
+  let visita = (typeof _vaBannerCache !== 'undefined') ? _vaBannerCache.visita : null;
+  if (!visita) {
+    try { visita = await getVisitaAtiva(); } catch (e) { visita = null; }
+  }
+  if (!visita) {
+    alert('Não encontrei visita ativa pra finalizar. Recarregue a página e tente de novo.');
+    return;
+  }
+
+  // Setup do estado que handleCheckoutAtivo espera
+  window._activeVisitaId = visita.id;
+  window._activeVisitaCache = {
+    id: visita.id,
+    checkin_timestamp: visita.checkin_timestamp,
+    instituicao_nome: visita.instituicoes?.nome || 'Instituição',
+  };
+
+  if (typeof handleCheckoutAtivo === 'function') {
+    handleCheckoutAtivo();
+  } else {
+    // fallback: navega
+    window.location.hash = '#/checkin/ativo';
+  }
+};
 
 // Cache pra evitar refetch desnecessário em re-renders rápidos do router
 let _vaBannerCache = { visita: null, fetchedAt: 0 };
@@ -11146,6 +11185,9 @@ async function atualizarBannerVisitaAtiva({ force = false } = {}) {
     document.body.classList.remove('va-banner-active');
     return;
   }
+
+  // Sprint 9.32.302: banner aparece em TODAS as telas, inclusive /checkin/ativo
+  // (consistência visual — banner é "barra de status global", não call-to-action condicional)
 
   // Usa cache se ainda fresco e não é forced
   let visita = _vaBannerCache.visita;
@@ -36438,7 +36480,7 @@ window.rejeitarObjetivoPendente = async function(id) {
 let FAT_DATA = null;
 let _fatDataPromise = null;
 // __FAT_VERSION_START__ — substituído pelo atualizar_index.py com hash do JSON
-const FAT_DATA_VERSION = '5646e06a2403';
+const FAT_DATA_VERSION = '11f01e2c656d';
 // __FAT_VERSION_END__
 const FAT_DATA_URL = 'faturamento_data_inline.json?v=' + FAT_DATA_VERSION;
 
