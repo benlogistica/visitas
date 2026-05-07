@@ -7662,7 +7662,7 @@ body.va-banner-active { padding-top: 56px; }
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.325-normalizar-painel-ao-liquido',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.326-normalizacao-unificada',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -36988,7 +36988,7 @@ window.rejeitarObjetivoPendente = async function(id) {
 let FAT_DATA = null;
 let _fatDataPromise = null;
 // __FAT_VERSION_START__ — substituído pelo atualizar_index.py com hash do JSON
-const FAT_DATA_VERSION = '45e5c0aa4268';
+const FAT_DATA_VERSION = '62cb60492f3f';
 // __FAT_VERSION_END__
 const FAT_DATA_URL = 'faturamento_data_inline.json?v=' + FAT_DATA_VERSION;
 
@@ -42725,33 +42725,15 @@ function _fatRender() {
     } else {
       dadosEmp = FAT_DATA.empresa_total.slice();
     }
-    // Sprint 9.32.321: subtrai devolucoes de empresa pra mostrar liquido
-    if (FAT_DATA.devolucoes_empresa_mes && !(f2.cliente && f2.cliente !== 'todos') && !(f2.vendedor && f2.vendedor !== 'todos')) {
-      const devolPorEmp = {};
-      FAT_DATA.devolucoes_empresa_mes
-        .filter(de => mesesSetEmp.has(de.ano_mes))
-        .forEach(de => {
-          devolPorEmp[de.Empresa] = (devolPorEmp[de.Empresa] || 0) + (de.valor_devolucao || 0);
-        });
-      dadosEmp.forEach(e => {
-        if (devolPorEmp[e.Empresa]) {
-          e.faturamento -= devolPorEmp[e.Empresa];
-          e.ticket_medio = e.qtd_notas > 0 ? e.faturamento / e.qtd_notas : 0;
-        }
-      });
-    }
-    // Sprint 9.32.325: normaliza dadosEmp ao KPI Liquido (fonte da verdade) quando filtro vendedor ativo
-    // Necessario porque vendedor_mes e vendedor_empresa_mes podem divergir + precisa abater devolucao
-    else if (f2.vendedor && f2.vendedor !== 'todos') {
-      // Calcula target = liquido = vendedor_mes_sum - devolucao_vendedor (mesma conta do KPI)
-      const totalFatBrutoVend = mensal.reduce((s, m) => s + (m.faturamento || 0), 0);
-      const totalDevVend = (FAT_DATA.vendedor_devolucao_mes || [])
-        .filter(vd => vd.Vendedor === f2.vendedor && mesesSetEmp.has(vd.ano_mes))
-        .reduce((s, vd) => s + (vd.valor_devolucao || 0), 0);
-      const targetTotal = totalFatBrutoVend - totalDevVend;
-      const sumAtual = dadosEmp.reduce((s, e) => s + e.faturamento, 0);
-      if (sumAtual > 0 && targetTotal >= 0) {
-        const factor = targetTotal / sumAtual;
+    // Sprint 9.32.326: normalizacao unificada — total empresa sempre bate com vendas liquidas
+    // vendas_liquidas = vendas_bruto (de mensal) - devolucao (devsPeriodo, ja calculado no escopo pai)
+    // Funciona em TODOS os filtros (cliente / vendedor / periodo / nenhum)
+    {
+      const sumVendasBruto = mensal.reduce((s, m) => s + (m.faturamento || 0), 0);
+      const targetEmp = sumVendasBruto - (devsPeriodo || 0);
+      const sumNow = dadosEmp.reduce((s, e) => s + e.faturamento, 0);
+      if (sumNow > 0 && targetEmp >= 0 && Math.abs(sumNow - targetEmp) > 0.5) {
+        const factor = targetEmp / sumNow;
         dadosEmp.forEach(e => {
           e.faturamento = e.faturamento * factor;
           e.ticket_medio = e.qtd_notas > 0 ? e.faturamento / e.qtd_notas : 0;
@@ -42856,20 +42838,6 @@ function _fatRender() {
           qtd_clientes: p.clientes.size,
           ticket_medio: p.qtd_notas > 0 ? p.faturamento / p.qtd_notas : 0,
         }));
-      // Sprint 9.32.325: normaliza ao KPI Liquido (fonte da verdade)
-      const totalFatBrutoVendP = mensal.reduce((s, m) => s + (m.faturamento || 0), 0);
-      const totalDevVendP = (FAT_DATA.vendedor_devolucao_mes || [])
-        .filter(vd => vd.Vendedor === _vendP && mesesSetPv.has(vd.ano_mes))
-        .reduce((s, vd) => s + (vd.valor_devolucao || 0), 0);
-      const targetP = totalFatBrutoVendP - totalDevVendP;
-      const sumP = dadosP.reduce((s, p) => s + p.faturamento, 0);
-      if (sumP > 0 && targetP >= 0) {
-        const factorP = targetP / sumP;
-        dadosP.forEach(p => {
-          p.faturamento = p.faturamento * factorP;
-          p.ticket_medio = p.qtd_notas > 0 ? p.faturamento / p.qtd_notas : 0;
-        });
-      }
     }
     // 2) Filtro de período/mês — agrega tipo_pessoa_mes pelo recorte
     else if (((f3.periodo && f3.periodo !== 'todos') || (f3.mes && f3.mes !== 'todos')) && FAT_DATA.tipo_pessoa_mes) {
@@ -42885,6 +42853,19 @@ function _fatRender() {
       dadosP = Object.values(agg).map(p => ({ ...p, ticket_medio: p.qtd_notas > 0 ? p.faturamento / p.qtd_notas : 0 }));
     } else {
       dadosP = FAT_DATA.tipo_pessoa_total.slice();
+    }
+    // Sprint 9.32.326: normalizacao unificada — total PF+PJ sempre bate com vendas liquidas
+    {
+      const sumVendasBrutoP = mensal.reduce((s, m) => s + (m.faturamento || 0), 0);
+      const targetP_uni = sumVendasBrutoP - (devsPeriodo || 0);
+      const sumPnow = dadosP.reduce((s, p) => s + p.faturamento, 0);
+      if (sumPnow > 0 && targetP_uni >= 0 && Math.abs(sumPnow - targetP_uni) > 0.5) {
+        const factorP_uni = targetP_uni / sumPnow;
+        dadosP.forEach(p => {
+          p.faturamento = p.faturamento * factorP_uni;
+          p.ticket_medio = p.qtd_notas > 0 ? p.faturamento / p.qtd_notas : 0;
+        });
+      }
     }
     dadosP.sort((a, b) => b.faturamento - a.faturamento);
 
@@ -51091,6 +51072,7 @@ window.exportarProfCSV = async function() {
 }
 
 
+// Filtro local nos cards já renderizados
 // Filtro local nos cards já renderizados
 window.filtrarProfLocal = function(termo) {
   const t = (termo || '').trim().toLowerCase();
