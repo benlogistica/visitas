@@ -7662,7 +7662,7 @@ body.va-banner-active { padding-top: 56px; }
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.327-fix-mutacao-chart',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.329-flag-horario-so-no-banco',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -18541,18 +18541,9 @@ async function finalizarRelatorio(visitaId, dados) {
     throw new Error('Campos obrigatórios faltando:\n• ' + erros.join('\n• '));
   }
 
-  // Calcula flag_horario_fora_margem
-  // Usa a margem configurada no sistema (default: 90min)
-  const margemMin = await getConfig('margem_horario_minutos', 90);
-  let flagHorarioForaMargem = false;
-  if (dados.checkin_timestamp && dados.horario_inicio) {
-    const checkinTs = new Date(dados.checkin_timestamp);
-    const [h, m] = dados.horario_inicio.split(':');
-    const declaradoInicio = new Date(checkinTs);
-    declaradoInicio.setHours(parseInt(h), parseInt(m), 0, 0);
-    const diffMin = Math.abs((declaradoInicio - checkinTs) / 60000);
-    if (diffMin > margemMin) flagHorarioForaMargem = true;
-  }
+  // Sprint 9.32.329: calculo de flag_horario_fora_margem agora e responsabilidade do
+  // trigger BEFORE INSERT/UPDATE no banco (tg_visitas_calcular_flags).
+  // Front nao computa nem envia essa flag — fonte unica de verdade no banco.
 
   // Atualização final
   const payload = {
@@ -18566,7 +18557,7 @@ async function finalizarRelatorio(visitaId, dados) {
     resumo: (dados.resumo || '').replace(/&nbsp;/gi, ' ').replace(/&amp;nbsp;/gi, ' ').replace(/&#160;/g, ' ').trim() || null,
     proximos_passos: dados.proximos_passos || null,
     proxima_visita_programada: dados.proxima_visita_programada || null,
-    flag_horario_fora_margem: flagHorarioForaMargem,
+    // flag_horario_fora_margem nao vai no payload — trigger do banco recalcula sozinho (Sprint 9.32.329)
     status: 'completa',
     atualizado_em: new Date().toISOString(),
   };
@@ -27797,6 +27788,7 @@ window.handleFinalizarRelatorio = async function() {
     profissionais_ids: ReportState.profissionaisSelecionados.map(p => p.id),
     objetivos_ids: Array.from(ReportState.objetivosSelecionados),
     checkin_timestamp: v.checkin_timestamp,
+    checkout_timestamp: v.checkout_timestamp,  // Sprint 9.32.328: pra calcular flag fora margem do checkout tambem
     // Sinaliza que a visita está sendo refinalizada após devolução do admin
     foiDevolvida: v.status === 'rascunho' && !!v.revisao_solicitada_em,
   };
@@ -36988,7 +36980,7 @@ window.rejeitarObjetivoPendente = async function(id) {
 let FAT_DATA = null;
 let _fatDataPromise = null;
 // __FAT_VERSION_START__ — substituído pelo atualizar_index.py com hash do JSON
-const FAT_DATA_VERSION = '185f752f069c';
+const FAT_DATA_VERSION = '768b17b663d4';
 // __FAT_VERSION_END__
 const FAT_DATA_URL = 'faturamento_data_inline.json?v=' + FAT_DATA_VERSION;
 
