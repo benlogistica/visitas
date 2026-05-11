@@ -5906,6 +5906,124 @@ body.va-banner-active { padding-top: 56px; }
   font-family: var(--font-display); font-weight: 700; font-size: 26px; color: var(--brand-navy); line-height: 1;
 }
 .af-stats--desktop .af-stat__num { font-size: 32px; }
+
+/* Sprint 9.32.343: Tabs Auto-fechamentos / Auto-cancelamentos */
+.opa-tabs { display: inline-flex; gap: 4px; background: var(--neutral-100); padding: 4px; border-radius: 12px; margin-bottom: 14px; }
+.opa-tab { padding: 8px 14px; border: 0; background: transparent; color: var(--neutral-600); border-radius: 9px; font-size: 12.5px; font-weight: 600; cursor: pointer; font-family: inherit; display: inline-flex; align-items: center; gap: 6px; transition: background 140ms, color 140ms; }
+.opa-tab:hover { color: var(--brand-navy); }
+.opa-tab.is-active { background: #fff; color: var(--brand-navy); box-shadow: 0 1px 3px rgba(10,31,92,0.10); }
+.opa-tab .material-symbols-rounded { font-size: 16px; }
+.opa-tab__cnt { font-size: 11px; padding: 2px 7px; background: var(--neutral-200); color: var(--neutral-700); border-radius: 9999px; font-weight: 700; }
+.opa-tab.is-active.opa-tab--fech .opa-tab__cnt { background: #FFF6E5; color: #B47010; }
+.opa-tab.is-active.opa-tab--canc .opa-tab__cnt { background: #FCE0E5; color: #9F1F33; }
+
+/* Sprint 9.32.352: Performance — badge data + chips marca */
+.perf-badge-atualizado {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 11px; padding: 3px 9px;
+  border-radius: 9999px; font-weight: 600;
+  background: var(--status-info-bg, #E4ECFD);
+  color: var(--status-info, #185FA5);
+  cursor: help; white-space: nowrap;
+}
+.perf-badge-atualizado .material-symbols-rounded { font-size: 12px; color: var(--status-info, #185FA5); }
+.perf-badge-atualizado--stale {
+  background: var(--status-warning-bg, #FFF6E5);
+  color: var(--status-warning-dark, #B47010);
+}
+.perf-badge-atualizado--stale .material-symbols-rounded { color: var(--status-warning-dark, #B47010); }
+.perf-marca-chips { display: flex; gap: 6px; flex-wrap: wrap; margin: 8px 0 10px; }
+.perf-marca-chip { padding: 4px 11px; background: var(--neutral-100); color: var(--neutral-700); border: 0; border-radius: 9999px; font-size: 11px; font-weight: 600; cursor: pointer; font-family: inherit; display: inline-flex; align-items: center; gap: 4px; transition: background 140ms, color 140ms; }
+.perf-marca-chip:hover { background: var(--neutral-200); }
+.perf-marca-chip.is-active { background: var(--brand-navy); color: #fff; }
+.perf-marca-chip__cnt { font-size: 10px; opacity: 0.75; padding-left: 2px; }
+.perf-marca-chip.is-active .perf-marca-chip__cnt { opacity: 0.9; }
+
+/* Sprint 9.32.353: pill + bottom sheet mobile */
+.perf-marca-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 7px 13px;
+  background: var(--brand-navy); color: #fff;
+  border: 0; border-radius: 9999px;
+  font-size: 12px; font-weight: 600;
+  font-family: inherit; cursor: pointer;
+  margin: 8px 0 10px;
+  max-width: 100%;
+}
+.perf-marca-pill .material-symbols-rounded { font-size: 15px; flex-shrink: 0; }
+.perf-marca-pill__name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 0 1 auto; }
+.perf-marca-pill__cnt { font-size: 10.5px; opacity: 0.85; padding-left: 2px; flex-shrink: 0; }
+.perf-marca-pill.is-default {
+  background: var(--neutral-100); color: var(--neutral-700);
+  border: 1px solid var(--neutral-200);
+}
+.perf-marca-pill.is-default .material-symbols-rounded { color: var(--neutral-500); }
+
+.perf-sheet-backdrop {
+  position: fixed; inset: 0; background: rgba(10,31,92,0.45);
+  z-index: 9998; display: flex; align-items: flex-end;
+  animation: perfSheetFade 160ms ease-out;
+}
+@keyframes perfSheetFade { from { opacity: 0; } to { opacity: 1; } }
+.perf-sheet {
+  background: #fff; width: 100%;
+  border-radius: 18px 18px 0 0;
+  padding: 16px 14px 22px;
+  box-shadow: 0 -8px 24px rgba(10,31,92,0.25);
+  max-height: 72vh; overflow-y: auto;
+  animation: perfSheetSlide 220ms cubic-bezier(0.22,0.61,0.36,1);
+}
+@keyframes perfSheetSlide { from { transform: translateY(100%); } to { transform: translateY(0); } }
+.perf-sheet__handle {
+  width: 40px; height: 4px;
+  background: var(--neutral-300);
+  border-radius: 9999px;
+  margin: 0 auto 12px;
+}
+.perf-sheet__h { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.perf-sheet__title { font-family: var(--font-display); font-weight: 700; font-size: 15px; color: var(--brand-navy); }
+.perf-sheet__close {
+  background: var(--neutral-100); border: 0;
+  width: 32px; height: 32px; border-radius: 9999px;
+  display: inline-flex; align-items: center; justify-content: center;
+  color: var(--neutral-600); cursor: pointer;
+}
+.perf-sheet__close .material-symbols-rounded { font-size: 18px; }
+.perf-sheet__item {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 12px;
+  border-radius: 9px;
+  cursor: pointer;
+  font-size: 13px;
+  border: 0; background: transparent;
+  font-family: inherit;
+  color: var(--brand-navy);
+  width: 100%; text-align: left;
+}
+.perf-sheet__item + .perf-sheet__item { margin-top: 2px; }
+.perf-sheet__item:hover { background: var(--neutral-50); }
+.perf-sheet__item.is-active {
+  background: var(--brand-lime-bg);
+  color: var(--brand-lime-dark);
+  font-weight: 700;
+}
+.perf-sheet__item-l { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; }
+.perf-sheet__item-nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.perf-sheet__item-cnt {
+  font-size: 11.5px;
+  color: var(--neutral-500);
+  font-weight: 600;
+  background: var(--neutral-100);
+  padding: 2px 9px;
+  border-radius: 9999px;
+  flex-shrink: 0;
+}
+.perf-sheet__item.is-active .perf-sheet__item-cnt {
+  color: var(--brand-lime-dark);
+  background: #fff;
+}
+.perf-sheet__check { color: var(--brand-lime-dark); font-size: 18px; flex-shrink: 0; opacity: 0; }
+.perf-sheet__item.is-active .perf-sheet__check { opacity: 1; }
 .af-stat__label { font-size: 11.5px; color: var(--neutral-600); line-height: 1.3; }
 .af-rank__row {
   display: flex; align-items: center; gap: 10px; padding: 8px 0;
@@ -8119,7 +8237,7 @@ body.va-banner-active { padding-top: 56px; }
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.342-kpi-auto-cancelamento',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.354b-voltar-no-banner',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -11231,15 +11349,16 @@ async function renderDashPieTipoInst(visitasPeriodo) {
     (insts || []).forEach(i => { tipoPorId[i.id] = i.tipo || null; });
 
     // Conta visitas por tipo
-    const contagem = { publica: 0, privada: 0, sem_tipo: 0 };
+    const contagem = { publica: 0, privada: 0, mista: 0, sem_tipo: 0 };
     visitasPeriodo.forEach(v => {
       if (!v.instituicao_id) { contagem.sem_tipo++; return; }
       const t = tipoPorId[v.instituicao_id];
       if (t === 'publica') contagem.publica++;
       else if (t === 'privada') contagem.privada++;
+      else if (t === 'mista') contagem.mista++;
       else contagem.sem_tipo++;
     });
-    const total = contagem.publica + contagem.privada + contagem.sem_tipo;
+    const total = contagem.publica + contagem.privada + contagem.mista + contagem.sem_tipo;
     if (total === 0) {
       container.innerHTML = '<div style="padding:20px;text-align:center;color:var(--neutral-400);font-size:12px;">Sem dados.</div>';
       return;
@@ -11248,6 +11367,7 @@ async function renderDashPieTipoInst(visitasPeriodo) {
     const rows = [
       { key: 'publica',  label: 'Pública',  count: contagem.publica,  cor: 'var(--brand-navy)' },
       { key: 'privada',  label: 'Privada',  count: contagem.privada,  cor: 'var(--brand-lime)' },
+      { key: 'mista',    label: 'Mista',    count: contagem.mista,    cor: '#7C3AED' },
       { key: 'sem_tipo', label: 'Sem classificação', count: contagem.sem_tipo, cor: 'var(--neutral-400)' },
     ].filter(r => r.count > 0);
     const max = Math.max(...rows.map(r => r.count));
@@ -11274,7 +11394,7 @@ async function renderDashPieTipoInst(visitasPeriodo) {
     }).join('') + (contagem.sem_tipo > 0 ? `
       <div style="padding-top:8px;font-size:10.5px;color:var(--neutral-500);">
         <span class="material-symbols-rounded" style="font-size:12px;vertical-align:-2px;">info</span>
-        Complete o tipo (pública/privada) no cadastro das instituições pra refinar.
+        Complete o tipo (pública/privada/mista) no cadastro das instituições pra refinar.
       </div>
     ` : '');
   } catch (err) {
@@ -16623,6 +16743,8 @@ async function carregarAdminInstituicoesDesktop() {
         ? '<span style="display:inline-flex;padding:1px 7px;border-radius:9999px;font-size:9.5px;font-weight:700;text-transform:uppercase;background:var(--brand-navy);color:#fff;letter-spacing:0.04em;">Pública</span>'
         : inst.tipo === 'privada'
         ? '<span style="display:inline-flex;padding:1px 7px;border-radius:9999px;font-size:9.5px;font-weight:700;text-transform:uppercase;background:var(--brand-lime);color:#fff;letter-spacing:0.04em;">Privada</span>'
+        : inst.tipo === 'mista'
+        ? '<span style="display:inline-flex;padding:1px 7px;border-radius:9999px;font-size:9.5px;font-weight:700;text-transform:uppercase;background:#7C3AED;color:#fff;letter-spacing:0.04em;">Mista</span>'
         : '';
       const pendenteBadge = inst.pendente_aprovacao
         ? '<span style="display:inline-flex;padding:1px 7px;border-radius:9999px;font-size:9.5px;font-weight:700;text-transform:uppercase;background:var(--status-warning-bg,#FEF4E1);color:var(--status-warning);letter-spacing:0.04em;">Pendente</span>'
@@ -16966,7 +17088,10 @@ async function carregarAdminEquipeDesktop() {
         ? (catNome.replace(/</g,'&lt;') + catBadge)
         : '<span style="color:var(--neutral-400);">—</span>';
       const dataCad = u.criado_em ? new Date(u.criado_em).toLocaleDateString('pt-BR') : '—';
-      const ultimoLogin = u.ultimo_login ? new Date(u.ultimo_login).toLocaleDateString('pt-BR') : '<span style="color:var(--neutral-400);">nunca</span>';
+      // Sprint 9.32.345: data + horario embaixo (em duas linhas)
+      const ultimoLogin = u.ultimo_login
+        ? `<div>${new Date(u.ultimo_login).toLocaleDateString('pt-BR')}</div><div style="font-size:10.5px;color:var(--neutral-500);margin-top:2px;">${new Date(u.ultimo_login).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</div>`
+        : '<span style="color:var(--neutral-400);">nunca</span>';
 
       // Ações variam por status e por nível de acesso (Sprint 9.14: super admin / admin / membro)
       const ehSuperAdmin = u.super_admin === true;
@@ -18015,10 +18140,50 @@ window.exportarVisitasCsvDesktop = function() {
 function _initAutoFechState() {
   if (!window._autoFechState) {
     window._autoFechState = {
-      periodo: '30', // '7' | '30' | 'mes' | 'all'
+      periodo: '30',
+      tab: 'fechamentos',
     };
   }
+  if (!window._autoFechState.tab) window._autoFechState.tab = 'fechamentos';
 }
+
+function _autoFechTabsHtml() {
+  _initAutoFechState();
+  const tab = window._autoFechState.tab;
+  return `
+    <div class="opa-tabs" role="tablist">
+      <button class="opa-tab opa-tab--fech ${tab === 'fechamentos' ? 'is-active' : ''}" onclick="trocarTabAutoFech('fechamentos')">
+        <span class="material-symbols-rounded">timer_off</span>
+        Auto-fechamentos
+        <span class="opa-tab__cnt" id="opaTabCntFech">—</span>
+      </button>
+      <button class="opa-tab opa-tab--canc ${tab === 'cancelamentos' ? 'is-active' : ''}" onclick="trocarTabAutoFech('cancelamentos')">
+        <span class="material-symbols-rounded">cancel</span>
+        Auto-cancelamentos
+        <span class="opa-tab__cnt" id="opaTabCntCanc">—</span>
+      </button>
+    </div>
+  `;
+}
+
+window.trocarTabAutoFech = function(tab) {
+  _initAutoFechState();
+  if (window._autoFechState.tab === tab) return;
+  window._autoFechState.tab = tab;
+  document.querySelectorAll('.opa-tab').forEach(b => b.classList.remove('is-active'));
+  document.querySelectorAll('.opa-tab--' + (tab === 'fechamentos' ? 'fech' : 'canc')).forEach(b => b.classList.add('is-active'));
+  const ttl = document.getElementById('afTabTitle');
+  const sub = document.getElementById('afTabSub');
+  if (ttl) ttl.textContent = tab === 'cancelamentos' ? 'Auto-cancelamentos' : 'Auto-fechamentos';
+  if (sub) sub.textContent = tab === 'cancelamentos'
+    ? 'Agendamentos cancelados pelo sistema após 72h sem ação do nutri.'
+    : 'Visitas fechadas pelo sistema por inatividade (>6h30 sem checkout).';
+  ['afStats','afRanking','afLista','afListaCount'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = id === 'afListaCount' ? '—' : '<div style="padding:18px;text-align:center;color:var(--neutral-400);font-size:12px;">Carregando…</div>';
+  });
+  carregarAutoFechamentos();
+};
 
 // Calcula data início baseada no período
 function _autoFechDataInicio(periodo) {
@@ -18037,6 +18202,12 @@ async function carregarAutoFechamentos() {
   if (!db) return;
   _initAutoFechState();
   const dataInicio = _autoFechDataInicio(window._autoFechState.periodo);
+
+  _atualizarContadoresTabsAutoFech(dataInicio).catch(err => console.warn('[contadores tabs]', err));
+
+  if (window._autoFechState.tab === 'cancelamentos') {
+    return _carregarAutoCancelamentosTab(dataInicio);
+  }
 
   // Query base: visitas auto-fechadas no período
   let query = db.from('visitas')
@@ -18204,6 +18375,161 @@ async function carregarAutoFechamentos() {
   const elCount = document.getElementById('afListaCount'); if (elCount) elCount.textContent = total === 1 ? '1 visita' : `${total} visitas`;
 }
 
+async function _atualizarContadoresTabsAutoFech(dataInicio) {
+  if (!db) return;
+  let qFech = db.from('visitas').select('id', { count: 'exact', head: true }).eq('checkout_automatico', true);
+  if (dataInicio) qFech = qFech.gte('auto_checkout_em', dataInicio);
+  let qCanc = db.from('visitas').select('id', { count: 'exact', head: true }).eq('status', 'cancelada').eq('cancelamento_origem', 'auto_72h');
+  if (dataInicio) qCanc = qCanc.gte('cancelado_em', dataInicio);
+  try {
+    const [{ count: cF }, { count: cC }] = await Promise.all([qFech, qCanc]);
+    const elF = document.getElementById('opaTabCntFech');
+    const elC = document.getElementById('opaTabCntCanc');
+    if (elF) elF.textContent = cF || 0;
+    if (elC) elC.textContent = cC || 0;
+  } catch (err) { console.warn('[contadores]', err); }
+}
+
+async function _carregarAutoCancelamentosTab(dataInicio) {
+  if (!db) return;
+  let query = db.from('visitas')
+    .select(`
+      id, data_visita, horario_inicio, cancelado_em, cancelamento_origem,
+      cancelamento_motivo, nutricionista_id, instituicao_id, status,
+      usuarios:nutricionista_id(id, nome, foto_url),
+      instituicoes(id, nome, cidade)
+    `)
+    .eq('status', 'cancelada')
+    .eq('cancelamento_origem', 'auto_72h')
+    .order('cancelado_em', { ascending: false, nullsFirst: false });
+  if (dataInicio) query = query.gte('cancelado_em', dataInicio);
+  const { data, error } = await query;
+  if (error) {
+    const el = document.getElementById('afContent');
+    if (el) el.innerHTML = `<div style="padding:20px;background:var(--status-danger-bg,#FCE8E8);color:var(--status-danger);border-radius:10px;">Erro: ${error.message}</div>`;
+    return;
+  }
+  const visitas = data || [];
+  const total = visitas.length;
+  const nutrisAfetados = new Set(visitas.map(v => v.nutricionista_id).filter(Boolean)).size;
+  let qCancAll = db.from('visitas').select('id', { count: 'exact', head: true }).eq('status', 'cancelada');
+  if (dataInicio) qCancAll = qCancAll.gte('cancelado_em', dataInicio);
+  let cancAllCount = 0;
+  try { const r = await qCancAll; cancAllCount = r.count || 0; } catch(_){}
+  const pctCanc = cancAllCount > 0 ? Math.round((total / cancAllCount) * 100) : 0;
+  let totalMin = 0, contMin = 0;
+  visitas.forEach(v => {
+    if (!v.data_visita || !v.cancelado_em) return;
+    const horaStr = (v.horario_inicio || '23:59:00').toString().slice(0, 8);
+    const dt = new Date(v.data_visita + 'T' + horaStr);
+    if (isNaN(dt.getTime())) return;
+    const venc = new Date(dt.getTime() + 72 * 3600 * 1000);
+    const canc = new Date(v.cancelado_em);
+    const min = (canc - venc) / 60000;
+    if (Number.isFinite(min) && min >= 0) { totalMin += min; contMin++; }
+  });
+  const mediaMin = contMin > 0 ? Math.round(totalMin / contMin) : null;
+  const fmtTempo = (m) => {
+    if (m === null) return '—';
+    if (m < 60) return m + ' min';
+    const h = Math.floor(m / 60); const r = m % 60;
+    return r > 0 ? `${h}h ${r}min` : `${h}h`;
+  };
+  const tempoMedio = fmtTempo(mediaMin);
+  let totalNutris = 0;
+  try {
+    const { count } = await db.from('usuarios').select('*', { count: 'exact', head: true }).eq('perfil', 'nutricionista').eq('status', 'ativo');
+    totalNutris = count || 0;
+  } catch (e) {}
+  const statsHtml = `
+    <div class="af-stat">
+      <div class="af-stat__icon" style="background:#FCE0E5;color:#9F1F33;"><span class="material-symbols-rounded">cancel</span></div>
+      <div class="af-stat__num">${total}</div>
+      <div class="af-stat__label">Auto-canceladas no período</div>
+    </div>
+    <div class="af-stat">
+      <div class="af-stat__icon" style="background:var(--status-info-bg,#E4ECFD);color:var(--status-info);"><span class="material-symbols-rounded">groups</span></div>
+      <div class="af-stat__num">${nutrisAfetados}</div>
+      <div class="af-stat__label">Nutris afetados${totalNutris ? ` (de ${totalNutris} ativos)` : ''}</div>
+    </div>
+    <div class="af-stat">
+      <div class="af-stat__icon" style="background:rgba(10,31,92,0.08);color:var(--brand-navy);"><span class="material-symbols-rounded">percent</span></div>
+      <div class="af-stat__num">${pctCanc}%</div>
+      <div class="af-stat__label">${total} de ${cancAllCount} canceladas</div>
+    </div>
+    <div class="af-stat">
+      <div class="af-stat__icon" style="background:rgba(139,198,63,0.18);color:var(--brand-lime-2,#6CA022);"><span class="material-symbols-rounded">schedule</span></div>
+      <div class="af-stat__num" style="font-size:22px;">${tempoMedio}</div>
+      <div class="af-stat__label">Atraso médio do cron</div>
+    </div>
+  `;
+  const ranking = {};
+  visitas.forEach(v => {
+    const nid = v.nutricionista_id;
+    if (!nid) return;
+    if (!ranking[nid]) ranking[nid] = { id: nid, nome: v.usuarios?.nome || 'Profissional', foto: v.usuarios?.foto_url, count: 0, hospitais: new Set() };
+    ranking[nid].count++;
+    if (v.instituicoes?.nome) ranking[nid].hospitais.add(v.instituicoes.nome);
+  });
+  const rankingArr = Object.values(ranking).sort((a, b) => b.count - a.count).slice(0, 5);
+  const rankingHtml = rankingArr.length === 0
+    ? `<div style="padding:18px;text-align:center;color:var(--neutral-500);font-size:12.5px;">Nenhum auto-cancelamento no período 🎉</div>`
+    : rankingArr.map(r => {
+        const inits = (r.nome || '?').split(' ').filter(Boolean).slice(0, 2).map(s => s[0].toUpperCase()).join('');
+        const avatar = r.foto
+          ? `<div class="af-rank__avatar" style="background-image:url('${r.foto}');background-size:cover;background-position:center;color:transparent;">${inits}</div>`
+          : `<div class="af-rank__avatar">${inits}</div>`;
+        const hosps = Array.from(r.hospitais).slice(0, 2).join(' · ') || '—';
+        return `
+          <div class="af-rank__row" onclick="window.location.hash='#/admin/visitas?nutri_id=${r.id}'" style="cursor:pointer;">
+            ${avatar}
+            <div class="af-rank__info">
+              <div class="af-rank__nome">${(r.nome || '').replace(/</g,'&lt;')}</div>
+              <div class="af-rank__sub">${hosps.replace(/</g,'&lt;')}</div>
+            </div>
+            <div class="af-rank__count">${r.count}</div>
+          </div>
+        `;
+      }).join('');
+  const fmtDataHora = (iso) => {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return '—';
+    return d.toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
+  };
+  const fmtData = (s) => {
+    if (!s) return '—';
+    const [y, m, d] = s.split('-');
+    return `${d}/${m}/${String(y).slice(-2)}`;
+  };
+  const listaHtml = visitas.length === 0
+    ? `<div style="padding:40px;text-align:center;color:var(--neutral-500);font-size:13px;background:#fff;border-radius:12px;"><span class="material-symbols-rounded" style="font-size:32px;color:var(--neutral-300);display:block;margin-bottom:6px;">verified</span>Nenhum auto-cancelamento no período. Bom sinal!</div>`
+    : visitas.slice(0, 50).map(v => {
+        const nutriNome = v.usuarios?.nome || 'Profissional';
+        const instNome = v.instituicoes?.nome || 'Instituição';
+        const instCidade = v.instituicoes?.cidade || '';
+        const horaStr = (v.horario_inicio || '').toString().slice(0,5) || '—';
+        return `
+          <div class="af-visita">
+            <div class="af-visita__icon" style="background:#FCE0E5;color:#9F1F33;"><span class="material-symbols-rounded">cancel</span></div>
+            <div class="af-visita__body">
+              <div class="af-visita__top"><span class="af-visita__nutri">${nutriNome.replace(/</g,'&lt;')}</span><span class="af-visita__hosp"> · ${instNome.replace(/</g,'&lt;')}${instCidade ? ', ' + instCidade.replace(/</g,'&lt;') : ''}</span></div>
+              <div class="af-visita__meta">
+                <span><span class="material-symbols-rounded" style="font-size:13px;">event</span>Era ${fmtData(v.data_visita)} ${horaStr}</span>
+                <span><span class="material-symbols-rounded" style="font-size:13px;">cancel</span>Cancelado ${fmtDataHora(v.cancelado_em)}</span>
+                <span style="color:#9F1F33;font-weight:700;background:#FCE0E5;padding:2px 8px;border-radius:9999px;font-size:10.5px;">Auto</span>
+              </div>
+            </div>
+            <div class="af-visita__actions"><a href="#/admin/revisao/detalhe?id=${v.id}" class="af-btn af-btn--secondary">Ver detalhe</a></div>
+          </div>
+        `;
+      }).join('') + (visitas.length > 50 ? `<div style="text-align:center;padding:12px;color:var(--neutral-500);font-size:12px;">Mostrando 50 de ${visitas.length}. Refine o período pra ver mais.</div>` : '');
+  const elStats = document.getElementById('afStats'); if (elStats) elStats.innerHTML = statsHtml;
+  const elRank = document.getElementById('afRanking'); if (elRank) elRank.innerHTML = rankingHtml;
+  const elLista = document.getElementById('afLista'); if (elLista) elLista.innerHTML = listaHtml;
+  const elCount = document.getElementById('afListaCount'); if (elCount) elCount.textContent = total === 1 ? '1 cancelamento' : `${total} cancelamentos`;
+}
+
 // Troca período do filtro
 window.trocarPeriodoAutoFech = function(periodo) {
   _initAutoFechState();
@@ -18251,9 +18577,10 @@ function renderAdminAutoFechamentos() {
       ${mobileTopBar({ title: 'Auto-fechamentos', showBack: true })}
       <main class="mcontent">
         <div style="margin-bottom:14px;">
-          <div style="font-family:var(--font-display);font-weight:700;font-size:20px;color:var(--brand-navy);line-height:1.15;">Auto-fechamentos</div>
-          <div style="font-size:12.5px;color:var(--neutral-600);margin-top:3px;">Visitas fechadas pelo sistema por inatividade.</div>
+          <div id="afTabTitle" style="font-family:var(--font-display);font-weight:700;font-size:20px;color:var(--brand-navy);line-height:1.15;">${s.tab === 'cancelamentos' ? 'Auto-cancelamentos' : 'Auto-fechamentos'}</div>
+          <div id="afTabSub" style="font-size:12.5px;color:var(--neutral-600);margin-top:3px;">${s.tab === 'cancelamentos' ? 'Agendamentos cancelados pelo sistema após 72h sem ação do nutri.' : 'Visitas fechadas pelo sistema por inatividade (>6h30 sem checkout).'}</div>
         </div>
+        ${_autoFechTabsHtml()}
         <div class="af-periodo-bar">
           ${['7','30','mes','all'].map(p => `
             <button data-af-periodo="${p}" onclick="trocarPeriodoAutoFech('${p}')" class="af-periodo-btn ${s.periodo === p ? 'af-periodo-btn--active' : ''}">${p === '7' ? '7 dias' : p === '30' ? '30 dias' : p === 'mes' ? 'Este mês' : 'Tudo'}</button>
@@ -18299,8 +18626,9 @@ function renderAdminAutoFechamentosDesktop() {
     </div>
   `;
   const content = `
+    ${_autoFechTabsHtml()}
     <div style="margin-bottom:14px;">
-      <div style="font-size:13.5px;color:var(--neutral-600);line-height:1.55;">Visitas fechadas automaticamente pelo sistema por inatividade (mais de 6h30 sem checkout, ou 8h30 com extensão).</div>
+      <div id="afTabSub" style="font-size:13.5px;color:var(--neutral-600);line-height:1.55;">${s.tab === 'cancelamentos' ? 'Agendamentos cancelados pelo sistema após 72h sem ação do nutri.' : 'Visitas fechadas automaticamente pelo sistema por inatividade (mais de 6h30 sem checkout, ou 8h30 com extensão).'}</div>
     </div>
     <div id="afStats" class="af-stats af-stats--desktop">
       <div style="grid-column:span 4;padding:40px;text-align:center;color:var(--neutral-400);font-size:13px;background:#fff;border-radius:12px;">Carregando…</div>
@@ -18325,9 +18653,10 @@ function renderAdminAutoFechamentosDesktop() {
       </div>
     </div>
   `;
+  const tabTtl = s.tab === 'cancelamentos' ? 'Auto-cancelamentos' : 'Auto-fechamentos';
   return desktopShell({
-    title: 'Auto-fechamentos',
-    breadcrumb: ['Admin', 'Operação', 'Auto-fechamentos'],
+    title: tabTtl,
+    breadcrumb: ['Admin', 'Operação', tabTtl],
     titleExtra,
     content,
     activeId: 'auto_fechadas',
@@ -18925,25 +19254,56 @@ async function listarProfissionaisDaInstituicao(institucaoId) {
 }
 
 // Criar profissional novo
-async function criarProfissional({ institucaoId, nome, profissao, telefone, email }) {
+async function criarProfissional({ institucaoId, nome, profissao, profissao_outro, telefone, email }) {
   if (!db) throw new Error('Banco não conectado');
   const user = getCurrentUser();
-  const { data, error } = await db
-    .from('profissionais')
-    .insert({
-      instituicao_id: institucaoId,
-      nome: nome.trim(),
-      profissao: profissao || 'Outro',
-      profissao_outro: profissao === 'Outro' ? 'Sem especificação' : null,
-      telefone: telefone || null,
-      email: email || null,
-      criado_por: user?.id || null,
-      ativo: true,
-    })
-    .select()
-    .single();
-  if (error) throw new Error(error.message);
-  return data;
+  // Sprint 9.32.349: profissao_outro vem do input quando profissao='Outro'
+  const ehOutro = profissao === 'Outro';
+  const cargoLivre = ehOutro ? (String(profissao_outro || '').trim() || null) : null;
+  const payloadBase = {
+    instituicao_id: institucaoId,
+    nome: nome.trim(),
+    profissao: profissao || 'Outro',
+    profissao_outro: cargoLivre,
+    telefone: telefone || null,
+    email: email || null,
+    criado_por: user?.id || null,
+    ativo: true,
+  };
+  // Tenta inserir com flags de pendencia (precisa do SQL profissao_outro_pendente.sql).
+  // Se cache do PostgREST nao estiver atualizado, faz fallback sem flags.
+  let novo, errInsert;
+  if (ehOutro && cargoLivre) {
+    const { data, error } = await db
+      .from('profissionais')
+      .insert({
+        ...payloadBase,
+        profissao_outro_pendente: true,
+        profissao_outro_sugerido_por: user?.id || null,
+      })
+      .select()
+      .single();
+    novo = data; errInsert = error;
+    if (error) {
+      // Sprint 9.32.351: fallback amplo - PostgREST tem varios formatos de erro
+      const msg = (error.message || '').toLowerCase();
+      const ehCacheError = msg.includes('profissao_outro_pendente')
+                        || msg.includes('profissao_outro_sugerido')
+                        || msg.includes('schema cache')
+                        || msg.includes('does not exist')
+                        || msg.includes('could not find');
+      if (ehCacheError) {
+        console.warn('[criarProfissional] flags pendente nao disponiveis (cache PostgREST), salvando sem:', error.message);
+        const r2 = await db.from('profissionais').insert(payloadBase).select().single();
+        novo = r2.data; errInsert = r2.error;
+      }
+    }
+  } else {
+    const r = await db.from('profissionais').insert(payloadBase).select().single();
+    novo = r.data; errInsert = r.error;
+  }
+  if (errInsert) throw new Error(errInsert.message);
+  return novo;
 }
 
 // Obter visita completa (com tudo do relatório)
@@ -19030,9 +19390,11 @@ async function finalizarRelatorio(visitaId, dados) {
   // Validação
   const erros = [];
   // Sprint 9.32.43: empresa representada é obrigatória sempre (visita realizada ou não)
+  // Sprint 9.32.348: empresa_representada agora aceita multipla (CSV: "Haverim, Nutricionais-PG")
   const empresasValidas = ['Haverim', 'Nutricionais-Santos', 'Nutricionais-PG'];
-  if (!dados.empresa_representada || !empresasValidas.includes(dados.empresa_representada)) {
-    erros.push('Empresa representada (Haverim, Nutricionais-Santos ou Nutricionais-PG)');
+  const _empArr = String(dados.empresa_representada || '').split(',').map(s => s.trim()).filter(Boolean);
+  if (_empArr.length === 0 || !_empArr.every(e => empresasValidas.includes(e))) {
+    erros.push('Empresa representada (escolha 1 ou mais entre Haverim, Nutricionais-Santos, Nutricionais-PG)');
   }
   if (!dados.horario_inicio) erros.push('Horário de início da visita');
   if (!dados.horario_termino) erros.push('Horário de término');
@@ -20320,7 +20682,7 @@ async function listarVisitasAdmin(filtro = 'com_flags') {
     // Sprint 9.32.60: exclui agendamentos puros (sugerida/agendada) — ainda não foram visitas de fato
     query = query
       .or('flag_sem_checkin.eq.true,flag_sem_checkout.eq.true,flag_gps_divergente.eq.true,flag_horario_fora_margem.eq.true,checkin_manual.eq.true')
-      .not('status', 'in', '(aprovada_pos_revisao,agendada,sugerida)');
+      .not('status', 'in', '(aprovada_pos_revisao,agendada,sugerida,cancelada)');
   } else if (filtro === 'em_revisao') {
     // Rascunhos que o admin devolveu pro profissional (aguardando correção)
     query = query.eq('status', 'rascunho').not('revisao_motivo', 'is', null).is('revisao_resolvida_em', null);
@@ -20348,7 +20710,7 @@ async function contarVisitasPorFiltro() {
     // Sprint 9.32.60: mesmo critério da listagem — exclui aprovadas, agendamentos e sugestões
     db.from('visitas').select('*', { count: 'exact', head: true })
       .or('flag_sem_checkin.eq.true,flag_sem_checkout.eq.true,flag_gps_divergente.eq.true,flag_horario_fora_margem.eq.true,checkin_manual.eq.true')
-      .not('status', 'in', '(aprovada_pos_revisao,agendada,sugerida)'),
+      .not('status', 'in', '(aprovada_pos_revisao,agendada,sugerida,cancelada)'),
     db.from('visitas').select('*', { count: 'exact', head: true })
       .eq('status', 'rascunho').not('revisao_motivo', 'is', null).is('revisao_resolvida_em', null),
     db.from('visitas').select('*', { count: 'exact', head: true }).eq('status', 'aprovada_pos_revisao'),
@@ -23952,6 +24314,118 @@ function _perfFmtMoedaCheia(v) {
 }
 
 // Renderiza o conteúdo com base no state
+// Sprint 9.32.352: popula badge da data do faturamento
+function _perfPopulateBadgeAtualizado() {
+  const el = document.getElementById('perfBadgeAtualizado');
+  if (!el) return;
+  if (!FAT_DATA || !FAT_DATA.meta) { el.style.display = 'none'; return; }
+  const meta = FAT_DATA.meta;
+  let textoData = 'Faturamento';
+  if (meta.periodo_fim) {
+    const partes = String(meta.periodo_fim).split('-');
+    if (partes.length === 3) textoData = `Faturamento até ${partes[2]}/${partes[1]}`;
+  }
+  let stale = false;
+  if (meta.gerado_em) {
+    const ger = new Date(meta.gerado_em);
+    const agora = new Date();
+    const horas = Math.floor((agora - ger) / 3600000);
+    if (horas < 1) textoData += ' · atualizado agora';
+    else if (horas < 24) textoData += ` · atualizado há ${horas}h`;
+    else {
+      const dias = Math.floor(horas / 24);
+      textoData += ` · atualizado há ${dias} dia${dias > 1 ? 's' : ''}`;
+      if (dias >= 7) stale = true;
+    }
+    el.title = `Última geração do faturamento: ${ger.toLocaleString('pt-BR')}`;
+  } else {
+    el.title = 'Data de geração indisponível';
+  }
+  el.classList.toggle('perf-badge-atualizado--stale', stale);
+  el.innerHTML = `<span class="material-symbols-rounded">database</span>${textoData}`;
+  el.style.display = '';
+}
+
+// Sprint 9.32.352: contagem de marcas pro filtro
+function _perfMarcaContagem(produtos) {
+  const cnt = {};
+  (produtos || []).forEach(p => {
+    const m = (p.marca || '').toString().trim() || '— sem marca —';
+    cnt[m] = (cnt[m] || 0) + 1;
+  });
+  return Object.entries(cnt).map(([nome, count]) => ({ nome, count })).sort((a, b) => b.count - a.count);
+}
+
+window._perfTrocarMarca = function(marca) {
+  window._perfMarcaFiltro = marca;
+  _perfRenderDetalhe();
+};
+
+// Sprint 9.32.353: abre bottom sheet de marcas (mobile)
+window._perfAbrirSheetMarca = function() {
+  // Pega marcas do hospital selecionado
+  const rows = window._perfRows || [];
+  const idx = window._perfSelectedIdx;
+  if (idx == null || idx < 0) return;
+  const r = rows[idx];
+  if (!r || !r.produtos) return;
+  const marcas = _perfMarcaContagem(r.produtos);
+  const marcaFiltro = window._perfMarcaFiltro || 'Todas';
+  const marcaValida = marcaFiltro === 'Todas' || marcas.some(m => m.nome === marcaFiltro);
+  const marcaAtiva = marcaValida ? marcaFiltro : 'Todas';
+
+  // Remove sheet anterior se houver
+  document.getElementById('perfSheetMarcaBackdrop')?.remove();
+
+  const backdrop = document.createElement('div');
+  backdrop.id = 'perfSheetMarcaBackdrop';
+  backdrop.className = 'perf-sheet-backdrop';
+
+  const escapeHtml = (s) => String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const itemTodas = `
+    <button class="perf-sheet__item ${marcaAtiva === 'Todas' ? 'is-active' : ''}" data-marca="Todas">
+      <span class="perf-sheet__item-l">
+        <span class="material-symbols-rounded perf-sheet__check">check</span>
+        <span class="perf-sheet__item-nm">Todas as marcas</span>
+      </span>
+      <span class="perf-sheet__item-cnt">${r.produtos.length}</span>
+    </button>
+  `;
+  const itemsHtml = marcas.map(m => `
+    <button class="perf-sheet__item ${marcaAtiva === m.nome ? 'is-active' : ''}" data-marca="${escapeHtml(m.nome)}">
+      <span class="perf-sheet__item-l">
+        <span class="material-symbols-rounded perf-sheet__check">check</span>
+        <span class="perf-sheet__item-nm">${escapeHtml(m.nome)}</span>
+      </span>
+      <span class="perf-sheet__item-cnt">${m.count}</span>
+    </button>
+  `).join('');
+
+  backdrop.innerHTML = `
+    <div class="perf-sheet" onclick="event.stopPropagation()">
+      <div class="perf-sheet__handle"></div>
+      <div class="perf-sheet__h">
+        <span class="perf-sheet__title">Filtrar por marca</span>
+        <button class="perf-sheet__close" id="perfSheetClose"><span class="material-symbols-rounded">close</span></button>
+      </div>
+      ${itemTodas}
+      ${itemsHtml}
+    </div>
+  `;
+  document.body.appendChild(backdrop);
+
+  const fechar = () => backdrop.remove();
+  backdrop.addEventListener('click', (e) => { if (e.target === backdrop) fechar(); });
+  backdrop.querySelector('#perfSheetClose').onclick = fechar;
+  backdrop.querySelectorAll('[data-marca]').forEach(btn => {
+    btn.onclick = () => {
+      const m = btn.getAttribute('data-marca');
+      window._perfTrocarMarca(m);
+      fechar();
+    };
+  });
+};
+
 function _perfRender() {
   const container = document.getElementById('perfContent');
   if (!container) return;
@@ -23966,6 +24440,8 @@ function _perfRender() {
     container.innerHTML = `<div style="padding:40px;text-align:center;color:var(--status-danger,#D33);font-size:13.5px;background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:14px;">⚠ ${state.erro}</div>`;
     return;
   }
+
+  _perfPopulateBadgeAtualizado();
 
   const { totInst, instComVendas, instSemMatch, totVisitas, totFaturamento, totQtdNotas, totDevolucao, totQtdDevolucoes, fatMedioMensal, qtdNotasMediaMensal, unidadeDivisor, rows, oportunidades } = state;
 
@@ -24231,7 +24707,51 @@ function _perfRenderDetalhe() {
   // Lista de itens vendidos
   let itensHtml = '';
   if (temProdutos) {
-    const seletorTopN = r.produtos.length > 10 ? `
+    // Sprint 9.32.352: filtro por marca
+    const marcas = _perfMarcaContagem(r.produtos);
+    const marcaFiltro = window._perfMarcaFiltro || 'Todas';
+    const marcaValida = marcaFiltro === 'Todas' || marcas.some(m => m.nome === marcaFiltro);
+    const marcaAtiva = marcaValida ? marcaFiltro : 'Todas';
+    const produtosFiltrados = marcaAtiva === 'Todas'
+      ? r.produtos
+      : r.produtos.filter(p => {
+          const pm = (p.marca || '').toString().trim() || '— sem marca —';
+          return pm === marcaAtiva;
+        });
+
+    // Sprint 9.32.353: desktop=chips, mobile=pill que abre bottom sheet
+    let chipsMarcaHtml = '';
+    if (marcas.length > 1) {
+      if (isDeskPerfDet) {
+        chipsMarcaHtml = `
+          <div class="perf-marca-chips">
+            <button class="perf-marca-chip ${marcaAtiva === 'Todas' ? 'is-active' : ''}" onclick="window._perfTrocarMarca('Todas')">
+              Todas <span class="perf-marca-chip__cnt">${r.produtos.length}</span>
+            </button>
+            ${marcas.map(m => `
+              <button class="perf-marca-chip ${marcaAtiva === m.nome ? 'is-active' : ''}" onclick="window._perfTrocarMarca('${m.nome.replace(/'/g, "\\'")}')">
+                ${m.nome.replace(/</g,'&lt;')} <span class="perf-marca-chip__cnt">${m.count}</span>
+              </button>
+            `).join('')}
+          </div>
+        `;
+      } else {
+        // Mobile: pill que abre sheet
+        const ehDefault = marcaAtiva === 'Todas';
+        const lblPill = ehDefault ? `Todas as marcas` : marcaAtiva.replace(/</g,'&lt;');
+        const cntPill = ehDefault ? r.produtos.length : (marcas.find(m => m.nome === marcaAtiva) || {}).count || 0;
+        chipsMarcaHtml = `
+          <button class="perf-marca-pill ${ehDefault ? 'is-default' : ''}" onclick="window._perfAbrirSheetMarca()">
+            <span class="material-symbols-rounded">filter_alt</span>
+            <span class="perf-marca-pill__name">${lblPill}</span>
+            <span class="perf-marca-pill__cnt">${cntPill}</span>
+            <span class="material-symbols-rounded">expand_more</span>
+          </button>
+        `;
+      }
+    }
+
+    const seletorTopN = produtosFiltrados.length > 10 ? `
       <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;">
         ${[10, 20, 30, 50].filter(n => n <= 50).map(n => `
           <button onclick="window._perfTrocarTopN(${n})" class="perf-topn-btn ${n === topN ? 'is-active' : ''}"
@@ -24240,21 +24760,25 @@ function _perfRenderDetalhe() {
       </div>
     ` : '';
 
+    const lblItens = marcaAtiva === 'Todas'
+      ? `${r.produtos.length} ${r.produtos.length === 1 ? 'item' : 'itens'} · Top ${Math.min(topN, r.produtos.length)}`
+      : `${produtosFiltrados.length} de ${r.produtos.length} (${marcaAtiva.replace(/</g,'&lt;')}) · Top ${Math.min(topN, produtosFiltrados.length)}`;
+
     itensHtml = `
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
-        <div style="font-size:10.5px;color:var(--neutral-500);text-transform:uppercase;letter-spacing:0.4px;font-weight:700;">
-          ${r.produtos.length} ${r.produtos.length === 1 ? 'item' : 'itens'} · Top ${Math.min(topN, r.produtos.length)}
-        </div>
+        <div style="font-size:10.5px;color:var(--neutral-500);text-transform:uppercase;letter-spacing:0.4px;font-weight:700;">${lblItens}</div>
         ${seletorTopN}
       </div>
+      ${chipsMarcaHtml}
       <div style="display:flex;flex-direction:column;gap:3px;">
-        ${r.produtos.slice(0, topN).map((prod, i) => `
+        ${produtosFiltrados.slice(0, topN).map((prod, i) => `
           <div style="display:flex;align-items:center;gap:8px;background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:6px;padding:5px 8px;font-size:${isDeskPerfDet ? '12px' : '11px'};">
             <span style="display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:18px;background:var(--neutral-100);color:var(--neutral-700);border-radius:4px;font-size:9.5px;font-weight:700;font-family:var(--font-mono);flex-shrink:0;">#${i+1}</span>
             <span style="flex:1;color:var(--brand-navy);font-weight:500;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${(prod.descricao || '').replace(/</g,'&lt;')}</span>
             ${prod.marca ? `<span style="color:var(--neutral-500);font-size:9.5px;font-weight:400;flex-shrink:0;">${prod.marca.replace(/</g,'&lt;')}</span>` : ''}
           </div>
         `).join('')}
+        ${produtosFiltrados.length === 0 ? `<div style="padding:14px;text-align:center;color:var(--neutral-500);font-size:12px;background:var(--neutral-50,#F5F6FA);border-radius:6px;">Nenhum item da marca selecionada.</div>` : ''}
       </div>
     `;
   } else if (r.temMatch) {
@@ -24273,12 +24797,13 @@ function _perfRenderDetalhe() {
 // - Mobile (acordeão): alterna — clicar no aberto fecha
 window._perfSelecionarHospital = function(idx) {
   if (!isDesktop() && window._perfSelectedIdx === idx) {
-    window._perfSelectedIdx = -1; // fecha
+    window._perfSelectedIdx = -1;
   } else {
     window._perfSelectedIdx = idx;
   }
-  window._perfTopN = 10; // reseta paginação
-  _perfRender(); // re-renderiza tudo
+  window._perfTopN = 10;
+  window._perfMarcaFiltro = 'Todas';
+  _perfRender();
 };
 
 // Sprint 9.32.23: troca Top N (substitui versão anterior)
@@ -24293,8 +24818,9 @@ window._perfTrocarPeriodo = async function(periodo) {
   if (!user) return;
   window._perfState = null;
   window._perfPeriodo = periodo;
-  window._perfSelectedIdx = null; // Sprint 9.32.23: reset seleção no master/detail
+  window._perfSelectedIdx = null;
   window._perfTopN = 10;
+  window._perfMarcaFiltro = 'Todas';
   // Re-render dos botões
   ['tudo','12m','6m','3m','mes'].forEach(p => {
     const btn = document.getElementById('perfBtn-' + p);
@@ -24330,11 +24856,14 @@ function renderNutriPerformanceFallback() {
       ${mobileTopBar({ title: 'Performance', showBack: true })}
       <main class="mcontent" style="padding:14px;">
         <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:12px;padding:12px 14px;margin-bottom:12px;">
-          <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:14px;display:flex;align-items:center;gap:6px;">
+          <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:14px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
             <span class="material-symbols-rounded" style="font-size:18px;color:#1D4ED8;">insights</span>
             Performance &amp; ROI
           </div>
-          <div style="font-size:11.5px;color:var(--neutral-600);margin-top:3px;line-height:1.35;">Suas visitas × faturamento por CNPJ.</div>
+          <div style="margin-top:6px;">
+            <span id="perfBadgeAtualizado" class="perf-badge-atualizado" style="display:none;"></span>
+          </div>
+          <div style="font-size:11.5px;color:var(--neutral-600);margin-top:6px;line-height:1.35;">Suas visitas × faturamento por CNPJ.</div>
           <div class="review-tabs" style="margin-top:10px;display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;">
             <button class="review-tab ${periodo === 'mes' ? 'is-active' : ''}" id="perfBtn-mes" onclick="_perfTrocarPeriodo('mes')" style="white-space:nowrap;flex-shrink:0;">Mês</button>
             <button class="review-tab ${periodo === '3m' ? 'is-active' : ''}" id="perfBtn-3m" onclick="_perfTrocarPeriodo('3m')" style="white-space:nowrap;flex-shrink:0;">3m</button>
@@ -24377,9 +24906,12 @@ function renderNutriPerformanceDesktop() {
       <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:14px;padding:18px 20px;margin-bottom:14px;">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;">
           <div>
-            <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:16px;display:flex;align-items:center;gap:8px;">
-              <span class="material-symbols-rounded" style="font-size:22px;color:#1D4ED8;">insights</span>
-              Performance &amp; ROI
+            <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+              <span style="display:inline-flex;align-items:center;gap:8px;">
+                <span class="material-symbols-rounded" style="font-size:22px;color:#1D4ED8;">insights</span>
+                Performance &amp; ROI
+              </span>
+              <span id="perfBadgeAtualizado" class="perf-badge-atualizado" style="display:none;"></span>
             </div>
             <div style="font-size:12.5px;color:var(--neutral-600);margin-top:2px;">Cruzamento das suas visitas com o faturamento das instituições. Matching por CNPJ.</div>
           </div>
@@ -25425,7 +25957,7 @@ window.handleCheckoutAtivo = async function() {
   if (escolha === 'agora') {
     window.location.replace(`#/visitas/relatorio?id=${visitaId}`);
   } else {
-    setFlash('success', 'Visita finalizada. Você pode preencher o relatório quando quiser (até 24h).');
+    setFlash('success', 'Visita finalizada. Você pode preencher o relatório quando quiser (até 72h).');
     window.location.replace('#/visitas');
   }
 };
@@ -25554,7 +26086,7 @@ function showPostCheckoutModal({ instName, duracao }) {
             </div>
           </div>
           <div style="margin-top:12px;font-size:12px;color:var(--neutral-500);text-align:center;line-height:1.4;">
-            Você pode preencher em até <strong>24h</strong> após o check-in.
+            Você pode preencher em até <strong>72h</strong> após o check-in.
           </div>
         </div>
         <div class="modal-card__footer">
@@ -26892,6 +27424,15 @@ function hydrateReportForm() {
         <span class="material-symbols-rounded" style="font-size:14px;color:var(--brand-lime);vertical-align:-2px;">edit</span>
         Modo edição · preenchendo o formulário
       </div>
+      ${(typeof isDesktop === 'function' && isDesktop()) ? `
+        <a href="#/visitas"
+           style="display:inline-flex;align-items:center;gap:6px;padding:7px 12px 7px 9px;border:1.5px solid var(--brand-navy);background:#fff;color:var(--brand-navy);font-size:11.5px;font-weight:700;border-radius:7px;text-decoration:none;font-family:inherit;transition:all 150ms;cursor:pointer;"
+           onmouseover="this.style.background='var(--brand-navy)';this.style.color='#fff';"
+           onmouseout="this.style.background='#fff';this.style.color='var(--brand-navy)';">
+          <span class="material-symbols-rounded" style="font-size:15px;">arrow_back</span>
+          Voltar
+        </a>
+      ` : ''}
       <button onclick="window.alternarVisaoRelatorio('consolidado')" style="display:inline-flex;align-items:center;gap:6px;padding:7px 12px;background:#fff;color:var(--brand-navy);border:1px solid var(--neutral-200);border-radius:7px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:inherit;transition:all 140ms;" onmouseover="this.style.borderColor='var(--brand-navy)'" onmouseout="this.style.borderColor='var(--neutral-200)'">
         <span class="material-symbols-rounded" style="font-size:15px;">visibility</span>
         Ver versão consolidada
@@ -27010,15 +27551,15 @@ function hydrateReportForm() {
         <span class="report-section__required">*</span>
         <span id="badgeUncommitted_empresa_representada" class="uncommitted-badge" style="display:none;">Não salvo</span>
       </div>
-      <div class="report-section__help">Qual empresa você representou nesta visita?</div>
+      <div class="report-section__help">Qual empresa você representou nesta visita? <span style="color:var(--neutral-500);">Pode escolher mais de uma.</span></div>
       <div class="toggle-group" style="display:grid;grid-template-columns:repeat(3, minmax(0, 1fr));gap:6px;">
-        <button type="button" class="toggle-btn ${v.empresa_representada === 'Haverim' ? 'is-selected' : ''}" id="btnEmp_haverim" ${readonly ? 'disabled' : ''} onclick="setEmpresaRepresentada('Haverim')">
+        <button type="button" class="toggle-btn ${_empresasArr(v.empresa_representada).includes('Haverim') ? 'is-selected' : ''}" id="btnEmp_haverim" ${readonly ? 'disabled' : ''} onclick="setEmpresaRepresentada('Haverim')">
           Haverim
         </button>
-        <button type="button" class="toggle-btn ${v.empresa_representada === 'Nutricionais-Santos' ? 'is-selected' : ''}" id="btnEmp_santos" ${readonly ? 'disabled' : ''} onclick="setEmpresaRepresentada('Nutricionais-Santos')">
+        <button type="button" class="toggle-btn ${_empresasArr(v.empresa_representada).includes('Nutricionais-Santos') ? 'is-selected' : ''}" id="btnEmp_santos" ${readonly ? 'disabled' : ''} onclick="setEmpresaRepresentada('Nutricionais-Santos')">
           Nutricionais-Santos
         </button>
-        <button type="button" class="toggle-btn ${v.empresa_representada === 'Nutricionais-PG' ? 'is-selected' : ''}" id="btnEmp_pg" ${readonly ? 'disabled' : ''} onclick="setEmpresaRepresentada('Nutricionais-PG')">
+        <button type="button" class="toggle-btn ${_empresasArr(v.empresa_representada).includes('Nutricionais-PG') ? 'is-selected' : ''}" id="btnEmp_pg" ${readonly ? 'disabled' : ''} onclick="setEmpresaRepresentada('Nutricionais-PG')">
           Nutricionais-PG
         </button>
       </div>
@@ -27261,7 +27802,7 @@ Cada bloco de 3 linhas (ação / responsável / data) vira uma linha da tabela q
             Salvar como rascunho e sair
           </button>
           <div style="margin-top:6px;font-size:11px;color:var(--neutral-500);text-align:center;line-height:1.4;">
-            Você pode voltar e finalizar até 24h depois do check-in.
+            Você pode voltar e finalizar até 72h depois do check-in.
           </div>
         ` : ''}
 
@@ -27842,6 +28383,7 @@ window.handleAddNewProf = async function(nomeInicial) {
       institucaoId: ReportState.visita.instituicao_id,
       nome: dados.nome,
       profissao: dados.profissao,
+      profissao_outro: dados.profissao_outro,
       telefone: dados.telefone,
       email: dados.email,
     });
@@ -27865,7 +28407,10 @@ function showNewProfissionalModal(nomeInicial) {
     const backdrop = document.createElement('div');
     backdrop.className = 'modal-backdrop';
     backdrop.innerHTML = `
-      <div class="modal-card" style="max-width:440px;">
+      <div class="modal-card" style="max-width:440px;position:relative;">
+        <button type="button" id="mnpClose" aria-label="Fechar" style="position:absolute;top:12px;right:12px;width:32px;height:32px;border-radius:9999px;border:0;background:var(--neutral-100);color:var(--neutral-600);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;font-family:inherit;transition:background 140ms;" onmouseover="this.style.background='var(--neutral-200)'" onmouseout="this.style.background='var(--neutral-100)'">
+          <span class="material-symbols-rounded" style="font-size:18px;">close</span>
+        </button>
         <div class="modal-card__header">
           <div class="modal-card__icon">
             <span class="material-symbols-rounded">person_add</span>
@@ -27886,8 +28431,16 @@ function showNewProfissionalModal(nomeInicial) {
               <option value="Farmaceutico">Farmacêutico(a)</option>
               <option value="Enfermeiro">Enfermeiro(a)</option>
               <option value="Comprador">Comprador(a)</option>
-              <option value="Outro">Outro</option>
+              <option value="Outro">Outro (especificar)</option>
             </select>
+          </div>
+          <!-- Sprint 9.32.349: input que aparece quando profissao=Outro -->
+          <div class="report-field" id="mnpProfOutroWrap" style="display:none;margin-bottom:12px;">
+            <label for="mnpProfOutro">Qual cargo? <span class="report-section__required">*</span></label>
+            <input type="text" id="mnpProfOutro" placeholder="Ex: Cardiologista, Coordenador de compras..." autocomplete="off" maxlength="80" />
+            <div style="font-size:10.5px;color:var(--neutral-500);margin-top:4px;line-height:1.4;">
+              ⓘ O cargo que você escrever será revisado pelo admin pra padronização. Pode usar enquanto isso.
+            </div>
           </div>
           <div class="report-row-2" style="margin-bottom:4px;">
             <div class="report-field">
@@ -27926,6 +28479,22 @@ function showNewProfissionalModal(nomeInicial) {
       }
     }, 150);
 
+    // Sprint 9.32.349: mostra/esconde input "Outro" baseado no select
+    const profSel = backdrop.querySelector('#mnpProfissao');
+    const profOutroWrap = backdrop.querySelector('#mnpProfOutroWrap');
+    const profOutroInput = backdrop.querySelector('#mnpProfOutro');
+    const _toggleProfOutro = () => {
+      if (profSel.value === 'Outro') {
+        profOutroWrap.style.display = '';
+        setTimeout(() => profOutroInput && profOutroInput.focus(), 80);
+      } else {
+        profOutroWrap.style.display = 'none';
+        if (profOutroInput) profOutroInput.value = '';
+      }
+    };
+    profSel.addEventListener('change', _toggleProfOutro);
+    _toggleProfOutro(); // estado inicial
+
     // Máscara simples pra telefone
     const telInput = backdrop.querySelector('#mnpTelefone');
     telInput.addEventListener('input', (e) => {
@@ -27948,12 +28517,19 @@ function showNewProfissionalModal(nomeInicial) {
     backdrop.querySelector('#mnpConfirm').onclick = () => {
       const nome = backdrop.querySelector('#mnpNome').value.trim();
       const profissao = backdrop.querySelector('#mnpProfissao').value;
+      const profissao_outro = (backdrop.querySelector('#mnpProfOutro')?.value || '').trim();
       const telefone = backdrop.querySelector('#mnpTelefone').value.trim();
       const email = backdrop.querySelector('#mnpEmail').value.trim();
 
       if (!nome) {
         alert('Nome é obrigatório.');
         backdrop.querySelector('#mnpNome').focus();
+        return;
+      }
+      // Sprint 9.32.349: se Outro, exige especificação
+      if (profissao === 'Outro' && !profissao_outro) {
+        alert('Informe o cargo no campo "Qual cargo?".');
+        backdrop.querySelector('#mnpProfOutro')?.focus();
         return;
       }
       if (email && !/\S+@\S+\.\S+/.test(email)) {
@@ -27963,10 +28539,16 @@ function showNewProfissionalModal(nomeInicial) {
       }
 
       cleanup();
-      resolve({ nome, profissao, telefone: telefone || null, email: email || null });
+      resolve({ nome, profissao, profissao_outro: profissao_outro || null, telefone: telefone || null, email: email || null });
     };
 
     backdrop.querySelector('#mnpCancel').onclick = () => {
+      cleanup();
+      resolve(null);
+    };
+
+    // Sprint 9.32.351: botao X no topo direito
+    backdrop.querySelector('#mnpClose').onclick = () => {
       cleanup();
       resolve(null);
     };
@@ -27977,19 +28559,15 @@ function showNewProfissionalModal(nomeInicial) {
         e.preventDefault();
         backdrop.querySelector('#mnpConfirm').click();
       }
+      // Escape continua fechando (acao deliberada de teclado)
       if (e.key === 'Escape') {
         cleanup();
         resolve(null);
       }
     });
 
-    // Clicar fora do card fecha
-    backdrop.onclick = (e) => {
-      if (e.target === backdrop) {
-        cleanup();
-        resolve(null);
-      }
-    };
+    // Sprint 9.32.351: NAO fecha ao clicar fora — exige clique em X ou Cancelar
+    // (evita perda acidental de dados quando o nutri esta digitando o cargo)
   });
 }
 
@@ -28009,25 +28587,45 @@ window.toggleObjetivo = function(objId) {
 // Mudança fica em ReportState.uncommittedChoices até o usuário clicar "Salvar alterações".
 // Evita que toque acidental num pill modifique o banco silenciosamente.
 
+// Sprint 9.32.348: helper pra extrair array de empresas a partir do valor (CSV ou array)
+function _empresasArr(v) {
+  if (!v) return [];
+  if (Array.isArray(v)) return v.filter(Boolean).map(s => String(s).trim());
+  return String(v).split(',').map(s => s.trim()).filter(Boolean);
+}
+function _empresasJoin(arr) {
+  return (arr || []).filter(Boolean).map(s => String(s).trim()).join(', ');
+}
+
 window.setEmpresaRepresentada = function(valor) {
   if (ReportState.visita && !visitaPodeSerEditada(ReportState.visita).pode) return;
-  // Limpa is-selected dos 3 botões e marca o clicado (visual imediato)
-  ['btnEmp_haverim', 'btnEmp_santos', 'btnEmp_pg'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.classList.remove('is-selected');
-  });
+
+  // Sprint 9.32.348: toggle multi-select
+  const atualUC = ReportState.uncommittedChoices.empresa_representada;
+  const atualBanco = ReportState.visita?.empresa_representada;
+  const atual = (atualUC !== undefined) ? atualUC : atualBanco;
+  let arr = _empresasArr(atual);
+
+  const idx = arr.indexOf(valor);
+  if (idx >= 0) arr.splice(idx, 1);
+  else arr.push(valor);
+
+  // Visual: aplica is-selected pra cada botao baseado no array
   const map = {
     'Haverim': 'btnEmp_haverim',
     'Nutricionais-Santos': 'btnEmp_santos',
     'Nutricionais-PG': 'btnEmp_pg',
   };
-  const el = document.getElementById(map[valor]);
-  if (el) el.classList.add('is-selected');
+  Object.entries(map).forEach(([nome, id]) => {
+    const el = document.getElementById(id);
+    if (el) el.classList.toggle('is-selected', arr.includes(nome));
+  });
 
-  // Compara com o valor atual no banco. Se diferente, marca como pendente. Se igual, remove a pendência.
-  const valorOriginal = ReportState.visita?.empresa_representada;
-  if (valor !== valorOriginal) {
-    ReportState.uncommittedChoices.empresa_representada = valor;
+  // Compara com banco — marca como pendente se mudou
+  const novoStr = _empresasJoin(arr);
+  const bancoStr = _empresasJoin(_empresasArr(atualBanco));
+  if (novoStr !== bancoStr) {
+    ReportState.uncommittedChoices.empresa_representada = novoStr;
   } else {
     delete ReportState.uncommittedChoices.empresa_representada;
   }
@@ -29155,7 +29753,7 @@ window.handleSalvarRascunho = async function() {
     clearTimeout(ReportState.autoSaveTimer);
     await executeAutoSave();
   }
-  setFlash('success', 'Rascunho salvo. Você pode voltar e finalizar a qualquer momento (até 24h).');
+  setFlash('success', 'Rascunho salvo. Você pode voltar e finalizar a qualquer momento (até 72h).');
   // Navega pra lista — usa replace pra não voltar acidentalmente pro relatório
   window.location.replace('#/visitas');
 };
@@ -32111,8 +32709,6 @@ async function carregarIndicadoresNutri() {
         </div>
       </div>
 
-      ${autoCancHtml}
-
       <!-- P · Heatmap calendário (Sprint 9.32.107: quadradinhos maiores no desktop) -->
       <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:12px;padding:14px;margin-bottom:16px;">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:10px;">
@@ -32380,6 +32976,8 @@ async function carregarIndicadoresNutri() {
           </div>
         `).join('')}
       </div>
+
+      ${autoCancHtml}
     `;
   } catch (err) {
     container.innerHTML = `<div style="padding:20px;color:var(--status-danger);">Erro ao carregar indicadores: ${err.message}</div>`;
@@ -33326,16 +33924,18 @@ function renderR2DistCheckin(containerId, visitas) {
 }
 
 function renderR2DistTipoInst(containerId, visitas) {
-  const cnt = { privada: 0, publica: 0, outros: 0 };
+  const cnt = { privada: 0, publica: 0, mista: 0, outros: 0 };
   visitas.forEach(v => {
     const tipo = (v.instituicoes?.tipo || '').toLowerCase();
     if (tipo === 'privada' || tipo === 'private') cnt.privada++;
     else if (tipo === 'publica' || tipo === 'pública' || tipo === 'public') cnt.publica++;
+    else if (tipo === 'mista' || tipo === 'mixed') cnt.mista++;
     else cnt.outros++;
   });
-  _renderR2DistCard(containerId, 'Tipo de instituição', 'Privada / pública / outros', [
+  _renderR2DistCard(containerId, 'Tipo de instituição', 'Privada / pública / mista / outros', [
     { label: 'Privada', count: cnt.privada, cor: '#0A1F5C' },
     { label: 'Pública', count: cnt.publica, cor: '#8BC63F', corTexto: '#0A1F5C' },
+    { label: 'Mista',   count: cnt.mista,   cor: '#7C3AED' },
     { label: 'Outros / sem tipo', count: cnt.outros, cor: '#9CA3AF' },
   ]);
 }
@@ -35466,7 +36066,7 @@ function renderReviewDetailContent(v, opts = {}) {
   const duracao = calcularDuracaoMin(v.checkin_timestamp, v.checkout_timestamp);
   const nutriNome = v.nutricionista?.nome || '—';
   const instName = v.instituicoes?.nome || 'Instituição';
-  const podeAgir = v.status !== 'aprovada_pos_revisao' && !ocultarAcoes;
+  const podeAgir = v.status !== 'aprovada_pos_revisao' && v.status !== 'cancelada' && !ocultarAcoes;
   const dataCurta = v.checkin_timestamp ? formatarDataCurta(v.checkin_timestamp) : '—';
 
   // ===== HERO com banda de alerta no topo (se tem flags) =====
@@ -35585,13 +36185,24 @@ function renderReviewDetailContent(v, opts = {}) {
       <div class="report-r1-grid" style="margin-bottom:14px;">
         <div class="report-r1-cell">
           <div class="report-r1-uplabel">Empresa representada</div>
-          ${v.empresa_representada
-            ? `<span style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:9999px;font-size:11.5px;font-weight:700;${
-                v.empresa_representada === 'Haverim' ? 'background:#DCFCE7;color:#166534;' :
-                v.empresa_representada === 'Nutricionais-Santos' ? 'background:#DBEAFE;color:#1E40AF;' :
-                'background:#FEF3C7;color:#92400E;'
-              }">${String(v.empresa_representada).replace(/</g,'&lt;')}</span>`
-            : '<span style="color:var(--status-warning-dark,#854F0B);font-size:12px;font-weight:600;">⚠ Não informada</span>'}
+          ${(() => {
+            // Sprint 9.32.348: renderiza um chip por empresa (suporta multi)
+            const _empCorMap = {
+              'Haverim': 'background:#DCFCE7;color:#166534;',
+              'Nutricionais-Santos': 'background:#DBEAFE;color:#1E40AF;',
+              'Nutricionais-PG': 'background:#FEF3C7;color:#92400E;',
+            };
+            const _arrEmp = (typeof _empresasArr === 'function')
+              ? _empresasArr(v.empresa_representada)
+              : (v.empresa_representada ? String(v.empresa_representada).split(',').map(s => s.trim()).filter(Boolean) : []);
+            if (_arrEmp.length === 0) {
+              return '<span style="color:var(--status-warning-dark,#854F0B);font-size:12px;font-weight:600;">⚠ Não informada</span>';
+            }
+            return _arrEmp.map(emp => {
+              const cor = _empCorMap[emp] || 'background:var(--neutral-100);color:var(--neutral-700);';
+              return `<span style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:9999px;font-size:11.5px;font-weight:700;margin-right:4px;${cor}">${emp.replace(/</g,'&lt;')}</span>`;
+            }).join('');
+          })()}
         </div>
         <div class="report-r1-cell">
           <div class="report-r1-uplabel">Horário declarado</div>
@@ -35855,6 +36466,15 @@ function renderRelatorioConsolidadoNutri(visita, opts = {}) {
           </div>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          ${(typeof isDesktop === 'function' && isDesktop()) ? `
+            <a href="#/visitas"
+               style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px 8px 10px;border:1.5px solid var(--brand-navy);background:#fff;color:var(--brand-navy);font-size:12px;font-weight:700;border-radius:8px;text-decoration:none;font-family:inherit;transition:all 150ms;cursor:pointer;"
+               onmouseover="this.style.background='var(--brand-navy)';this.style.color='#fff';"
+               onmouseout="this.style.background='#fff';this.style.color='var(--brand-navy)';">
+              <span class="material-symbols-rounded" style="font-size:16px;">arrow_back</span>
+              Voltar
+            </a>
+          ` : ''}
           ${mostrarBotaoImprimir ? `
             <button onclick="window.print()" style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;background:#fff;color:var(--brand-navy);border:1px solid var(--neutral-200);border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;transition:all 140ms;" onmouseover="this.style.borderColor='var(--brand-navy)'" onmouseout="this.style.borderColor='var(--neutral-200)'">
               <span class="material-symbols-rounded" style="font-size:16px;">print</span>
@@ -37725,6 +38345,9 @@ function showModalInstituicaoNova({ valorInicialNome = '', modo = 'cadastro', in
               <label style="display:inline-flex;align-items:center;gap:5px;padding:7px 12px;border:1.5px solid var(--neutral-200);border-radius:8px;cursor:pointer;font-size:13px;${valTipo === 'privada' ? 'background:var(--brand-lime-50,#F4F9EA);border-color:var(--brand-lime-dark,#6FA62E);color:var(--brand-lime-dark,#6FA62E);font-weight:600;' : ''}">
                 <input type="radio" name="mniTipo" value="privada" ${valTipo === 'privada' ? 'checked' : ''} style="accent-color:var(--brand-lime-dark,#6FA62E);" /> Privada
               </label>
+              <label style="display:inline-flex;align-items:center;gap:5px;padding:7px 12px;border:1.5px solid var(--neutral-200);border-radius:8px;cursor:pointer;font-size:13px;${valTipo === 'mista' ? 'background:var(--brand-lime-50,#F4F9EA);border-color:var(--brand-lime-dark,#6FA62E);color:var(--brand-lime-dark,#6FA62E);font-weight:600;' : ''}">
+                <input type="radio" name="mniTipo" value="mista" ${valTipo === 'mista' ? 'checked' : ''} style="accent-color:var(--brand-lime-dark,#6FA62E);" /> Mista
+              </label>
               <button type="button" id="mniTipoLimpar" style="background:transparent;border:0;color:var(--neutral-500);font-size:11.5px;cursor:pointer;text-decoration:underline;padding:0 6px;${valTipo ? '' : 'display:none;'}">Limpar</button>
             </div>
           </div>
@@ -39075,7 +39698,7 @@ window.rejeitarObjetivoPendente = async function(id) {
 let FAT_DATA = null;
 let _fatDataPromise = null;
 // __FAT_VERSION_START__ — substituído pelo atualizar_index.py com hash do JSON
-const FAT_DATA_VERSION = '17e7b802ae3d';
+const FAT_DATA_VERSION = '1348d3f729b1';
 // __FAT_VERSION_END__
 const FAT_DATA_URL = 'faturamento_data_inline.json?v=' + FAT_DATA_VERSION;
 
