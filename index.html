@@ -8237,7 +8237,7 @@ body.va-banner-active { padding-top: 56px; }
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.354b-voltar-no-banner',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.363-modal-rede-matriz',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -8376,10 +8376,20 @@ function saveSession(user) {
     loggedAt: Date.now(),
   }));
 }
+// Sprint 9.32.355: sessao expira em 24h apos o login (independente de atividade)
+const _SESSAO_TTL_MS = 24 * 60 * 60 * 1000; // 24h
 function getSession() {
   try {
     const raw = localStorage.getItem(AUTH_KEY);
-    return raw ? JSON.parse(raw) : null;
+    if (!raw) return null;
+    const sess = JSON.parse(raw);
+    // Checa idade da sessao
+    if (sess && sess.loggedAt && (Date.now() - sess.loggedAt) > _SESSAO_TTL_MS) {
+      localStorage.removeItem(AUTH_KEY);
+      console.info('[sessao] expirada apos 24h, forçando relogin');
+      return null;
+    }
+    return sess;
   } catch { return null; }
 }
 function clearSession() {
@@ -11444,6 +11454,161 @@ async function criarInstituicaoSugerida(dados) {
 
 // Wrapper mais genérico: aceita opção `ativaDireto` pra admin cadastrar sem passar
 // pela fila de aprovação. Usado na agenda (Sprint 8.8).
+// Sprint 9.32.363: Modal "Rede" — mostra matriz + unidades + KPIs agregados
+async function _carregarRedeMatriz(matrizId) {
+  if (!db || !matrizId) return null;
+  // Busca matriz
+  const { data: matriz, error: errM } = await db
+    .from('instituicoes')
+    .select('id, nome, cnpj, cidade, estado, bairro, logradouro, tipo, ativo, matriz_id')
+    .eq('id', matrizId)
+    .maybeSingle();
+  if (errM || !matriz) return null;
+  // Se a "matriz" passada eh na verdade uma unidade, sobe pro topo
+  if (matriz.matriz_id) {
+    return _carregarRedeMatriz(matriz.matriz_id);
+  }
+  // Busca unidades
+  const { data: unidades } = await db
+    .from('instituicoes')
+    .select('id, nome, cnpj, cidade, estado, bairro, tipo, ativo')
+    .eq('matriz_id', matrizId)
+    .order('nome');
+  // Conta visitas agregadas (matriz + unidades)
+  const ids = [matriz.id, ...(unidades || []).map(u => u.id)];
+  let totalVisitas = 0;
+  try {
+    const { count } = await db.from('visitas')
+      .select('id', { count: 'exact', head: true })
+      .in('instituicao_id', ids)
+      .not('status', 'in', '(agendada,sugerida,cancelada)');
+    totalVisitas = count || 0;
+  } catch (e) {}
+  return { matriz, unidades: unidades || [], totalVisitas, idsRede: ids };
+}
+
+window.showModalRedeMatriz = async function(matrizOuUnidadeId) {
+  if (!matrizOuUnidadeId) return;
+  // Loading state
+  const backdrop = document.createElement('div');
+  backdrop.className = 'modal-backdrop';
+  backdrop.innerHTML = `
+    <div class="modal-card" style="max-width:560px;">
+      <div style="padding:30px;text-align:center;color:var(--neutral-500);">
+        <div class="splash__spinner" style="margin:0 auto 10px;"></div>
+        Carregando rede...
+      </div>
+    </div>
+  `;
+  document.body.appendChild(backdrop);
+  const cleanup = () => backdrop.remove();
+  backdrop.onclick = (e) => { if (e.target === backdrop) cleanup(); };
+
+  try {
+    const rede = await _carregarRedeMatriz(matrizOuUnidadeId);
+    if (!rede || !rede.matriz) {
+      backdrop.innerHTML = `<div class="modal-card"><div style="padding:24px;text-align:center;color:var(--status-danger);">Rede não encontrada.</div></div>`;
+      setTimeout(cleanup, 1500);
+      return;
+    }
+    const { matriz, unidades, totalVisitas } = rede;
+    const localMatriz = [matriz.cidade, matriz.estado].filter(Boolean).join('/');
+    const tipoBadge = matriz.tipo === 'publica' ? 'Pública' : matriz.tipo === 'privada' ? 'Privada' : matriz.tipo === 'mista' ? 'Mista' : '';
+    const unidadesHtml = unidades.length === 0
+      ? `<div style="padding:16px;text-align:center;color:var(--neutral-500);font-size:12px;background:var(--neutral-50);border-radius:9px;">Esta matriz ainda não tem unidades vinculadas.</div>`
+      : unidades.map(u => {
+          const loc = [u.bairro, u.cidade].filter(Boolean).join(' · ');
+          const inativo = !u.ativo ? 'opacity:0.55;' : '';
+          return `
+            <div onclick="(function(){ document.getElementById('rmFechar').click(); setTimeout(()=>editarInstituicaoAdmin('${u.id}'),100); })()" style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:#fff;border:1px solid var(--neutral-200);border-radius:9px;cursor:pointer;${inativo}" onmouseover="this.style.borderColor='var(--brand-lime)';" onmouseout="this.style.borderColor='var(--neutral-200)';">
+              <div style="width:32px;height:32px;border-radius:7px;background:var(--neutral-100);color:var(--brand-navy);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <span class="material-symbols-rounded" style="font-size:17px;">apartment</span>
+              </div>
+              <div style="flex:1;min-width:0;">
+                <div style="font-weight:600;font-size:12.5px;color:var(--brand-navy);">${(u.nome || '').replace(/</g,'&lt;')}</div>
+                <div style="font-size:10.5px;color:var(--neutral-500);margin-top:1px;">${loc || '—'}</div>
+              </div>
+              ${!u.ativo ? `<span style="font-size:9.5px;color:var(--neutral-500);background:var(--neutral-100);padding:2px 7px;border-radius:9999px;font-weight:700;">Inativa</span>` : ''}
+              <span class="material-symbols-rounded" style="color:var(--neutral-300);font-size:18px;">chevron_right</span>
+            </div>
+          `;
+        }).join('');
+
+    backdrop.innerHTML = `
+      <div class="modal-card" style="max-width:560px;position:relative;">
+        <button id="rmFechar" type="button" aria-label="Fechar" style="position:absolute;top:12px;right:12px;width:32px;height:32px;border-radius:9999px;border:0;background:var(--neutral-100);color:var(--neutral-600);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;">
+          <span class="material-symbols-rounded" style="font-size:18px;">close</span>
+        </button>
+        <!-- Header: matriz -->
+        <div style="padding:20px 20px 14px;border-bottom:1px solid var(--neutral-100);">
+          <div style="display:flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;color:var(--brand-lime-dark,#6FA62E);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:5px;">
+            <span class="material-symbols-rounded" style="font-size:14px;">domain</span>Rede da matriz
+          </div>
+          <div style="font-family:var(--font-display);font-weight:700;font-size:17px;color:var(--brand-navy);line-height:1.2;">${(matriz.nome || '').replace(/</g,'&lt;')}</div>
+          <div style="font-size:11.5px;color:var(--neutral-600);margin-top:4px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            ${matriz.cnpj ? `<span style="font-family:'JetBrains Mono',monospace;">${matriz.cnpj}</span>` : ''}
+            ${localMatriz ? `<span>· ${localMatriz}</span>` : ''}
+            ${tipoBadge ? `<span style="padding:1px 7px;border-radius:9999px;background:${matriz.tipo === 'publica' ? 'var(--brand-navy)' : matriz.tipo === 'privada' ? 'var(--brand-lime)' : '#7C3AED'};color:#fff;font-size:9.5px;font-weight:700;text-transform:uppercase;">${tipoBadge}</span>` : ''}
+          </div>
+        </div>
+        <!-- KPIs -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:14px 20px 8px;">
+          <div style="background:var(--neutral-50);border-radius:9px;padding:10px 12px;">
+            <div style="font-size:9.5px;color:var(--neutral-500);text-transform:uppercase;letter-spacing:0.05em;font-weight:700;">Unidades</div>
+            <div style="font-family:var(--font-display);font-weight:800;font-size:20px;color:var(--brand-navy);margin-top:3px;">${unidades.length}</div>
+          </div>
+          <div style="background:var(--neutral-50);border-radius:9px;padding:10px 12px;">
+            <div style="font-size:9.5px;color:var(--neutral-500);text-transform:uppercase;letter-spacing:0.05em;font-weight:700;">Visitas (rede)</div>
+            <div style="font-family:var(--font-display);font-weight:800;font-size:20px;color:var(--brand-navy);margin-top:3px;">${totalVisitas}</div>
+          </div>
+        </div>
+        <!-- Lista de unidades -->
+        <div style="padding:8px 20px 16px;">
+          <div style="font-size:10.5px;color:var(--neutral-500);text-transform:uppercase;letter-spacing:0.05em;font-weight:700;margin:8px 0 8px;">Unidades vinculadas</div>
+          <div style="display:flex;flex-direction:column;gap:6px;max-height:300px;overflow-y:auto;">
+            ${unidadesHtml}
+          </div>
+        </div>
+        <div style="padding:12px 20px 16px;border-top:1px solid var(--neutral-100);display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
+          <button id="rmEditMatriz" type="button" style="background:var(--brand-navy);color:#fff;border:0;padding:9px 14px;border-radius:8px;font-weight:700;font-size:12px;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px;">
+            <span class="material-symbols-rounded" style="font-size:15px;">edit</span>Editar matriz
+          </button>
+          <span style="font-size:10.5px;color:var(--neutral-500);">Clique numa unidade pra editar</span>
+        </div>
+      </div>
+    `;
+    backdrop.querySelector('#rmFechar').onclick = cleanup;
+    backdrop.querySelector('#rmEditMatriz').onclick = () => {
+      cleanup();
+      setTimeout(() => editarInstituicaoAdmin(matriz.id), 100);
+    };
+  } catch (err) {
+    console.error('[showModalRedeMatriz]', err);
+    backdrop.innerHTML = `<div class="modal-card"><div style="padding:24px;color:var(--status-danger);">Erro: ${err.message}</div></div>`;
+    setTimeout(cleanup, 2000);
+  }
+};
+
+// Sprint 9.32.361: busca instituicoes com o mesmo CNPJ (normaliza pra digitos)
+function _normalizeCnpj(s) { return String(s || '').replace(/\D/g, ''); }
+
+async function _buscarInstituicoesPorCnpj(cnpjInput, excludeId = null) {
+  if (!db) return [];
+  const cnpjRaw = _normalizeCnpj(cnpjInput);
+  if (cnpjRaw.length < 8) return []; // muito curto pra ser CNPJ
+  // Tenta ambos os formatos (raw + formatado) — DB pode ter qualquer um
+  const fmt = cnpjRaw.length === 14
+    ? `${cnpjRaw.slice(0,2)}.${cnpjRaw.slice(2,5)}.${cnpjRaw.slice(5,8)}/${cnpjRaw.slice(8,12)}-${cnpjRaw.slice(12,14)}`
+    : null;
+  let q = db.from('instituicoes')
+    .select('id, nome, cnpj, cidade, estado, matriz_id, ativo')
+    .or(fmt ? `cnpj.eq.${cnpjRaw},cnpj.eq.${fmt}` : `cnpj.eq.${cnpjRaw}`);
+  if (excludeId) q = q.neq('id', excludeId);
+  const { data, error } = await q;
+  if (error) { console.warn('[buscar inst cnpj]', error.message); return []; }
+  return data || [];
+}
+
 async function criarInstituicao(dados, { ativaDireto = false } = {}) {
   if (!db) throw new Error('Banco não conectado');
   const user = getCurrentUser();
@@ -11463,16 +11628,18 @@ async function criarInstituicao(dados, { ativaDireto = false } = {}) {
     pessoa_tipo = null,
     leitos_uti_neonatal = null,
     enfermeiro_curativo_nome = null, enfermeiro_curativo_telefone = null, enfermeiro_curativo_email = null,
+    // Sprint 9.32.360: matriz_id permite cadastrar unidade da matriz com mesmo CNPJ
+    matriz_id = null,
   } = payload || {};
   if (!nome || !nome.trim()) throw new Error('Nome da instituição é obrigatório');
   const nomeClean = nome.trim();
-  // Verifica duplicidade case-insensitive
+  // Verifica duplicidade case-insensitive (mesmo nome em ambitos diferentes ainda eh permitido se matriz_id setado)
   const { data: existente } = await db
     .from('instituicoes')
     .select('id, nome, pendente_aprovacao')
     .ilike('nome', nomeClean)
     .maybeSingle();
-  if (existente) return existente;
+  if (existente && !matriz_id) return existente;
   const { data, error } = await db
     .from('instituicoes')
     .insert({
@@ -11507,10 +11674,19 @@ async function criarInstituicao(dados, { ativaDireto = false } = {}) {
       enfermeiro_curativo_nome: enfermeiro_curativo_nome || null,
       enfermeiro_curativo_telefone: enfermeiro_curativo_telefone || null,
       enfermeiro_curativo_email: enfermeiro_curativo_email || null,
+      // Sprint 9.32.360: vincula como unidade da matriz se aplicavel
+      matriz_id: matriz_id || null,
     })
     .select()
     .single();
-  if (error) throw new Error(error.message);
+  if (error) {
+    // Fallback se coluna matriz_id ainda nao foi criada (SQL pendente)
+    const msg = (error.message || '').toLowerCase();
+    if (matriz_id && (msg.includes('matriz_id') || msg.includes('schema cache') || msg.includes('could not find'))) {
+      console.warn('[criarInstituicao] matriz_id nao disponivel, rode matriz_unidades.sql:', error.message);
+    }
+    throw new Error(error.message);
+  }
   return data;
 }
 
@@ -15553,7 +15729,7 @@ function renderAdminRevisaoDesktop() {
     window._reviewDesktopState = {
       nutri: 'todos',           // 'todos' ou id do nutri
       flags: new Set(['noCheckin', 'gps', 'time', 'manual']), // chips ligados
-      filtroBase: 'com_flags',  // 'com_flags' | 'em_revisao' | 'resolvidas' | 'todas'
+      filtroBase: 'todas',  // Sprint 9.32.357: default = 'todas' (era 'com_flags')
       ordenacao: 'severidade',  // 'severidade' | 'data_desc' | 'data_asc'
     };
   }
@@ -16691,6 +16867,16 @@ async function carregarAdminInstituicoesDesktop() {
              : s.filtro === 'desativadas' ? desativadas
              : ativas;
 
+    // Sprint 9.32.362: indexa matriz_id pra render de badges
+    const _matrizById = {};
+    const _unidadesPorMatriz = {};
+    todas.forEach(i => { _matrizById[i.id] = i; });
+    todas.forEach(i => {
+      if (i.matriz_id) {
+        _unidadesPorMatriz[i.matriz_id] = (_unidadesPorMatriz[i.matriz_id] || 0) + 1;
+      }
+    });
+
     // Busca local
     const busca = (s.busca || '').trim().toLowerCase();
     if (busca) {
@@ -16797,6 +16983,19 @@ async function carregarAdminInstituicoesDesktop() {
                   <span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:280px;">${(inst.nome || '').replace(/</g,'&lt;')}</span>
                   ${pendenteBadge}
                   ${tipoBadge}
+                  ${(() => {
+                    // Sprint 9.32.362: badge de matriz/unidade
+                    if (inst.matriz_id) {
+                      const m = _matrizById[inst.matriz_id];
+                      const nm = m ? m.nome : '?';
+                      return `<span onclick="event.stopPropagation();showModalRedeMatriz('${inst.matriz_id}');" title="Ver rede · matriz: ${nm.replace(/"/g,'&quot;')}" style="cursor:pointer;display:inline-flex;align-items:center;gap:3px;padding:1px 7px;border-radius:9999px;font-size:9.5px;font-weight:700;text-transform:uppercase;background:#E4ECFD;color:var(--status-info,#185FA5);letter-spacing:0.04em;"><span class="material-symbols-rounded" style="font-size:11px;">account_tree</span>Unidade de ${(nm || '').slice(0,24).replace(/</g,'&lt;')}${nm.length > 24 ? '…' : ''}</span>`;
+                    }
+                    const qtdUni = _unidadesPorMatriz[inst.id] || 0;
+                    if (qtdUni > 0) {
+                      return `<span onclick="event.stopPropagation();showModalRedeMatriz('${inst.id}');" title="Ver rede · ${qtdUni} ${qtdUni === 1 ? 'unidade' : 'unidades'}" style="cursor:pointer;display:inline-flex;align-items:center;gap:3px;padding:1px 7px;border-radius:9999px;font-size:9.5px;font-weight:700;text-transform:uppercase;background:#ECF6E5;color:var(--brand-lime-dark,#6FA62E);letter-spacing:0.04em;"><span class="material-symbols-rounded" style="font-size:11px;">domain</span>Matriz · ${qtdUni} ${qtdUni === 1 ? 'unidade' : 'unidades'}</span>`;
+                    }
+                    return '';
+                  })()}
                 </div>
                 ${inst.razao_social && inst.razao_social !== inst.nome ? `<div style="font-size:11px;color:var(--neutral-500);margin-top:2px;">${inst.razao_social.replace(/</g,'&lt;')}</div>` : ''}
               </div>
@@ -16931,7 +17130,7 @@ function renderAdminEquipeDesktop() {
 
   const filtroPorRota = window._routeParams?.filtro || null;
   if (!window._equipeDesktopState) window._equipeDesktopState = { filtro: 'ativos', busca: '' };
-  if (filtroPorRota && ['pendentes','ativos','desativados'].includes(filtroPorRota)) {
+  if (filtroPorRota && ['pendentes','ativos','desativados','arquivados'].includes(filtroPorRota)) {
     window._equipeDesktopState.filtro = filtroPorRota;
   }
 
@@ -16945,6 +17144,8 @@ function renderAdminEquipeDesktop() {
     { id: 'pendentes',   label: 'Pendentes',   badgeId: 'dsdEqCntPend' },
     { id: 'ativos',      label: 'Ativos',      badgeId: 'dsdEqCntAtiv' },
     { id: 'desativados', label: 'Desativados', badgeId: 'dsdEqCntDesat' },
+    // Sprint 9.32.358: arquivados (preservam historico, nao aparecem em desativados)
+    { id: 'arquivados',  label: 'Arquivados',  badgeId: 'dsdEqCntArq' },
   ];
   const titleExtra = `
     <div style="display:inline-flex;gap:4px;background:var(--neutral-100);border-radius:9999px;padding:3px;">
@@ -17021,10 +17222,13 @@ async function carregarAdminEquipeDesktop() {
     }
     window._equipeDesktopInitialized = true;
 
+    // Sprint 9.32.358: filtro 'arquivados' busca em todos status com arquivado=true
     const statuses = s.filtro === 'pendentes' ? ['pendente']
                   : s.filtro === 'ativos'    ? ['ativo']
+                  : s.filtro === 'arquivados' ? ['pendente','ativo','inativo','bloqueado']
                   : ['inativo', 'bloqueado'];
-    let usuarios = await listarUsuariosPorStatus(statuses);
+    const optsArq = { arquivados: s.filtro === 'arquivados' ? 'somente' : 'esconder' };
+    let usuarios = await listarUsuariosPorStatus(statuses, optsArq);
 
     // Busca local
     const busca = (s.busca || '').trim().toLowerCase();
@@ -17039,9 +17243,10 @@ async function carregarAdminEquipeDesktop() {
 
     if (usuarios.length === 0) {
       const empties = {
-        pendentes:   { icon: 'inbox',      t: busca ? 'Nenhum resultado' : 'Nenhum cadastro pendente', d: busca ? 'Tente outros termos.' : 'Quando alguém se cadastrar, aparece aqui.' },
-        ativos:      { icon: 'groups',     t: busca ? 'Nenhum resultado' : 'Nenhum membro ativo',      d: busca ? 'Tente outros termos.' : 'Aprovar cadastros na aba Pendentes.' },
-        desativados: { icon: 'archive',    t: busca ? 'Nenhum resultado' : 'Ninguém desativado',       d: busca ? 'Tente outros termos.' : 'Membros desativados aparecem aqui pra reativar.' },
+        pendentes:   { icon: 'inbox',       t: busca ? 'Nenhum resultado' : 'Nenhum cadastro pendente', d: busca ? 'Tente outros termos.' : 'Quando alguém se cadastrar, aparece aqui.' },
+        ativos:      { icon: 'groups',      t: busca ? 'Nenhum resultado' : 'Nenhum membro ativo',      d: busca ? 'Tente outros termos.' : 'Aprovar cadastros na aba Pendentes.' },
+        desativados: { icon: 'archive',     t: busca ? 'Nenhum resultado' : 'Ninguém desativado',       d: busca ? 'Tente outros termos.' : 'Membros desativados aparecem aqui pra reativar.' },
+        arquivados:  { icon: 'inventory_2', t: busca ? 'Nenhum resultado' : 'Ninguém arquivado',        d: busca ? 'Tente outros termos.' : 'Membros arquivados aparecem aqui — histórico preservado, oculto da lista padrão.' },
       };
       const e = empties[s.filtro];
       tableEl.innerHTML = `
@@ -17141,14 +17346,21 @@ async function carregarAdminEquipeDesktop() {
           </button>
           ${btnDesativar}
         `;
-      } else {
-        // Aba Desativados: reativar + excluir em definitivo
+      } else if (s.filtro === 'desativados') {
+        // Sprint 9.32.358: aba Desativados: reativar + arquivar (era "excluir definitivo")
         acoes = `
           <button onclick="event.stopPropagation();reativarProfissional('${u.id}');" title="Reativar" style="height:30px;padding:0 12px;border:0;background:var(--status-success-bg,#E6F6EF);color:var(--status-success);border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:700;font-family:inherit;" class="ds-table__btn">
             <span class="material-symbols-rounded" style="font-size:16px;">restart_alt</span>Reativar
           </button>
-          <button onclick="event.stopPropagation();excluirProfissional('${u.id}');" title="Excluir em definitivo" style="height:30px;width:30px;border:0;background:var(--status-danger-bg,#FCE8E8);color:var(--status-danger);border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;" class="ds-table__btn">
-            <span class="material-symbols-rounded" style="font-size:17px;">delete_forever</span>
+          <button onclick="event.stopPropagation();arquivarProfissional('${u.id}');" title="Arquivar (preserva histórico)" style="height:30px;padding:0 12px;border:0;background:var(--status-warning-bg,#FFF6E5);color:var(--status-warning-dark,#B47010);border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:700;font-family:inherit;" class="ds-table__btn">
+            <span class="material-symbols-rounded" style="font-size:16px;">inventory_2</span>Arquivar
+          </button>
+        `;
+      } else if (s.filtro === 'arquivados') {
+        // Sprint 9.32.358: aba Arquivados — desarquivar
+        acoes = `
+          <button onclick="event.stopPropagation();desarquivarProfissional('${u.id}');" title="Desarquivar (volta pra Desativados)" style="height:30px;padding:0 12px;border:0;background:var(--status-info-bg,#E4ECFD);color:var(--status-info,#185FA5);border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:700;font-family:inherit;" class="ds-table__btn">
+            <span class="material-symbols-rounded" style="font-size:16px;">unarchive</span>Desarquivar
           </button>
         `;
       }
@@ -20688,8 +20900,11 @@ async function listarVisitasAdmin(filtro = 'com_flags') {
     query = query.eq('status', 'rascunho').not('revisao_motivo', 'is', null).is('revisao_resolvida_em', null);
   } else if (filtro === 'resolvidas') {
     query = query.eq('status', 'aprovada_pos_revisao');
+  } else if (filtro === 'todas') {
+    // Sprint 9.32.356: "Todas" so mostra visitas que aconteceram (ou tem desfecho)
+    // Exclui agendamentos puros (futuros, sem check-in nem ação) — esses ficam só na Agenda
+    query = query.not('status', 'in', '(agendada,sugerida)');
   }
-  // 'todas' = sem filtro
 
   query = query.order('checkin_timestamp', { ascending: false, nullsFirst: false }).limit(100);
 
@@ -20706,7 +20921,9 @@ async function contarVisitasPorFiltro() {
   if (!db) return { todas: 0, com_flags: 0, em_revisao: 0, resolvidas: 0 };
 
   const promises = [
-    db.from('visitas').select('*', { count: 'exact', head: true }),
+    // Sprint 9.32.356: "Todas" exclui agendamentos puros (mesmo criterio da listagem)
+    db.from('visitas').select('*', { count: 'exact', head: true })
+      .not('status', 'in', '(agendada,sugerida)'),
     // Sprint 9.32.60: mesmo critério da listagem — exclui aprovadas, agendamentos e sugestões
     db.from('visitas').select('*', { count: 'exact', head: true })
       .or('flag_sem_checkin.eq.true,flag_sem_checkout.eq.true,flag_gps_divergente.eq.true,flag_horario_fora_margem.eq.true,checkin_manual.eq.true')
@@ -34682,8 +34899,8 @@ function renderAdminRevisao() {
   const user = requireAdmin();
   if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
 
-  // Filtro inicial = 'com_flags' ou vem da URL
-  const filtroInicial = window._routeParams?.filtro || 'com_flags';
+  // Sprint 9.32.357: filtro inicial default = 'todas' (era 'com_flags')
+  const filtroInicial = window._routeParams?.filtro || 'todas';
   window._reviewFilter = filtroInicial;
 
   // Sprint 9.32.292: estado de filtros de Tipo de flag pra alinhar com o desktop
@@ -38259,6 +38476,8 @@ function showModalInstituicaoNova({ valorInicialNome = '', modo = 'cadastro', in
       <div class="report-field">
         <label>CNPJ <span style="color:var(--neutral-400);font-weight:normal;">(opcional)</span></label>
         <input type="text" id="mniCnpj" data-mask="cnpj" placeholder="00.000.000/0000-00" value="${(valCnpj || '').replace(/"/g,'&quot;')}" style="width:100%;padding:10px 12px;border:1.5px solid var(--neutral-200);border-radius:10px;font-size:14px;font-family:inherit;" />
+        <!-- Sprint 9.32.361: banner aparece quando detecta CNPJ duplicado -->
+        <div id="mniMatrizBanner" style="display:none;margin-top:10px;"></div>
       </div>
       <div style="display:grid;grid-template-columns:2fr 1fr;gap:12px;">
         <div class="report-field">
@@ -38560,6 +38779,110 @@ function showModalInstituicaoNova({ valorInicialNome = '', modo = 'cadastro', in
 
     // Aplica máscaras nos novos campos
     if (perfilAdmin) applyMasks(backdrop);
+
+    // ===== Sprint 9.32.361: detecção de CNPJ duplicado + opção "unidade de X" =====
+    let _mniMatrizId = (ehEdicao && instExistente?.matriz_id) ? instExistente.matriz_id : null;
+    let _mniMatrizInfo = null; // {id, nome, cidade, estado} quando marcado
+
+    const _mniRenderBannerMatriz = (instituicoes) => {
+      const banner = backdrop.querySelector('#mniMatrizBanner');
+      if (!banner) return;
+      if (!instituicoes || instituicoes.length === 0) {
+        banner.style.display = 'none';
+        banner.innerHTML = '';
+        return;
+      }
+      // Se ja marcado como unidade, mostra "marcado" e botao desfazer
+      if (_mniMatrizId) {
+        const sel = _mniMatrizInfo || instituicoes.find(i => i.id === _mniMatrizId);
+        if (sel) {
+          const loc = [sel.cidade, sel.estado].filter(Boolean).join('/');
+          banner.style.display = 'block';
+          banner.innerHTML = `
+            <div style="background:#ECF6E5;border:1.5px solid var(--brand-lime-dark,#6FA62E);border-radius:9px;padding:10px 12px;display:flex;align-items:center;gap:10px;">
+              <span class="material-symbols-rounded" style="font-size:18px;color:var(--brand-lime-dark,#6FA62E);">account_tree</span>
+              <div style="flex:1;font-size:12px;color:var(--brand-navy);">
+                <strong>Marcado como unidade de:</strong> ${(sel.nome || '').replace(/</g,'&lt;')}${loc ? ' · ' + loc : ''}
+                <div style="font-size:10.5px;color:var(--neutral-600);margin-top:2px;">Este cadastro vai ficar vinculado a essa matriz (mesmo CNPJ, nome próprio).</div>
+              </div>
+              <button type="button" id="mniMatrizDesfazer" style="background:transparent;border:1px solid var(--neutral-300);color:var(--neutral-600);padding:5px 11px;border-radius:7px;cursor:pointer;font-family:inherit;font-size:11px;font-weight:600;">Desfazer</button>
+            </div>
+          `;
+          const btn = banner.querySelector('#mniMatrizDesfazer');
+          if (btn) btn.onclick = () => {
+            _mniMatrizId = null;
+            _mniMatrizInfo = null;
+            _mniRenderBannerMatriz(instituicoes);
+          };
+          return;
+        }
+      }
+      // Caso normal: oferece opcoes
+      const items = instituicoes.map(i => {
+        const loc = [i.cidade, i.estado].filter(Boolean).join('/');
+        const subInfo = i.matriz_id ? ' <span style="color:var(--status-warning-dark,#B47010);font-weight:600;">(já é unidade)</span>' : '';
+        return `
+          <div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:#fff;border:1px solid var(--neutral-200);border-radius:7px;">
+            <div style="flex:1;min-width:0;font-size:12px;">
+              <div style="font-weight:600;color:var(--brand-navy);">${(i.nome || '').replace(/</g,'&lt;')}${subInfo}</div>
+              ${loc ? `<div style="font-size:10.5px;color:var(--neutral-500);margin-top:1px;">${loc}</div>` : ''}
+            </div>
+            <button type="button" data-matriz="${i.id}" style="background:var(--brand-lime);color:#fff;border:0;padding:6px 12px;border-radius:7px;cursor:pointer;font-family:inherit;font-size:11px;font-weight:700;">Criar como unidade</button>
+          </div>
+        `;
+      }).join('');
+      banner.style.display = 'block';
+      banner.innerHTML = `
+        <div style="background:#FFF6E5;border:1.5px solid rgba(245,158,11,0.40);border-radius:9px;padding:10px 12px;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+            <span class="material-symbols-rounded" style="font-size:18px;color:var(--status-warning-dark,#B47010);">info</span>
+            <div style="font-size:12px;color:var(--brand-navy);">
+              <strong>Este CNPJ já existe</strong> em ${instituicoes.length} ${instituicoes.length === 1 ? 'instituição' : 'instituições'}. É uma <strong>unidade</strong> (mesmo CNPJ, nome operacional diferente)?
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:5px;">${items}</div>
+          <div style="margin-top:7px;font-size:10.5px;color:var(--neutral-500);font-style:italic;">Se nenhum dos acima, salve normal (vai criar uma nova matriz independente com o mesmo CNPJ).</div>
+        </div>
+      `;
+      banner.querySelectorAll('[data-matriz]').forEach(btn => {
+        btn.onclick = () => {
+          const id = btn.getAttribute('data-matriz');
+          const sel = instituicoes.find(i => i.id === id);
+          if (!sel) return;
+          // Se a selecionada ja eh unidade, redireciona pra matriz real
+          const matrizRealId = sel.matriz_id || sel.id;
+          const matrizReal = instituicoes.find(i => i.id === matrizRealId) || sel;
+          _mniMatrizId = matrizRealId;
+          _mniMatrizInfo = matrizReal;
+          _mniRenderBannerMatriz(instituicoes);
+        };
+      });
+    };
+
+    let _mniCnpjLookupTimer = null;
+    const _mniCnpjLookup = async () => {
+      const cnpj = (cnpjEl?.value || '').trim();
+      const cnpjRaw = _normalizeCnpj(cnpj);
+      if (cnpjRaw.length !== 14) {
+        // Limpa banner se CNPJ incompleto
+        const banner = backdrop.querySelector('#mniMatrizBanner');
+        if (banner) { banner.style.display = 'none'; banner.innerHTML = ''; }
+        return;
+      }
+      const excludeId = ehEdicao ? instExistente?.id : null;
+      const encontradas = await _buscarInstituicoesPorCnpj(cnpj, excludeId);
+      _mniRenderBannerMatriz(encontradas);
+    };
+
+    if (cnpjEl) {
+      cnpjEl.addEventListener('blur', _mniCnpjLookup);
+      cnpjEl.addEventListener('input', () => {
+        clearTimeout(_mniCnpjLookupTimer);
+        _mniCnpjLookupTimer = setTimeout(_mniCnpjLookup, 500);
+      });
+      // Roda 1x ao abrir (caso ja tenha CNPJ preenchido em modo edicao)
+      setTimeout(_mniCnpjLookup, 200);
+    }
 
     // Função que atualiza o banner de status das coords
     const atualizarStatusCoords = () => {
@@ -38874,6 +39197,8 @@ function showModalInstituicaoNova({ valorInicialNome = '', modo = 'cadastro', in
         estado: estado || null,
         latitude,
         longitude,
+        // Sprint 9.32.361: matriz_id se marcado como unidade
+        matriz_id: _mniMatrizId,
         // Sprint 9.3 — perfil enriquecido
         tipo,
         leitos_total: leitosTotal,
@@ -39068,10 +39393,10 @@ function showModalProfissionalAdmin({ modo = 'cadastro', profExistente = null, p
                   <span class="material-symbols-rounded" style="font-size:18px;">check_circle</span>
                   Reativar profissional
                 </button>
-                <!-- Sprint 9.9.1: excluir em definitivo (só desativados, só se não tiver visitas) -->
-                <button type="button" id="mpaExcluir" style="width:100%;padding:10px;background:transparent;border:0;color:var(--status-danger);font-size:12.5px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;border-radius:10px;transition:background 140ms;font-family:inherit;margin-top:4px;" onmouseover="this.style.background='var(--status-danger-bg,#FCE8E8)'" onmouseout="this.style.background='transparent'">
-                  <span class="material-symbols-rounded" style="font-size:18px;">delete_forever</span>
-                  Excluir em definitivo
+                <!-- Sprint 9.32.358: arquivar (preserva historico) -->
+                <button type="button" id="mpaExcluir" style="width:100%;padding:10px;background:transparent;border:0;color:var(--status-warning-dark,#B47010);font-size:12.5px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;border-radius:10px;transition:background 140ms;font-family:inherit;margin-top:4px;" onmouseover="this.style.background='var(--status-warning-bg,#FFF6E5)'" onmouseout="this.style.background='transparent'">
+                  <span class="material-symbols-rounded" style="font-size:18px;">inventory_2</span>
+                  Arquivar profissional
                 </button>
               `}
             </div>
@@ -39698,7 +40023,7 @@ window.rejeitarObjetivoPendente = async function(id) {
 let FAT_DATA = null;
 let _fatDataPromise = null;
 // __FAT_VERSION_START__ — substituído pelo atualizar_index.py com hash do JSON
-const FAT_DATA_VERSION = 'df463beebc0c';
+const FAT_DATA_VERSION = '375ae17f171e';
 // __FAT_VERSION_END__
 const FAT_DATA_URL = 'faturamento_data_inline.json?v=' + FAT_DATA_VERSION;
 
@@ -41199,9 +41524,9 @@ function _mapRender() {
                 return `
                   <button onclick="_mapAceitarSugestao('${r.id}', '${s.cnpj.replace(/'/g,"\\'")}')" style="display:block;width:100%;text-align:left;background:var(--neutral-0);border:1.5px solid ${corBorda};border-radius:8px;padding:8px 10px;margin-bottom:6px;cursor:pointer;font-family:inherit;transition:background 120ms;"
                           onmouseover="this.style.background='var(--neutral-50,#F5F6FA)';" onmouseout="this.style.background='var(--neutral-0)';">
-                    <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:3px;">
-                      <div style="font-weight:700;color:var(--brand-navy);font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;">${(s.nome || '').replace(/</g,'&lt;')}</div>
-                      <span style="font-size:10px;font-weight:700;color:${corBorda};flex-shrink:0;">${scorePct}%</span>
+                    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:6px;margin-bottom:3px;">
+                      <div title="${(s.nome || '').replace(/"/g,'&quot;')}" style="font-weight:700;color:var(--brand-navy);font-size:11.5px;line-height:1.3;word-break:break-word;min-width:0;flex:1;">${(s.nome || '').replace(/</g,'&lt;')}</div>
+                      <span style="font-size:10px;font-weight:700;color:${corBorda};flex-shrink:0;margin-top:1px;">${scorePct}%</span>
                     </div>
                     <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;">
                       <span style="font-family:var(--font-mono);font-size:10.5px;color:var(--neutral-600);">${s.cnpj}</span>
@@ -51622,16 +51947,21 @@ function renderAdminEquipe() {
 // Sprint 9.32.256: traz pendente_aprovacao da categoria pra mostrar/decidir na hora de aprovar usuário
 // Sprint 9.32.294: oculta o super_admin da listagem da Equipe (proteção visual — a conta master
 // não deve aparecer pra outros admins gerenciarem). Continua existindo no banco e no login.
-async function listarUsuariosPorStatus(statuses) {
+async function listarUsuariosPorStatus(statuses, opts = {}) {
+  // Sprint 9.32.358: opts.arquivados: 'esconder' (default) | 'mostrar' | 'somente'
+  const arq = opts.arquivados || 'esconder';
   if (!db) return [];
   const { data, error } = await db
     .from('usuarios')
-    .select('id, nome, cpf, email, telefone, perfil, super_admin, status, categoria_id, criado_em, ultimo_login, foto_url, categorias_profissionais(nome, pendente_aprovacao)')
+    .select('id, nome, cpf, email, telefone, perfil, super_admin, status, categoria_id, criado_em, ultimo_login, foto_url, arquivado, arquivado_em, categorias_profissionais(nome, pendente_aprovacao)')
     .in('status', statuses)
     .order('criado_em', { ascending: false });
   if (error) { console.warn('[equipe]', error.message); return []; }
   // Sprint 9.32.294: filtra super_admin da lista
-  const lista = (data || []).filter(u => u.super_admin !== true);
+  let lista = (data || []).filter(u => u.super_admin !== true);
+  // Sprint 9.32.358: aplica filtro de arquivados
+  if (arq === 'esconder') lista = lista.filter(u => !u.arquivado);
+  else if (arq === 'somente') lista = lista.filter(u => u.arquivado === true);
   // Admins primeiro, depois o resto (por criado_em desc)
   return lista.sort((a, b) => {
     if (a.perfil === 'admin' && b.perfil !== 'admin') return -1;
@@ -51641,14 +51971,19 @@ async function listarUsuariosPorStatus(statuses) {
 }
 
 async function contarUsuariosPorStatus() {
-  if (!db) return { pendentes: 0, ativos: 0, desativados: 0 };
-  // Sprint 9.32.294: contagens excluem super_admin pra bater com a listagem (que também exclui)
-  const [p, a, d] = await Promise.all([
-    db.from('usuarios').select('*', { count: 'exact', head: true }).eq('status', 'pendente').neq('super_admin', true),
-    db.from('usuarios').select('*', { count: 'exact', head: true }).eq('status', 'ativo').neq('super_admin', true),
-    db.from('usuarios').select('*', { count: 'exact', head: true }).in('status', ['inativo', 'bloqueado']).neq('super_admin', true),
+  if (!db) return { pendentes: 0, ativos: 0, desativados: 0, arquivados: 0 };
+  // Sprint 9.32.358: conta arquivados separado, excluindo da contagem de desativados
+  const [p, a, d, arq] = await Promise.all([
+    db.from('usuarios').select('*', { count: 'exact', head: true })
+      .eq('status', 'pendente').neq('super_admin', true).eq('arquivado', false),
+    db.from('usuarios').select('*', { count: 'exact', head: true })
+      .eq('status', 'ativo').neq('super_admin', true).eq('arquivado', false),
+    db.from('usuarios').select('*', { count: 'exact', head: true })
+      .in('status', ['inativo', 'bloqueado']).neq('super_admin', true).eq('arquivado', false),
+    db.from('usuarios').select('*', { count: 'exact', head: true })
+      .neq('super_admin', true).eq('arquivado', true),
   ]);
-  return { pendentes: p.count || 0, ativos: a.count || 0, desativados: d.count || 0 };
+  return { pendentes: p.count || 0, ativos: a.count || 0, desativados: d.count || 0, arquivados: arq.count || 0 };
 }
 
 window.trocarEquipeFiltro = function(filtro) {
@@ -52739,76 +53074,84 @@ window.rebaixarParaMembro = async function(id) {
   }
 };
 
+// Sprint 9.32.358: excluirProfissional virou "arquivar" — UPDATE em vez de DELETE.
+// Mantem o historico 100% intacto (visitas, instituicoes cadastradas, etc.). Reversivel.
 window.excluirProfissional = async function(id) {
-  // Primeira confirmação
-  const ok1 = await showModalConfirmacao({
-    icone: 'warning', iconeCor: 'danger',
-    titulo: 'Excluir em definitivo?',
-    subtitulo: 'O profissional e todos os registros de visita dele serão perdidos. Essa ação NÃO pode ser desfeita. Considere desativar.',
-    btnConfirmar: 'Continuar mesmo assim',
-    btnCancelar: 'Cancelar',
-  });
-  if (!ok1) return;
-  // Segunda confirmação (dupla barreira)
-  const ok2 = await showModalConfirmacao({
-    icone: 'delete_forever', iconeCor: 'danger',
-    titulo: 'Tem certeza absoluta?',
-    subtitulo: 'Última chance. Esta ação é irreversível e apagará o profissional do banco.',
-    btnConfirmar: 'Sim, excluir',
-    btnCancelar: 'Não, voltar',
-  });
-  if (!ok2) return;
+  // Reusa nome da funcao pra nao quebrar onclick existentes — comportamento mudou pra arquivar
+  return window.arquivarProfissional(id);
+};
 
+window.arquivarProfissional = async function(id) {
   try {
-    // Busca o usuário antes pra saber o nome e conferir o que há vinculado
-    const { data: alvo, error: eAlvo } = await db.from('usuarios').select('id, nome, super_admin').eq('id', id).maybeSingle();
+    // Busca o usuário
+    const { data: alvo, error: eAlvo } = await db.from('usuarios').select('id, nome, super_admin, arquivado').eq('id', id).maybeSingle();
     if (eAlvo) throw new Error('Erro ao buscar usuário: ' + eAlvo.message);
-    if (!alvo) {
-      setFlash('error', 'Usuário não encontrado.');
-      return;
-    }
-    if (alvo.super_admin) {
-      setFlash('error', 'Super admin não pode ser excluído.');
-      return;
-    }
+    if (!alvo) { setFlash('error', 'Usuário não encontrado.'); return; }
+    if (alvo.super_admin) { setFlash('error', 'Super admin não pode ser arquivado.'); return; }
+    if (alvo.arquivado) { setFlash('info', `${alvo.nome} já está arquivado.`); return; }
 
-    // Conta visitas vinculadas ANTES de tentar o delete (mostra aviso mais útil)
-    const { count: qtdVisitas } = await db
-      .from('visitas')
-      .select('id', { count: 'exact', head: true })
-      .eq('nutricionista_id', id);
+    // Confirmação suave (reversível agora)
+    const ok = await showModalConfirmacao({
+      icone: 'inventory_2', iconeCor: 'warning',
+      titulo: `Arquivar ${alvo.nome}?`,
+      subtitulo: 'Ele(a) some da aba "Desativados" e fica em "Arquivados". O histórico de visitas e cadastros continua preservado e você pode desarquivar a qualquer momento.',
+      btnConfirmar: 'Arquivar',
+      btnCancelar: 'Cancelar',
+    });
+    if (!ok) return;
 
-    if (qtdVisitas && qtdVisitas > 0) {
-      await showModalConfirmacao({
-        icone: 'block', iconeCor: 'warning',
-        titulo: 'Não pode excluir',
-        subtitulo: `${alvo.nome} tem ${qtdVisitas} ${qtdVisitas === 1 ? 'visita' : 'visitas'} no histórico. Excluir quebraria o registro dessas visitas. Deixe desativado — ele não pode fazer login de qualquer jeito.`,
-        btnConfirmar: 'Entendi',
-        btnCancelar: null,
-      });
-      return;
-    }
-
-    // Tenta o delete com .select() pra saber se afetou algo
-    const { data: deletado, error } = await db.from('usuarios').delete().eq('id', id).select();
+    const user = getCurrentUserReal();
+    const { data: atualizado, error } = await db.from('usuarios')
+      .update({
+        arquivado: true,
+        arquivado_em: new Date().toISOString(),
+        arquivado_por: user?.id || null,
+      })
+      .eq('id', id)
+      .select();
 
     if (error) {
-      // Erro do Postgres (FK violation, RLS, permission, etc)
-      console.error('[excluir profissional]', error);
-      setFlash('error', `Erro do banco: ${error.message || error.code || 'sem detalhes'}. Tente desativar no lugar.`);
+      // Fallback se coluna nao existe ainda no PostgREST cache
+      const msg = (error.message || '').toLowerCase();
+      if (msg.includes('arquivado') || msg.includes('schema cache') || msg.includes('could not find')) {
+        setFlash('error', 'Migration pendente: rode `arquivar_usuario.sql` no Supabase pra liberar o arquivamento.');
+      } else {
+        setFlash('error', `Erro ao arquivar: ${error.message}`);
+      }
       return;
     }
-    if (!deletado || deletado.length === 0) {
-      // RLS bloqueou silenciosamente (retorna 0 linhas sem erro)
-      setFlash('error', 'DELETE não afetou nenhum registro. Possíveis causas: RLS no banco, trigger bloqueando, ou o usuário já foi removido. Abra o console (F12) pra detalhes.');
-      console.warn('[excluir profissional] 0 rows affected — possible RLS block', { id });
+    if (!atualizado || atualizado.length === 0) {
+      setFlash('error', 'Update não afetou nenhum registro. Veja o console (F12) pra detalhes.');
       return;
     }
 
-    setFlash('success', `${alvo.nome} excluído em definitivo.`);
+    setFlash('success', `${alvo.nome} arquivado(a). Histórico preservado.`);
     await recarregarEquipeUI();
   } catch (err) {
-    console.error('[excluir profissional] exceção:', err);
+    console.error('[arquivar profissional] exceção:', err);
+    setFlash('error', 'Erro inesperado: ' + (err.message || err));
+  }
+};
+
+window.desarquivarProfissional = async function(id) {
+  try {
+    const { data: alvo } = await db.from('usuarios').select('id, nome, status').eq('id', id).maybeSingle();
+    if (!alvo) { setFlash('error', 'Usuário não encontrado.'); return; }
+    const ok = await showModalConfirmacao({
+      icone: 'unarchive', iconeCor: 'info',
+      titulo: `Desarquivar ${alvo.nome}?`,
+      subtitulo: 'Ele(a) volta pra aba "Desativados". Se quiser que ele(a) possa logar de novo, use o botão Reativar depois.',
+      btnConfirmar: 'Desarquivar',
+      btnCancelar: 'Cancelar',
+    });
+    if (!ok) return;
+    const { error } = await db.from('usuarios')
+      .update({ arquivado: false, arquivado_em: null, arquivado_por: null })
+      .eq('id', id);
+    if (error) { setFlash('error', 'Erro: ' + error.message); return; }
+    setFlash('success', `${alvo.nome} desarquivado(a).`);
+    await recarregarEquipeUI();
+  } catch (err) {
     setFlash('error', 'Erro inesperado: ' + (err.message || err));
   }
 };
@@ -52980,6 +53323,16 @@ async function carregarInstituicoesAdmin() {
   try {
     const todas = await listarInstituicoes({ incluirDesativadas: true });
 
+    // Sprint 9.32.362b: indexa matriz_id pra render de badges (mobile admin)
+    const _matrizById = {};
+    const _unidadesPorMatriz = {};
+    todas.forEach(i => { _matrizById[i.id] = i; });
+    todas.forEach(i => {
+      if (i.matriz_id) {
+        _unidadesPorMatriz[i.matriz_id] = (_unidadesPorMatriz[i.matriz_id] || 0) + 1;
+      }
+    });
+
     // Calcula contadores pras 3 abas
     const ativas      = todas.filter(i => i.ativo && !i.pendente_aprovacao);
     const pendentes   = todas.filter(i => i.ativo && i.pendente_aprovacao);
@@ -53084,6 +53437,19 @@ async function carregarInstituicoesAdmin() {
             <div class="visits-list__name" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
               <span style="min-width:0;overflow:hidden;text-overflow:ellipsis;">${inst.nome.replace(/"/g,'&quot;')}</span>
               ${gpsHtml}
+              ${(() => {
+                // Sprint 9.32.362b: badge matriz/unidade no mobile
+                if (inst.matriz_id) {
+                  const m = _matrizById[inst.matriz_id];
+                  const nm = m ? m.nome : '?';
+                  return `<span onclick="event.stopPropagation();showModalRedeMatriz('${inst.matriz_id}');" title="Ver rede · matriz: ${nm.replace(/"/g,'&quot;')}" style="cursor:pointer;display:inline-flex;align-items:center;gap:3px;padding:1px 7px;border-radius:9999px;font-size:9.5px;font-weight:700;text-transform:uppercase;background:#E4ECFD;color:var(--status-info,#185FA5);letter-spacing:0.04em;"><span class="material-symbols-rounded" style="font-size:11px;">account_tree</span>Unidade${nm ? ' de ' + nm.slice(0,14).replace(/</g,'&lt;') + (nm.length > 14 ? '…' : '') : ''}</span>`;
+                }
+                const qtdUni = _unidadesPorMatriz[inst.id] || 0;
+                if (qtdUni > 0) {
+                  return `<span onclick="event.stopPropagation();showModalRedeMatriz('${inst.id}');" title="Ver rede · ${qtdUni} ${qtdUni === 1 ? 'unidade vinculada' : 'unidades vinculadas'}" style="cursor:pointer;display:inline-flex;align-items:center;gap:3px;padding:1px 7px;border-radius:9999px;font-size:9.5px;font-weight:700;text-transform:uppercase;background:#ECF6E5;color:var(--brand-lime-dark,#6FA62E);letter-spacing:0.04em;"><span class="material-symbols-rounded" style="font-size:11px;">domain</span>Matriz · ${qtdUni}</span>`;
+                }
+                return '';
+              })()}
             </div>
             <div class="visits-list__time" style="font-family:var(--font-body);">
               ${local || '<span style="color:var(--neutral-400);">Sem endereço</span>'}
