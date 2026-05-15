@@ -5917,6 +5917,15 @@ body.va-banner-active { padding-top: 56px; }
 .opa-tab.is-active.opa-tab--fech .opa-tab__cnt { background: #FFF6E5; color: #B47010; }
 .opa-tab.is-active.opa-tab--canc .opa-tab__cnt { background: #FCE0E5; color: #9F1F33; }
 
+/* Sprint 9.32.366: highlight de termo da busca */
+mark.search-hl {
+  background: #FFF2A8;
+  color: var(--brand-navy, #0A1F5C);
+  padding: 1px 2px;
+  border-radius: 3px;
+  font-weight: 700;
+}
+
 /* Sprint 9.32.352: Performance — badge data + chips marca */
 .perf-badge-atualizado {
   display: inline-flex; align-items: center; gap: 5px;
@@ -8237,7 +8246,7 @@ body.va-banner-active { padding-top: 56px; }
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.363-modal-rede-matriz',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.373-filtros-prof-hospital-profissao',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -12119,7 +12128,7 @@ async function listarMinhasVisitas(limit = 5) {
   // com play button. Filtros das outras abas excluem eles.
   const { data, error } = await db
     .from('visitas')
-    .select('id, data_visita, horario_inicio, horario_termino, status, revisao_motivo, revisao_solicitada_em, revisao_resolvida_em, reabertura_expira_em, visita_realizada, cancelamento_motivo, cancelado_em, cancelamento_origem, checkin_retroativo, checkin_dias_atraso, checkin_timestamp, checkout_timestamp, resumo, flag_sem_checkin, flag_sem_checkout, flag_gps_divergente, flag_horario_fora_margem, checkin_manual, instituicoes(nome, bairro, cidade), visita_anexos(count)')
+    .select('id, data_visita, horario_inicio, horario_termino, status, revisao_motivo, revisao_solicitada_em, revisao_resolvida_em, reabertura_expira_em, visita_realizada, cancelamento_motivo, cancelado_em, cancelamento_origem, checkin_retroativo, checkin_dias_atraso, checkin_timestamp, checkout_timestamp, resumo, proximos_passos, motivo_nao_realizada, flag_sem_checkin, flag_sem_checkout, flag_gps_divergente, flag_horario_fora_margem, checkin_manual, instituicoes(nome, bairro, cidade), visita_anexos(count)')
     .eq('nutricionista_id', user.id)
     .order('checkin_timestamp', { ascending: false, nullsFirst: false })
     .limit(limit);
@@ -12956,10 +12965,9 @@ function desktopTopbar({ title, breadcrumb = [], titleExtra = '' } = {}) {
       <div class="ds-topbar__search" onclick="if(event.target.id !== 'dsSearchFiltros') document.getElementById('dsSearchInput')?.focus()">
         <span class="material-symbols-rounded" style="font-size:17px;color:var(--neutral-500);">search</span>
         <input id="dsSearchInput" placeholder="Buscar hospital, nutricionista, visita…" onfocus="abrirBuscaGlobal()" readonly />
-        <!-- Sprint 9.32.247: hint de atalho ⌘K / Ctrl+K -->
-        <kbd title="Atalho de teclado" style="font-family:var(--font-mono,monospace);font-size:10.5px;font-weight:700;color:var(--neutral-500);background:var(--neutral-100);border:1px solid var(--neutral-200);border-radius:5px;padding:2px 6px;letter-spacing:.3px;line-height:1;">⌘K</kbd>
-        <button id="dsSearchFiltros" type="button" onclick="event.stopPropagation();abrirBuscaGlobal();" title="Pesquisa avançada com filtros" style="background:transparent;border:0;padding:4px 6px;cursor:pointer;display:flex;align-items:center;color:var(--neutral-500);border-radius:6px;margin-left:4px;" onmouseover="this.style.background='var(--neutral-100)';this.style.color='var(--brand-navy)'" onmouseout="this.style.background='transparent';this.style.color='var(--neutral-500)'">
-          <span class="material-symbols-rounded" style="font-size:18px;">tune</span>
+        <!-- Sprint 9.32.368: substitui ⌘K + tune por botão lupa circular navy (Opção C) -->
+        <button id="dsSearchFiltros" type="button" onclick="event.stopPropagation();abrirBuscaGlobal();" title="Buscar (atalho: Ctrl/Cmd + K)" style="background:var(--brand-navy,#0A1F5C);border:0;width:30px;height:30px;border-radius:50%;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;color:#fff;margin-left:4px;flex-shrink:0;transition:background 140ms,transform 80ms;" onmouseover="this.style.background='#173086'" onmouseout="this.style.background='var(--brand-navy,#0A1F5C)'" onmousedown="this.style.transform='scale(0.94)'" onmouseup="this.style.transform='scale(1)'">
+          <span class="material-symbols-rounded" style="font-size:17px;">search</span>
         </button>
       </div>
 
@@ -14931,9 +14939,10 @@ async function renderDsdMapaVisitas(visitas) {
         const bounds = [];
         pontos.forEach(p => {
           const cor = corPino(p.count);
-          const r = Math.round(tamPino(p.count) + 6); // 11..20
+          // Sprint 9.32.367b: pinos menores (era raio 11..20 -> agora 7..13)
+          const r = Math.round(tamPino(p.count) * 0.6 + 4); // 7..13
           const icon = L.divIcon({
-            html: `<div style="width:${r*2}px;height:${r*2}px;border-radius:50%;background:${cor};border:3px solid #fff;box-shadow:0 0 0 1.5px ${cor},0 2px 6px rgba(0,0,0,0.25);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:${r > 13 ? 12 : 10}px;font-family:'JetBrains Mono',monospace;">${p.count >= 2 ? p.count : ''}</div>`,
+            html: `<div style="width:${r*2}px;height:${r*2}px;border-radius:50%;background:${cor};border:2px solid #fff;box-shadow:0 0 0 1px ${cor},0 1.5px 4px rgba(0,0,0,0.22);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:${r > 10 ? 11 : 9}px;font-family:'JetBrains Mono',monospace;">${p.count >= 2 ? p.count : ''}</div>`,
             className: '',
             iconSize: [r*2, r*2],
             iconAnchor: [r, r],
@@ -16120,7 +16129,7 @@ function renderVisitCardDesktop(v) {
   const resumoHtml = v.resumo ? `
     <div style="background:var(--neutral-50,#FAFBFC);border-radius:10px;padding:14px;border:1px solid var(--neutral-200);">
       <div style="font-size:10.5px;font-weight:700;color:var(--neutral-500);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;">Resumo da visita</div>
-      <div style="font-size:13px;color:var(--neutral-700);line-height:1.55;max-height:4.5em;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;">"${(v.resumo || '').replace(/"/g, '&quot;').replace(/</g, '&lt;')}"</div>
+      <div style="font-size:13px;color:var(--neutral-700);line-height:1.55;max-height:4.5em;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;">"${_stripHtmlPreview(v.resumo || '').replace(/"/g, '&quot;').replace(/</g, '&lt;')}"</div>
       <a href="#/admin/revisao/detalhe?id=${v.id}" style="margin-top:8px;background:transparent;border:0;color:var(--brand-navy);font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:4px;padding:0;text-decoration:none;">
         Ler completo <span class="material-symbols-rounded" style="font-size:14px;">arrow_forward</span>
       </a>
@@ -17632,7 +17641,7 @@ function renderAdminProfissionaisDesktop() {
   if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
 
   const filtroPorRota = window._routeParams?.filtro || null;
-  if (!window._profDesktopState) window._profDesktopState = { filtro: 'ativos', busca: '' };
+  if (!window._profDesktopState) window._profDesktopState = { filtro: 'ativos', busca: '', hospital_id: 'todos', profissao: 'todos' };
   if (filtroPorRota && ['ativos','desativados'].includes(filtroPorRota)) {
     window._profDesktopState.filtro = filtroPorRota;
   }
@@ -17674,6 +17683,13 @@ function renderAdminProfissionaisDesktop() {
           <span class="material-symbols-rounded" style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--neutral-500);font-size:18px;pointer-events:none;">search</span>
           <input type="text" id="dsdProfBusca" placeholder="Buscar por nome, profissão ou hospital..." value="${(s.busca || '').replace(/"/g,'&quot;')}" oninput="buscarProfDesktop(this.value)" style="width:100%;height:42px;padding:0 14px 0 42px;border:1px solid var(--neutral-200);border-radius:10px;background:#fff;font-family:inherit;font-size:13.5px;color:var(--brand-navy);" />
         </div>
+        <!-- Sprint 9.32.373: filtros hospital + profissao -->
+        <select id="dsdProfFiltroHospital" onchange="filtrarProfPorHospitalDesktop(this.value)" style="height:42px;padding:0 12px;border:1px solid var(--neutral-200);background:#fff;color:var(--brand-navy);border-radius:10px;font-family:inherit;font-size:13px;cursor:pointer;min-width:180px;">
+          <option value="todos">Todos os hospitais</option>
+        </select>
+        <select id="dsdProfFiltroProfissao" onchange="filtrarProfPorProfissaoDesktop(this.value)" style="height:42px;padding:0 12px;border:1px solid var(--neutral-200);background:#fff;color:var(--brand-navy);border-radius:10px;font-family:inherit;font-size:13px;cursor:pointer;min-width:160px;">
+          <option value="todos">Todas as profissões</option>
+        </select>
         <button onclick="exportarProfCsvDesktop()" style="height:42px;padding:0 16px;border:1px solid var(--neutral-200);background:#fff;color:var(--neutral-600);border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px;">
           <span class="material-symbols-rounded" style="font-size:17px;">download</span>
           Exportar CSV
@@ -17730,7 +17746,21 @@ async function carregarAdminProfissionaisDesktop() {
 
     let profs = s.filtro === 'desativados' ? desativados : ativos;
 
-    // Busca local
+    // Sprint 9.32.373: popula dropdowns de filtro (hospital + profissao) com valores unicos
+    // Usa "profs" (apos filtro de aba) pra mostrar so o que faz sentido
+    _popularFiltrosProfDesktop(profs);
+
+    // Filtro hospital
+    if (s.hospital_id && s.hospital_id !== 'todos') {
+      profs = profs.filter(p => p.instituicao_id === s.hospital_id);
+    }
+
+    // Filtro profissao (compara o label gerado)
+    if (s.profissao && s.profissao !== 'todos') {
+      profs = profs.filter(p => labelProfissao(p) === s.profissao);
+    }
+
+    // Busca local (continua igual)
     const busca = (s.busca || '').trim().toLowerCase();
     if (busca) {
       profs = profs.filter(p => {
@@ -17898,6 +17928,48 @@ window.buscarProfDesktop = function(termo) {
   }, 220);
 };
 
+// Sprint 9.32.373: handlers dos dropdowns de filtro
+window.filtrarProfPorHospitalDesktop = function(id) {
+  if (!window._profDesktopState) return;
+  window._profDesktopState.hospital_id = id || 'todos';
+  carregarAdminProfissionaisDesktop();
+};
+window.filtrarProfPorProfissaoDesktop = function(prof) {
+  if (!window._profDesktopState) return;
+  window._profDesktopState.profissao = prof || 'todos';
+  carregarAdminProfissionaisDesktop();
+};
+
+// Sprint 9.32.373: popula os dropdowns de hospital e profissao com valores unicos
+// Preserva selecao atual (s.hospital_id / s.profissao) mesmo se nao estiver na lista filtrada
+function _popularFiltrosProfDesktop(profs) {
+  const s = window._profDesktopState || {};
+  const selH = document.getElementById('dsdProfFiltroHospital');
+  const selP = document.getElementById('dsdProfFiltroProfissao');
+  if (!selH || !selP) return;
+
+  // Hospitais unicos (id + nome)
+  const hospMap = new Map();
+  profs.forEach(p => {
+    if (p.instituicao_id && p.instituicoes?.nome) {
+      hospMap.set(p.instituicao_id, p.instituicoes.nome);
+    }
+  });
+  const hospArr = [...hospMap.entries()].sort((a, b) => a[1].localeCompare(b[1], 'pt-BR'));
+  selH.innerHTML = '<option value="todos">Todos os hospitais</option>' +
+    hospArr.map(([id, nome]) => `<option value="${id}"${s.hospital_id === id ? ' selected' : ''}>${(nome || '').replace(/</g,'&lt;')}</option>`).join('');
+
+  // Profissoes unicas (label)
+  const profSet = new Set();
+  profs.forEach(p => {
+    const lbl = labelProfissao(p);
+    if (lbl && lbl !== '—') profSet.add(lbl);
+  });
+  const profArr = [...profSet].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  selP.innerHTML = '<option value="todos">Todas as profissões</option>' +
+    profArr.map(lbl => `<option value="${(lbl || '').replace(/"/g,'&quot;')}"${s.profissao === lbl ? ' selected' : ''}>${(lbl || '').replace(/</g,'&lt;')}</option>`).join('');
+}
+
 window.exportarProfCsvDesktop = function() {
   const lista = window._profDesktopCurrent || [];
   if (lista.length === 0) { setFlash('info', 'Nada pra exportar.'); return; }
@@ -17937,6 +18009,10 @@ function renderAdminVisitasDesktop() {
   // Se veio da URL, respeita
   if (window._routeParams?.periodo) window._visitasDesktopState.periodo = window._routeParams.periodo;
   if (window._routeParams?.status) window._visitasDesktopState.status = window._routeParams.status;
+  // Sprint 9.32.366d: respeita ?busca= vindo do global search
+  if (window._routeParams?.busca !== undefined && window._routeParams.busca !== null) {
+    window._visitasDesktopState.busca = String(window._routeParams.busca);
+  }
   // Sprint 9.32.268: respeita ?auto_fechadas=true vindo de outras telas (ex: link do dashboard)
   if (window._routeParams?.auto_fechadas !== undefined) {
     window._visitasDesktopState.auto_fechadas = window._routeParams.auto_fechadas === 'true' || window._routeParams.auto_fechadas === true;
@@ -18093,6 +18169,47 @@ async function popularFiltrosVisitasDesktop() {
   }
 }
 
+// Sprint 9.32.372: remove tags HTML pra preview limpo (resumo digitado em rich text)
+// Mantem quebras logicas (div/p/br) como espaco. Nao escapa — quem chama deve escapar depois.
+function _stripHtmlPreview(s) {
+  if (!s) return '';
+  return String(s)
+    .replace(/<br\s*\/?>/gi, ' ')
+    .replace(/<\/?(div|p|h[1-6]|li|ul|ol|tr|td|th|table)[^>]*>/gi, ' ')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+// Sprint 9.32.366: extrai snippet com contexto ao redor do termo + grifa
+// Sprint 9.32.372: limpa HTML do texto antes de extrair (resumo pode ter <div>/<br>)
+function _extrairSnippet(texto, termo, contextChars = 60) {
+  if (!texto || !termo) return '';
+  const t = _stripHtmlPreview(String(texto));
+  const idx = t.toLowerCase().indexOf(termo.toLowerCase());
+  if (idx < 0) return t.slice(0, contextChars * 2) + (t.length > contextChars * 2 ? '…' : '');
+  const start = Math.max(0, idx - contextChars);
+  const end = Math.min(t.length, idx + termo.length + contextChars);
+  const prefix = start > 0 ? '…' : '';
+  const suffix = end < t.length ? '…' : '';
+  return prefix + t.slice(start, end) + suffix;
+}
+
+function _grifarTermo(texto, termo) {
+  if (!texto) return '';
+  const esc = (s) => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const escaped = esc(texto);
+  if (!termo) return escaped;
+  const reTermo = termo.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return escaped.replace(new RegExp('(' + reTermo + ')', 'gi'), '<mark class="search-hl">$1</mark>');
+}
+
 async function carregarListaVisitasDesktop() {
   const tableEl = document.getElementById('dsdVstTable');
   const cntEl = document.getElementById('dsdVstCount');
@@ -18107,6 +18224,7 @@ async function carregarListaVisitasDesktop() {
     flag_sem_checkin, flag_sem_checkout,
     visita_realizada, revisao_motivo, revisao_resolvida_em,
     nutricionista_id, instituicao_id,
+    resumo, proximos_passos, motivo_nao_realizada,
     usuarios:nutricionista_id(nome, foto_url),
     instituicoes(nome, cidade)
   `);
@@ -18137,12 +18255,35 @@ async function carregarListaVisitasDesktop() {
   }
   let visitas = data || [];
 
-  // Busca local
-  const busca = (f.busca || '').trim().toLowerCase();
+  // Sprint 9.32.366: busca expandida com detecção do campo onde achou
+  const buscaOriginal = (f.busca || '').trim();
+  const busca = buscaOriginal.toLowerCase();
   if (busca) {
     visitas = visitas.filter(v => {
-      const texto = [v.instituicoes?.nome, v.instituicoes?.cidade, v.usuarios?.nome].filter(Boolean).join(' ').toLowerCase();
-      return texto.includes(busca);
+      // Ordem de prioridade dos campos pra match (resumo é o mais comum)
+      const camposParaChecar = [
+        { campo: 'Instituição',         icone: 'apartment',     texto: v.instituicoes?.nome },
+        { campo: 'Cidade',              icone: 'location_on',   texto: v.instituicoes?.cidade },
+        { campo: 'Profissional',        icone: 'person',        texto: v.usuarios?.nome },
+        { campo: 'Resumo',              icone: 'description',   texto: v.resumo },
+        { campo: 'Próximos passos',     icone: 'arrow_forward', texto: v.proximos_passos },
+        { campo: 'Motivo não realizada',icone: 'do_not_disturb_on', texto: v.motivo_nao_realizada },
+        { campo: 'Motivo de revisão',   icone: 'flag',          texto: v.revisao_motivo },
+      ];
+      for (const c of camposParaChecar) {
+        // Sprint 9.32.372: testa includes em versao limpa de HTML
+        const _testText = c.texto ? _stripHtmlPreview(c.texto).toLowerCase() : '';
+        if (_testText && _testText.includes(busca)) {
+          v._match = {
+            campo: c.campo,
+            icone: c.icone,
+            snippet: _extrairSnippet(c.texto, buscaOriginal),
+            termo: buscaOriginal,
+          };
+          return true;
+        }
+      }
+      return false;
     });
   }
 
@@ -18251,11 +18392,17 @@ async function carregarListaVisitasDesktop() {
         <div class="ds-table__cell" style="flex:1.3;min-width:220px;">
           <div style="display:flex;align-items:center;gap:8px;">
             <div style="flex:1;min-width:0;">
-              <div style="font-size:13px;color:var(--neutral-700);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${instNome.replace(/</g,'&lt;')}</div>
-              ${instCidade ? `<div style="font-size:11px;color:var(--neutral-500);margin-top:2px;">${instCidade}</div>` : ''}
+              <div style="font-size:13px;color:var(--neutral-700);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${v._match ? _grifarTermo(instNome, busca) : instNome.replace(/</g,'&lt;')}</div>
+              ${instCidade ? `<div style="font-size:11px;color:var(--neutral-500);margin-top:2px;">${v._match ? _grifarTermo(instCidade, busca) : instCidade}</div>` : ''}
             </div>
             ${anexoBadge}
           </div>
+          ${v._match ? `
+            <div style="font-size:11px;color:var(--neutral-600);margin-top:5px;padding:5px 8px;background:#FFFBEB;border-left:2.5px solid #F59E0B;border-radius:4px;line-height:1.45;">
+              <span style="font-size:9.5px;font-weight:700;color:#92400E;text-transform:uppercase;letter-spacing:0.04em;display:inline-flex;align-items:center;gap:3px;"><span class="material-symbols-rounded" style="font-size:11px;">${v._match.icone}</span>${v._match.campo}:</span>
+              <span style="font-style:italic;">"${_grifarTermo(v._match.snippet, v._match.termo)}"</span>
+            </div>
+          ` : ''}
         </div>
         <div class="ds-table__cell" style="width:100px;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--neutral-600);">${durFmt}</div>
         <div class="ds-table__cell" style="width:130px;">${statusHtml}</div>
@@ -19942,7 +20089,7 @@ async function buscarGlobal(query) {
     .limit(8);
   if (!ehAdmin && user) queryVisitas.eq('nutricionista_id', user.id);
 
-  // Profissionais — SÓ pra admin
+  // Profissionais (equipe — usuarios do sistema) — SÓ pra admin
   const promises = [queryInsts, queryVisitas];
   if (ehAdmin) {
     promises.push(
@@ -19952,14 +20099,57 @@ async function buscarGlobal(query) {
         .order('nome')
         .limit(8)
     );
+  } else {
+    promises.push(Promise.resolve({ data: [] }));
   }
 
-  const [resInsts, resVisitas, resProfs] = await Promise.all(promises);
+  // Sprint 9.32.365: contatos nos hospitais (medicos/nutris de cada instituicao)
+  promises.push(
+    db.from('profissionais')
+      .select('id, nome, profissao, profissao_outro, instituicao_id, instituicoes(nome, cidade)')
+      .ilike('nome', pattern)
+      .eq('ativo', true)
+      .order('nome')
+      .limit(8)
+  );
+
+  const [resInsts, resVisitas, resProfs, resContatos] = await Promise.all(promises);
+
+  // Sprint 9.32.365: pra cada contato encontrado, busca visitas via N:N
+  let visitasViaContato = [];
+  const contatosFound = resContatos.data || [];
+  if (contatosFound.length > 0) {
+    const contatoIds = contatosFound.map(c => c.id);
+    const { data: vpJoin } = await db.from('visitas_profissionais')
+      .select('visita_id')
+      .in('profissional_id', contatoIds);
+    const visitaIds = [...new Set((vpJoin || []).map(v => v.visita_id))];
+    if (visitaIds.length > 0) {
+      let qExtra = db.from('visitas')
+        .select(`
+          id, data_visita, status, resumo, instituicao_id, nutricionista_id,
+          instituicoes(nome, cidade),
+          usuarios:nutricionista_id(nome)
+        `)
+        .in('id', visitaIds)
+        .order('data_visita', { ascending: false, nullsFirst: false })
+        .limit(20);
+      if (!ehAdmin && user) qExtra = qExtra.eq('nutricionista_id', user.id);
+      const r = await qExtra;
+      visitasViaContato = r.data || [];
+    }
+  }
+
+  // Merge visitas (dedupe por id)
+  const visitasMerge = [...(resVisitas.data || [])];
+  const idsExist = new Set(visitasMerge.map(v => v.id));
+  visitasViaContato.forEach(v => { if (!idsExist.has(v.id)) visitasMerge.push(v); });
 
   return {
     instituicoes: resInsts.data || [],
-    visitas:      resVisitas.data || [],
+    visitas:      visitasMerge,
     profissionais: ehAdmin ? (resProfs?.data || []) : [],
+    contatos:     contatosFound, // Sprint 9.32.365
   };
 }
 
@@ -23217,6 +23407,14 @@ function renderVisitasDesktopNutri() {
   }
   // Sprint 9.32.299: dia selecionado no calendário (yyyy-mm-dd) — null = mostra mês inteiro
   if (window._mvCalDesktopDia === undefined) window._mvCalDesktopDia = null;
+  // Sprint 9.32.370: estado de "calendario oculto" do localStorage
+  if (window._mvCalDesktopOculto === undefined) {
+    try {
+      window._mvCalDesktopOculto = localStorage.getItem('mvCalDesktopOculto') === '1';
+    } catch (e) {
+      window._mvCalDesktopOculto = false;
+    }
+  }
 
   setTimeout(async () => {
     await carregarMinhasVisitas();
@@ -23259,7 +23457,7 @@ function renderVisitasDesktopNutri() {
         <div style="display:flex;gap:10px;align-items:center;margin:0 0 14px;flex-wrap:wrap;">
           <div style="position:relative;flex:1;min-width:220px;max-width:360px;">
             <span class="material-symbols-rounded" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--neutral-500);font-size:18px;pointer-events:none;">search</span>
-            <input type="text" id="mvBusca" placeholder="Buscar por instituição..." oninput="filtrarMinhasVisitasLocal(this.value)"
+            <input type="text" id="mvBusca" placeholder="Buscar instituicao, resumo, proximos passos..." oninput="filtrarMinhasVisitasLocal(this.value)"
                    style="width:100%;padding:10px 44px 10px 38px;border:1px solid var(--neutral-200);border-radius:10px;font-family:inherit;font-size:13px;background:var(--neutral-0);color:var(--brand-navy);" />
             <button type="button" id="mvBuscaToggle" onclick="window.toggleBuscaAvancada()" title="Busca avançada"
                     style="position:absolute;right:6px;top:50%;transform:translateY(-50%);width:32px;height:32px;border-radius:8px;border:0;background:transparent;color:var(--neutral-500);cursor:pointer;display:flex;align-items:center;justify-content:center;">
@@ -23293,9 +23491,18 @@ function renderVisitasDesktopNutri() {
           <span>Buscando também no resumo da visita</span>
         </div>
 
-        <!-- Layout principal 30% / 70% -->
-        <div style="display:grid;grid-template-columns:30% 1fr;gap:14px;align-items:start;">
-          <div id="mvCalDesktop">
+        <!-- Sprint 9.32.370: botao toggle do calendario -->
+        <div style="display:flex;justify-content:flex-end;margin:0 0 10px;">
+          <button type="button" id="mvBtnToggleCal" onclick="toggleMvCalDesktop()" title="Ocultar/mostrar calendário"
+                  style="display:inline-flex;align-items:center;gap:6px;background:${window._mvCalDesktopOculto ? 'var(--brand-navy,#0A1F5C)' : '#fff'};color:${window._mvCalDesktopOculto ? '#fff' : 'var(--neutral-700)'};border:1px solid ${window._mvCalDesktopOculto ? 'var(--brand-navy,#0A1F5C)' : 'var(--neutral-200)'};padding:6px 12px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;transition:background 140ms;">
+            <span class="material-symbols-rounded" style="font-size:16px;">${window._mvCalDesktopOculto ? 'calendar_month' : 'view_sidebar'}</span>
+            <span>${window._mvCalDesktopOculto ? 'Mostrar calendário' : 'Ocultar calendário'}</span>
+          </button>
+        </div>
+
+        <!-- Layout principal: 30%/70% quando expandido, 100% quando oculto -->
+        <div id="mvMainGrid" style="display:grid;grid-template-columns:${window._mvCalDesktopOculto ? '1fr' : '30% 1fr'};gap:14px;align-items:start;">
+          <div id="mvCalDesktop" style="${window._mvCalDesktopOculto ? 'display:none;' : ''}">
             <div style="background:var(--neutral-50);border:1px solid var(--neutral-200);border-radius:12px;padding:14px;text-align:center;color:var(--neutral-500);font-size:12px;">Carregando calendário...</div>
           </div>
           <div>
@@ -26881,6 +27088,27 @@ function renderMvTabelaDesktopHTML(visitas) {
 }
 
 // Função coordenadora — chamada do carregarMinhasVisitas quando detecta desktop
+// Sprint 9.32.370: toggle do calendario desktop em Minhas Visitas
+window.toggleMvCalDesktop = function() {
+  window._mvCalDesktopOculto = !window._mvCalDesktopOculto;
+  try { localStorage.setItem('mvCalDesktopOculto', window._mvCalDesktopOculto ? '1' : '0'); } catch (e) {}
+  const grid = document.getElementById('mvMainGrid');
+  const cal  = document.getElementById('mvCalDesktop');
+  const btn  = document.getElementById('mvBtnToggleCal');
+  if (grid) grid.style.gridTemplateColumns = window._mvCalDesktopOculto ? '1fr' : '30% 1fr';
+  if (cal)  cal.style.display = window._mvCalDesktopOculto ? 'none' : '';
+  if (btn) {
+    const oculto = window._mvCalDesktopOculto;
+    btn.style.background = oculto ? 'var(--brand-navy,#0A1F5C)' : '#fff';
+    btn.style.color = oculto ? '#fff' : 'var(--neutral-700)';
+    btn.style.borderColor = oculto ? 'var(--brand-navy,#0A1F5C)' : 'var(--neutral-200)';
+    btn.innerHTML = `
+      <span class="material-symbols-rounded" style="font-size:16px;">${oculto ? 'calendar_month' : 'view_sidebar'}</span>
+      <span>${oculto ? 'Mostrar calendário' : 'Ocultar calendário'}</span>
+    `;
+  }
+};
+
 function renderMvDesktopCalTabela(visitas, listEl) {
   const calEl = document.getElementById('mvCalDesktop');
   const dayHeaderEl = document.getElementById('mvDayHeader');
@@ -27194,6 +27422,13 @@ async function carregarMinhasVisitas() {
       else if (ehCompleta) corBorda = 'var(--status-success,#22A06B)';
 
       const extra = `${v.resumo || ''}`.replace(/"/g, '&quot;').replace(/</g, '&lt;');
+      // Sprint 9.32.367: campos buscaveis adicionais (gravados no card pra busca local detectar campo)
+      const _escAttr = (s) => String(s || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      const dsProx   = _escAttr(v.proximos_passos);
+      const dsMotNR  = _escAttr(v.motivo_nao_realizada);
+      const dsMotRev = _escAttr(v.revisao_motivo);
+      const dsCidade = _escAttr(v.instituicoes?.cidade);
+      const dsBairro = _escAttr(v.instituicoes?.bairro);
 
       // Sprint 9.32.331f: mostra AMBOS (flags + status pill) lado a lado, em vez de OR
       // Antes só mostrava um dos dois — perdia o status quando tinha flag
@@ -27248,6 +27483,12 @@ async function carregarMinhasVisitas() {
 
       html += `
         <${tagAbre} ${linkAttr} data-id="${v.id}" data-search-extra="${extra}"
+           data-search-resumo="${extra}"
+           data-search-prox="${dsProx}"
+           data-search-motivo-nr="${dsMotNR}"
+           data-search-motivo-rev="${dsMotRev}"
+           data-search-cidade="${dsCidade}"
+           data-search-bairro="${dsBairro}"
            class="visits-list__item"
            style="background:#fff;border:1px solid var(--neutral-200);border-left:3px solid ${corBorda};border-radius:12px;padding:12px 14px;margin-bottom:10px;text-decoration:none;color:inherit;display:block;${cursorStyle}">
           <div style="display:flex;gap:10px;align-items:flex-start;">
@@ -27255,7 +27496,7 @@ async function carregarMinhasVisitas() {
               <span class="material-symbols-rounded">${cancelada ? 'cancel' : 'local_hospital'}</span>
             </div>
             <div style="flex:1;min-width:0;">
-              <div style="font-family:var(--font-display,'Poppins',sans-serif);font-size:14px;font-weight:700;color:var(--brand-navy);line-height:1.3;overflow:hidden;text-overflow:ellipsis;">${(inst.nome || 'Instituição').replace(/"/g,'&quot;')}</div>
+              <div class="mv-inst-nome" style="font-family:var(--font-display,'Poppins',sans-serif);font-size:14px;font-weight:700;color:var(--brand-navy);line-height:1.3;overflow:hidden;text-overflow:ellipsis;">${(inst.nome || 'Instituição').replace(/"/g,'&quot;')}</div>
               ${enderecoCurto ? `<div style="font-size:11px;color:var(--neutral-500);margin-top:2px;">${enderecoCurto.replace(/</g,'&lt;')}</div>` : ''}
             </div>
             ${flagBadge}
@@ -27327,28 +27568,84 @@ window.trocarFiltroMinhasVisitas = function(filtro) {
   carregarMinhasVisitas();
 };
 
-// Sprint 9.32.13: filtro local com suporte a busca avançada (resumo/observações/profissionais)
-// Lê data-search-extra dos cards (preenchido em carregarMinhasVisitas) só quando busca avançada está ON
+// Sprint 9.32.367: filtro local com deteccao de campo + snippet inline (mesmo padrao do admin)
+// Busca em: instituicao/cidade/bairro (visiveis no card) + resumo/proximos/motivos (data-search-*)
 window.filtrarMinhasVisitasLocal = function(termo) {
-  const t = (termo || '').trim().toLowerCase();
-  const avancada = !!window._mvBuscaAvancada;
+  const t = (termo || '').trim();
+  const tlow = t.toLowerCase();
   const cards = document.querySelectorAll('#visitasList .visits-list__item');
   let matches = 0;
+
+  // Helper local pra desescapar entidades que estao nas data-attrs
+  const _unesc = (s) => String(s || '')
+    .replace(/&quot;/g, '"')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&');
+
   cards.forEach(card => {
-    if (!t) { card.style.display = ''; matches++; return; }
-    // Texto base sempre buscável (instituição, tempo, motivo)
-    let texto = card.textContent.toLowerCase();
-    // Texto extra (resumo, observações, profissionais) só se busca avançada ON
-    if (avancada) {
-      const extra = card.getAttribute('data-search-extra') || '';
-      texto = texto + ' ' + extra.toLowerCase();
+    // Limpa snippet anterior se houver
+    const antigo = card.querySelector('.mv-snippet-match');
+    if (antigo) antigo.remove();
+
+    if (!tlow) {
+      card.style.display = '';
+      // Tira highlight do nome da instituicao
+      const inst = card.querySelector('.mv-inst-nome');
+      if (inst && inst.dataset.origText) { inst.innerHTML = inst.dataset.origText; }
+      matches++;
+      return;
     }
-    const visivel = texto.includes(t);
-    card.style.display = visivel ? '' : 'none';
-    if (visivel) matches++;
+
+    // Campos em ordem de prioridade (igual ao admin)
+    const camposParaChecar = [
+      { campo: 'Instituicao',          icone: 'apartment',          texto: card.querySelector('.mv-inst-nome')?.textContent || '' },
+      { campo: 'Cidade',               icone: 'location_on',        texto: _unesc(card.getAttribute('data-search-cidade') || '') },
+      { campo: 'Bairro',               icone: 'location_on',        texto: _unesc(card.getAttribute('data-search-bairro') || '') },
+      { campo: 'Resumo',               icone: 'description',        texto: _unesc(card.getAttribute('data-search-resumo') || '') },
+      { campo: 'Proximos passos',      icone: 'arrow_forward',      texto: _unesc(card.getAttribute('data-search-prox') || '') },
+      { campo: 'Motivo nao realizada', icone: 'do_not_disturb_on',  texto: _unesc(card.getAttribute('data-search-motivo-nr') || '') },
+      { campo: 'Motivo de revisao',    icone: 'flag',               texto: _unesc(card.getAttribute('data-search-motivo-rev') || '') },
+    ];
+
+    let match = null;
+    for (const c of camposParaChecar) {
+      if (c.texto && String(c.texto).toLowerCase().includes(tlow)) {
+        match = c;
+        break;
+      }
+    }
+
+    if (!match) {
+      card.style.display = 'none';
+      return;
+    }
+
+    card.style.display = '';
+    matches++;
+
+    // Highlight no nome da instituicao (se o helper global existe)
+    const inst = card.querySelector('.mv-inst-nome');
+    if (inst) {
+      if (!inst.dataset.origText) inst.dataset.origText = inst.innerHTML;
+      if (typeof _grifarTermo === 'function') {
+        inst.innerHTML = _grifarTermo(inst.textContent, t);
+      }
+    }
+
+    // Snippet inline (quando o match NAO eh na instituicao, mostra de onde veio)
+    if (match.campo !== 'Instituicao' && typeof _extrairSnippet === 'function' && typeof _grifarTermo === 'function') {
+      const snippet = _extrairSnippet(match.texto, t, 50);
+      const div = document.createElement('div');
+      div.className = 'mv-snippet-match';
+      div.style.cssText = 'font-size:11px;color:var(--neutral-600);margin-top:8px;padding:6px 9px;background:#FFFBEB;border-left:2.5px solid #F59E0B;border-radius:4px;line-height:1.45;';
+      div.innerHTML = '<span style="font-size:9.5px;font-weight:700;color:#92400E;text-transform:uppercase;letter-spacing:0.04em;display:inline-flex;align-items:center;gap:3px;"><span class="material-symbols-rounded" style="font-size:11px;">' + match.icone + '</span>' + match.campo + ':</span> <span style="font-style:italic;">"' + _grifarTermo(snippet, t) + '"</span>';
+      card.appendChild(div);
+    }
   });
+
   let msgEl = document.getElementById('mvBuscaSemResultado');
-  if (t && matches === 0) {
+  if (tlow && matches === 0) {
     if (!msgEl) {
       msgEl = document.createElement('div');
       msgEl.id = 'mvBuscaSemResultado';
@@ -34615,7 +34912,8 @@ window.abrirBuscaGlobal = function() {
         <button type="button" data-bg-tipo="todos" class="bg-chip is-active" onclick="window.bgFiltrarPorTipo('todos')">Todos</button>
         <button type="button" data-bg-tipo="instituicoes" class="bg-chip" onclick="window.bgFiltrarPorTipo('instituicoes')">🏥 Instituições</button>
         <button type="button" data-bg-tipo="visitas" class="bg-chip" onclick="window.bgFiltrarPorTipo('visitas')">📋 Visitas</button>
-        ${ehAdmin ? `<button type="button" data-bg-tipo="profissionais" class="bg-chip" onclick="window.bgFiltrarPorTipo('profissionais')">👥 Profissionais</button>` : ''}
+        <button type="button" data-bg-tipo="profissionais" class="bg-chip" onclick="window.bgFiltrarPorTipo('profissionais')">🩺 Profissionais</button>
+        ${ehAdmin ? `<button type="button" data-bg-tipo="equipe" class="bg-chip" onclick="window.bgFiltrarPorTipo('equipe')">👥 Equipe</button>` : ''}
       </div>
 
       <!-- Resultados -->
@@ -34709,6 +35007,10 @@ window.bgFiltrarPorTipo = function(tipo) {
 async function executarBuscaGlobal(query) {
   const resEl = document.getElementById('buscaGlobalResultados');
   if (!resEl) return;
+  // Sprint 9.32.366b: termo pra grifar (usa funcoes _grifarTermo e _extrairSnippet)
+  const _termoBusca = (query || '').trim();
+  // Sprint 9.32.366d: guarda termo pra buscaIrVisita usar na navegacao
+  window._buscaGlobalUltimaQuery = _termoBusca;
 
   const resultados = await buscarGlobal(query);
   // Sprint 9.32.20: aplica filtro de tipo se ativo
@@ -34716,9 +35018,12 @@ async function executarBuscaGlobal(query) {
   if (tipo !== 'todos') {
     if (tipo !== 'instituicoes') resultados.instituicoes = [];
     if (tipo !== 'visitas') resultados.visitas = [];
-    if (tipo !== 'profissionais') resultados.profissionais = [];
+    // Sprint 9.32.365b: profissionais = contatos hospitalares; equipe = usuarios sistema
+    if (tipo !== 'profissionais') resultados.contatos = [];
+    if (tipo !== 'equipe') resultados.profissionais = [];
   }
-  const total = resultados.visitas.length + resultados.instituicoes.length + resultados.profissionais.length;
+  resultados.contatos = resultados.contatos || [];
+  const total = resultados.visitas.length + resultados.instituicoes.length + resultados.profissionais.length + resultados.contatos.length;
 
   if (total === 0) {
     resEl.innerHTML = `
@@ -34743,18 +35048,40 @@ async function executarBuscaGlobal(query) {
           <span class="material-symbols-rounded" style="font-size:20px;color:var(--brand-navy);">apartment</span>
           <div style="flex:1;min-width:0;">
             <div style="font-weight:600;color:var(--brand-navy);font-size:13.5px;line-height:1.3;">
-              ${(i.nome || '').replace(/</g,'&lt;')}${inativo}
+              ${_grifarTermo(i.nome || '', _termoBusca)}${inativo}
             </div>
-            <div style="font-size:11.5px;color:var(--neutral-600);margin-top:1px;">${cidade}</div>
+            <div style="font-size:11.5px;color:var(--neutral-600);margin-top:1px;">${_grifarTermo(cidade, _termoBusca)}</div>
           </div>
         </div>
       `;
     }).join(''));
   }
 
-  // Seção: Profissionais
+  // Sprint 9.32.365b: Seção Profissionais (contatos dos hospitais)
+  if (resultados.contatos && resultados.contatos.length > 0) {
+    html += renderBuscaSecao('Profissionais', 'medical_services', resultados.contatos.map(c => {
+      const prof = c.profissao === 'Outro' && c.profissao_outro ? c.profissao_outro : (c.profissao || 'Profissional');
+      const inst = c.instituicoes?.nome || '—';
+      const cidade = c.instituicoes?.cidade || '';
+      return `
+        <div onclick="buscaIrContato('${c.id}','${(c.nome || '').replace(/'/g,"\\'")}')" class="busca-item" style="padding:10px 16px;cursor:pointer;display:flex;align-items:center;gap:10px;transition:background 140ms;" onmouseover="this.style.background='var(--neutral-50)'" onmouseout="this.style.background='transparent'">
+          <div style="width:28px;height:28px;border-radius:8px;background:#E4ECFD;color:var(--status-info,#185FA5);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;">
+            <span class="material-symbols-rounded" style="font-size:16px;">medical_services</span>
+          </div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-weight:600;color:var(--brand-navy);font-size:13.5px;line-height:1.3;">${_grifarTermo(c.nome || '', _termoBusca)}</div>
+            <div style="font-size:11.5px;color:var(--neutral-600);margin-top:1px;">
+              ${_grifarTermo(prof, _termoBusca)} · ${_grifarTermo(inst, _termoBusca)}${cidade ? ' · ' + _grifarTermo(cidade, _termoBusca) : ''}
+            </div>
+          </div>
+        </div>
+      `;
+    }).join(''));
+  }
+
+  // Sprint 9.32.365b: Seção Equipe (usuarios sistema)
   if (resultados.profissionais.length > 0) {
-    html += renderBuscaSecao('Profissionais', 'group', resultados.profissionais.map(p => {
+    html += renderBuscaSecao('Equipe', 'group', resultados.profissionais.map(p => {
       const perfilLabel = p.perfil === 'admin' ? 'Administrador' : (p.categorias_profissionais?.nome || 'Profissional');
       const statusBadge = p.status !== 'ativo'
         ? `<span style="font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;background:var(--neutral-200);color:var(--neutral-600);margin-left:6px;">${String(p.status).toUpperCase()}</span>`
@@ -34783,7 +35110,8 @@ async function executarBuscaGlobal(query) {
         const [y, m, d] = String(v.data_visita).split('-').map(Number);
         return `${String(d).padStart(2,'0')}/${String(m).padStart(2,'0')}/${y}`;
       })();
-      const trechoResumo = v.resumo ? `"${v.resumo.substring(0, 80)}${v.resumo.length > 80 ? '...' : ''}"` : '';
+      // Sprint 9.32.366b: extrai snippet centrado no termo (estilo Google)
+      const trechoResumo = v.resumo ? '"' + _extrairSnippet(v.resumo, _termoBusca, 50) + '"' : '';
       const statusMap = {
         completa:'Completa', rascunho:'Rascunho', em_revisao:'Em revisão',
         aprovada_pos_revisao:'Aprovada', agendada:'Agendada', sugerida:'Sugerida',
@@ -34794,11 +35122,11 @@ async function executarBuscaGlobal(query) {
           <span class="material-symbols-rounded" style="font-size:20px;color:var(--brand-navy);margin-top:1px;">description</span>
           <div style="flex:1;min-width:0;">
             <div style="font-weight:600;color:var(--brand-navy);font-size:13.5px;line-height:1.3;">
-              ${(inst).replace(/</g,'&lt;')} · ${dt}
+              ${_grifarTermo(inst, _termoBusca)} · ${dt}
               <span style="font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;background:var(--neutral-100);color:var(--neutral-700);margin-left:6px;">${statusLabel}</span>
             </div>
-            <div style="font-size:11.5px;color:var(--neutral-600);margin-top:1px;">${(prof).replace(/</g,'&lt;')}</div>
-            ${trechoResumo ? `<div style="font-size:11.5px;color:var(--neutral-500);margin-top:3px;font-style:italic;">${trechoResumo.replace(/</g,'&lt;')}</div>` : ''}
+            <div style="font-size:11.5px;color:var(--neutral-600);margin-top:1px;">${_grifarTermo(prof, _termoBusca)}</div>
+            ${trechoResumo ? `<div style="font-size:11.5px;color:var(--neutral-500);margin-top:3px;font-style:italic;">${_grifarTermo(trechoResumo, _termoBusca)}</div>` : ''}
           </div>
         </div>
       `;
@@ -34836,14 +35164,28 @@ window.buscaIrProfissional = function(id) {
   // Só admin tem essa opção (profissional nem vê profissionais nos resultados)
   window.location.hash = `#/admin/equipe?id=${id}`;
 };
+
+// Sprint 9.32.365b: clicar num profissional (hospital) — info no flash + fecha busca
+window.buscaIrContato = function(id, nome) {
+  setFlash('info', `Visitas com ${nome} estão listadas em "Visitas" abaixo.`);
+};
+// Sprint 9.32.366d: clicar numa visita na busca global leva pra lista FILTRADA
+// pelo mesmo termo, com snippets (estilo Google). User ve todas as matches e
+// pode clicar pra ver detalhe daquela especifica.
 window.buscaIrVisita = function(id) {
   fecharBuscaGlobal();
   const user = getCurrentUser();
+  const termo = window._buscaGlobalUltimaQuery || '';
   if (user?.perfil === 'admin') {
-    window.location.hash = `#/admin/visitas?id=${id}`;
+    // Admin: lista de todas as visitas filtrada pelo termo (snippets ativos)
+    if (termo) {
+      window.location.hash = `#/admin/visitas?busca=${encodeURIComponent(termo)}`;
+    } else {
+      window.location.hash = `#/admin/revisao/detalhe?id=${id}`;
+    }
   } else {
-    // Profissional vai pra lista dele com o ID na URL
-    window.location.hash = `#/visitas?id=${id}`;
+    // Profissional: vai pro relatorio individual (nao tem snippet em Minhas Visitas)
+    window.location.hash = `#/visitas/relatorio?id=${id}`;
   }
 };
 
@@ -35465,6 +35807,8 @@ function renderAdminVisitas() {
     gps: window._routeParams?.gps || 'todos',
     // Sprint 9.32.268: filtro de auto-fechadas tb no mobile
     auto_fechadas: window._routeParams?.auto_fechadas === 'true' || window._routeParams?.auto_fechadas === true,
+    // Sprint 9.32.367: busca por texto livre (vem da global Ctrl+K com ?busca=)
+    busca: (window._routeParams?.busca !== undefined && window._routeParams?.busca !== null) ? String(window._routeParams.busca) : '',
   };
 
   setTimeout(async () => {
@@ -35542,6 +35886,21 @@ function renderAdminVisitas() {
           </button>
         </div>
 
+        <!-- Sprint 9.32.367: Busca por texto (instituicao, profissional, resumo, proximos passos, motivos) -->
+        <div style="position:relative;margin:0 16px 10px;">
+          <span class="material-symbols-rounded" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:18px;color:var(--neutral-500);pointer-events:none;">search</span>
+          <input type="text" id="avBusca" placeholder="Buscar instituicao, profissional, resumo..."
+                 value="${(f.busca || '').replace(/"/g,'&quot;')}"
+                 oninput="aplicarBuscaVisitasMobile(this.value)"
+                 style="width:100%;padding:10px 36px;border:1px solid var(--neutral-200);border-radius:10px;font-size:13px;background:#fff;outline:none;box-sizing:border-box;" />
+          ${f.busca ? `
+            <button type="button" onclick="limparBuscaVisitasMobile()" title="Limpar busca"
+                    style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:transparent;border:0;padding:4px;cursor:pointer;color:var(--neutral-500);display:inline-flex;align-items:center;">
+              <span class="material-symbols-rounded" style="font-size:18px;">close</span>
+            </button>
+          ` : ''}
+        </div>
+
         <!-- Header com contagem + botão de export -->
         <div class="av-list-header">
           <div id="avCount" class="av-list-header__count">—</div>
@@ -35609,7 +35968,7 @@ async function popularFiltrosVisitas() {
 }
 
 window.limparFiltrosVisitas = function() {
-  window._visitasFilter = { periodo: '30', status: 'todos', profissional_id: 'todos', instituicao_id: 'todos', gps: 'todos' };
+  window._visitasFilter = { periodo: '30', status: 'todos', profissional_id: 'todos', instituicao_id: 'todos', gps: 'todos', busca: '' };
   // UI
   document.querySelectorAll('#avPeriodSelector .dash-period-btn').forEach(b => {
     b.classList.toggle('is-active', b.dataset.val === '30');
@@ -35618,6 +35977,25 @@ window.limparFiltrosVisitas = function() {
   const pr = document.getElementById('avFiltroProfissional'); if (pr) pr.value = 'todos';
   const ins = document.getElementById('avFiltroInstituicao'); if (ins) ins.value = 'todos';
   const gps = document.getElementById('avFiltroGps'); if (gps) gps.value = 'todos';
+  const bs = document.getElementById('avBusca'); if (bs) bs.value = '';
+  carregarListaVisitas();
+};
+
+// Sprint 9.32.367: handlers da busca local mobile admin (com debounce leve)
+window._avBuscaDebounce = null;
+window.aplicarBuscaVisitasMobile = function(termo) {
+  clearTimeout(window._avBuscaDebounce);
+  window._avBuscaDebounce = setTimeout(() => {
+    if (window._visitasFilter) {
+      window._visitasFilter.busca = (termo || '').trim();
+      carregarListaVisitas();
+    }
+  }, 220);
+};
+window.limparBuscaVisitasMobile = function() {
+  if (window._visitasFilter) window._visitasFilter.busca = '';
+  const inp = document.getElementById('avBusca');
+  if (inp) inp.value = '';
   carregarListaVisitas();
 };
 
@@ -35636,8 +36014,9 @@ async function carregarListaVisitas() {
     flag_sem_checkin, flag_sem_checkout,
     visita_realizada, revisao_motivo, revisao_resolvida_em,
     nutricionista_id, instituicao_id,
+    resumo, proximos_passos, motivo_nao_realizada,
     usuarios:nutricionista_id(nome),
-    instituicoes(nome)
+    instituicoes(nome, cidade)
   `);
   if (dataInicio) query = query.gte('checkin_timestamp', dataInicio);
 
@@ -35686,7 +36065,38 @@ async function carregarListaVisitas() {
     listEl.innerHTML = `<div style="padding:20px;color:var(--status-danger);">Erro: ${error.message}</div>`;
     return;
   }
-  const visitas = data || [];
+  let visitas = data || [];
+
+  // Sprint 9.32.367: busca em memoria com deteccao de campo (mesmo padrao do desktop admin)
+  const buscaOriginalMobile = (f.busca || '').trim();
+  const buscaMobile = buscaOriginalMobile.toLowerCase();
+  if (buscaMobile) {
+    visitas = visitas.filter(v => {
+      const camposParaChecar = [
+        { campo: 'Instituicao',          icone: 'apartment',          texto: v.instituicoes?.nome },
+        { campo: 'Cidade',               icone: 'location_on',        texto: v.instituicoes?.cidade },
+        { campo: 'Profissional',         icone: 'person',             texto: v.usuarios?.nome },
+        { campo: 'Resumo',               icone: 'description',        texto: v.resumo },
+        { campo: 'Proximos passos',      icone: 'arrow_forward',      texto: v.proximos_passos },
+        { campo: 'Motivo nao realizada', icone: 'do_not_disturb_on',  texto: v.motivo_nao_realizada },
+        { campo: 'Motivo de revisao',    icone: 'flag',               texto: v.revisao_motivo },
+      ];
+      for (const c of camposParaChecar) {
+        // Sprint 9.32.372: testa includes em versao limpa de HTML
+        const _testText = c.texto ? _stripHtmlPreview(c.texto).toLowerCase() : '';
+        if (_testText && _testText.includes(buscaMobile)) {
+          v._match = {
+            campo: c.campo,
+            icone: c.icone,
+            snippet: _extrairSnippet(c.texto, buscaOriginalMobile, 50),
+            termo: buscaOriginalMobile,
+          };
+          return true;
+        }
+      }
+      return false;
+    });
+  }
 
   // Atualiza contagem
   if (cntEl) {
@@ -35738,6 +36148,13 @@ async function carregarListaVisitas() {
       ? `<span class="review-card__meta-item" title="${nAnexos} anexo${nAnexos === 1 ? '' : 's'}" style="color:var(--brand-navy);font-weight:600;"><span class="material-symbols-rounded">attach_file</span>${nAnexos}</span>`
       : '';
 
+    // Sprint 9.32.367: snippet inline qdo o card veio da busca por texto
+    const snippetHtml = v._match ? `
+      <div style="font-size:11px;color:var(--neutral-600);margin-top:8px;padding:6px 9px;background:#FFFBEB;border-left:2.5px solid #F59E0B;border-radius:4px;line-height:1.45;">
+        <span style="font-size:9.5px;font-weight:700;color:#92400E;text-transform:uppercase;letter-spacing:0.04em;display:inline-flex;align-items:center;gap:3px;"><span class="material-symbols-rounded" style="font-size:11px;">${v._match.icone}</span>${v._match.campo}:</span>
+        <span style="font-style:italic;">"${_grifarTermo(v._match.snippet, v._match.termo)}"</span>
+      </div>
+    ` : '';
     return `
       <a href="#/admin/revisao/detalhe?id=${v.id}" data-id="${v.id}" class="review-card ${cardClass}">
         <div class="review-card__header">
@@ -35745,7 +36162,7 @@ async function carregarListaVisitas() {
             <span class="material-symbols-rounded">local_hospital</span>
           </div>
           <div class="review-card__info">
-            <div class="review-card__inst">${(v.instituicoes?.nome || 'Instituição').replace(/"/g,'&quot;')}</div>
+            <div class="review-card__inst">${v._match ? _grifarTermo(v.instituicoes?.nome || 'Instituição', buscaOriginalMobile) : (v.instituicoes?.nome || 'Instituição').replace(/"/g,'&quot;')}</div>
             <div class="review-card__meta">
               <span class="review-card__meta-item">
                 <span class="material-symbols-rounded">person</span>${(nutriNome || '').split(' ')[0] || '—'}
@@ -35764,6 +36181,7 @@ async function carregarListaVisitas() {
           ` : ''}
         </div>
         ${flags.length > 0 ? `<div class="review-flags">${flagsHtml}${maisFlags}</div>` : ''}
+        ${snippetHtml}
       </a>
     `;
   }).join('');
@@ -36240,9 +36658,22 @@ function renderAdminRevisaoDetalheDesktop() {
   }, 0);
 
   // Conteúdo desktop: container largo, sem mobile-app/topbar
-  // Sprint 9.32.287: botão Voltar agora vai no topbar via titleExtra (alinhado com título)
+  // Sprint 9.32.371: Voltar dentro de um banner em cima do conteudo (padrao da tela do profissional)
   const conteudoDesktop = `
     <div style="max-width:1100px;margin:0 auto;padding:14px 14px 60px;">
+      <div style="background:#fff;border:1px solid var(--neutral-200);border-radius:10px;padding:10px 14px;margin-bottom:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:160px;font-size:11.5px;color:var(--neutral-600);">
+          <span class="material-symbols-rounded" style="font-size:14px;color:var(--brand-navy);vertical-align:-2px;">rule</span>
+          Modo revisão · auditando visita
+        </div>
+        <a href="#/admin/revisao"
+           style="display:inline-flex;align-items:center;gap:6px;padding:7px 12px 7px 9px;border:1.5px solid var(--brand-navy);background:#fff;color:var(--brand-navy);font-size:11.5px;font-weight:700;border-radius:7px;text-decoration:none;font-family:inherit;transition:all 150ms;cursor:pointer;"
+           onmouseover="this.style.background='var(--brand-navy)';this.style.color='#fff';"
+           onmouseout="this.style.background='#fff';this.style.color='var(--brand-navy)';">
+          <span class="material-symbols-rounded" style="font-size:15px;">arrow_back</span>
+          Voltar
+        </a>
+      </div>
       <div id="reviewDetailBody">
         <div style="padding:60px 20px;text-align:center;color:var(--neutral-500);font-size:13px;">
           <span class="material-symbols-rounded" style="font-size:32px;color:var(--neutral-400);">hourglass_empty</span>
@@ -36252,21 +36683,9 @@ function renderAdminRevisaoDetalheDesktop() {
     </div>
   `;
 
-  // Sprint 9.32.287: Voltar pill outline navy injetado no topbar (à direita do título)
-  const voltarBtn = `
-    <a href="#/admin/revisao"
-       style="display:inline-flex;align-items:center;gap:6px;padding:6px 14px 6px 10px;border:1.5px solid var(--brand-navy);background:#fff;color:var(--brand-navy);font-size:12.5px;font-weight:600;border-radius:9999px;text-decoration:none;font-family:inherit;transition:all 150ms;cursor:pointer;align-self:center;"
-       onmouseover="this.style.background='var(--brand-navy)';this.style.color='#fff';"
-       onmouseout="this.style.background='#fff';this.style.color='var(--brand-navy)';">
-      <span class="material-symbols-rounded" style="font-size:15px;">arrow_back</span>
-      Voltar
-    </a>
-  `;
-
   return desktopShell({
     title: 'Detalhes da visita',
     breadcrumb: ['Admin', 'Revisão', 'Detalhes'],
-    titleExtra: voltarBtn,
     content: conteudoDesktop,
     activeId: 'review',
   });
@@ -40023,7 +40442,7 @@ window.rejeitarObjetivoPendente = async function(id) {
 let FAT_DATA = null;
 let _fatDataPromise = null;
 // __FAT_VERSION_START__ — substituído pelo atualizar_index.py com hash do JSON
-const FAT_DATA_VERSION = '375ae17f171e';
+const FAT_DATA_VERSION = 'a79880f048be';
 // __FAT_VERSION_END__
 const FAT_DATA_URL = 'faturamento_data_inline.json?v=' + FAT_DATA_VERSION;
 
@@ -51951,17 +52370,35 @@ async function listarUsuariosPorStatus(statuses, opts = {}) {
   // Sprint 9.32.358: opts.arquivados: 'esconder' (default) | 'mostrar' | 'somente'
   const arq = opts.arquivados || 'esconder';
   if (!db) return [];
-  const { data, error } = await db
+  // Sprint 9.32.364: tenta com colunas de arquivado, fallback sem se SQL nao foi rodado
+  const colsComArq = 'id, nome, cpf, email, telefone, perfil, super_admin, status, categoria_id, criado_em, ultimo_login, foto_url, arquivado, arquivado_em, categorias_profissionais(nome, pendente_aprovacao)';
+  const colsSemArq = 'id, nome, cpf, email, telefone, perfil, super_admin, status, categoria_id, criado_em, ultimo_login, foto_url, categorias_profissionais(nome, pendente_aprovacao)';
+  let { data, error } = await db
     .from('usuarios')
-    .select('id, nome, cpf, email, telefone, perfil, super_admin, status, categoria_id, criado_em, ultimo_login, foto_url, arquivado, arquivado_em, categorias_profissionais(nome, pendente_aprovacao)')
+    .select(colsComArq)
     .in('status', statuses)
     .order('criado_em', { ascending: false });
+  let temColunaArquivado = !error;
+  if (error) {
+    const msg = (error.message || '').toLowerCase();
+    if (msg.includes('arquivado') || msg.includes('schema cache') || msg.includes('could not find') || msg.includes('does not exist')) {
+      console.warn('[equipe] coluna arquivado nao existe ainda — fallback. Rode arquivar_usuario.sql.');
+      const r2 = await db.from('usuarios').select(colsSemArq).in('status', statuses).order('criado_em', { ascending: false });
+      data = r2.data; error = r2.error;
+      temColunaArquivado = false;
+    }
+  }
   if (error) { console.warn('[equipe]', error.message); return []; }
   // Sprint 9.32.294: filtra super_admin da lista
   let lista = (data || []).filter(u => u.super_admin !== true);
-  // Sprint 9.32.358: aplica filtro de arquivados
-  if (arq === 'esconder') lista = lista.filter(u => !u.arquivado);
-  else if (arq === 'somente') lista = lista.filter(u => u.arquivado === true);
+  // Sprint 9.32.358: aplica filtro de arquivados (só se a coluna existe)
+  if (temColunaArquivado) {
+    if (arq === 'esconder') lista = lista.filter(u => !u.arquivado);
+    else if (arq === 'somente') lista = lista.filter(u => u.arquivado === true);
+  } else {
+    // Sem coluna: somente = vazio (ninguem pode estar arquivado), esconder/mostrar = tudo
+    if (arq === 'somente') lista = [];
+  }
   // Admins primeiro, depois o resto (por criado_em desc)
   return lista.sort((a, b) => {
     if (a.perfil === 'admin' && b.perfil !== 'admin') return -1;
@@ -51972,8 +52409,8 @@ async function listarUsuariosPorStatus(statuses, opts = {}) {
 
 async function contarUsuariosPorStatus() {
   if (!db) return { pendentes: 0, ativos: 0, desativados: 0, arquivados: 0 };
-  // Sprint 9.32.358: conta arquivados separado, excluindo da contagem de desativados
-  const [p, a, d, arq] = await Promise.all([
+  // Sprint 9.32.364: tenta com filtro arquivado, fallback sem se coluna nao existe
+  const queriesComArq = [
     db.from('usuarios').select('*', { count: 'exact', head: true })
       .eq('status', 'pendente').neq('super_admin', true).eq('arquivado', false),
     db.from('usuarios').select('*', { count: 'exact', head: true })
@@ -51982,7 +52419,23 @@ async function contarUsuariosPorStatus() {
       .in('status', ['inativo', 'bloqueado']).neq('super_admin', true).eq('arquivado', false),
     db.from('usuarios').select('*', { count: 'exact', head: true })
       .neq('super_admin', true).eq('arquivado', true),
-  ]);
+  ];
+  let results = await Promise.all(queriesComArq);
+  // Se a primeira query (pendentes) deu erro de coluna, refaz sem o filtro
+  if (results[0].error) {
+    const msg = (results[0].error.message || '').toLowerCase();
+    if (msg.includes('arquivado') || msg.includes('schema cache') || msg.includes('could not find') || msg.includes('does not exist')) {
+      console.warn('[equipe] contagem fallback: coluna arquivado nao existe');
+      const queriesSemArq = [
+        db.from('usuarios').select('*', { count: 'exact', head: true }).eq('status', 'pendente').neq('super_admin', true),
+        db.from('usuarios').select('*', { count: 'exact', head: true }).eq('status', 'ativo').neq('super_admin', true),
+        db.from('usuarios').select('*', { count: 'exact', head: true }).in('status', ['inativo', 'bloqueado']).neq('super_admin', true),
+      ];
+      const r2 = await Promise.all(queriesSemArq);
+      return { pendentes: r2[0].count || 0, ativos: r2[1].count || 0, desativados: r2[2].count || 0, arquivados: 0 };
+    }
+  }
+  const [p, a, d, arq] = results;
   return { pendentes: p.count || 0, ativos: a.count || 0, desativados: d.count || 0, arquivados: arq.count || 0 };
 }
 
