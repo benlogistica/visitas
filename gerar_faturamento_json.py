@@ -827,6 +827,31 @@ def gerar_devolucoes_marca_mes(df_devolucoes: pd.DataFrame) -> list:
     ]
 
 
+
+
+def gerar_vendedor_devolucao_mes(df_devolucoes: pd.DataFrame) -> list:
+    """⭐ Sprint 9.32.321: vendedor × mês × devolução.
+    
+    Permite calcular faturamento liquido (apos devolucoes) por vendedor.
+    Usado no ranking de vendedores e no modal do vendedor.
+    """
+    if df_devolucoes.empty or 'Vendedor' not in df_devolucoes.columns:
+        return []
+    g = df_devolucoes.groupby(['Vendedor', '_ano_mes']).agg(
+        valor_devolucao=('Total de Mercadoria', lambda x: abs(x.sum())),
+        qtd=('Nota Fiscal', 'nunique'),
+    ).reset_index().rename(columns={'_ano_mes': 'ano_mes'})
+    g = g.sort_values(['Vendedor', 'ano_mes'])
+    return [
+        {
+            'Vendedor': r['Vendedor'],
+            'ano_mes': r['ano_mes'],
+            'valor_devolucao': round(r['valor_devolucao'], 2),
+            'qtd': int(r['qtd']),
+        }
+        for _, r in g.iterrows()
+    ]
+
 def gerar_devolucoes_produtos_mes(df_devolucoes: pd.DataFrame) -> list:
     """Devoluções por produto × mês."""
     if df_devolucoes.empty:
@@ -1028,6 +1053,126 @@ def gerar_empresa_mes(df_vendas: pd.DataFrame) -> list:
             'ano_mes': r['ano_mes'],
             'faturamento': round(r['faturamento'], 2),
             'qtd_notas': int(r['qtd_notas']),
+        }
+        for _, r in g.iterrows()
+    ]
+
+
+
+
+# ============================================================================
+# Sprint 9.32.319: Cross-tables vendedor x outras dimensoes
+# Permitem que o filtro de vendedor (botao "Filtrar painel por este vendedor")
+# afete TODOS os paineis do dashboard, nao so os KPIs e chart de evolucao.
+# ============================================================================
+
+def gerar_vendedor_empresa_mes(df_vendas: pd.DataFrame) -> list:
+    """⭐ Sprint 9.32.319: vendedor × empresa × mês.
+    
+    Pra recompor o card "Faturamento por empresa" quando filtro de vendedor ativo.
+    Quanto cada vendedor faturou em cada empresa (Haverim/Santos/PG)?
+    """
+    g = df_vendas.groupby(['Vendedor', 'Minha Empresa (Nome Fantasia)', '_ano_mes']).agg(
+        faturamento=('Total de Mercadoria', 'sum'),
+        qtd_notas=('Nota Fiscal', 'nunique'),
+    ).reset_index().rename(columns={
+        '_ano_mes': 'ano_mes',
+        'Minha Empresa (Nome Fantasia)': 'Empresa',
+    })
+    g = g.sort_values(['Vendedor', 'ano_mes', 'faturamento'], ascending=[True, True, False])
+    return [
+        {
+            'Vendedor': r['Vendedor'],
+            'Empresa': r['Empresa'],
+            'ano_mes': r['ano_mes'],
+            'faturamento': round(r['faturamento'], 2),
+            'qtd_notas': int(r['qtd_notas']),
+        }
+        for _, r in g.iterrows()
+    ]
+
+
+def gerar_vendedor_marca_mes(df_vendas: pd.DataFrame) -> list:
+    """⭐ Sprint 9.32.319: vendedor × marca × mês.
+    
+    Pra recompor o donut de "Marcas (mix de receita)" quando filtro de vendedor ativo.
+    """
+    g = df_vendas.groupby(['Vendedor', 'Marca', '_ano_mes']).agg(
+        faturamento=('Total de Mercadoria', 'sum'),
+        qtd_notas=('Nota Fiscal', 'nunique'),
+    ).reset_index().rename(columns={'_ano_mes': 'ano_mes'})
+    g = g.sort_values(['Vendedor', 'ano_mes', 'faturamento'], ascending=[True, True, False])
+    return [
+        {
+            'Vendedor': r['Vendedor'],
+            'Marca': r['Marca'],
+            'ano_mes': r['ano_mes'],
+            'faturamento': round(r['faturamento'], 2),
+            'qtd_notas': int(r['qtd_notas']),
+        }
+        for _, r in g.iterrows()
+    ]
+
+
+def gerar_vendedor_estado_mes(df_vendas: pd.DataFrame) -> list:
+    """⭐ Sprint 9.32.319: vendedor × estado × mês.
+    
+    Pra recompor o card "Distribuição por estado" quando filtro de vendedor ativo.
+    """
+    g = df_vendas.groupby(['Vendedor', 'Estado', '_ano_mes']).agg(
+        faturamento=('Total de Mercadoria', 'sum'),
+        qtd_clientes=('CNPJ/CPF', 'nunique'),
+    ).reset_index().rename(columns={'_ano_mes': 'ano_mes'})
+    g = g.sort_values(['Vendedor', 'ano_mes', 'faturamento'], ascending=[True, True, False])
+    return [
+        {
+            'Vendedor': r['Vendedor'],
+            'Estado': r['Estado'],
+            'ano_mes': r['ano_mes'],
+            'faturamento': round(r['faturamento'], 2),
+            'qtd_clientes': int(r['qtd_clientes']),
+        }
+        for _, r in g.iterrows()
+    ]
+
+
+def gerar_vendedor_produto_mes(df_vendas: pd.DataFrame, n_top_por_vendedor: int = 30) -> list:
+    """⭐ Sprint 9.32.319: vendedor × produto × mês (top N por vendedor).
+    
+    Pra recompor o "Top produtos" quando filtro de vendedor ativo.
+    Limita a top 30 produtos por vendedor pra controlar tamanho do JSON.
+    """
+    # Primeiro identifica top N produtos por vendedor (no agregado)
+    g_total = df_vendas.groupby(['Vendedor', 'Código do Produto']).agg(
+        faturamento=('Total de Mercadoria', 'sum'),
+    ).reset_index()
+    g_total = g_total.sort_values(['Vendedor', 'faturamento'], ascending=[True, False])
+    top_produtos_por_vendedor = (
+        g_total.groupby('Vendedor')
+        .head(n_top_por_vendedor)
+        [['Vendedor', 'Código do Produto']]
+    )
+    # Filtra o df pelos pares (Vendedor, Codigo do Produto) que estao no top
+    pares_top = set(zip(top_produtos_por_vendedor['Vendedor'], top_produtos_por_vendedor['Código do Produto']))
+    df_filt = df_vendas[df_vendas.apply(
+        lambda r: (r['Vendedor'], r['Código do Produto']) in pares_top,
+        axis=1
+    )]
+    # Agora agrega por vendedor x produto x mes
+    g = df_filt.groupby(['Vendedor', 'Código do Produto', 'Descrição do Produto', 'Marca', '_ano_mes']).agg(
+        faturamento=('Total de Mercadoria', 'sum'),
+        qtd_itens=('Quantidade', 'sum'),
+    ).reset_index().rename(columns={'_ano_mes': 'ano_mes'})
+    g = g.sort_values(['Vendedor', 'ano_mes', 'faturamento'], ascending=[True, True, False])
+    return [
+        {
+            'Vendedor': r['Vendedor'],
+            'Código do Produto': str(r['Código do Produto']) if pd.notna(r['Código do Produto']) else 'N/D',
+            'Descrição do Produto': r['Descrição do Produto'],
+            'Marca': r['Marca'],
+            'ano_mes': r['ano_mes'],
+            'faturamento': round(r['faturamento'], 2),
+            'qtd_itens': round(r['qtd_itens'], 2) if pd.notna(r['qtd_itens']) else 0,
         }
         for _, r in g.iterrows()
     ]
@@ -1266,6 +1411,13 @@ def main():
         'empresa_clientes_top': gerar_empresa_clientes_top(df_vendas),  # Sprint 9.32.30 — top clientes por empresa
         'tipo_pessoa_total':   gerar_tipo_pessoa_total(df_vendas),
         'tipo_pessoa_mes':     gerar_tipo_pessoa_mes(df_vendas),
+        # Sprint 9.32.319 — cross-tables vendedor x dimensoes (pra filtro de vendedor afetar todos os paineis)
+        'vendedor_empresa_mes': gerar_vendedor_empresa_mes(df_vendas),
+        'vendedor_marca_mes':   gerar_vendedor_marca_mes(df_vendas),
+        'vendedor_estado_mes':  gerar_vendedor_estado_mes(df_vendas),
+        'vendedor_produto_mes': gerar_vendedor_produto_mes(df_vendas),
+        # Sprint 9.32.321 — devolucao por vendedor pra calcular liquido nos rankings
+        'vendedor_devolucao_mes': gerar_vendedor_devolucao_mes(df_devolucoes),
     }
     print(f"   ✓ mensal: {len(dados['mensal'])} meses")
     print(f"   ✓ vendedor_mes: {len(dados['vendedor_mes'])} linhas")
@@ -1285,6 +1437,11 @@ def main():
     print(f"   ✓ empresa_mes: {len(dados['empresa_mes'])} linhas")
     print(f"   ✓ empresa_clientes_top: {len(dados['empresa_clientes_top'])} linhas (top clientes por empresa)")
     print(f"   ✓ tipo_pessoa_mes: {len(dados['tipo_pessoa_mes'])} linhas")
+    print(f"   ✓ vendedor_empresa_mes: {len(dados['vendedor_empresa_mes'])} linhas (vendedor × empresa × mês) — Sprint 9.32.319")
+    print(f"   ✓ vendedor_marca_mes: {len(dados['vendedor_marca_mes'])} linhas (vendedor × marca × mês)")
+    print(f"   ✓ vendedor_estado_mes: {len(dados['vendedor_estado_mes'])} linhas (vendedor × estado × mês)")
+    print(f"   ✓ vendedor_produto_mes: {len(dados['vendedor_produto_mes'])} linhas (vendedor × top 30 produtos × mês)")
+    print(f"   ✓ vendedor_devolucao_mes: {len(dados['vendedor_devolucao_mes'])} linhas (vendedor × mês × devolução) — Sprint 9.32.321")
 
     # Validação
     print("\n🔎 Validação:")
