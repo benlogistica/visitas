@@ -198,5 +198,5 @@ echo   Backup dos XLSX em: %LOG_DIR%
 echo   ^(arquivos mantidos em entrada\ pro proximo sync^)
 echo.
 
-pause
+
 exit /b 0

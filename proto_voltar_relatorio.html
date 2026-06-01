@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Protótipo · Posição do botão Voltar no Relatório · 5 opções</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0&family=Poppins:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" />
+  <style>
+    :root {
+      --brand-navy: #0A1F5C;
+      --brand-lime: #8BC63F;
+      --brand-lime-dark: #6FA62E;
+      --brand-lime-bg: #ECF6E5;
+      --neutral-50: #F9FAFB;
+      --neutral-100: #F3F4F6;
+      --neutral-200: #E5E7EB;
+      --neutral-300: #D1D5DB;
+      --neutral-400: #9CA3AF;
+      --neutral-500: #6B7280;
+      --neutral-600: #4B5563;
+      --neutral-700: #374151;
+      --status-info: #185FA5;
+      --status-success: #22A06B;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body { padding: 24px 14px 60px; background: #EEF1F4; font-family: 'Inter', sans-serif; color: var(--brand-navy); }
+    .wrap { max-width: 1480px; margin: 0 auto; }
+    h1 { font-family: 'Poppins',sans-serif; font-weight: 700; font-size: 22px; margin: 0 0 6px; }
+    .lead { font-size: 13px; color: var(--neutral-600); margin: 0 0 22px; line-height: 1.6; max-width: 980px; }
+    .ms { font-family: 'Material Symbols Rounded'; font-style: normal; line-height: 1; display: inline-block; vertical-align: middle; }
+
+    .opt {
+      background: #fff;
+      border: 1px solid var(--neutral-200);
+      border-radius: 14px;
+      padding: 16px 16px 18px;
+      margin-bottom: 26px;
+    }
+    .opt-h { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
+    .opt-num { background: var(--brand-navy); color: #fff; font-weight: 700; font-family: 'Poppins',sans-serif; font-size: 13px; min-width: 28px; height: 28px; padding: 0 9px; border-radius: 7px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .opt-title { font-family: 'Poppins',sans-serif; font-weight: 700; font-size: 15px; margin: 0; line-height: 1.3; }
+    .opt-sub { font-size: 12.5px; color: var(--neutral-600); margin: 4px 0 0; line-height: 1.55; flex-basis: 100%; }
+    .nota { font-size: 12px; color: var(--neutral-700); margin-top: 12px; line-height: 1.55; padding: 10px 12px; background: var(--neutral-50); border-radius: 9px; border-left: 3px solid var(--neutral-300); }
+    .pros { color: #146C43; font-weight: 700; }
+    .cons { color: #B53A47; font-weight: 700; }
+
+    /* Shell simulado */
+    .shell { background: #F4F6F9; border: 1px solid var(--neutral-200); border-radius: 12px; overflow: hidden; }
+    .shell-top {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 18px;
+      background: #fff;
+      border-bottom: 1px solid var(--neutral-200);
+      gap: 16px;
+    }
+    .shell-title-wrap { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+    .shell-title-row { display: flex; align-items: center; gap: 12px; min-width: 0; }
+    .shell-title { font-family: 'Poppins',sans-serif; font-weight: 700; font-size: 22px; color: var(--brand-navy); }
+    .shell-breadcrumb { display: flex; align-items: center; gap: 4px; font-size: 11.5px; color: var(--neutral-500); margin-top: 2px; }
+    .shell-breadcrumb b { color: var(--brand-navy); font-weight: 600; }
+    .shell-search {
+      background: var(--neutral-100); border: 1px solid var(--neutral-200);
+      border-radius: 9999px; padding: 5px 10px 5px 30px;
+      font-size: 11px; color: var(--neutral-500);
+      width: 220px; position: relative; flex-shrink: 0;
+    }
+    .shell-search::before { content: '\e8b6'; font-family: 'Material Symbols Rounded'; font-size: 14px; position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--neutral-400); }
+    .shell-right { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+    .shell-bell { width: 28px; height: 28px; border-radius: 7px; background: var(--neutral-100); display: inline-flex; align-items: center; justify-content: center; color: var(--brand-navy); font-size: 14px; }
+    .shell-avatar { width: 28px; height: 28px; border-radius: 7px; background: var(--brand-navy); color: #fff; font-weight: 700; font-size: 11px; display: inline-flex; align-items: center; justify-content: center; }
+
+    .shell-body { padding: 18px 22px 22px; max-width: 1100px; margin: 0 auto; }
+
+    /* Banner "Visualização do relatório" */
+    .vis-banner {
+      background: #fff; border: 1px solid var(--neutral-200);
+      border-radius: 12px; padding: 14px 16px;
+      margin-bottom: 14px;
+      display: flex; align-items: center; gap: 12px;
+    }
+    .vis-banner__title { display: inline-flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 700; color: var(--brand-navy); text-transform: uppercase; letter-spacing: 0.05em; }
+    .vis-banner__title .ms { font-size: 16px; color: var(--brand-lime); }
+    .vis-banner__sub { font-size: 12px; color: var(--neutral-500); margin-top: 3px; }
+    .vis-banner__actions { display: flex; gap: 8px; margin-left: auto; flex-shrink: 0; }
+    .btn-imprimir, .btn-voltar {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 8px 14px; border-radius: 8px;
+      font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit;
+    }
+    .btn-imprimir { background: #fff; color: var(--brand-navy); border: 1px solid var(--neutral-200); }
+    .btn-imprimir:hover { border-color: var(--brand-navy); }
+    .btn-imprimir .ms { font-size: 16px; }
+
+    /* Variantes do botão Voltar */
+    .btn-voltar-outline {
+      background: #fff; color: var(--brand-navy);
+      border: 1.5px solid var(--brand-navy); border-radius: 9999px;
+      padding: 6px 14px 6px 10px;
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 12.5px; font-weight: 600; cursor: pointer;
+    }
+    .btn-voltar-outline:hover { background: var(--brand-navy); color: #fff; }
+    .btn-voltar-outline .ms { font-size: 15px; }
+
+    .btn-voltar-ghost {
+      background: transparent; color: var(--brand-navy);
+      border: 0; padding: 6px 8px;
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 12.5px; font-weight: 600; cursor: pointer;
+    }
+    .btn-voltar-ghost:hover { background: var(--neutral-100); border-radius: 8px; }
+
+    .btn-voltar-link {
+      color: var(--neutral-500); text-decoration: none;
+      font-size: 12px; font-weight: 600;
+      display: inline-flex; align-items: center; gap: 4px;
+    }
+    .btn-voltar-link:hover { color: var(--brand-navy); }
+    .btn-voltar-link .ms { font-size: 13px; }
+
+    /* Body content (resumo da visita simulado) */
+    .nm-card {
+      background: #fff; border: 1px solid var(--neutral-200);
+      border-radius: 12px; padding: 14px 16px;
+      margin-bottom: 12px;
+    }
+    .nm-card__h { display: flex; align-items: center; gap: 10px; }
+    .nm-icon {
+      width: 42px; height: 42px; border-radius: 8px;
+      background: var(--brand-navy); color: #fff;
+      display: inline-flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .nm-title { font-family: 'Poppins',sans-serif; font-weight: 700; font-size: 18px; }
+    .nm-sub { font-size: 11.5px; color: var(--neutral-500); margin-top: 2px; }
+    .nm-pill {
+      margin-left: auto;
+      background: #DCFCE7; color: #166534;
+      padding: 3px 11px; border-radius: 9999px;
+      font-size: 11px; font-weight: 700;
+    }
+
+    .toc { background: #fff; border: 1px solid var(--neutral-200); border-radius: 12px; padding: 14px 18px; margin-bottom: 22px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    .toc .tl { font-weight: 700; font-size: 12px; color: var(--brand-navy); }
+    .toc a { color: var(--brand-navy); text-decoration: none; font-size: 12px; padding: 4px 10px; border-radius: 999px; background: var(--neutral-100); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Posição do botão "Voltar" no Relatório — 5 opções</h1>
+    <p class="lead">
+      Hoje o Voltar fica ao lado do título no topbar. Você sugeriu "no final do texto" — aqui mostro 5 posições alternativas pra escolher. Da menos invasiva à mais destacada.
+    </p>
+
+    <nav class="toc">
+      <span class="tl">Pular para:</span>
+      <a href="#op1">1. Canto direito topbar</a>
+      <a href="#op2">2. Dentro do banner Visualização</a>
+      <a href="#op3">3. Acima do banner (linha própria)</a>
+      <a href="#op4">4. Link no breadcrumb</a>
+      <a href="#op5">5. Floating no body</a>
+    </nav>
+
+    <!-- =================== OPÇÃO 1 =================== -->
+    <section class="opt" id="op1">
+      <div class="opt-h">
+        <span class="opt-num">1</span>
+        <div>
+          <h2 class="opt-title">Canto direito do topbar (oposto ao título)</h2>
+          <p class="opt-sub">Botão Voltar no final da linha do título, antes da busca. Posição "destruidora de simetria" — fica no extremo oposto ao "Relatório".</p>
+        </div>
+      </div>
+      <div class="shell">
+        <div class="shell-top">
+          <div class="shell-title-wrap">
+            <div class="shell-title-row">
+              <div class="shell-title">Relatório</div>
+            </div>
+            <div class="shell-breadcrumb">
+              <span>Nutri</span> <span class="ms" style="font-size:11px;color:var(--neutral-300);">&#xe5cc;</span>
+              <span>Minhas visitas</span> <span class="ms" style="font-size:11px;color:var(--neutral-300);">&#xe5cc;</span>
+              <b>Relatório</b>
+            </div>
+          </div>
+          <button class="btn-voltar-outline">
+            <span class="ms">&#xe5c4;</span>
+            Voltar
+          </button>
+          <div class="shell-search">Buscar hospital, nutricionista, vis…</div>
+          <div class="shell-right">
+            <span class="shell-bell ms">&#xe7f4;</span>
+            <span class="shell-avatar">EM</span>
+          </div>
+        </div>
+        <div class="shell-body">
+          <div class="vis-banner">
+            <div>
+              <div class="vis-banner__title"><span class="ms">&#xe873;</span>VISUALIZAÇÃO DO RELATÓRIO</div>
+              <div class="vis-banner__sub">Visita travada · somente leitura</div>
+            </div>
+            <div class="vis-banner__actions">
+              <button class="btn-imprimir"><span class="ms">&#xe8ad;</span>Imprimir</button>
+            </div>
+          </div>
+          <div class="nm-card">
+            <div class="nm-card__h">
+              <div class="nm-icon ms">&#xe7fb;</div>
+              <div>
+                <div class="nm-title">Nutricionais</div>
+                <div class="nm-sub">Eduardo Marques · 6 mai · 21:38 · 35min</div>
+              </div>
+              <span class="nm-pill">● Aprovada</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="nota">
+        <span class="pros">✓</span> Posição clara, padrão de "ações da página".<br>
+        <span class="cons">✗</span> Compete espaço com a busca no topbar.
+        <span class="cons">✗</span> Pode ser confundido com voltar do navegador.
+      </div>
+    </section>
+
+    <!-- =================== OPÇÃO 2 =================== -->
+    <section class="opt" id="op2">
+      <div class="opt-h">
+        <span class="opt-num">2</span>
+        <div>
+          <h2 class="opt-title">Dentro do banner "Visualização do relatório" <span style="font-size:11px;color:#6FA62E;font-weight:600;background:#ECF6E5;padding:2px 8px;border-radius:999px;margin-left:6px;">★ recomendado</span></h2>
+          <p class="opt-sub">Voltar à esquerda do botão Imprimir, no mesmo card de ações. Agrupa logicamente todas as ações da página.</p>
+        </div>
+      </div>
+      <div class="shell">
+        <div class="shell-top">
+          <div class="shell-title-wrap">
+            <div class="shell-title">Relatório</div>
+            <div class="shell-breadcrumb">
+              <span>Nutri</span> <span class="ms" style="font-size:11px;color:var(--neutral-300);">&#xe5cc;</span>
+              <span>Minhas visitas</span> <span class="ms" style="font-size:11px;color:var(--neutral-300);">&#xe5cc;</span>
+              <b>Relatório</b>
+            </div>
+          </div>
+          <div class="shell-search">Buscar hospital, nutricionista, vis…</div>
+          <div class="shell-right"><span class="shell-bell ms">&#xe7f4;</span><span class="shell-avatar">EM</span></div>
+        </div>
+        <div class="shell-body">
+          <div class="vis-banner">
+            <div>
+              <div class="vis-banner__title"><span class="ms">&#xe873;</span>VISUALIZAÇÃO DO RELATÓRIO</div>
+              <div class="vis-banner__sub">Visita travada · somente leitura</div>
+            </div>
+            <div class="vis-banner__actions">
+              <button class="btn-voltar-outline">
+                <span class="ms">&#xe5c4;</span>
+                Voltar
+              </button>
+              <button class="btn-imprimir"><span class="ms">&#xe8ad;</span>Imprimir</button>
+            </div>
+          </div>
+          <div class="nm-card">
+            <div class="nm-card__h">
+              <div class="nm-icon ms">&#xe7fb;</div>
+              <div>
+                <div class="nm-title">Nutricionais</div>
+                <div class="nm-sub">Eduardo Marques · 6 mai · 21:38 · 35min</div>
+              </div>
+              <span class="nm-pill">● Aprovada</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="nota">
+        <span class="pros">✓</span> Agrupa ações relacionadas em um lugar único.
+        <span class="pros">✓</span> Topbar fica limpo.
+        <span class="pros">✓</span> Padrão "barra de ações" comum em CRUDs.<br>
+        <span class="cons">✗</span> Banner some quando a visita não é travada (modo edição) — Voltar some junto. <span class="cons">→ solução: mostrar Voltar mesmo em modo edição, sem o card cinza.</span>
+      </div>
+    </section>
+
+    <!-- =================== OPÇÃO 3 =================== -->
+    <section class="opt" id="op3">
+      <div class="opt-h">
+        <span class="opt-num">3</span>
+        <div>
+          <h2 class="opt-title">Acima do banner, em linha própria</h2>
+          <p class="opt-sub">Pequena linha "← Voltar pra Minhas visitas" antes do banner Visualização, alinhada à esquerda. Estilo "trail" desktop tradicional.</p>
+        </div>
+      </div>
+      <div class="shell">
+        <div class="shell-top">
+          <div class="shell-title-wrap">
+            <div class="shell-title">Relatório</div>
+            <div class="shell-breadcrumb">
+              <span>Nutri</span> <span class="ms" style="font-size:11px;color:var(--neutral-300);">&#xe5cc;</span>
+              <span>Minhas visitas</span> <span class="ms" style="font-size:11px;color:var(--neutral-300);">&#xe5cc;</span>
+              <b>Relatório</b>
+            </div>
+          </div>
+          <div class="shell-search">Buscar…</div>
+          <div class="shell-right"><span class="shell-bell ms">&#xe7f4;</span><span class="shell-avatar">EM</span></div>
+        </div>
+        <div class="shell-body">
+          <button class="btn-voltar-ghost" style="margin-bottom:10px;">
+            <span class="ms">&#xe5c4;</span>
+            Voltar pra Minhas visitas
+          </button>
+          <div class="vis-banner">
+            <div>
+              <div class="vis-banner__title"><span class="ms">&#xe873;</span>VISUALIZAÇÃO DO RELATÓRIO</div>
+              <div class="vis-banner__sub">Visita travada · somente leitura</div>
+            </div>
+            <div class="vis-banner__actions">
+              <button class="btn-imprimir"><span class="ms">&#xe8ad;</span>Imprimir</button>
+            </div>
+          </div>
+          <div class="nm-card">
+            <div class="nm-card__h">
+              <div class="nm-icon ms">&#xe7fb;</div>
+              <div><div class="nm-title">Nutricionais</div><div class="nm-sub">Eduardo Marques · 6 mai · 21:38 · 35min</div></div>
+              <span class="nm-pill">● Aprovada</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="nota">
+        <span class="pros">✓</span> Texto explicativo ("pra Minhas visitas") dá contexto.
+        <span class="pros">✓</span> Independe do banner — sempre aparece.<br>
+        <span class="cons">✗</span> Ocupa linha extra. <span class="cons">✗</span> Estilo "link" pode parecer fraco / pouco clicável.
+      </div>
+    </section>
+
+    <!-- =================== OPÇÃO 4 =================== -->
+    <section class="opt" id="op4">
+      <div class="opt-h">
+        <span class="opt-num">4</span>
+        <div>
+          <h2 class="opt-title">Breadcrumb interativo</h2>
+          <p class="opt-sub">"Minhas visitas" no breadcrumb fica clicável (link sublinhado) e leva direto pra lista. Sem botão dedicado.</p>
+        </div>
+      </div>
+      <div class="shell">
+        <div class="shell-top">
+          <div class="shell-title-wrap">
+            <div class="shell-title">Relatório</div>
+            <div class="shell-breadcrumb">
+              <span>Nutri</span> <span class="ms" style="font-size:11px;color:var(--neutral-300);">&#xe5cc;</span>
+              <a href="#" style="color:var(--brand-navy);text-decoration:underline;font-weight:600;">Minhas visitas</a>
+              <span class="ms" style="font-size:11px;color:var(--neutral-300);">&#xe5cc;</span>
+              <b>Relatório</b>
+            </div>
+          </div>
+          <div class="shell-search">Buscar…</div>
+          <div class="shell-right"><span class="shell-bell ms">&#xe7f4;</span><span class="shell-avatar">EM</span></div>
+        </div>
+        <div class="shell-body">
+          <div class="vis-banner">
+            <div>
+              <div class="vis-banner__title"><span class="ms">&#xe873;</span>VISUALIZAÇÃO DO RELATÓRIO</div>
+              <div class="vis-banner__sub">Visita travada · somente leitura</div>
+            </div>
+            <div class="vis-banner__actions">
+              <button class="btn-imprimir"><span class="ms">&#xe8ad;</span>Imprimir</button>
+            </div>
+          </div>
+          <div class="nm-card">
+            <div class="nm-card__h">
+              <div class="nm-icon ms">&#xe7fb;</div>
+              <div><div class="nm-title">Nutricionais</div><div class="nm-sub">Eduardo Marques · 6 mai · 21:38 · 35min</div></div>
+              <span class="nm-pill">● Aprovada</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="nota">
+        <span class="pros">✓</span> Sem espaço extra — só CSS no breadcrumb.
+        <span class="pros">✓</span> Padrão da web (Material, Bootstrap).<br>
+        <span class="cons">✗</span> Menos descobrível — usuários não pensam em clicar no breadcrumb. <span class="cons">✗</span> Não funciona pro padrão do app que já tem botão em outras telas.
+      </div>
+    </section>
+
+    <!-- =================== OPÇÃO 5 =================== -->
+    <section class="opt" id="op5">
+      <div class="opt-h">
+        <span class="opt-num">5</span>
+        <div>
+          <h2 class="opt-title">Botão integrado ao card do hospital (final do "texto")</h2>
+          <p class="opt-sub">Voltar no card de info da visita (Nutricionais + nome + data + Aprovada), à direita do pill de status. Faz parte do "bloco da visita" — o usuário vê o que terminou de revisar e tem o Voltar próximo. Interpretação literal de "final do texto".</p>
+        </div>
+      </div>
+      <div class="shell">
+        <div class="shell-top">
+          <div class="shell-title-wrap">
+            <div class="shell-title">Relatório</div>
+            <div class="shell-breadcrumb">
+              <span>Nutri</span> <span class="ms" style="font-size:11px;color:var(--neutral-300);">&#xe5cc;</span>
+              <span>Minhas visitas</span> <span class="ms" style="font-size:11px;color:var(--neutral-300);">&#xe5cc;</span>
+              <b>Relatório</b>
+            </div>
+          </div>
+          <div class="shell-search">Buscar…</div>
+          <div class="shell-right"><span class="shell-bell ms">&#xe7f4;</span><span class="shell-avatar">EM</span></div>
+        </div>
+        <div class="shell-body">
+          <div class="vis-banner">
+            <div>
+              <div class="vis-banner__title"><span class="ms">&#xe873;</span>VISUALIZAÇÃO DO RELATÓRIO</div>
+              <div class="vis-banner__sub">Visita travada · somente leitura</div>
+            </div>
+            <div class="vis-banner__actions">
+              <button class="btn-imprimir"><span class="ms">&#xe8ad;</span>Imprimir</button>
+            </div>
+          </div>
+          <div class="nm-card">
+            <div class="nm-card__h">
+              <div class="nm-icon ms">&#xe7fb;</div>
+              <div>
+                <div class="nm-title">Nutricionais</div>
+                <div class="nm-sub">Eduardo Marques · 6 mai · 21:38 · 35min</div>
+              </div>
+              <span class="nm-pill">● Aprovada</span>
+              <button class="btn-voltar-outline" style="margin-left:auto;">
+                <span class="ms">&#xe5c4;</span>
+                Voltar
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="nota">
+        <span class="pros">✓</span> "No final do texto" literal — fim do header do relatório.
+        <span class="pros">✓</span> Visível e contextual com o relatório.<br>
+        <span class="cons">✗</span> Compete espaço com o pill de status. <span class="cons">✗</span> Não é padrão "ação da página" comum.
+      </div>
+    </section>
+
+    <!-- =================== Sugestão =================== -->
+    <section class="opt" style="background:linear-gradient(135deg,#ECF6E5 0%,#fff 100%);border-color:var(--brand-lime);">
+      <div class="opt-h">
+        <h2 class="opt-title" style="color:var(--brand-lime-dark);">Minha sugestão</h2>
+      </div>
+      <p style="font-size:13px;color:var(--neutral-700);line-height:1.65;margin:0">
+        <b>Opção 2</b> — dentro do banner "Visualização do relatório", à esquerda do Imprimir. Razões:
+        <br>• Agrupa todas as ações em um lugar único (padrão "barra de ações")
+        <br>• Topbar fica limpo pra busca
+        <br>• Mesma posição em qualquer modo (edição ou visualização) — só precisa garantir que o banner sempre apareça
+        <br><br>
+        <b>Edge case:</b> hoje o banner "Visualização" só aparece quando a visita está travada. No modo edição (rascunho), aparece outra coisa ("Modo edição · preenchendo o formulário"). Vamos adicionar o Voltar nos DOIS — assim a posição é consistente independente do modo.
+      </p>
+    </section>
+  </div>
+</body>
+</html>
