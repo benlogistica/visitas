@@ -8246,7 +8246,7 @@ mark.search-hl {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.388-performance-calendario-intervalo',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.390-calendario-toque-mobile',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -25603,11 +25603,6 @@ function _perfFiltroDatasHtml(compacto = false) {
         <span class="material-symbols-rounded" style="font-size:17px;">calendar_month</span>
         ${rotuloCustom ? `<span>${rotuloCustom}</span>` : ''}
       </button>
-
-      <!-- Calendário de intervalo: clica no dia inicial, clica no final -->
-      <div id="perfCalPopover" style="display:none;position:absolute;top:calc(100% + 6px);left:0;z-index:60;background:#fff;border:1px solid var(--neutral-200);border-radius:12px;box-shadow:0 8px 28px rgba(10,31,92,0.16);padding:12px;width:252px;">
-        <div id="perfCalCorpo"></div>
-      </div>
     </div>`;
 }
 
@@ -25641,24 +25636,83 @@ function _perfCalIso(d) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-window._perfToggleCustom = function() {
+// Sprint 9.32.389: o calendário é criado direto no <body> com position:fixed.
+// Antes ele era um filho absoluto dentro da barra de abas — que tem overflow:hidden,
+// então o popover era criado mas ficava RECORTADO (parecia que o clique não fazia nada).
+function _perfCalPintaBtn(aberto) {
+  const btn = document.getElementById('perfCustomBtn');
+  if (!btn) return;
+  const ativo = aberto || String(window._perfPeriodo || '').startsWith('custom:');
+  btn.style.background = ativo ? 'var(--brand-navy)' : '#fff';
+  btn.style.color = ativo ? '#fff' : 'var(--neutral-600)';
+  btn.style.borderColor = ativo ? 'var(--brand-navy)' : 'var(--neutral-200)';
+}
+
+window._perfFecharCal = function() {
   const pop = document.getElementById('perfCalPopover');
-  if (!pop) return;
-  const abrindo = pop.style.display !== 'block';
-  if (abrindo) {
-    const p = String(window._perfPeriodo || '');
-    const st = window._perfCal;
-    if (p.startsWith('custom:')) {
-      st.ini = p.split(':')[1] || null;
-      st.fim = p.split(':')[2] || null;
-    } else {
-      st.ini = null; st.fim = null;
-    }
-    const base = st.ini ? new Date(st.ini + 'T12:00:00') : new Date();
-    st.mesVisivel = `${base.getFullYear()}-${String(base.getMonth() + 1).padStart(2, '0')}`;
-    _perfCalRender();
+  if (pop) pop.remove();
+  // Sprint 9.32.390: no celular não existe mousedown confiável — escutamos toque também
+  document.removeEventListener('mousedown', _perfCalCliqueFora);
+  document.removeEventListener('touchstart', _perfCalCliqueFora);
+  document.removeEventListener('keydown', _perfCalEsc);
+  _perfCalPintaBtn(false);
+};
+
+function _perfCalCliqueFora(e) {
+  const pop = document.getElementById('perfCalPopover');
+  const btn = document.getElementById('perfCustomBtn');
+  if (!pop) { window._perfFecharCal(); return; }
+  const alvo = e.target;
+  if (pop.contains(alvo) || (btn && btn.contains(alvo))) return;
+  window._perfFecharCal();
+}
+
+function _perfCalEsc(e) {
+  if (e.key === 'Escape') window._perfFecharCal();
+}
+
+window._perfToggleCustom = function() {
+  if (document.getElementById('perfCalPopover')) { window._perfFecharCal(); return; }
+  const btn = document.getElementById('perfCustomBtn');
+  if (!btn) return;
+
+  const p = String(window._perfPeriodo || '');
+  const st = window._perfCal;
+  if (p.startsWith('custom:')) {
+    st.ini = p.split(':')[1] || null;
+    st.fim = p.split(':')[2] || null;
+  } else {
+    st.ini = null; st.fim = null;
   }
-  pop.style.display = abrindo ? 'block' : 'none';
+  const base = st.ini ? new Date(st.ini + 'T12:00:00') : new Date();
+  st.mesVisivel = `${base.getFullYear()}-${String(base.getMonth() + 1).padStart(2, '0')}`;
+
+  const LARG = 260;
+  const r = btn.getBoundingClientRect();
+  let left = r.left;
+  if (left + LARG > window.innerWidth - 8) left = window.innerWidth - LARG - 8;
+  if (left < 8) left = 8;
+  let top = r.bottom + 6;
+  if (top + 330 > window.innerHeight - 8) top = Math.max(8, r.top - 336); // abre pra cima se não couber
+
+  const pop = document.createElement('div');
+  pop.id = 'perfCalPopover';
+  pop.style.cssText = `position:fixed;top:${top}px;left:${left}px;z-index:9999;background:#fff;border:1px solid var(--neutral-200);border-radius:14px;box-shadow:0 12px 34px rgba(10,31,92,0.18);padding:12px;width:${LARG}px;`;
+  pop.innerHTML = '<div id="perfCalCorpo"></div>';
+  document.body.appendChild(pop);
+
+  // Se a página rolar com o calendário aberto, ele ficaria "solto" (position:fixed
+  // não acompanha o scroll do conteúdo). Fecha pra não descolar do botão.
+  const _fecharNoScroll = () => { window._perfFecharCal(); window.removeEventListener('scroll', _fecharNoScroll, true); };
+  setTimeout(() => window.addEventListener('scroll', _fecharNoScroll, true), 0);
+
+  _perfCalRender();
+  _perfCalPintaBtn(true);
+  setTimeout(() => {
+    document.addEventListener('mousedown', _perfCalCliqueFora);
+    document.addEventListener('touchstart', _perfCalCliqueFora, { passive: true });
+    document.addEventListener('keydown', _perfCalEsc);
+  }, 0);
 };
 
 window._perfCalNav = function(delta) {
@@ -25681,12 +25735,11 @@ window._perfCalDia = function(iso) {
   }
   _perfCalRender();
   if (st.ini && st.fim) {
-    // fecha e aplica — sem botão de confirmar, o 2º clique já é a confirmação
+    // o 2º clique já é a confirmação — não tem botão de "aplicar"
     setTimeout(() => {
-      const pop = document.getElementById('perfCalPopover');
-      if (pop) pop.style.display = 'none';
+      window._perfFecharCal();
       _perfTrocarPeriodo(`custom:${st.ini}:${st.fim}`);
-    }, 220);
+    }, 240);
   }
 };
 
@@ -25707,11 +25760,15 @@ function _perfCalRender() {
     const ehIni = iso === st.ini;
     const ehFim = iso === st.fim;
     const dentro = st.ini && st.fim && iso > st.ini && iso < st.fim;
-    let bg = 'transparent', cor = 'var(--brand-navy)', peso = '500', raio = '7px';
-    if (ehIni || ehFim) { bg = 'var(--brand-navy)'; cor = '#fff'; peso = '700'; }
-    else if (dentro)    { bg = 'var(--status-info-bg,#E4ECFD)'; cor = '#1D4ED8'; peso = '600'; raio = '2px'; }
-    const borda = (iso === hoje && !ehIni && !ehFim) ? '1px solid var(--brand-lime)' : '1px solid transparent';
-    celulas += `<button type="button" onclick="_perfCalDia('${iso}')" style="height:29px;border:${borda};background:${bg};color:${cor};font-weight:${peso};border-radius:${raio};font-size:11.5px;font-family:inherit;cursor:pointer;padding:0;">${d}</button>`;
+    // Pontas = bolinha azul cheia (igual ao seletor do Windows). Miolo = trilha azul clara.
+    let bg = 'transparent', cor = 'var(--brand-navy)', peso = '500', raio = '50%';
+    if (ehIni || ehFim) { bg = '#1D4ED8'; cor = '#fff'; peso = '700'; raio = '50%'; }
+    else if (dentro)    { bg = 'var(--status-info-bg,#E4ECFD)'; cor = '#1D4ED8'; peso = '600'; raio = '4px'; }
+    const borda = (iso === hoje && !ehIni && !ehFim) ? '1.5px solid var(--brand-lime)' : '1.5px solid transparent';
+    celulas += `<button type="button" onclick="_perfCalDia('${iso}')"
+      onmouseover="if(this.style.background==='transparent')this.style.background='var(--neutral-100)';"
+      onmouseout="if(this.style.background==='rgb(243, 244, 246)'||this.style.background==='var(--neutral-100)')this.style.background='transparent';"
+      style="height:30px;width:30px;margin:0 auto;border:${borda};background:${bg};color:${cor};font-weight:${peso};border-radius:${raio};font-size:12px;font-family:inherit;cursor:pointer;padding:0;display:flex;align-items:center;justify-content:center;">${d}</button>`;
   }
 
   const dica = !st.ini
@@ -25760,8 +25817,7 @@ window._perfTrocarPeriodo = async function(periodo) {
   if (_selMes) _selMes.value = _pStr.startsWith('mes:') ? _pStr : '';
   const _selAno = document.getElementById('perfSelAno');
   if (_selAno) _selAno.value = window._perfAnoEscopo ? ('ano:' + window._perfAnoEscopo) : '';
-  const _pop = document.getElementById('perfCalPopover');
-  if (_pop && !_ehCustom) _pop.style.display = 'none';
+  if (!_ehCustom && document.getElementById('perfCalPopover')) window._perfFecharCal();
   const _btnC = document.getElementById('perfCustomBtn');
   if (_btnC) {
     _btnC.style.background = _ehCustom ? 'var(--brand-navy)' : '#fff';
@@ -25864,9 +25920,10 @@ function renderNutriPerformanceDesktop() {
             <button class="review-tab ${periodo === '6m' ? 'is-active' : ''}" id="perfBtn-6m" onclick="_perfTrocarPeriodo('6m')">Últimos 6m</button>
             <button class="review-tab ${periodo === '12m' ? 'is-active' : ''}" id="perfBtn-12m" onclick="_perfTrocarPeriodo('12m')">Últimos 12m</button>
             <button class="review-tab ${periodo === 'tudo' ? 'is-active' : ''}" id="perfBtn-tudo" onclick="_perfTrocarPeriodo('tudo')">Tudo</button>
-            ${_perfFiltroDatasHtml(false)}
           </div>
         </div>
+        <!-- Sprint 9.32.389: fora da .review-tabs — ela tem overflow:hidden e recortava o calendário -->
+        ${_perfFiltroDatasHtml(false)}
       </div>
 
       <div id="perfContent">
