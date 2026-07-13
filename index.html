@@ -6808,6 +6808,21 @@ mark.search-hl {
   color: var(--neutral-400);
 }
 
+/* Sprint 9.32.402: "?" pulsante da metodologia do ROI */
+.roi-help-pulse {
+  animation: roiHelpPulse 2s ease-in-out infinite;
+  box-shadow: 0 0 0 0 rgba(10,31,92,0.55);
+}
+.roi-help-pulse:hover { animation: none; box-shadow: 0 0 0 4px rgba(10,31,92,0.15); }
+@keyframes roiHelpPulse {
+  0%   { box-shadow: 0 0 0 0 rgba(10,31,92,0.55); }
+  70%  { box-shadow: 0 0 0 9px rgba(10,31,92,0); }
+  100% { box-shadow: 0 0 0 0 rgba(10,31,92,0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .roi-help-pulse { animation: none; }
+}
+
 /* Grupo de flags */
 .review-flags {
   display: flex;
@@ -8246,7 +8261,7 @@ mark.search-hl {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.400-roi-tres-camadas',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.402-roi-fix-mes-parcial-e-metodologia',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -25437,6 +25452,15 @@ function _perfRender() {
     // Salva rows globalmente pra _perfSelecionarHospital reutilizar
     window._perfRows = rows;
     // Por padrão seleciona o primeiro hospital (com vendas se possível)
+    // Sprint 9.32.401: veio da lupa com ?inst=<id> → já abre naquele hospital
+    const _instAlvo = window._routeParams?.inst || null;
+    if (_instAlvo && !window._perfInstAplicado) {
+      const iAlvo = rows.findIndex(r => r.inst_id === _instAlvo);
+      if (iAlvo >= 0) {
+        window._perfSelectedIdx = iAlvo;
+        window._perfInstAplicado = true;
+      }
+    }
     if (window._perfSelectedIdx == null || window._perfSelectedIdx >= rows.length) {
       const idxComVenda = rows.findIndex(r => r.temMatch);
       window._perfSelectedIdx = idxComVenda >= 0 ? idxComVenda : 0;
@@ -25447,10 +25471,12 @@ function _perfRender() {
       const sidebarHtml = `
         <div style="border-right:1px solid var(--neutral-200);background:var(--neutral-0);">
           <div style="padding:12px 14px;font-size:10.5px;color:var(--neutral-500);background:var(--neutral-50,#F5F6FA);font-weight:700;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid var(--neutral-200);">
-            Hospitais (${rows.length})
+            Hospitais (${_perfListaFiltrada(rows).length}${window._perfBuscaLista ? ' de ' + rows.length : ''})
           </div>
+          ${_perfCampoBuscaHtml()}
           <div id="perfSidebar" style="max-height:520px;overflow-y:auto;">
-            ${rows.map((r, idx) => {
+            ${_perfListaFiltrada(rows).length === 0 ? '<div style="padding:24px 14px;text-align:center;color:var(--neutral-500);font-size:12px;">Nenhum hospital encontrado.</div>' : ''}
+            ${_perfListaFiltrada(rows).map(({ r, idx }) => {
               const ativo = idx === window._perfSelectedIdx;
               const labelFat = r.temMatch ? _perfFmtMoeda(r.faturamento) : 'sem CNPJ';
               return `
@@ -25487,7 +25513,9 @@ function _perfRender() {
           <div style="font-size:10px;color:var(--neutral-400);">toca pra expandir</div>
         </div>
       `;
-      const cardsHtml = rows.map((r, idx) => {
+      const cardsHtml = _perfCampoBuscaHtml() +
+        (_perfListaFiltrada(rows).length === 0 ? '<div style="padding:24px;text-align:center;color:var(--neutral-500);font-size:12.5px;">Nenhum hospital encontrado.</div>' : '') +
+        _perfListaFiltrada(rows).map(({ r, idx }) => {
         const aberto = idx === window._perfSelectedIdx;
         const labelFat = r.temMatch ? _perfFmtMoeda(r.faturamento) : '<span style="color:var(--neutral-400);font-style:italic;font-size:11px;">sem CNPJ</span>';
         return `
@@ -25693,6 +25721,46 @@ function _perfRenderDetalhe() {
   }
 
   det.innerHTML = headerHtml + kpisDetHtml + itensHtml;
+}
+
+// Sprint 9.32.401: filtro dentro da lista de hospitais.
+// Era isso que o time pedia: "uma forma de filtrar cada um dos nossos clientes".
+// Com 73 hospitais na lista, rolar até achar é inviável — e usar a lupa global
+// tirava a pessoa da tela.
+window._perfFiltrarLista = function(termo) {
+  window._perfBuscaLista = (termo || '').trim().toLowerCase();
+  _perfRender();
+  // devolve o foco pro campo (o render recria o DOM)
+  setTimeout(() => {
+    const el = document.getElementById('perfBuscaLista');
+    if (el) {
+      el.focus();
+      const v = el.value;
+      el.value = '';
+      el.value = v;   // cursor no fim
+    }
+  }, 0);
+};
+
+function _perfListaFiltrada(rows) {
+  const t = window._perfBuscaLista || '';
+  const comIdx = rows.map((r, idx) => ({ r, idx }));   // preserva o índice ORIGINAL
+  if (!t) return comIdx;
+  return comIdx.filter(({ r }) =>
+    String(r.nome || '').toLowerCase().includes(t) ||
+    String(r.cidade || '').toLowerCase().includes(t)
+  );
+}
+
+function _perfCampoBuscaHtml() {
+  const v = (window._perfBuscaLista || '').replace(/"/g, '&quot;');
+  return `
+    <div style="padding:8px 10px;border-bottom:1px solid var(--neutral-200);background:var(--neutral-0);position:relative;">
+      <span class="material-symbols-rounded" style="position:absolute;left:18px;top:50%;transform:translateY(-50%);color:var(--neutral-400);font-size:17px;pointer-events:none;">search</span>
+      <input type="search" id="perfBuscaLista" value="${v}" oninput="window._perfFiltrarLista(this.value)"
+             placeholder="Filtrar hospital…"
+             style="width:100%;height:34px;padding:0 10px 0 34px;border:1px solid var(--neutral-200);border-radius:8px;font-size:12.5px;font-family:inherit;color:var(--brand-navy);" />
+    </div>`;
 }
 
 // Sprint 9.32.23 / 9.32.24: seleciona um hospital
@@ -26052,6 +26120,7 @@ function _perfCalRender() {
 window._perfTrocarPeriodo = async function(periodo) {
   const user = getCurrentUser();
   if (!user) return;
+  window._perfInstAplicado = false;   // Sprint 9.32.401
   window._perfState = null;
   window._perfPeriodo = periodo;
   window._perfSelectedIdx = null;
@@ -35988,8 +36057,11 @@ window.buscaIrInstituicao = function(id) {
   if (user?.perfil === 'admin') {
     window.location.hash = `#/admin/instituicoes?id=${id}`;
   } else {
-    // Profissional não tem tela dedicada de instituições — vai pro check-in com ela selecionada
-    window.location.hash = `#/checkin?inst=${id}`;
+    // Sprint 9.32.401 — CORREÇÃO. Antes o profissional era jogado no CHECK-IN
+    // (`#/checkin?inst=`), porque "não tinha tela de instituições". Mas tem: é o
+    // Performance & ROI. Buscar um hospital e cair numa tela de check-in é troca de
+    // contexto — a pessoa queria VER os números dele, não registrar visita.
+    window.location.hash = `#/nutri/performance?inst=${id}`;
   }
 };
 window.buscaIrProfissional = function(id) {
@@ -42252,19 +42324,50 @@ async function _roiCalcularEquipe({ periodo = '6m' }) {
     if (!fatMesPorCnpj[cn]) fatMesPorCnpj[cn] = {};
     fatMesPorCnpj[cn][cm.ano_mes] = (fatMesPorCnpj[cn][cm.ano_mes] || 0) + (cm.faturamento || 0);
   });
-  const _mesesEntre = (ini, fim) => {
-    const set = new Set();
+  /* Sprint 9.32.402 — O MÊS EM CURSO É PARCIAL.
+     Os dados vão até o dia 8 de julho: 8 de 31 dias. Incluir julho no Δ como se fosse
+     mês inteiro fazia TODO MUNDO aparecer em queda — não porque a carteira caiu, mas
+     porque o último mês estava pela metade. Era um alarme falso sistemático.
+     Solução: o mês parcial fica FORA do cálculo, e o período anterior usa exatamente o
+     MESMO NÚMERO de meses fechados — comparação justa, maçã com maçã. */
+  const _mesParcial = (() => {
+    const pf = FAT_DATA?.meta?.periodo_fim;
+    if (!pf) return null;
+    const d = new Date(pf + 'T12:00:00');
+    if (isNaN(d)) return null;
+    const diasNoMes = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+    if (d.getDate() >= diasNoMes) return null;   // mês fechado
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  })();
+
+  const _mesesArr = (ini, fim) => {
     if (!ini) return null;   // null = sem recorte (tudo)
+    const out = [];
     const d = new Date(ini.getFullYear(), ini.getMonth(), 1);
     const f = fim || new Date();
     while (d <= f) {
-      set.add(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+      const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      if (ym !== _mesParcial) out.push(ym);
       d.setMonth(d.getMonth() + 1);
     }
-    return set;
+    return out;
   };
-  const mesesPeriodo  = _mesesEntre(dataInicio, dataFim);
-  const mesesAnterior = _mesesEntre(dataInicioAnterior, dataInicio);
+
+  const arrPeriodo = _mesesArr(dataInicio, dataFim);
+  const mesesPeriodo = arrPeriodo ? new Set(arrPeriodo) : null;
+
+  // Período anterior = mesmo número de meses fechados, imediatamente antes
+  let mesesAnterior = null;
+  if (arrPeriodo && arrPeriodo.length > 0) {
+    const [ay, am] = arrPeriodo[0].split('-').map(Number);
+    const antArr = [];
+    for (let i = arrPeriodo.length; i >= 1; i--) {
+      const d = new Date(ay, am - 1 - i, 1);
+      antArr.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+    }
+    mesesAnterior = new Set(antArr);
+  }
+  const _mesesComparados = arrPeriodo ? arrPeriodo.length : null;
   const _somaFat = (cn, meses) => {
     const porMes = fatMesPorCnpj[cn];
     if (!porMes) return 0;
@@ -42384,6 +42487,7 @@ async function _roiCalcularEquipe({ periodo = '6m' }) {
   const rankingAtivo = ranking.filter(r => r.visitas > 0);
   // Sprint 9.32.400: ranqueia por RESULTADO ATRIBUÍVEL, não por tamanho da carteira.
   rankingAtivo.sort((a, b) => (b.resultado - a.resultado) || (b.visitas - a.visitas));
+  window._roiMeta = { mesParcial: _mesParcial, mesesComparados: _mesesComparados };  // Sprint 9.32.402
 
   // 7) Top hospitais cobertos (com última visita)
   const topHospitais = Object.keys(atual.cnpjParaFat).map(cn => ({
@@ -42594,7 +42698,7 @@ function _roiRenderEquipe() {
     rankingHtml = `
       <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
       <div style="min-width:780px;">
-      <div style="display:grid;grid-template-columns:40px 1fr 100px 70px 70px 100px 130px 80px;gap:10px;padding:10px 14px;font-size:10.5px;color:var(--neutral-500);text-transform:uppercase;letter-spacing:0.4px;font-weight:700;border-bottom:1px solid var(--neutral-200);">
+      <div style="display:grid;grid-template-columns:40px 1fr 70px 85px 95px 85px 100px 110px 120px;gap:10px;padding:10px 14px;font-size:10.5px;color:var(--neutral-500);text-transform:uppercase;letter-spacing:0.4px;font-weight:700;border-bottom:1px solid var(--neutral-200);">
         <div>#</div>
         <div>Profissional</div>
         <div style="text-align:right;">Visitas</div>
@@ -42801,8 +42905,19 @@ function _roiRenderEquipe() {
           <div style="font-size:11.5px;color:var(--neutral-600);margin-top:2px;line-height:1.45;">
             Ordenado por <strong>Resultado</strong> — Δ faturamento da carteira + venda PF. <strong>Território</strong> é o faturamento herdado do hospital: aparece, mas <strong>não ranqueia</strong>, porque a conta já faturava antes do vendedor chegar.
           </div>
+          ${window._roiMeta?.mesParcial ? `
+            <div style="margin-top:6px;display:inline-flex;align-items:center;gap:5px;background:#FEF4E1;color:#B45309;border-radius:9999px;padding:3px 10px;font-size:10.5px;font-weight:700;">
+              <span class="material-symbols-rounded" style="font-size:13px;">info</span>
+              ${_roiLabelMes(window._roiMeta.mesParcial)} está em curso e ficou fora do cálculo${window._roiMeta.mesesComparados ? ` · comparando ${window._roiMeta.mesesComparados} ${window._roiMeta.mesesComparados === 1 ? 'mês fechado' : 'meses fechados'}` : ''}
+            </div>` : ''}
         </div>
-        <a href="#/admin/mapear-cnpjs" style="font-size:11.5px;color:var(--brand-lime);text-decoration:none;font-weight:600;white-space:nowrap;">+ Mapear CNPJs →</a>
+        <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
+          <button onclick="_roiAbrirMetodologia()" class="roi-help-pulse" title="Como esta performance é calculada"
+                  style="width:30px;height:30px;border-radius:50%;border:0;background:var(--brand-navy);color:#fff;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;font-family:inherit;flex-shrink:0;">
+            <span class="material-symbols-rounded" style="font-size:18px;">question_mark</span>
+          </button>
+          <a href="#/admin/mapear-cnpjs" style="font-size:11.5px;color:var(--brand-lime);text-decoration:none;font-weight:600;white-space:nowrap;">+ Mapear CNPJs →</a>
+        </div>
       </div>
       ${rankingHtml}
     </div>
@@ -42813,6 +42928,80 @@ function _roiRenderEquipe() {
     ${topHospHtml}
   `;
 }
+
+function _roiLabelMes(ym) {
+  const M = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+  const m = String(ym || '').match(/^(\d{4})-(\d{2})$/);
+  return m ? `${M[Number(m[2]) - 1]}/${m[1].slice(2)}` : String(ym || '');
+}
+
+// Sprint 9.32.402: a metodologia inteira, escrita. Se o número decide bônus e carreira,
+// a régua não pode ser uma caixa-preta.
+window._roiAbrirMetodologia = function() {
+  const meta = window._roiMeta || {};
+  const bd = document.createElement('div');
+  bd.className = 'modal-backdrop';
+  bd.id = 'roiMetodologiaModal';
+  const secao = (cor, icone, titulo, sub, corpo) => `
+    <div style="border-left:3px solid ${cor};padding-left:12px;margin-bottom:16px;">
+      <div style="display:flex;align-items:center;gap:7px;font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:13.5px;">
+        <span class="material-symbols-rounded" style="font-size:17px;color:${cor};">${icone}</span>${titulo}
+      </div>
+      <div style="font-size:11.5px;color:${cor};font-weight:700;margin:2px 0 6px;">${sub}</div>
+      <div style="font-size:12.5px;color:var(--neutral-700);line-height:1.6;">${corpo}</div>
+    </div>`;
+
+  bd.innerHTML = `
+    <div class="modal-card" style="max-width:620px;max-height:90vh;overflow-y:auto;">
+      <div class="modal-card__header">
+        <div class="modal-card__icon" style="background:var(--brand-navy);color:#fff;">
+          <span class="material-symbols-rounded">query_stats</span>
+        </div>
+        <div class="modal-card__title">Como medimos performance</div>
+        <div class="modal-card__subtitle">A régua inteira, sem caixa-preta.</div>
+      </div>
+      <div class="modal-card__body" style="display:flex;flex-direction:column;">
+
+        <div style="background:#FEF4E1;border:1px solid rgba(180,83,9,0.25);border-radius:10px;padding:11px 13px;margin-bottom:16px;font-size:12.5px;color:#7C2D12;line-height:1.55;">
+          <strong>O princípio:</strong> faturamento de hospital é <strong>herança</strong>, não produção. A conta já faturava antes do vendedor chegar — às vezes foi um fornecedor designado pelos donos. Ranquear por isso premiaria quem recebeu a carteira boa. Então medimos <strong>o que mudou porque ele esteve lá</strong>.
+        </div>
+
+        ${secao('var(--neutral-500)', 'inventory', 'Território', 'Aparece, mas NÃO ranqueia',
+          'Faturamento total dos hospitais que ele cobre no período. É o tamanho da carteira — mérito de quem a distribuiu, não de quem a atende. Fica na tabela em cinza só pra dar contexto.')}
+
+        ${secao('var(--brand-navy)', 'directions_walk', 'Esforço', 'O que ele controla 100%',
+          '<strong>Visitas</strong> — quantidade no período.<br>' +
+          '<strong>Cobertura</strong> — % dos hospitais da carteira dele que ele visitou no período. Revela quem trabalha só os fáceis e deixa metade do território parado. <em>Só discrimina quando o período é curto: escolhendo "Tudo", todo mundo dá 100% por definição.</em><br>' +
+          '<strong>R$/visita</strong> — território ÷ visitas. Cuidado: ainda carrega o viés da herança.')}
+
+        ${secao('var(--status-success)', 'trending_up', 'Resultado atribuível', 'É por AQUI que o ranking ordena',
+          '<strong>Δ faturamento</strong> — quanto o faturamento dos hospitais que ele cobre <strong>cresceu ou caiu</strong> no período, contra o período anterior de mesmo tamanho. Ele não criou a base; mas se ela cresceu sob a cobertura dele, isso é atribuível. Pode ser <strong>negativo</strong>: carteira que encolheu derruba no ranking, e isso é honesto.<br><br>' +
+          '<strong>Ativou</strong> — hospitais que <strong>não compravam nada</strong> e passaram a comprar (novos), mais os <strong>dormentes que voltaram</strong> (reativados). Produção pura: ninguém herda uma ativação.<br><br>' +
+          '<strong>Venda PF</strong> — receita do Funil de Vendas atribuída a ele como <strong>visitador</strong> do local. É a compra que o paciente fez no CPF dele porque a nutricionista do hospital indicou — receita que nunca aparecia no faturamento do vendedor, porque não é o CNPJ do hospital.<br><br>' +
+          '<strong style="color:var(--status-success);">Resultado = Δ faturamento + Venda PF.</strong> É o R$ que ele efetivamente moveu.')}
+
+        ${secao('var(--neutral-500)', 'fact_check', 'Disciplina', 'Fora do ranking, de propósito',
+          '% de check-in válido, % de relatório preenchido e taxa de "não realizadas". <strong>Não é performance, é higiene.</strong> Quem tem 100% de check-in e zero resultado é organizado, não produtivo. Serve pra você saber se <em>pode confiar</em> nos números de cima: disciplina ruim significa dado ruim.')}
+
+        <div style="background:var(--neutral-100);border-radius:10px;padding:12px 14px;font-size:12px;color:var(--neutral-700);line-height:1.6;">
+          <strong style="color:var(--brand-navy);">Cuidados que o cálculo já toma</strong><br>
+          • <strong>Mês em curso fica de fora.</strong>${meta.mesParcial ? ` Agora, ${_roiLabelMes(meta.mesParcial)} tem só parte dos dias apurados.` : ''} Incluí-lo faria todo mundo parecer em queda — não porque a carteira caiu, mas porque o mês estava pela metade.<br>
+          • <strong>Comparação maçã com maçã.</strong> O período anterior usa <strong>o mesmo número de meses fechados</strong>${meta.mesesComparados ? ` (hoje: ${meta.mesesComparados})` : ''}.<br>
+          • <strong>Data real da visita.</strong> No check-in retroativo, vale a data em que a visita <em>aconteceu</em>, não a do registro.<br>
+          • <strong>Faturamento por mês</strong>, de todos os clientes — não só do top 50.
+        </div>
+
+        <div style="margin-top:14px;padding-top:12px;border-top:1px dashed var(--neutral-200);font-size:11.5px;color:var(--neutral-600);line-height:1.55;">
+          <strong style="color:var(--status-danger);">Limite honesto:</strong> Δ faturamento não prova causa. O hospital pode ter crescido por preço, sazonalidade ou decisão dos donos — sem relação com a visita. Use como <strong>indicador</strong>, não como veredito. As métricas mais limpas de causa são <strong>Ativou</strong> e <strong>Venda PF</strong>.
+        </div>
+      </div>
+      <div class="modal-card__footer">
+        <button class="modal-btn modal-btn--primary" onclick="document.getElementById('roiMetodologiaModal').remove()">Entendi</button>
+      </div>
+    </div>`;
+  document.body.appendChild(bd);
+  bd.onclick = (e) => { if (e.target === bd) bd.remove(); };
+};
 
 window._roiEquipeTrocarPeriodo = async function(p) {
   window._roiEquipePeriodo = p;
