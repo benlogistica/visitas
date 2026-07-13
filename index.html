@@ -8246,7 +8246,7 @@ mark.search-hl {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.387-performance-filtro-mes-ano-intervalo',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.388-performance-calendario-intervalo',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -25576,53 +25576,165 @@ function _perfLabelMes(ym) {
 
 function _perfFiltroDatasHtml(compacto = false) {
   const p = String(window._perfPeriodo || '6m');
-  const meses = _perfMesesDisponiveis();
-  const anos = [...new Set(meses.map(m => m.slice(0, 4)))].sort().reverse();
+  const anos = [...new Set(_perfMesesDisponiveis().map(m => m.slice(0, 4)))].sort().reverse();
+  // Sprint 9.32.388: o ano escolhido vira ESCOPO — o dropdown de mês passa a listar
+  // só os meses daquele ano (antes despejava todos os 19 meses de uma vez).
+  if (window._perfAnoEscopo === undefined) {
+    window._perfAnoEscopo = p.startsWith('ano:') ? p.slice(4)
+                          : p.startsWith('mes:') ? p.slice(4, 8)
+                          : null;
+  }
   const estCampo = `height:${compacto ? 32 : 34}px;padding:0 8px;border-radius:8px;border:1px solid var(--neutral-200);background:#fff;font-size:${compacto ? 11.5 : 12.5}px;font-family:inherit;color:var(--brand-navy);font-weight:600;cursor:pointer;`;
-  const custIni = p.startsWith('custom:') ? (p.split(':')[1] || '') : '';
-  const custFim = p.startsWith('custom:') ? (p.split(':')[2] || '') : '';
+  const ehCustom = p.startsWith('custom:');
+  const rotuloCustom = ehCustom
+    ? `${_perfCalBr(p.split(':')[1] || '')} → ${_perfCalBr(p.split(':')[2] || '')}`
+    : '';
   return `
-    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:10px;">
+    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:10px;position:relative;">
+      <select id="perfSelAno" onchange="_perfTrocarAno(this.value)" style="${estCampo}">
+        <option value="">Todos os anos</option>
+        ${anos.map(a => `<option value="ano:${a}" ${window._perfAnoEscopo === a ? 'selected' : ''}>${a}</option>`).join('')}
+      </select>
       <select id="perfSelMes" onchange="if(this.value) _perfTrocarPeriodo(this.value)" style="${estCampo}">
-        <option value="">Mês específico…</option>
-        ${meses.map(m => `<option value="mes:${m}" ${p === 'mes:' + m ? 'selected' : ''}>${_perfLabelMes(m)}</option>`).join('')}
+        ${_perfOpcoesMesesHtml()}
       </select>
-      <select id="perfSelAno" onchange="if(this.value) _perfTrocarPeriodo(this.value)" style="${estCampo}">
-        <option value="">Ano inteiro…</option>
-        ${anos.map(a => `<option value="ano:${a}" ${p === 'ano:' + a ? 'selected' : ''}>${a}</option>`).join('')}
-      </select>
-      <button type="button" id="perfCustomBtn" onclick="_perfToggleCustom()" title="Intervalo de datas"
-              style="height:${compacto ? 32 : 34}px;width:${compacto ? 32 : 34}px;border-radius:8px;border:1px solid ${p.startsWith('custom:') ? 'var(--brand-navy)' : 'var(--neutral-200)'};background:${p.startsWith('custom:') ? 'var(--brand-navy)' : '#fff'};color:${p.startsWith('custom:') ? '#fff' : 'var(--neutral-600)'};cursor:pointer;display:inline-flex;align-items:center;justify-content:center;">
+      <button type="button" id="perfCustomBtn" onclick="_perfToggleCustom()" title="Escolher intervalo no calendário"
+              style="height:${compacto ? 32 : 34}px;padding:0 10px;border-radius:8px;border:1px solid ${ehCustom ? 'var(--brand-navy)' : 'var(--neutral-200)'};background:${ehCustom ? 'var(--brand-navy)' : '#fff'};color:${ehCustom ? '#fff' : 'var(--neutral-600)'};cursor:pointer;display:inline-flex;align-items:center;gap:5px;font-size:${compacto ? 11.5 : 12.5}px;font-weight:600;font-family:inherit;">
         <span class="material-symbols-rounded" style="font-size:17px;">calendar_month</span>
+        ${rotuloCustom ? `<span>${rotuloCustom}</span>` : ''}
       </button>
-      <div id="perfCustomWrap" style="display:${p.startsWith('custom:') ? 'flex' : 'none'};gap:6px;align-items:center;flex-wrap:wrap;">
-        <input type="date" id="perfDataIni" value="${custIni}" onchange="_perfAplicarCustom()" style="${estCampo}font-weight:500;" />
-        <span style="color:var(--neutral-400);font-size:11.5px;">até</span>
-        <input type="date" id="perfDataFim" value="${custFim}" onchange="_perfAplicarCustom()" style="${estCampo}font-weight:500;" />
+
+      <!-- Calendário de intervalo: clica no dia inicial, clica no final -->
+      <div id="perfCalPopover" style="display:none;position:absolute;top:calc(100% + 6px);left:0;z-index:60;background:#fff;border:1px solid var(--neutral-200);border-radius:12px;box-shadow:0 8px 28px rgba(10,31,92,0.16);padding:12px;width:252px;">
+        <div id="perfCalCorpo"></div>
       </div>
     </div>`;
 }
 
-window._perfToggleCustom = function() {
-  const wrap = document.getElementById('perfCustomWrap');
-  if (!wrap) return;
-  const abrindo = wrap.style.display !== 'flex';
-  wrap.style.display = abrindo ? 'flex' : 'none';
-  const btn = document.getElementById('perfCustomBtn');
-  if (btn) {
-    btn.style.background = abrindo ? 'var(--brand-navy)' : '#fff';
-    btn.style.color = abrindo ? '#fff' : 'var(--neutral-600)';
-    btn.style.borderColor = abrindo ? 'var(--brand-navy)' : 'var(--neutral-200)';
-  }
-  if (!abrindo) _perfTrocarPeriodo('6m'); // fechou sem escolher: volta ao padrão
+// Opções do dropdown de mês — respeitam o ano escolhido (escopo)
+function _perfOpcoesMesesHtml() {
+  const p = String(window._perfPeriodo || '');
+  const escopo = window._perfAnoEscopo;
+  const meses = _perfMesesDisponiveis().filter(m => !escopo || m.startsWith(escopo + '-'));
+  const placeholder = escopo ? `Mês de ${escopo}…` : 'Mês específico…';
+  return ['<option value="">' + placeholder + '</option>']
+    .concat(meses.map(m => `<option value="mes:${m}" ${p === 'mes:' + m ? 'selected' : ''}>${_perfLabelMes(m)}</option>`))
+    .join('');
+}
+
+// Escolher o ano: aplica o ano inteiro E restringe o dropdown de mês àquele ano
+window._perfTrocarAno = function(v) {
+  window._perfAnoEscopo = v ? String(v).slice(4) : null;
+  const selMes = document.getElementById('perfSelMes');
+  if (selMes) selMes.innerHTML = _perfOpcoesMesesHtml();
+  if (v) _perfTrocarPeriodo(v);
 };
 
-window._perfAplicarCustom = function() {
-  const ini = document.getElementById('perfDataIni');
-  const fim = document.getElementById('perfDataFim');
-  if (!ini || !ini.value) return; // precisa ao menos da data inicial
-  _perfTrocarPeriodo(`custom:${ini.value}:${fim && fim.value ? fim.value : ''}`);
+// ═══ Sprint 9.32.388: calendário de intervalo (2 cliques: início → fim) ═══
+window._perfCal = { mesVisivel: null, ini: null, fim: null };
+
+function _perfCalBr(iso) {
+  const m = String(iso || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return m ? `${m[3]}/${m[2]}/${m[1].slice(2)}` : '';
+}
+function _perfCalIso(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+window._perfToggleCustom = function() {
+  const pop = document.getElementById('perfCalPopover');
+  if (!pop) return;
+  const abrindo = pop.style.display !== 'block';
+  if (abrindo) {
+    const p = String(window._perfPeriodo || '');
+    const st = window._perfCal;
+    if (p.startsWith('custom:')) {
+      st.ini = p.split(':')[1] || null;
+      st.fim = p.split(':')[2] || null;
+    } else {
+      st.ini = null; st.fim = null;
+    }
+    const base = st.ini ? new Date(st.ini + 'T12:00:00') : new Date();
+    st.mesVisivel = `${base.getFullYear()}-${String(base.getMonth() + 1).padStart(2, '0')}`;
+    _perfCalRender();
+  }
+  pop.style.display = abrindo ? 'block' : 'none';
 };
+
+window._perfCalNav = function(delta) {
+  const st = window._perfCal;
+  const [a, m] = String(st.mesVisivel).split('-').map(Number);
+  const d = new Date(a, m - 1 + delta, 1);
+  st.mesVisivel = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  _perfCalRender();
+};
+
+// 1º clique = início. 2º clique = fim (se for antes do início, inverte sozinho).
+window._perfCalDia = function(iso) {
+  const st = window._perfCal;
+  if (!st.ini || st.fim) {
+    st.ini = iso; st.fim = null;
+  } else if (iso < st.ini) {
+    st.fim = st.ini; st.ini = iso;
+  } else {
+    st.fim = iso;
+  }
+  _perfCalRender();
+  if (st.ini && st.fim) {
+    // fecha e aplica — sem botão de confirmar, o 2º clique já é a confirmação
+    setTimeout(() => {
+      const pop = document.getElementById('perfCalPopover');
+      if (pop) pop.style.display = 'none';
+      _perfTrocarPeriodo(`custom:${st.ini}:${st.fim}`);
+    }, 220);
+  }
+};
+
+function _perfCalRender() {
+  const el = document.getElementById('perfCalCorpo');
+  if (!el) return;
+  const st = window._perfCal;
+  const [ano, mes] = String(st.mesVisivel).split('-').map(Number);
+  const diasNoMes = new Date(ano, mes, 0).getDate();
+  const offset = new Date(ano, mes - 1, 1).getDay(); // 0 = domingo
+  const MS = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  const hoje = _perfCalIso(new Date());
+
+  let celulas = '';
+  for (let i = 0; i < offset; i++) celulas += '<div></div>';
+  for (let d = 1; d <= diasNoMes; d++) {
+    const iso = `${ano}-${String(mes).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    const ehIni = iso === st.ini;
+    const ehFim = iso === st.fim;
+    const dentro = st.ini && st.fim && iso > st.ini && iso < st.fim;
+    let bg = 'transparent', cor = 'var(--brand-navy)', peso = '500', raio = '7px';
+    if (ehIni || ehFim) { bg = 'var(--brand-navy)'; cor = '#fff'; peso = '700'; }
+    else if (dentro)    { bg = 'var(--status-info-bg,#E4ECFD)'; cor = '#1D4ED8'; peso = '600'; raio = '2px'; }
+    const borda = (iso === hoje && !ehIni && !ehFim) ? '1px solid var(--brand-lime)' : '1px solid transparent';
+    celulas += `<button type="button" onclick="_perfCalDia('${iso}')" style="height:29px;border:${borda};background:${bg};color:${cor};font-weight:${peso};border-radius:${raio};font-size:11.5px;font-family:inherit;cursor:pointer;padding:0;">${d}</button>`;
+  }
+
+  const dica = !st.ini
+    ? 'Clique na data <strong>inicial</strong>'
+    : (!st.fim
+        ? `<strong>${_perfCalBr(st.ini)}</strong> → agora clique na data <strong>final</strong>`
+        : `<strong>${_perfCalBr(st.ini)} → ${_perfCalBr(st.fim)}</strong>`);
+
+  const btnNav = 'width:26px;height:26px;border:1px solid var(--neutral-200);background:#fff;border-radius:7px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;color:var(--brand-navy);padding:0;';
+
+  el.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+      <button type="button" onclick="_perfCalNav(-1)" style="${btnNav}"><span class="material-symbols-rounded" style="font-size:16px;">chevron_left</span></button>
+      <div style="font-weight:700;font-size:12px;color:var(--brand-navy);">${MS[mes - 1]} ${ano}</div>
+      <button type="button" onclick="_perfCalNav(1)" style="${btnNav}"><span class="material-symbols-rounded" style="font-size:16px;">chevron_right</span></button>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:3px;">
+      ${['D','S','T','Q','Q','S','S'].map(w => `<div style="text-align:center;font-size:9.5px;color:var(--neutral-500);font-weight:700;">${w}</div>`).join('')}
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;">${celulas}</div>
+    <div style="margin-top:9px;padding-top:8px;border-top:1px solid var(--neutral-200);font-size:11px;color:var(--neutral-600);text-align:center;line-height:1.4;">${dica}</div>
+  `;
+}
 
 // Handler de troca de período
 window._perfTrocarPeriodo = async function(periodo) {
@@ -25641,20 +25753,22 @@ window._perfTrocarPeriodo = async function(periodo) {
     const ativo = (p === periodo);
     btn.className = 'review-tab' + (ativo ? ' is-active' : '');
   });
-  // Sincroniza os seletores novos com o estado atual
+  // Sprint 9.32.388: sincroniza mês, ano e o botão do calendário
   const _pStr = String(periodo);
+  const _ehCustom = _pStr.startsWith('custom:');
   const _selMes = document.getElementById('perfSelMes');
   if (_selMes) _selMes.value = _pStr.startsWith('mes:') ? _pStr : '';
   const _selAno = document.getElementById('perfSelAno');
-  if (_selAno) _selAno.value = _pStr.startsWith('ano:') ? _pStr : '';
-  const _wrapC = document.getElementById('perfCustomWrap');
+  if (_selAno) _selAno.value = window._perfAnoEscopo ? ('ano:' + window._perfAnoEscopo) : '';
+  const _pop = document.getElementById('perfCalPopover');
+  if (_pop && !_ehCustom) _pop.style.display = 'none';
   const _btnC = document.getElementById('perfCustomBtn');
-  const _ehCustom = _pStr.startsWith('custom:');
-  if (_wrapC) _wrapC.style.display = _ehCustom ? 'flex' : 'none';
   if (_btnC) {
     _btnC.style.background = _ehCustom ? 'var(--brand-navy)' : '#fff';
     _btnC.style.color = _ehCustom ? '#fff' : 'var(--neutral-600)';
     _btnC.style.borderColor = _ehCustom ? 'var(--brand-navy)' : 'var(--neutral-200)';
+    const _lbl = _ehCustom ? `${_perfCalBr(_pStr.split(':')[1] || '')} → ${_perfCalBr(_pStr.split(':')[2] || '')}` : '';
+    _btnC.innerHTML = `<span class="material-symbols-rounded" style="font-size:17px;">calendar_month</span>` + (_lbl ? `<span>${_lbl}</span>` : '');
   }
   _perfRender(); // mostra spinner
   const state = await _perfCalcular({ userId: user.id, periodo });
