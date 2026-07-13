@@ -8246,7 +8246,7 @@ mark.search-hl {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.377-revisao-badge-exclui-canceladas',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.378-fila-abre-em-pendentes',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -15746,7 +15746,7 @@ function renderAdminRevisaoDesktop() {
     window._reviewDesktopState = {
       nutri: 'todos',           // 'todos' ou id do nutri
       flags: new Set(['noCheckin', 'gps', 'time', 'manual']), // chips ligados
-      filtroBase: 'todas',  // Sprint 9.32.357: default = 'todas' (era 'com_flags')
+      filtroBase: 'com_flags',  // Sprint 9.32.378: fila abre no que aguarda decisão do admin (bate com o badge da sidebar). Resolvidas/Todas seguem nas abas.
       ordenacao: 'severidade',  // 'severidade' | 'data_desc' | 'data_asc'
     };
   }
@@ -16071,8 +16071,13 @@ async function carregarAdminRevisaoDesktop() {
         { v: 'data_asc',   label: 'data (mais antigas)', icon: '↑' },
       ];
       const selOpts = opts.map(o => `<option value="${o.v}"${o.v === ord ? ' selected' : ''}>${o.label}</option>`).join('');
+      // Sprint 9.32.378: usa o total REAL da aba (counts) em vez do array truncado,
+      // e avisa quando a lista bateu no limite de 100 (antes truncava em silêncio).
+      const totalReal = (counts && typeof counts[state.filtroBase] === 'number') ? counts[state.filtroBase] : visitas.length;
+      const truncado = totalReal > visitas.length;
       cntEl.innerHTML = `
-        Exibindo <strong style="color:var(--brand-navy);">${filtradas.length}${filtradas.length !== visitas.length ? ' de ' + visitas.length : ''}</strong> visita${filtradas.length === 1 ? '' : 's'}
+        Exibindo <strong style="color:var(--brand-navy);">${filtradas.length}${totalReal !== filtradas.length ? ' de ' + totalReal : ''}</strong> visita${filtradas.length === 1 ? '' : 's'}
+        ${truncado ? `<span title="A fila carrega no máximo 100 visitas por vez (as mais recentes). Use os filtros para chegar nas demais." style="margin-left:6px;background:#FEF4E1;color:#B45309;border-radius:9999px;padding:1px 8px;font-size:11px;font-weight:700;cursor:help;">limitado a 100</span>` : ''}
         <span style="color:var(--neutral-400);margin:0 4px;">·</span>
         ordenadas por
         <select onchange="trocarOrdenacaoRevisaoDesktop(this.value)" style="background:transparent;border:0;color:var(--brand-navy);font-weight:700;font-family:inherit;font-size:12.5px;cursor:pointer;padding:2px 2px 2px 6px;border-bottom:1px dashed var(--neutral-300);outline:none;">
@@ -40459,7 +40464,7 @@ window.rejeitarObjetivoPendente = async function(id) {
 let FAT_DATA = null;
 let _fatDataPromise = null;
 // __FAT_VERSION_START__ — substituído pelo atualizar_index.py com hash do JSON
-const FAT_DATA_VERSION = '67fcf8314dbe';
+const FAT_DATA_VERSION = '9c9e47108445';
 // __FAT_VERSION_END__
 const FAT_DATA_URL = 'faturamento_data_inline.json?v=' + FAT_DATA_VERSION;
 
