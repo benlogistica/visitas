@@ -8246,7 +8246,7 @@ mark.search-hl {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.380-fat-evolucao-12m-rotulos-filtro-ano',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.381-insights-matematica-e-analises-novas',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -40636,7 +40636,7 @@ window.rejeitarObjetivoPendente = async function(id) {
 let FAT_DATA = null;
 let _fatDataPromise = null;
 // __FAT_VERSION_START__ — substituído pelo atualizar_index.py com hash do JSON
-const FAT_DATA_VERSION = '67fcf8314dbe';
+const FAT_DATA_VERSION = '8d4e17aba4d0';
 // __FAT_VERSION_END__
 const FAT_DATA_URL = 'faturamento_data_inline.json?v=' + FAT_DATA_VERSION;
 
@@ -41016,7 +41016,7 @@ function _fatRenderInner() {
         <!-- Toolbar de Insights: botão de regras + export PDF -->
         <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
           <div style="font-size:11.5px;color:var(--neutral-600);">
-            <span style="font-weight:700;color:var(--brand-navy);">${(FAT_DATA?.clientes_top?.length || 0).toLocaleString('pt-BR')} clientes</span> analisados · <span id="fatInsightsRegrasResumo" style="color:var(--brand-lime);font-weight:600;"></span>
+            <span id="fatInsightsUniverso" style="font-weight:700;color:var(--brand-navy);">carregando…</span> · <span id="fatInsightsRegrasResumo" style="color:var(--brand-lime);font-weight:600;"></span>
           </div>
           <div style="display:flex;gap:8px;">
             <button onclick="_fatAbrirRegrasInsights()" style="background:var(--neutral-0);border:1px solid var(--neutral-300);color:var(--brand-navy);padding:7px 14px;border-radius:9999px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px;">
@@ -44013,6 +44013,16 @@ function _fatRenderInsights() {
 
   // ─── Regras custom ──────────────────────────────────────────────
   const R = _fatGetRegrasInsights();
+  // Sprint 9.32.381: o contador era escrito no template ANTES do FAT_DATA carregar e nunca
+  // era atualizado — por isso dizia "0 clientes analisados" com os cards cheios de dados.
+  const universoEl = document.getElementById('fatInsightsUniverso');
+  if (universoEl) {
+    const _nTop = (FAT_DATA?.clientes_top || []).length;
+    const _nBase = FAT_DATA?.meta?.qtd_clientes_unicos || 0;
+    universoEl.textContent = _nBase
+      ? `Top ${_nTop} clientes · base de ${_nBase.toLocaleString('pt-BR')}`
+      : `${_nTop} clientes analisados`;
+  }
   // Atualiza resumo das regras na toolbar
   const resumoEl = document.getElementById('fatInsightsRegrasResumo');
   if (resumoEl) {
@@ -44073,11 +44083,16 @@ function _fatRenderInsights() {
       den += (xs[i] - meanX) ** 2;
     }
     const slope = den === 0 ? 0 : num / den;
-    const intercept = meanY - slope * meanX;
-    const first = intercept;
-    const last = intercept + slope * (n - 1);
-    const trendPct = first === 0 ? 0 : ((last - first) / Math.abs(first)) * 100;
-    return { slope, trendPct };
+    // Sprint 9.32.381 — CORREÇÃO. Antes: ((last - first) / |first|) * 100, onde `first` era o
+    // INTERCEPTO da reta ajustada. Quando o intercepto caía perto de zero (série que começa baixa),
+    // a divisão explodia e produzia números impossíveis: "-119%" (queda pior que zerar) e "+2763%".
+    // Agora a variação total da tendência é medida contra o PATAMAR MÉDIO da série — estável e
+    // interpretável — e a queda é limitada a -100% (não dá pra cair mais do que zerar).
+    const variacaoTotal = slope * (n - 1);
+    let trendPct = meanY > 0 ? (variacaoTotal / meanY) * 100 : 0;
+    if (trendPct < -100) trendPct = -100;
+    if (!isFinite(trendPct)) trendPct = 0;
+    return { slope, trendPct, meanY };
   }
 
   // ─── Helper: escape HTML ────────────────────────────────────────
@@ -44152,7 +44167,10 @@ function _fatRenderInsights() {
     const { trendPct } = linearTrend(values);
     return { nome, meses, values, total, trendPct };
   })
-  .filter(v => v.total > 10000); // ignora vendedores minúsculos
+  // Sprint 9.32.381: guarda de volume. R$10k em 19 meses é ruído — um canal que faturou
+  // R$ 2 mil e depois R$ 60 mil aparecia como "+2763% de crescimento" e liderava o card.
+  // Agora exige relevância real (>= 0.5% do faturamento total) e histórico mínimo.
+  .filter(v => v.total >= Math.max(10000, totalGeralClientes * 0.005) && v.values.length >= 4);
 
   const canaisCrescendo = vendedoresComTrend
     .filter(v => v.trendPct > R.trendAltaPct && v.nome !== 'N/D')
@@ -44179,10 +44197,36 @@ function _fatRenderInsights() {
   const devMedia = devolucoes.length > 0 ? devolucoes.reduce((s, d) => s + d.valor_devolucao, 0) / devolucoes.length : 0;
   const devRatio = picoDev && devMedia ? picoDev.valor_devolucao / devMedia : 0;
 
-  // [10] Evolução mensal — último vs média
+  // [10] Evolução mensal — Sprint 9.32.381: comparação HONESTA.
+  // Bug antigo: comparava o último mês da série (quase sempre em curso — ex.: 8 de 31 dias)
+  // com a média de meses INTEIROS. Resultado: alarme falso de queda todo começo de mês.
   const ultMesObj = mensal[mensal.length - 1];
-  const mediaAnoAnt = mensal.slice(0, Math.max(0, mensal.length - 1)).reduce((s, m) => s + m.faturamento, 0) / Math.max(1, mensal.length - 1);
-  const ultVsMediaPct = ultMesObj && mediaAnoAnt ? ((ultMesObj.faturamento - mediaAnoAnt) / mediaAnoAnt) * 100 : 0;
+  const _metaFat = FAT_DATA.meta || {};
+  const _dataCorte = _metaFat.periodo_fim ? new Date(_metaFat.periodo_fim + 'T12:00:00') : null;
+  let mesParcial = null;
+  if (ultMesObj && _dataCorte && !isNaN(_dataCorte)) {
+    const [aY, aM] = ultMesObj.ano_mes.split('-').map(Number);
+    if (_dataCorte.getFullYear() === aY && (_dataCorte.getMonth() + 1) === aM) {
+      const diasNoMes = new Date(aY, aM, 0).getDate();
+      const diasComDados = _dataCorte.getDate();
+      if (diasComDados > 0 && diasComDados < diasNoMes) {
+        mesParcial = {
+          ano_mes: ultMesObj.ano_mes,
+          diasComDados, diasNoMes,
+          faturamento: ultMesObj.faturamento,
+          projecao: (ultMesObj.faturamento / diasComDados) * diasNoMes,
+        };
+      }
+    }
+  }
+  // Só meses FECHADOS entram em qualquer comparação — é a base de tudo daqui pra frente
+  const mensalFechado = mesParcial ? mensal.slice(0, -1) : mensal.slice();
+  const ultFechado = mensalFechado[mensalFechado.length - 1];
+  const mediaAnoAnt = mensalFechado.length > 1
+    ? mensalFechado.slice(0, -1).reduce((s, m) => s + m.faturamento, 0) / (mensalFechado.length - 1)
+    : 0;
+  const ultVsMediaPct = (ultFechado && mediaAnoAnt) ? ((ultFechado.faturamento - mediaAnoAnt) / mediaAnoAnt) * 100 : 0;
+  const _lblMes = (ym) => String(ym || '').replace(/^(\d{4})-(\d{2})$/, '$2/$1');
 
   // [11] Estados inexplorados (em relação a SP)
   const spFat = estados.find(e => e.Estado === 'SP')?.faturamento || 0;
@@ -44424,23 +44468,169 @@ function _fatRenderInsights() {
     }));
   }
 
-  // [10] Evolução mensal
-  if (ultMesObj && mensal.length > 1) {
+  // [10] Projeção de fechamento — Sprint 9.32.381
+  // Substitui o antigo "Último mês vs média", que comparava um mês em curso com meses inteiros.
+  if (mesParcial && mediaAnoAnt > 0) {
+    const projVsMedia = ((mesParcial.projecao - mediaAnoAnt) / mediaAnoAnt) * 100;
+    const fracaoMes = mesParcial.diasComDados / mesParcial.diasNoMes;
+    // Sprint 9.32.381: projetar o mês inteiro a partir de poucos dias é chute — o faturamento
+    // não se distribui igual ao longo do mês. Com menos de 1/3 do mês apurado, mostramos o
+    // parcial como número principal e tratamos a projeção só como referência, sem cor de alarme.
+    const confiavel = fracaoMes >= 0.35;
+    if (confiavel) {
+      cards.push(cardBase({
+        tom: projVsMedia > 10 ? 'success' : projVsMedia < -10 ? 'danger' : 'info',
+        icone: 'batch_prediction',
+        titulo: 'Projeção de fechamento',
+        valor: _fmtMoeda(mesParcial.projecao, true),
+        descricao: `<strong>${_lblMes(mesParcial.ano_mes)}</strong> tem <strong>${mesParcial.diasComDados} de ${mesParcial.diasNoMes} dias</strong> apurados (${_fmtMoeda(mesParcial.faturamento)}). No ritmo atual fecha em <strong>${_fmtMoeda(mesParcial.projecao)}</strong> — ${projVsMedia >= 0 ? 'acima' : 'abaixo'} da média dos meses fechados (${_fmtMoeda(mediaAnoAnt)}).`,
+        sparkHtml: sparkline(mensalFechado.map(m => m.faturamento).concat([mesParcial.projecao]), {
+          w: 260, h: 40,
+          stroke: projVsMedia >= 0 ? '#2E7D32' : '#D33',
+          fill: projVsMedia >= 0 ? 'rgba(46,125,50,0.15)' : 'rgba(221,51,51,0.12)',
+        }),
+      }));
+    } else {
+      cards.push(cardBase({
+        tom: 'info',
+        icone: 'hourglass_top',
+        titulo: 'Mês em curso',
+        valor: _fmtMoeda(mesParcial.faturamento, true),
+        descricao: `<strong>${_lblMes(mesParcial.ano_mes)}</strong> tem só <strong>${mesParcial.diasComDados} de ${mesParcial.diasNoMes} dias</strong> apurados — <strong>não compare com meses fechados</strong>. No ritmo atual projetaria ${_fmtMoeda(mesParcial.projecao)}, mas com tão poucos dias essa conta é instável (faturamento não se distribui igual no mês). Use o card <em>Ano contra ano</em> para ler a tendência real.`,
+        sparkHtml: sparkline(mensalFechado.map(m => m.faturamento), { w: 260, h: 40, stroke: '#1D4ED8', fill: 'rgba(29,78,216,0.10)' }),
+        cta: `Projeção ganha confiança a partir de ${Math.ceil(mesParcial.diasNoMes * 0.35)} dias apurados.`,
+      }));
+    }
+  }
+
+  // [10b] Último mês FECHADO vs média dos fechados (comparação válida)
+  if (ultFechado && mensalFechado.length > 1) {
     const tomEvol = ultVsMediaPct > 15 ? 'success' : ultVsMediaPct < -15 ? 'danger' : 'info';
-    const sparkEvol = sparkline(mensal.map(m => m.faturamento), {
-      w: 260, h: 40,
-      stroke: ultVsMediaPct > 0 ? '#2E7D32' : '#D33',
-      fill: ultVsMediaPct > 0 ? 'rgba(46,125,50,0.15)' : 'rgba(221,51,51,0.12)',
-    });
-    const anoMesUlt = ultMesObj.ano_mes.replace(/^(\d{4})-(\d{2})$/, '$2/$1');
     cards.push(cardBase({
       tom: tomEvol,
       icone: ultVsMediaPct > 0 ? 'show_chart' : 'trending_down',
-      titulo: `Último mês vs média`,
+      titulo: 'Último mês fechado vs média',
       valor: `${ultVsMediaPct >= 0 ? '+' : ''}${ultVsMediaPct.toFixed(1)}%`,
-      descricao: `<strong>${anoMesUlt}</strong> faturou ${_fmtMoeda(ultMesObj.faturamento)}, ${ultVsMediaPct > 0 ? 'acima' : 'abaixo'} da média dos meses anteriores (${_fmtMoeda(mediaAnoAnt)}).`,
-      sparkHtml: sparkEvol,
+      descricao: `<strong>${_lblMes(ultFechado.ano_mes)}</strong> faturou ${_fmtMoeda(ultFechado.faturamento)}, ${ultVsMediaPct > 0 ? 'acima' : 'abaixo'} da média dos meses fechados (${_fmtMoeda(mediaAnoAnt)}).`,
+      sparkHtml: sparkline(mensalFechado.map(m => m.faturamento), {
+        w: 260, h: 40,
+        stroke: ultVsMediaPct > 0 ? '#2E7D32' : '#D33',
+        fill: ultVsMediaPct > 0 ? 'rgba(46,125,50,0.15)' : 'rgba(221,51,51,0.12)',
+      }),
     }));
+  }
+
+  // [10c] Ano contra ano — Sprint 9.32.381
+  // Comparar com o mesmo mês do ano anterior elimina sazonalidade; "vs média" não faz isso.
+  if (ultFechado) {
+    const _fatPorMes = {};
+    mensal.forEach(m => { _fatPorMes[m.ano_mes] = m.faturamento; });
+    const [uY, uM] = ultFechado.ano_mes.split('-').map(Number);
+    const chaveAnt = `${uY - 1}-${String(uM).padStart(2, '0')}`;
+    const fatAnt = _fatPorMes[chaveAnt];
+    if (fatAnt && fatAnt > 0) {
+      const yoyPct = ((ultFechado.faturamento - fatAnt) / fatAnt) * 100;
+      let accAtual = 0, accAnt = 0;
+      mensalFechado.filter(m => m.ano_mes.startsWith(String(uY) + '-')).forEach(m => {
+        const par = _fatPorMes[`${uY - 1}-${m.ano_mes.slice(5)}`];
+        if (par !== undefined) { accAtual += m.faturamento; accAnt += par; }
+      });
+      const accPct = accAnt > 0 ? ((accAtual - accAnt) / accAnt) * 100 : null;
+      cards.push(cardBase({
+        tom: yoyPct >= 0 ? 'success' : 'danger',
+        icone: 'compare_arrows',
+        titulo: 'Ano contra ano',
+        valor: `${yoyPct >= 0 ? '+' : ''}${yoyPct.toFixed(1)}%`,
+        descricao: `<strong>${_lblMes(ultFechado.ano_mes)}</strong> vs <strong>${_lblMes(chaveAnt)}</strong>.${accPct !== null ? ` No acumulado do ano: <strong>${accPct >= 0 ? '+' : ''}${accPct.toFixed(1)}%</strong>.` : ''} Comparar com o mesmo período do ano anterior neutraliza a sazonalidade.`,
+        lista: accPct !== null ? [
+          { label: `Acumulado ${uY}`, valor: _fmtMoeda(accAtual) },
+          { label: `Acumulado ${uY - 1}`, valor: _fmtMoeda(accAnt) },
+        ] : [
+          { label: _lblMes(ultFechado.ano_mes), valor: _fmtMoeda(ultFechado.faturamento) },
+          { label: _lblMes(chaveAnt), valor: _fmtMoeda(fatAnt) },
+        ],
+      }));
+    }
+  }
+
+  // [10d] Quebra de recorrência — Sprint 9.32.381
+  // Cliente fiel que some é o sinal de churn mais barato de captar. "Dormente 90 dias" avisa tarde.
+  {
+    const clientesMesAll = FAT_DATA.clientes_mes || [];
+    const nomePorCnpj = {};
+    (FAT_DATA.clientes_lista || []).forEach(c => { nomePorCnpj[c.cnpj] = c.nome_fantasia; });
+    (FAT_DATA.clientes_top || []).forEach(c => { nomePorCnpj[c['CNPJ/CPF']] = c['Cliente (Nome Fantasia)']; });
+    if (clientesMesAll.length > 0 && mensalFechado.length >= 4 && ultFechado) {
+      const mesesFechados = mensalFechado.map(m => m.ano_mes);
+      const ultimoFechado = mesesFechados[mesesFechados.length - 1];
+      const janelaSet = new Set(mesesFechados.slice(-7, -1)); // 6 meses antes do último fechado
+      const porCliente = {};
+      clientesMesAll.forEach(r => {
+        const cn = r['CNPJ/CPF'];
+        if (!porCliente[cn]) porCliente[cn] = { meses: new Set(), fat: 0, comprouUltimo: false };
+        if (janelaSet.has(r.ano_mes)) { porCliente[cn].meses.add(r.ano_mes); porCliente[cn].fat += r.faturamento; }
+        if (r.ano_mes === ultimoFechado) porCliente[cn].comprouUltimo = true;
+      });
+      const quebra = Object.entries(porCliente)
+        .filter(([, v]) => v.meses.size >= 4 && !v.comprouUltimo && v.fat > 0)
+        .map(([cn, v]) => ({ nome: nomePorCnpj[cn] || cn, mesesAtivos: v.meses.size, faturamento: v.fat }))
+        .sort((a, b) => b.faturamento - a.faturamento);
+      if (quebra.length > 0) {
+        const totalQuebra = quebra.reduce((sm, q) => sm + q.faturamento, 0);
+        cards.push(cardBase({
+          tom: 'danger',
+          icone: 'heart_broken',
+          titulo: 'Quebra de recorrência',
+          valor: `${quebra.length} cliente${quebra.length !== 1 ? 's' : ''}`,
+          descricao: `Compravam em <strong>4+ dos 6 meses</strong> anteriores e <strong>não compraram em ${_lblMes(ultimoFechado)}</strong>. Juntos valem ${_fmtMoeda(totalQuebra)} no período. Pegar aqui é bem mais barato que esperar virar dormente de 90 dias.`,
+          lista: quebra.slice(0, 5).map(q => ({
+            label: `${q.nome} · ${q.mesesAtivos}/6 meses`,
+            valor: _fmtMoeda(q.faturamento),
+          })),
+          cta: quebra.length > 5 ? `+ ${quebra.length - 5} outros clientes` : '',
+        }));
+      }
+    }
+  }
+
+  // [10e] Venda cruzada (whitespace) — Sprint 9.32.381
+  // Clientes grandes que NÃO compram uma marca relevante = receita na mesa, sem prospecção nova.
+  {
+    const cmm = FAT_DATA.cliente_marca_mes || [];
+    const topMarcas = (FAT_DATA.marcas || []).slice(0, 6).filter(m => m.Marca && m.Marca !== 'N/D');
+    if (cmm.length > 0 && topMarcas.length > 0 && (FAT_DATA.clientes_top || []).length > 0) {
+      const marcasPorCliente = {};
+      cmm.forEach(r => {
+        const cn = r['CNPJ/CPF'];
+        if (!marcasPorCliente[cn]) marcasPorCliente[cn] = new Set();
+        marcasPorCliente[cn].add(r.Marca);
+      });
+      let melhor = null;
+      topMarcas.forEach(mk => {
+        const semAMarca = (FAT_DATA.clientes_top || []).filter(c => {
+          const set = marcasPorCliente[c['CNPJ/CPF']];
+          return set && !set.has(mk.Marca);
+        });
+        const potencial = semAMarca.reduce((sm, c) => sm + c.faturamento, 0);
+        if (semAMarca.length > 0 && (!melhor || potencial > melhor.potencial)) {
+          melhor = { marca: mk.Marca, clientes: semAMarca, potencial, shareMarca: (mk.faturamento / totalMarcas) * 100 };
+        }
+      });
+      if (melhor && melhor.clientes.length > 0) {
+        cards.push(cardBase({
+          tom: 'info',
+          icone: 'grid_view',
+          titulo: 'Venda cruzada',
+          valor: `${melhor.clientes.length} cliente${melhor.clientes.length !== 1 ? 's' : ''}`,
+          descricao: `Do top 50, <strong>${melhor.clientes.length}</strong> nunca compraram <strong>${esc(melhor.marca)}</strong> — marca que já é ${melhor.shareMarca.toFixed(1)}% da receita. Esses clientes já compram de você e movimentam ${_fmtMoeda(melhor.potencial)}: é receita na mesa, sem prospecção nova.`,
+          lista: melhor.clientes.slice(0, 5).map(c => ({
+            label: c['Cliente (Nome Fantasia)'],
+            valor: _fmtMoeda(c.faturamento),
+          })),
+          cta: melhor.clientes.length > 5 ? `+ ${melhor.clientes.length - 5} outros sem ${esc(melhor.marca)}` : '',
+        }));
+      }
+    }
   }
 
   // [11] Gap geográfico
