@@ -8246,7 +8246,7 @@ mark.search-hl {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.379-revisao-filtro-data-busca-servidor',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.380-fat-evolucao-12m-rotulos-filtro-ano',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -40875,7 +40875,13 @@ function _fatRenderInner() {
               <span class="material-symbols-rounded" style="font-size:20px;color:var(--brand-lime);">timeline</span>
               <div style="font-family:var(--font-display);font-size:14px;font-weight:700;color:var(--brand-navy);">Evolução do faturamento</div>
             </div>
-            <div id="fatEvolStats" style="font-size:11.5px;color:var(--neutral-500);"></div>
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end;">
+              <div id="fatEvolStats" style="font-size:11.5px;color:var(--neutral-500);"></div>
+              <!-- Sprint 9.32.380: recorte do gráfico (12 meses por padrão ou um ano) -->
+              <select id="fatEvolAno" onchange="_fatTrocarAnoEvol(this.value)" title="Recorte do gráfico" style="padding:5px 9px;border:1.5px solid var(--neutral-200);border-radius:7px;font-size:11.5px;font-family:inherit;background:var(--neutral-0);color:var(--brand-navy);font-weight:600;cursor:pointer;">
+                <option value="ult12">Últimos 12 meses</option>
+              </select>
+            </div>
           </div>
           <canvas id="fatChartEvol" style="max-height:320px;"></canvas>
         </div>
@@ -43035,6 +43041,13 @@ function _fatFiltrarMensal(opts = {}) {
 }
 
 let _fatChartEvolInst = null;
+// Sprint 9.32.380: recorte do gráfico de evolução — 'ult12' (padrão) ou 'YYYY'.
+// Fica separado dos filtros globais de propósito: recortar o gráfico não deve mexer nos KPIs.
+if (typeof window._fatEvolAno === 'undefined') window._fatEvolAno = 'ult12';
+window._fatTrocarAnoEvol = function(v) {
+  window._fatEvolAno = v || 'ult12';
+  if (typeof _fatRender === 'function') _fatRender();
+};
 let _fatChartMarcasInst = null;
 let _fatSelectsPopulados = false;
 let _fatBannerNDFechado = false;
@@ -46030,19 +46043,33 @@ function _fatRender() {
   let mensalChart = _fatFiltrarMensal({ ignorarMes: true });
   const mesIsolado = (window._fatFiltro.mes && window._fatFiltro.mes !== 'todos') ? window._fatFiltro.mes : null;
 
-  // Sprint 9.32.313: no mobile, recorta o gráfico pro ano vigente (Jan→atual)
-  // Desktop mantém visão completa (Jan/25 até hoje). Mobile fica visualmente limpo, sem labels rotacionadas.
-  const _fatMobileAnoVigente = (typeof isDesktop === 'function' ? !isDesktop() : window.innerWidth < 1024);
+  // Sprint 9.32.380: recorte do gráfico — 12 meses por padrão, ou um ano específico.
+  // Substitui o antigo recorte "ano vigente só no mobile" (9.32.313): agora vale pra desktop
+  // e mobile, e quem manda é o select no topo do card. Um gráfico com 19 barras não se lê.
+  const _anosDisp = [...new Set(mensalChart.map(m => String(m.ano_mes || '').slice(0, 4)).filter(Boolean))].sort().reverse();
+  if (typeof window._fatEvolAno === 'undefined' || window._fatEvolAno === null) window._fatEvolAno = 'ult12';
+  if (window._fatEvolAno !== 'ult12' && !_anosDisp.includes(String(window._fatEvolAno))) window._fatEvolAno = 'ult12';
+  const _selAnoEvol = document.getElementById('fatEvolAno');
+  if (_selAnoEvol) {
+    const _optsHtml = ['<option value="ult12">Últimos 12 meses</option>']
+      .concat(_anosDisp.map(a => `<option value="${a}">${a}</option>`))
+      .join('');
+    if (_selAnoEvol.innerHTML !== _optsHtml) _selAnoEvol.innerHTML = _optsHtml;
+    _selAnoEvol.value = window._fatEvolAno;
+  }
   let _fatRecortadoLabel = '';
-  if (_fatMobileAnoVigente) {
-    const _anoAtual = new Date().getFullYear();
-    const _prefixo = String(_anoAtual) + '-';
-    const _mensalAnoVigente = mensalChart.filter(m => (m.ano_mes || '').startsWith(_prefixo));
-    if (_mensalAnoVigente.length > 0) {
-      mensalChart = _mensalAnoVigente;
-      _fatRecortadoLabel = `Ano vigente · ${_anoAtual}`;
+  if (window._fatEvolAno === 'ult12') {
+    if (mensalChart.length > 12) {
+      mensalChart = mensalChart.slice(-12);   // já vem ordenado por ano_mes: pega os 12 mais recentes
+      _fatRecortadoLabel = 'Últimos 12 meses';
     }
-    // Se ano vigente vazio (improvável), mantém série completa como fallback
+  } else {
+    const _pref = String(window._fatEvolAno) + '-';
+    const _doAno = mensalChart.filter(m => (m.ano_mes || '').startsWith(_pref));
+    if (_doAno.length > 0) {
+      mensalChart = _doAno;
+      _fatRecortadoLabel = String(window._fatEvolAno);
+    }
   }
 
   // Sprint 9.32.323: chart de Evolucao mostra LIQUIDO (subtrai devolucoes por mes)
@@ -46095,8 +46122,33 @@ function _fatRender() {
       mesIsolado && m.ano_mes === mesIsolado ? 2.5 : 0
     );
 
+    // Sprint 9.32.380: rótulo de valor no topo de cada barra.
+    // Chart.js 4 não traz datalabels nativo e não queremos mais um CDN — plugin inline.
+    const _rotulosBarras = {
+      id: 'rotulosBarras',
+      afterDatasetsDraw(chart) {
+        const g = chart.ctx;
+        const meta = chart.getDatasetMeta(0);
+        if (!meta || meta.hidden) return;
+        g.save();
+        g.font = '700 9.5px Inter, system-ui, sans-serif';
+        g.textAlign = 'center';
+        g.textBaseline = 'bottom';
+        meta.data.forEach((barra, i) => {
+          const v = chart.data.datasets[0].data[i];
+          if (v === null || v === undefined || isNaN(v)) return;
+          const ym = mensalChart[i] ? mensalChart[i].ano_mes : null;
+          // acompanha o esmaecimento das barras quando há mês em destaque
+          g.fillStyle = (mesIsolado && ym !== mesIsolado) ? 'rgba(10,31,92,0.30)' : '#0A1F5C';
+          g.fillText(_fmtMoeda(v, true), barra.x, barra.y - 4);
+        });
+        g.restore();
+      }
+    };
+
     _fatChartEvolInst = new Chart(ctx, {
       type: 'bar',
+      plugins: [_rotulosBarras],
       data: {
         labels: mensalChart.map(m => _mesLabel(m.ano_mes)),
         datasets: [{
@@ -46125,6 +46177,7 @@ function _fatRender() {
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        layout: { padding: { top: 22 } },  // Sprint 9.32.380: respiro pro rótulo do topo
         plugins: {
           legend: { position: 'top', labels: { font: { size: 11 } } },
           tooltip: {
