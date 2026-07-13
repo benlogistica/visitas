@@ -8246,7 +8246,7 @@ mark.search-hl {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.392-funil-modo-teste',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.393-funil-desktop-atendente',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -12985,9 +12985,11 @@ function sidebarActiveFromHash(hash) {
 }
 
 // Sidebar do desktop — itens fixos + badges dinâmicos (populados async)
-function desktopSidebar(activeId) {
+function desktopSidebar(activeId, itemsCustom = null) {
   const user = getCurrentUser();
-  const items = [
+  // Sprint 9.32.393: a atendente de loja tem menu próprio. Se recebesse a lista do admin,
+  // veria links de Faturamento, Equipe e Revisão — telas que ela nem pode abrir.
+  const items = itemsCustom || [
     { id: 'dashboard',    href: '#/admin',                icon: 'dashboard',       label: 'Dashboard' },
     { id: 'review',       href: '#/admin/revisao',        icon: 'rule',            label: 'Revisão',       badgeId: 'dsBadgeReview' },
     { id: 'pendentes',    href: '#/admin/pendentes',      icon: 'hourglass_top',   label: 'Pendências',    badgeId: 'dsBadgePend' },
@@ -13106,10 +13108,10 @@ function desktopTopbar({ title, breadcrumb = [], titleExtra = '' } = {}) {
 
 // Shell completo do desktop — sidebar + topbar + área de conteúdo
 // Uso: `return desktopShell({ title, breadcrumb, content, activeId })`
-function desktopShell({ title, breadcrumb, titleExtra, content, activeId }) {
+function desktopShell({ title, breadcrumb, titleExtra, content, activeId, navItems = null }) {
   return `
     <div class="ds-shell" id="dsShell">
-      ${desktopSidebar(activeId || sidebarActiveFromHash(window.location.hash || '#/'))}
+      ${desktopSidebar(activeId || sidebarActiveFromHash(window.location.hash || '#/'), navItems)}
       <div class="ds-shell__backdrop" onclick="closeSidebarMobile()"></div>
       <div class="ds-main">
         ${desktopTopbar({ title, breadcrumb, titleExtra })}
@@ -57288,6 +57290,11 @@ function funilKpis(linhas) {
 /* ==========================================================================
    TELA DA ATENDENTE  (#/funil)
    ========================================================================== */
+
+// Menu lateral exclusivo da atendente — só o que ela realmente usa.
+const FUNIL_NAV_ATENDENTE = [
+  { id: 'funil', href: '#/funil', icon: 'filter_alt', label: 'Funil de Vendas' },
+];
 function renderFunilAtendente() {
   const user = requireAtendente();
   if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
@@ -57316,13 +57323,20 @@ function renderFunilAtendente() {
         <span class="material-symbols-rounded" style="font-size:18px;">add</span>Novo lançamento
       </button>
     </div>
-    <div id="funilKpis" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:14px;"></div>
+    <div id="funilKpis" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px;"></div>
     <div id="funilLista" style="display:flex;flex-direction:column;gap:10px;">
       <div style="padding:30px;text-align:center;color:var(--neutral-500);font-size:13px;">Carregando…</div>
     </div>`;
 
+  // Sprint 9.32.393: desktop de verdade — shell com menu próprio, não o layout mobile espremido
   if (typeof isDesktop === 'function' && isDesktop()) {
-    return `<div class="mobile-app"><main class="mcontent" style="max-width:1000px;margin:0 auto;padding:20px;">${corpo}</main></div>`;
+    return desktopShell({
+      title: 'Funil de Vendas',
+      breadcrumb: ['Loja', 'Funil'],
+      content: corpo,
+      activeId: 'funil',
+      navItems: FUNIL_NAV_ATENDENTE,
+    });
   }
   return `
     <div class="mobile-app">
@@ -57364,6 +57378,46 @@ async function funilCarregarLista(apenasMinhas) {
   }
 
   const esc = t => String(t || '').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+
+  // Sprint 9.32.393: no desktop, a atendente lança em volume — tabela lê melhor que cards.
+  if (typeof isDesktop === 'function' && isDesktop()) {
+    const cores = { indicada: ['#B45309', 'Aguardando'], vendida: ['#2E7D32', 'Vendida'], perdida: ['#B91C1C', 'Não converteu'] };
+    listEl.innerHTML = `
+      <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:14px;overflow:hidden;">
+        <div style="display:grid;grid-template-columns:1.4fr 1.3fr 1.2fr 90px 110px 110px 170px;gap:10px;padding:11px 14px;background:var(--neutral-50);border-bottom:1px solid var(--neutral-200);font-size:10.5px;font-weight:700;color:var(--neutral-600);text-transform:uppercase;letter-spacing:0.04em;">
+          <div>Cliente</div><div>Indicado por</div><div>Local</div><div>Data</div><div>Situação</div><div style="text-align:right;">Valor</div><div></div>
+        </div>
+        ${linhas.map(r => {
+          const [cor, lbl] = cores[r.status] || cores.indicada;
+          const prof = r.profissionais?.nome || r.profissional_nome || '—';
+          const local = r.instituicoes?.nome || r.local_nome || _funilLabel(FUNIL_TIPOS_LOCAL, r.tipo_local);
+          const itens = (r.funil_itens || []).map(i => `${esc(i.produto_descricao)} ×${Number(i.quantidade)}`).join(', ');
+          return `
+            <div style="display:grid;grid-template-columns:1.4fr 1.3fr 1.2fr 90px 110px 110px 170px;gap:10px;padding:11px 14px;border-bottom:1px solid var(--neutral-100);font-size:12.5px;align-items:center;">
+              <div style="min-width:0;">
+                <div style="font-weight:700;color:var(--brand-navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(r.cliente_nome)}</div>
+                ${itens ? `<div style="font-size:10.5px;color:var(--neutral-500);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${itens}</div>` : ''}
+              </div>
+              <div style="min-width:0;color:var(--neutral-700);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(prof)}</div>
+              <div style="min-width:0;color:var(--neutral-600);font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(local)}</div>
+              <div style="color:var(--neutral-600);font-size:11.5px;">${new Date(r.data_indicacao + 'T12:00:00').toLocaleDateString('pt-BR')}</div>
+              <div style="color:${cor};font-weight:700;font-size:11.5px;">${lbl}</div>
+              <div style="text-align:right;font-family:var(--font-mono);font-weight:700;color:${r.status === 'vendida' ? 'var(--brand-lime-dark,#6FA62E)' : 'var(--neutral-400)'};">
+                ${r.status === 'vendida' ? _fmtMoeda(Number(r.valor_venda || 0)) : '—'}
+              </div>
+              <div style="display:flex;gap:5px;justify-content:flex-end;">
+                ${r.status === 'indicada' ? `
+                  <button onclick="funilConverter('${r.id}')" style="background:var(--status-success-bg,#E6F6EF);color:var(--status-success);border:0;padding:6px 10px;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;">Converter</button>
+                  <button onclick="funilPerder('${r.id}')" title="Não converteu" style="background:var(--neutral-100);color:var(--neutral-600);border:0;padding:6px 8px;border-radius:7px;cursor:pointer;display:inline-flex;align-items:center;">
+                    <span class="material-symbols-rounded" style="font-size:15px;">close</span>
+                  </button>` : ''}
+              </div>
+            </div>`;
+        }).join('')}
+      </div>`;
+    return;
+  }
+
   listEl.innerHTML = linhas.map(r => {
     const cores = { indicada: ['#B45309', '#FEF4E1', 'Aguardando compra'], vendida: ['#2E7D32', '#E7F5E7', 'Vendida'], perdida: ['#B91C1C', '#FCE8E8', 'Não converteu'] };
     const [cor, bg, lbl] = cores[r.status] || cores.indicada;
