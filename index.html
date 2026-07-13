@@ -8246,7 +8246,7 @@ mark.search-hl {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.386-paridade-mobile-revisao-e-simulacao',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.387-performance-filtro-mes-ano-intervalo',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -24714,10 +24714,41 @@ async function _perfCalcular({ userId, periodo }) {
     dataInicio = new Date(agora.getFullYear(), agora.getMonth() - 11, 1);
     dataFim = agora;
   }
+  // Sprint 9.32.387: recortes pedidos pelo time de campo —
+  //   'mes:YYYY-MM'                  → um mês fechado específico
+  //   'ano:YYYY'                     → um ano inteiro
+  //   'custom:YYYY-MM-DD:YYYY-MM-DD' → intervalo livre
+  else if (String(periodo).startsWith('mes:')) {
+    const [ano, mes] = String(periodo).slice(4).split('-').map(Number);
+    if (ano && mes) {
+      dataInicio = new Date(ano, mes - 1, 1, 0, 0, 0, 0);
+      dataFim = new Date(ano, mes, 0, 23, 59, 59, 999); // dia 0 do mês seguinte = último dia deste
+    }
+  } else if (String(periodo).startsWith('ano:')) {
+    const ano = Number(String(periodo).slice(4));
+    if (ano) {
+      dataInicio = new Date(ano, 0, 1, 0, 0, 0, 0);
+      dataFim = new Date(ano, 11, 31, 23, 59, 59, 999);
+    }
+  } else if (String(periodo).startsWith('custom:')) {
+    const partes = String(periodo).split(':');
+    const ini = partes[1] || '';
+    const fim = partes[2] || '';
+    if (ini) dataInicio = new Date(ini + 'T00:00:00');
+    if (fim) dataFim = new Date(fim + 'T23:59:59');
+    if (dataInicio && !dataFim) dataFim = agora;
+  }
   // 'tudo' → sem filtro (dataInicio e dataFim ficam null)
 
-  const visitasFilt = dataInicio
-    ? visitas.filter(v => new Date(v.checkin_timestamp) >= dataInicio)
+  // Sprint 9.32.387: agora respeita o LIMITE SUPERIOR também. Antes o filtro só olhava
+  // `>= dataInicio` e ignorava o dataFim — então pedir "março de 2026" traria março em diante.
+  const visitasFilt = (dataInicio || dataFim)
+    ? visitas.filter(v => {
+        const d = new Date(v.checkin_timestamp);
+        if (dataInicio && d < dataInicio) return false;
+        if (dataFim && d > dataFim) return false;
+        return true;
+      })
     : visitas;
 
   // 3) Indexa clientes_top por CNPJ normalizado (top 50 — tem metadados extras como primeira_compra)
@@ -25522,6 +25553,77 @@ window._perfTrocarTopN = function(n) {
   _perfRenderDetalhe();
 };
 
+// ═══ Sprint 9.32.387: filtro de mês / ano / intervalo (usado no mobile E no desktop) ═══
+function _perfMesesDisponiveis() {
+  // Prefere os meses que realmente existem no faturamento; se o FAT_DATA ainda não
+  // carregou, cai pros últimos 24 meses (a tela renderiza antes dos dados chegarem).
+  const doFat = [...new Set((window.FAT_DATA?.mensal || []).map(m => m.ano_mes))];
+  if (doFat.length > 0) return doFat.sort().reverse();
+  const out = [];
+  const d = new Date();
+  for (let i = 0; i < 24; i++) {
+    out.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+    d.setMonth(d.getMonth() - 1);
+  }
+  return out;
+}
+
+function _perfLabelMes(ym) {
+  const ms = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+  const m = String(ym || '').match(/^(\d{4})-(\d{2})$/);
+  return m ? `${ms[Number(m[2]) - 1]}/${m[1]}` : String(ym || '');
+}
+
+function _perfFiltroDatasHtml(compacto = false) {
+  const p = String(window._perfPeriodo || '6m');
+  const meses = _perfMesesDisponiveis();
+  const anos = [...new Set(meses.map(m => m.slice(0, 4)))].sort().reverse();
+  const estCampo = `height:${compacto ? 32 : 34}px;padding:0 8px;border-radius:8px;border:1px solid var(--neutral-200);background:#fff;font-size:${compacto ? 11.5 : 12.5}px;font-family:inherit;color:var(--brand-navy);font-weight:600;cursor:pointer;`;
+  const custIni = p.startsWith('custom:') ? (p.split(':')[1] || '') : '';
+  const custFim = p.startsWith('custom:') ? (p.split(':')[2] || '') : '';
+  return `
+    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:10px;">
+      <select id="perfSelMes" onchange="if(this.value) _perfTrocarPeriodo(this.value)" style="${estCampo}">
+        <option value="">Mês específico…</option>
+        ${meses.map(m => `<option value="mes:${m}" ${p === 'mes:' + m ? 'selected' : ''}>${_perfLabelMes(m)}</option>`).join('')}
+      </select>
+      <select id="perfSelAno" onchange="if(this.value) _perfTrocarPeriodo(this.value)" style="${estCampo}">
+        <option value="">Ano inteiro…</option>
+        ${anos.map(a => `<option value="ano:${a}" ${p === 'ano:' + a ? 'selected' : ''}>${a}</option>`).join('')}
+      </select>
+      <button type="button" id="perfCustomBtn" onclick="_perfToggleCustom()" title="Intervalo de datas"
+              style="height:${compacto ? 32 : 34}px;width:${compacto ? 32 : 34}px;border-radius:8px;border:1px solid ${p.startsWith('custom:') ? 'var(--brand-navy)' : 'var(--neutral-200)'};background:${p.startsWith('custom:') ? 'var(--brand-navy)' : '#fff'};color:${p.startsWith('custom:') ? '#fff' : 'var(--neutral-600)'};cursor:pointer;display:inline-flex;align-items:center;justify-content:center;">
+        <span class="material-symbols-rounded" style="font-size:17px;">calendar_month</span>
+      </button>
+      <div id="perfCustomWrap" style="display:${p.startsWith('custom:') ? 'flex' : 'none'};gap:6px;align-items:center;flex-wrap:wrap;">
+        <input type="date" id="perfDataIni" value="${custIni}" onchange="_perfAplicarCustom()" style="${estCampo}font-weight:500;" />
+        <span style="color:var(--neutral-400);font-size:11.5px;">até</span>
+        <input type="date" id="perfDataFim" value="${custFim}" onchange="_perfAplicarCustom()" style="${estCampo}font-weight:500;" />
+      </div>
+    </div>`;
+}
+
+window._perfToggleCustom = function() {
+  const wrap = document.getElementById('perfCustomWrap');
+  if (!wrap) return;
+  const abrindo = wrap.style.display !== 'flex';
+  wrap.style.display = abrindo ? 'flex' : 'none';
+  const btn = document.getElementById('perfCustomBtn');
+  if (btn) {
+    btn.style.background = abrindo ? 'var(--brand-navy)' : '#fff';
+    btn.style.color = abrindo ? '#fff' : 'var(--neutral-600)';
+    btn.style.borderColor = abrindo ? 'var(--brand-navy)' : 'var(--neutral-200)';
+  }
+  if (!abrindo) _perfTrocarPeriodo('6m'); // fechou sem escolher: volta ao padrão
+};
+
+window._perfAplicarCustom = function() {
+  const ini = document.getElementById('perfDataIni');
+  const fim = document.getElementById('perfDataFim');
+  if (!ini || !ini.value) return; // precisa ao menos da data inicial
+  _perfTrocarPeriodo(`custom:${ini.value}:${fim && fim.value ? fim.value : ''}`);
+};
+
 // Handler de troca de período
 window._perfTrocarPeriodo = async function(periodo) {
   const user = getCurrentUser();
@@ -25531,13 +25633,29 @@ window._perfTrocarPeriodo = async function(periodo) {
   window._perfSelectedIdx = null;
   window._perfTopN = 10;
   window._perfMarcaFiltro = 'Todas';
-  // Re-render dos botões
+  // Re-render dos botões. Sprint 9.32.387: se o recorte for mês/ano/intervalo,
+  // nenhuma pílula fica ativa (elas são atalhos, não o estado escolhido).
   ['tudo','12m','6m','3m','mes'].forEach(p => {
     const btn = document.getElementById('perfBtn-' + p);
     if (!btn) return;
-    const ativo = p === periodo;
+    const ativo = (p === periodo);
     btn.className = 'review-tab' + (ativo ? ' is-active' : '');
   });
+  // Sincroniza os seletores novos com o estado atual
+  const _pStr = String(periodo);
+  const _selMes = document.getElementById('perfSelMes');
+  if (_selMes) _selMes.value = _pStr.startsWith('mes:') ? _pStr : '';
+  const _selAno = document.getElementById('perfSelAno');
+  if (_selAno) _selAno.value = _pStr.startsWith('ano:') ? _pStr : '';
+  const _wrapC = document.getElementById('perfCustomWrap');
+  const _btnC = document.getElementById('perfCustomBtn');
+  const _ehCustom = _pStr.startsWith('custom:');
+  if (_wrapC) _wrapC.style.display = _ehCustom ? 'flex' : 'none';
+  if (_btnC) {
+    _btnC.style.background = _ehCustom ? 'var(--brand-navy)' : '#fff';
+    _btnC.style.color = _ehCustom ? '#fff' : 'var(--neutral-600)';
+    _btnC.style.borderColor = _ehCustom ? 'var(--brand-navy)' : 'var(--neutral-200)';
+  }
   _perfRender(); // mostra spinner
   const state = await _perfCalcular({ userId: user.id, periodo });
   window._perfState = state;
@@ -25581,6 +25699,7 @@ function renderNutriPerformanceFallback() {
             <button class="review-tab ${periodo === '12m' ? 'is-active' : ''}" id="perfBtn-12m" onclick="_perfTrocarPeriodo('12m')" style="white-space:nowrap;flex-shrink:0;">12m</button>
             <button class="review-tab ${periodo === 'tudo' ? 'is-active' : ''}" id="perfBtn-tudo" onclick="_perfTrocarPeriodo('tudo')" style="white-space:nowrap;flex-shrink:0;">Tudo</button>
           </div>
+          ${_perfFiltroDatasHtml(true)}
         </div>
 
         <div id="perfContent">
@@ -25631,6 +25750,7 @@ function renderNutriPerformanceDesktop() {
             <button class="review-tab ${periodo === '6m' ? 'is-active' : ''}" id="perfBtn-6m" onclick="_perfTrocarPeriodo('6m')">Últimos 6m</button>
             <button class="review-tab ${periodo === '12m' ? 'is-active' : ''}" id="perfBtn-12m" onclick="_perfTrocarPeriodo('12m')">Últimos 12m</button>
             <button class="review-tab ${periodo === 'tudo' ? 'is-active' : ''}" id="perfBtn-tudo" onclick="_perfTrocarPeriodo('tudo')">Tudo</button>
+            ${_perfFiltroDatasHtml(false)}
           </div>
         </div>
       </div>
