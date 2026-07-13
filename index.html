@@ -8246,7 +8246,7 @@ mark.search-hl {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.382-insights-analista-ia-cacheado',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.383-leitura-do-painel-por-regras',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -40636,7 +40636,7 @@ window.rejeitarObjetivoPendente = async function(id) {
 let FAT_DATA = null;
 let _fatDataPromise = null;
 // __FAT_VERSION_START__ — substituído pelo atualizar_index.py com hash do JSON
-const FAT_DATA_VERSION = 'aab2e084fe4a';
+const FAT_DATA_VERSION = '5a1af0939b96';
 // __FAT_VERSION_END__
 const FAT_DATA_URL = 'faturamento_data_inline.json?v=' + FAT_DATA_VERSION;
 
@@ -44812,6 +44812,7 @@ function _fatRenderInsights() {
     },
     quebra_recorrencia: {
       qtd: _iaQuebra.length,
+      faturamento_total: Math.round(_iaQuebra.reduce((sm, q) => sm + q.faturamento, 0)),
       criterio: 'comprava em 4+ dos 6 meses anteriores e nao comprou no ultimo mes fechado',
       top: _iaQuebra.slice(0, 5).map(q => ({
         nome: q.nome, meses_ativos_de_6: q.mesesAtivos, faturamento: Math.round(q.faturamento),
@@ -44840,58 +44841,155 @@ function _fatRenderInsights() {
     } : null,
   };
   window._fatResumoIA = resumoIA;
-  _fatCarregarAnaliseIA(resumoIA);
+  _fatRenderLeitura(_fatGerarLeitura(resumoIA));
 }
 
 // ============================================================================
-// Sprint 9.32.382 — Leitura do analista (IA), cacheada por meta.gerado_em
+// Sprint 9.32.383 — Leitura do painel (motor de regras, sem IA e sem custo)
+// ----------------------------------------------------------------------------
+// Lê os MESMOS números dos cards e escreve a leitura do momento.
+//
+// O que faz isso mudar conforme os dados mudam (e não ser uma lista fixa):
+// cada prioridade candidata carrega um IMPACTO EM REAIS calculado a partir da
+// base. Elas competem entre si e são ordenadas por esse impacto. Num mês, a
+// quebra de recorrência sobe ao topo; noutro, um canal em queda passa na frente.
+// Quem decide a ordem é o dinheiro em jogo, não uma sequência escrita à mão.
 // ============================================================================
-window._fatAnaliseIAEmCurso = false;
 
-async function _fatCarregarAnaliseIA(resumo, forcar = false) {
-  const el = document.getElementById('fatInsightsIA');
-  if (!el || !resumo) return;
-  const dataHash = FAT_DATA?.meta?.gerado_em;
-  if (!dataHash) { el.innerHTML = ''; return; }
+function _leiMes(ym) {
+  const meses = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+  const m = String(ym || '').match(/^(\d{4})-(\d{2})$/);
+  if (!m) return String(ym || '');
+  return `${meses[Number(m[2]) - 1]}/${m[1].slice(2)}`;
+}
 
-  if (!forcar && window._fatAnaliseIACache && window._fatAnaliseIACache.hash === dataHash) {
-    _fatRenderAnaliseIA(window._fatAnaliseIACache.dados);
-    return;
+function _fatGerarLeitura(r) {
+  if (!r) return null;
+  const M = (v) => _fmtMoeda(v);
+
+  // ─── 1. Resumo: onde o negócio está ─────────────────────────────────────
+  const frases = [];
+  const yoy = r.ano_contra_ano;
+  if (yoy && yoy.acumulado_variacao_pct !== null && yoy.acumulado_variacao_pct !== undefined) {
+    const dir = yoy.acumulado_variacao_pct >= 0 ? 'acima' : 'abaixo';
+    frases.push(`No acumulado do ano, ${M(yoy.acumulado_ano_atual)} — <strong>${Math.abs(yoy.acumulado_variacao_pct).toFixed(1)}% ${dir}</strong> do mesmo período do ano passado (${M(yoy.acumulado_ano_anterior)}).`);
   }
-  if (window._fatAnaliseIAEmCurso) return;
-  window._fatAnaliseIAEmCurso = true;
+  const uf = r.ultimo_mes_fechado;
+  if (uf) {
+    const dir = uf.vs_media_pct >= 0 ? 'acima' : 'abaixo';
+    frases.push(`O último mês fechado (${_leiMes(uf.mes)}) faturou ${M(uf.faturamento)}, ${Math.abs(uf.vs_media_pct).toFixed(1)}% ${dir} da média dos fechados.`);
+  }
+  const mc = r.mes_em_curso;
+  if (mc) {
+    frases.push(`${_leiMes(mc.mes)} tem só ${mc.dias_apurados} de ${mc.dias_no_mes} dias apurados — ainda não é comparável.`);
+  }
+  const resumo = frases.join(' ') || 'Sem dados suficientes para uma leitura do período.';
 
-  el.innerHTML = '<div style="background:linear-gradient(135deg,#0A1F5C 0%,#1D4ED8 100%);border-radius:14px;padding:16px 20px;color:#fff;display:flex;align-items:center;gap:12px;"><span class="material-symbols-rounded" style="font-size:22px;">progress_activity</span><div style="font-size:12.5px;">Lendo os números do período…</div></div>';
+  // ─── 2. Prioridades: candidatas competem por IMPACTO EM R$ ──────────────
+  const cand = [];
 
-  try {
-    const url = CONFIG.SUPABASE_URL.replace(/\/$/, '') + '/functions/v1/insights-ia';
-    const resp = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + CONFIG.SUPABASE_ANON_KEY },
-      body: JSON.stringify({ data_hash: dataHash, resumo, forcar }),
+  const q = r.quebra_recorrencia;
+  if (q && q.qtd > 0) {
+    const top = q.top && q.top[0];
+    cand.push({
+      impacto: q.faturamento_total || 0,
+      titulo: 'Clientes fiéis que pararam',
+      porque: `${q.qtd} cliente${q.qtd !== 1 ? 's' : ''} que compravam em 4+ dos últimos 6 meses não compraram no último mês fechado — ${M(q.faturamento_total)} em jogo.`,
+      acao: top
+        ? `Ligar para ${top.nome} (${M(top.faturamento)}) ainda esta semana e descobrir o que mudou.`
+        : 'Ligar para a lista antes que vire churn.',
     });
-    const json = await resp.json().catch(() => ({}));
-    if (!resp.ok || !json.ok) throw new Error(json.error || ('HTTP ' + resp.status));
-    const dados = { analise: json.analise, modelo: json.modelo, gerado_em: json.gerado_em, cached: json.cached };
-    window._fatAnaliseIACache = { hash: dataHash, dados };
-    _fatRenderAnaliseIA(dados);
-  } catch (e) {
-    console.warn('[Insights IA]', e && e.message ? e.message : e);
-    el.innerHTML = '<div style="background:var(--neutral-100);border:1px dashed var(--neutral-300);border-radius:12px;padding:12px 16px;font-size:12px;color:var(--neutral-600);display:flex;align-items:center;gap:10px;"><span class="material-symbols-rounded" style="font-size:18px;">info</span><div>Leitura por IA indisponível. Os insights abaixo continuam válidos — são calculados no app e não dependem da IA.</div></div>';
-  } finally {
-    window._fatAnaliseIAEmCurso = false;
   }
+
+  const d = r.dormentes;
+  if (d && d.qtd > 0) {
+    const top = d.top && d.top[0];
+    cand.push({
+      // peso menor: dormente já é perda antiga; a quebra recente é mais recuperável
+      impacto: (d.faturamento_historico || 0) * 0.5,
+      titulo: `${d.qtd} hospital${d.qtd !== 1 ? 'is' : ''} dormente${d.qtd !== 1 ? 's' : ''}`,
+      porque: `Sem comprar há ${d.criterio_dias}+ dias, somando ${M(d.faturamento_historico)} de faturamento histórico.`,
+      acao: top
+        ? `Retomar ${top.nome}: ${top.dias_sem_comprar} dias parado, ${M(top.faturamento)} de histórico.`
+        : 'Montar uma frente de retomada.',
+    });
+  }
+
+  const canaisQueda = (r.canais || [])
+    .filter(c => c.tendencia_pct < -20)
+    .sort((a, b) => a.tendencia_pct - b.tendencia_pct);
+  if (canaisQueda.length > 0) {
+    const c = canaisQueda[0];
+    cand.push({
+      impacto: c.faturamento * (Math.abs(c.tendencia_pct) / 100),
+      titulo: `${c.nome} em queda`,
+      porque: `Tendência de ${c.tendencia_pct.toFixed(0)}% no período, sobre ${M(c.faturamento)} de faturamento.`,
+      acao: `Investigar a causa raiz em ${c.nome}: ruptura de estoque, preço ou concorrência.`,
+    });
+  }
+
+  const dv = r.devolucoes;
+  if (dv && dv.media_mensal > 0) {
+    const razao = dv.pico_valor / dv.media_mensal;
+    if (razao >= 2) {
+      cand.push({
+        impacto: dv.pico_valor - dv.media_mensal,
+        titulo: 'Pico de devoluções',
+        porque: `${_leiMes(dv.pico_mes)} devolveu ${M(dv.pico_valor)} — ${razao.toFixed(1)}x a média mensal (${M(dv.media_mensal)}).`,
+        acao: 'Levantar a causa do pico: devolução que se repete vira margem perdida todo mês.',
+      });
+    }
+  }
+
+  const prioridades = cand.sort((a, b) => b.impacto - a.impacto).slice(0, 3);
+
+  // ─── 3. Risco: a maior dependência ─────────────────────────────────────
+  const co = r.concentracao || {};
+  const riscos = [];
+  if (co.maior_cliente_pct >= 15) {
+    riscos.push({ v: co.maior_cliente_pct, t: `Um único cliente concentra ${co.maior_cliente_pct}% da receita do top 50. Perder essa conta abre um buraco difícil de repor.` });
+  }
+  if (co.maior_marca_pct >= 40) {
+    riscos.push({ v: co.maior_marca_pct, t: `Uma única marca responde por ${co.maior_marca_pct}% do faturamento. Uma mudança de política do fornecedor atinge quase metade da receita.` });
+  }
+  if (co.sp_pct >= 85) {
+    riscos.push({ v: co.sp_pct, t: `SP concentra ${co.sp_pct}% do faturamento. A operação inteira depende de uma praça só.` });
+  }
+  const risco = riscos.length ? riscos.sort((a, b) => b.v - a.v)[0].t : '';
+
+  // ─── 4. Oportunidade: a maior receita na mesa ──────────────────────────
+  const opts = [];
+  const vc = r.venda_cruzada;
+  if (vc && vc.clientes_top50_que_nao_compram > 0) {
+    opts.push({
+      v: vc.faturamento_desses_clientes,
+      t: `${vc.clientes_top50_que_nao_compram} clientes do top 50 nunca compraram ${vc.marca}. Eles já movimentam ${M(vc.faturamento_desses_clientes)} com você — é receita na mesa, sem prospecção nova.`,
+    });
+  }
+  const canaisAlta = (r.canais || [])
+    .filter(c => c.tendencia_pct > 20)
+    .sort((a, b) => b.tendencia_pct - a.tendencia_pct);
+  if (canaisAlta.length > 0) {
+    const c = canaisAlta[0];
+    opts.push({
+      v: c.faturamento * (c.tendencia_pct / 100),
+      t: `${c.nome} cresce ${c.tendencia_pct.toFixed(0)}% sobre ${M(c.faturamento)}. É onde o vento está a favor — vale reforçar.`,
+    });
+  }
+  const oportunidade = opts.length ? opts.sort((a, b) => b.v - a.v)[0].t : '';
+
+  return { resumo, prioridades, risco, oportunidade };
 }
 
-function _fatRenderAnaliseIA(dados) {
+function _fatRenderLeitura(dados) {
   const el = document.getElementById('fatInsightsIA');
-  if (!el || !dados || !dados.analise) return;
-  const a = dados.analise;
-  const esc = s => String(s == null ? '' : s).replace(/</g, '&lt;').replace(/"/g, '&quot;');
-  const quando = dados.gerado_em ? new Date(dados.gerado_em).toLocaleString('pt-BR') : '';
-  const prioridades = Array.isArray(a.prioridades) ? a.prioridades : [];
+  if (!el) return;
+  if (!dados) { el.innerHTML = ''; return; }
 
-  const prioHtml = prioridades.slice(0, 3).map((p, i) =>
+  const esc = s => String(s == null ? '' : s).replace(/</g, '&lt;').replace(/"/g, '&quot;');
+  const prioridades = Array.isArray(dados.prioridades) ? dados.prioridades : [];
+
+  const prioHtml = prioridades.map((p, i) =>
     '<div style="background:rgba(255,255,255,0.12);border-radius:10px;padding:11px 13px;">' +
       '<div style="font-size:10.5px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:rgba(255,255,255,0.75);">Prioridade ' + (i + 1) + '</div>' +
       '<div style="font-weight:700;font-size:13px;margin-top:5px;">' + esc(p.titulo) + '</div>' +
@@ -44900,27 +44998,26 @@ function _fatRenderAnaliseIA(dados) {
     '</div>'
   ).join('');
 
-  const riscoHtml = a.risco
-    ? '<div style="background:rgba(221,51,51,0.20);border-left:3px solid #FCA5A5;border-radius:8px;padding:9px 12px;font-size:11.5px;line-height:1.45;"><strong style="display:block;font-size:10.5px;text-transform:uppercase;color:#FECACA;margin-bottom:3px;">Maior risco</strong>' + esc(a.risco) + '</div>'
+  const riscoHtml = dados.risco
+    ? '<div style="background:rgba(221,51,51,0.20);border-left:3px solid #FCA5A5;border-radius:8px;padding:9px 12px;font-size:11.5px;line-height:1.45;"><strong style="display:block;font-size:10.5px;text-transform:uppercase;color:#FECACA;margin-bottom:3px;">Maior risco</strong>' + esc(dados.risco) + '</div>'
     : '';
-  const oportHtml = a.oportunidade
-    ? '<div style="background:rgba(46,125,50,0.22);border-left:3px solid #86EFAC;border-radius:8px;padding:9px 12px;font-size:11.5px;line-height:1.45;"><strong style="display:block;font-size:10.5px;text-transform:uppercase;color:#BBF7D0;margin-bottom:3px;">Maior oportunidade</strong>' + esc(a.oportunidade) + '</div>'
+  const oportHtml = dados.oportunidade
+    ? '<div style="background:rgba(46,125,50,0.22);border-left:3px solid #86EFAC;border-radius:8px;padding:9px 12px;font-size:11.5px;line-height:1.45;"><strong style="display:block;font-size:10.5px;text-transform:uppercase;color:#BBF7D0;margin-bottom:3px;">Maior oportunidade</strong>' + esc(dados.oportunidade) + '</div>'
     : '';
 
   el.innerHTML =
     '<div style="background:linear-gradient(135deg,#0A1F5C 0%,#1D4ED8 100%);border-radius:14px;padding:18px 20px;color:#fff;">' +
-      '<div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:12px;">' +
-        '<div style="width:40px;height:40px;border-radius:10px;background:rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;flex-shrink:0;"><span class="material-symbols-rounded" style="font-size:22px;">neurology</span></div>' +
+      '<div style="display:flex;align-items:flex-start;gap:12px;">' +
+        '<div style="width:40px;height:40px;border-radius:10px;background:rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;flex-shrink:0;"><span class="material-symbols-rounded" style="font-size:22px;">query_stats</span></div>' +
         '<div style="flex:1;min-width:0;">' +
-          '<div style="font-family:var(--font-display);font-weight:700;font-size:16px;">Leitura do analista</div>' +
-          '<div style="font-size:13px;color:rgba(255,255,255,0.92);margin-top:4px;line-height:1.55;">' + esc(a.resumo) + '</div>' +
+          '<div style="font-family:var(--font-display);font-weight:700;font-size:16px;">Leitura do painel</div>' +
+          '<div style="font-size:13px;color:rgba(255,255,255,0.92);margin-top:4px;line-height:1.55;">' + dados.resumo + '</div>' +
         '</div>' +
       '</div>' +
       (prioHtml ? '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px;margin-top:14px;">' + prioHtml + '</div>' : '') +
       ((riscoHtml || oportHtml) ? '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px;margin-top:10px;">' + riscoHtml + oportHtml + '</div>' : '') +
-      '<div style="margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:10.5px;color:rgba(255,255,255,0.65);">' +
-        '<div>Gerada a partir dos números do painel' + (quando ? ' · ' + esc(quando) : '') + (dados.cached ? ' · em cache' : '') + (dados.modelo ? ' · ' + esc(dados.modelo) : '') + '</div>' +
-        '<button onclick="_fatCarregarAnaliseIA(window._fatResumoIA, true)" style="background:rgba(255,255,255,0.14);border:0;color:#fff;padding:5px 11px;border-radius:9999px;font-size:10.5px;font-weight:700;cursor:pointer;font-family:inherit;">Regerar</button>' +
+      '<div style="margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.15);font-size:10.5px;color:rgba(255,255,255,0.65);">' +
+        'Prioridades ordenadas pelo valor em risco — a ordem muda conforme os dados. Calculado no próprio app, sem IA e sem custo.' +
       '</div>' +
     '</div>';
 }
