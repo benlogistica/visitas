@@ -8246,7 +8246,7 @@ mark.search-hl {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.383-leitura-do-painel-por-regras',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.384-simulacao-usuario-super-admin',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -8453,9 +8453,35 @@ async function sincronizarSessaoComBanco() {
 function getCurrentUser() {
   const user = getSession();
   if (!user) return null;
-  // Modo simulação: admin pode testar como nutri (botão no home admin)
-  // NÃO afeta o user.id — só o perfil, pra passar pelos requireAuth() de telas do nutri
-  if (user.perfil === 'admin' && sessionStorage.getItem('SIMULAR_NUTRI') === '1') {
+
+  // Sprint 9.32.384: modo simulação é EXCLUSIVO do super admin.
+  // O gate mora aqui, e não só no botão: setar o sessionStorage à mão não adianta,
+  // porque `super_admin` vem do banco no login e é conferido aqui em toda leitura.
+  const ehSuper = user.perfil === 'admin' && user.super_admin === true;
+  if (!ehSuper) {
+    if (sessionStorage.getItem('SIMULAR_USER') || sessionStorage.getItem('SIMULAR_NUTRI')) {
+      sessionStorage.removeItem('SIMULAR_USER');
+      sessionStorage.removeItem('SIMULAR_NUTRI');
+    }
+    return user;
+  }
+
+  // Simulação de um usuário ESPECÍFICO: mesmo id → mesmas visitas, mesma agenda,
+  // mesmos números. É o app pelos olhos daquela pessoa.
+  const raw = sessionStorage.getItem('SIMULAR_USER');
+  if (raw) {
+    try {
+      const alvo = JSON.parse(raw);
+      if (alvo && alvo.id) {
+        return { ...alvo, _simulando: true, _simuladoPorId: user.id, _simuladoPorNome: user.nome };
+      }
+    } catch (e) {
+      sessionStorage.removeItem('SIMULAR_USER');
+    }
+  }
+
+  // Simulação genérica (legado): mantém o id do admin, só troca o perfil.
+  if (sessionStorage.getItem('SIMULAR_NUTRI') === '1') {
     return { ...user, perfil: 'nutricionista', _simulando: true };
   }
   return user;
@@ -10223,6 +10249,7 @@ window.handleInstalarApp = async function() {
 // Logout
 function logout() {
   sessionStorage.removeItem('SIMULAR_NUTRI');
+  sessionStorage.removeItem('SIMULAR_USER'); // Sprint 9.32.384
   // Sprint 9.32.103: limpa flash de notificação pendente ao sair
   // (evitava bug de "Hospital X atualizada" aparecer na tela de login após logout)
   sessionStorage.removeItem(AUTH_FLASH);
@@ -10231,22 +10258,76 @@ function logout() {
   window.location.hash = '#/login';
 }
 
-// === Modo simulação nutricionista (admin testando fluxo do nutri) ===
+// === Modo simulação — EXCLUSIVO do super admin (Sprint 9.32.384) ===
+// Serve pra enxergar o app pelos olhos de alguém da equipe e achar oportunidades
+// de melhoria. É SOMENTE LEITURA: toda escrita segue bloqueada por bloqueioSimulacao(),
+// então nada do que você fizer aqui altera dados — nem os seus, nem os dela.
 window.entrarModoSimulacaoNutri = function() {
   const user = getCurrentUserReal();
-  if (!user || user.perfil !== 'admin') {
-    alert('Apenas administradores podem usar o modo simulação.');
+  if (!isSuperAdmin(user)) {
+    alert('Apenas o super administrador pode usar o modo simulação.');
     return;
   }
+  sessionStorage.removeItem('SIMULAR_USER');
   sessionStorage.setItem('SIMULAR_NUTRI', '1');
-  setFlash('info', 'Modo simulação ativo — você está navegando como nutricionista.');
+  setFlash('info', 'Modo simulação ativo — navegando como nutricionista (genérico).');
   window.location.hash = '#/inicio';
-  // Força re-render pra mostrar a barra de simulação
   setTimeout(() => window.dispatchEvent(new HashChangeEvent('hashchange')), 10);
+};
+
+// Simula um usuário ESPECÍFICO (vê os dados dele, não um perfil genérico).
+window.entrarModoSimulacaoUsuario = async function(userId) {
+  const real = getCurrentUserReal();
+  if (!isSuperAdmin(real)) {
+    await showModalConfirmacao({
+      icone: 'lock', iconeCor: 'danger',
+      titulo: 'Acesso restrito',
+      subtitulo: 'Só o super administrador pode usar o modo simulação.',
+      btnConfirmar: 'Entendi', btnCancelar: '',
+    });
+    return;
+  }
+  if (!userId || userId === real.id) return;
+  try {
+    const { data, error } = await db
+      .from('usuarios')
+      .select('id, nome, cpf, email, perfil, super_admin, foto_url, status')
+      .eq('id', userId)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!data) throw new Error('Usuário não encontrado.');
+
+    const ok = await showModalConfirmacao({
+      icone: 'visibility', iconeCor: 'warning',
+      titulo: `Ver o app como ${data.nome}?`,
+      subtitulo: 'Você vai navegar exatamente como essa pessoa vê — mesmas visitas, mesma agenda, mesmos números. É somente leitura: nenhuma ação de escrita é permitida. Para sair, use o banner laranja no topo.',
+      btnConfirmar: 'Entrar no modo simulação',
+      btnCancelar: 'Cancelar',
+    });
+    if (!ok) return;
+
+    sessionStorage.removeItem('SIMULAR_NUTRI');
+    sessionStorage.setItem('SIMULAR_USER', JSON.stringify({
+      id: data.id, nome: data.nome, cpf: data.cpf, email: data.email,
+      perfil: data.perfil, super_admin: data.super_admin === true,
+      foto_url: data.foto_url, status: data.status,
+    }));
+    setFlash('info', `Simulando ${data.nome} — somente leitura.`);
+    window.location.hash = (data.perfil === 'admin') ? '#/admin' : '#/inicio';
+    setTimeout(() => window.dispatchEvent(new HashChangeEvent('hashchange')), 10);
+  } catch (err) {
+    await showModalConfirmacao({
+      icone: 'error', iconeCor: 'danger',
+      titulo: 'Não foi possível simular',
+      subtitulo: err.message || 'Tente novamente.',
+      btnConfirmar: 'OK', btnCancelar: '',
+    });
+  }
 };
 
 window.sairModoSimulacaoNutri = function() {
   sessionStorage.removeItem('SIMULAR_NUTRI');
+  sessionStorage.removeItem('SIMULAR_USER');
   setFlash('success', 'Modo simulação encerrado.');
   window.location.hash = '#/admin';
   setTimeout(() => window.dispatchEvent(new HashChangeEvent('hashchange')), 10);
@@ -17480,7 +17561,15 @@ async function carregarAdminEquipeDesktop() {
                <span class="material-symbols-rounded" style="font-size:17px;">person_off</span>
              </button>`;
 
+        // Sprint 9.32.384: "Ver como" — só aparece pro super admin, e nunca na própria conta
+        const btnSimular = (typeof isSuperAdmin === 'function' && isSuperAdmin(getCurrentUserReal()) && !souEu)
+          ? `<button onclick="event.stopPropagation();entrarModoSimulacaoUsuario('${u.id}');" title="Ver o app como esta pessoa (somente leitura)" style="height:30px;width:30px;border:0;background:var(--status-warning-bg,#FEF4E1);color:var(--status-warning-dark,#B45309);border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;" class="ds-table__btn">
+               <span class="material-symbols-rounded" style="font-size:17px;">visibility</span>
+             </button>`
+          : '';
+
         acoes = `
+          ${btnSimular}
           ${acoesAdmin}
           <button onclick="event.stopPropagation();editarCategoriaProfissional('${u.id}');" title="Trocar categoria" style="height:30px;width:30px;border:0;background:var(--neutral-100);color:var(--brand-navy);border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;" class="ds-table__btn">
             <span class="material-symbols-rounded" style="font-size:17px;">category</span>
@@ -21611,13 +21700,20 @@ function router() {
 function renderSimulacaoBar() {
   const existing = document.getElementById('simulacaoBar');
   const realUser = getCurrentUserReal();
-  const simulando = realUser && realUser.perfil === 'admin' && sessionStorage.getItem('SIMULAR_NUTRI') === '1';
+  // Sprint 9.32.384: só super admin, e agora sabe QUEM está sendo simulado
+  const ehSuper = !!(realUser && realUser.perfil === 'admin' && realUser.super_admin === true);
+  let alvoSim = null;
+  try { alvoSim = JSON.parse(sessionStorage.getItem('SIMULAR_USER') || 'null'); } catch (e) { alvoSim = null; }
+  const simulando = ehSuper && (!!(alvoSim && alvoSim.id) || sessionStorage.getItem('SIMULAR_NUTRI') === '1');
   if (!simulando) {
     if (existing) existing.remove();
     document.body.style.paddingTop = '';
     return;
   }
-  if (existing) return; // já renderizada
+  const chaveAlvo = (alvoSim && alvoSim.id) ? alvoSim.id : 'generico';
+  // Se trocou de pessoa simulada, recria a barra pra atualizar o nome
+  if (existing && existing.dataset.alvo === chaveAlvo) return;
+  if (existing) existing.remove();
   const bar = document.createElement('div');
   bar.id = 'simulacaoBar';
   bar.style.cssText = `
@@ -21627,10 +21723,15 @@ function renderSimulacaoBar() {
     font-family:var(--font-sans);font-size:12.5px;font-weight:600;
     box-shadow:0 2px 8px rgba(180,83,9,0.3);
   `;
+  bar.dataset.alvo = chaveAlvo;
+  const _escSim = (t) => String(t || '').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+  const textoAlvo = (alvoSim && alvoSim.nome)
+    ? `você está vendo o app como <strong>${_escSim(alvoSim.nome)}</strong> · somente leitura`
+    : 'você está vendo o app como nutricionista (genérico) · somente leitura';
   bar.innerHTML = `
     <span class="material-symbols-rounded" style="font-size:18px;">visibility</span>
     <div style="flex:1;line-height:1.3;">
-      <strong>Modo simulação</strong> — você (admin) está vendo o app como nutricionista.
+      <strong>Modo simulação</strong> — ${textoAlvo}.
     </div>
     <button onclick="sairModoSimulacaoNutri()" style="
       background:rgba(255,248,229,0.2);border:1px solid rgba(255,248,229,0.4);
@@ -40636,7 +40737,7 @@ window.rejeitarObjetivoPendente = async function(id) {
 let FAT_DATA = null;
 let _fatDataPromise = null;
 // __FAT_VERSION_START__ — substituído pelo atualizar_index.py com hash do JSON
-const FAT_DATA_VERSION = '5a1af0939b96';
+const FAT_DATA_VERSION = '67fcf8314dbe';
 // __FAT_VERSION_END__
 const FAT_DATA_URL = 'faturamento_data_inline.json?v=' + FAT_DATA_VERSION;
 
