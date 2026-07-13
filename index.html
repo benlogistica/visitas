@@ -8246,7 +8246,7 @@ mark.search-hl {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.397-fix-permissao-simular',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.400-roi-tres-camadas',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -25736,6 +25736,96 @@ function _perfLabelMes(ym) {
   return m ? `${ms[Number(m[2]) - 1]}/${m[1]}` : String(ym || '');
 }
 
+// Sprint 9.32.398: o filtro de datas virou componente reutilizável.
+// Antes era exclusivo do Performance; agora o ROI da Equipe usa o mesmo — mesma UX,
+// um lugar só pra corrigir.
+const _DF_CTX = {
+  perf: {
+    getPeriodo: () => String(window._perfPeriodo || '6m'),
+    aplicar:    (p) => _perfTrocarPeriodo(p),
+    getEscopo:  () => window._perfAnoEscopo,
+    setEscopo:  (v) => { window._perfAnoEscopo = v; },
+  },
+  roi: {
+    getPeriodo: () => String(window._roiEquipePeriodo || '6m'),
+    aplicar:    (p) => _roiEquipeTrocarPeriodo(p),
+    getEscopo:  () => window._roiAnoEscopo,
+    setEscopo:  (v) => { window._roiAnoEscopo = v; },
+  },
+};
+let _dfCtxAtivo = 'perf';   // qual tela abriu o calendário
+
+function _dfFiltroHtml(ctx, compacto = false) {
+  const C = _DF_CTX[ctx];
+  const p = C.getPeriodo();
+  const anos = [...new Set(_perfMesesDisponiveis().map(m => m.slice(0, 4)))].sort().reverse();
+  if (C.getEscopo() === undefined) {
+    C.setEscopo(p.startsWith('ano:') ? p.slice(4) : p.startsWith('mes:') ? p.slice(4, 8) : null);
+  }
+  const estCampo = `height:${compacto ? 32 : 34}px;padding:0 8px;border-radius:8px;border:1px solid var(--neutral-200);background:#fff;font-size:${compacto ? 11.5 : 12.5}px;font-family:inherit;color:var(--brand-navy);font-weight:600;cursor:pointer;`;
+  const ehCustom = p.startsWith('custom:');
+  const rotulo = ehCustom ? `${_perfCalBr(p.split(':')[1] || '')} → ${_perfCalBr(p.split(':')[2] || '')}` : '';
+  return `
+    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:10px;">
+      <select id="${ctx}SelAno" onchange="_dfTrocarAno('${ctx}', this.value)" style="${estCampo}">
+        <option value="">Todos os anos</option>
+        ${anos.map(a => `<option value="ano:${a}" ${C.getEscopo() === a ? 'selected' : ''}>${a}</option>`).join('')}
+      </select>
+      <select id="${ctx}SelMes" onchange="if(this.value) _DF_CTX['${ctx}'].aplicar(this.value)" style="${estCampo}">
+        ${_dfOpcoesMeses(ctx)}
+      </select>
+      <button type="button" id="${ctx}CustomBtn" onclick="_dfToggleCal('${ctx}')" title="Escolher intervalo no calendário"
+              style="height:${compacto ? 32 : 34}px;padding:0 10px;border-radius:8px;border:1px solid ${ehCustom ? 'var(--brand-navy)' : 'var(--neutral-200)'};background:${ehCustom ? 'var(--brand-navy)' : '#fff'};color:${ehCustom ? '#fff' : 'var(--neutral-600)'};cursor:pointer;display:inline-flex;align-items:center;gap:5px;font-size:${compacto ? 11.5 : 12.5}px;font-weight:600;font-family:inherit;">
+        <span class="material-symbols-rounded" style="font-size:17px;">calendar_month</span>
+        ${rotulo ? `<span>${rotulo}</span>` : ''}
+      </button>
+    </div>`;
+}
+
+function _dfOpcoesMeses(ctx) {
+  const C = _DF_CTX[ctx];
+  const p = C.getPeriodo();
+  const escopo = C.getEscopo();
+  const meses = _perfMesesDisponiveis().filter(m => !escopo || m.startsWith(escopo + '-'));
+  const ph = escopo ? `Mês de ${escopo}…` : 'Mês específico…';
+  return ['<option value="">' + ph + '</option>']
+    .concat(meses.map(m => `<option value="mes:${m}" ${p === 'mes:' + m ? 'selected' : ''}>${_perfLabelMes(m)}</option>`))
+    .join('');
+}
+
+window._dfTrocarAno = function(ctx, v) {
+  const C = _DF_CTX[ctx];
+  C.setEscopo(v ? String(v).slice(4) : null);
+  const sel = document.getElementById(ctx + 'SelMes');
+  if (sel) sel.innerHTML = _dfOpcoesMeses(ctx);
+  if (v) C.aplicar(v);
+};
+
+window._dfToggleCal = function(ctx) {
+  _dfCtxAtivo = ctx;
+  window._perfToggleCustom(ctx);
+};
+
+// Sincroniza os controles do contexto com o período atual (chamado pelos dois handlers)
+window._dfSincronizar = function(ctx, periodo) {
+  const C = _DF_CTX[ctx];
+  const pStr = String(periodo);
+  const ehCustom = pStr.startsWith('custom:');
+  const selMes = document.getElementById(ctx + 'SelMes');
+  if (selMes) selMes.value = pStr.startsWith('mes:') ? pStr : '';
+  const selAno = document.getElementById(ctx + 'SelAno');
+  if (selAno) selAno.value = C.getEscopo() ? ('ano:' + C.getEscopo()) : '';
+  if (!ehCustom && document.getElementById('perfCalPopover')) window._perfFecharCal();
+  const btn = document.getElementById(ctx + 'CustomBtn');
+  if (btn) {
+    btn.style.background = ehCustom ? 'var(--brand-navy)' : '#fff';
+    btn.style.color = ehCustom ? '#fff' : 'var(--neutral-600)';
+    btn.style.borderColor = ehCustom ? 'var(--brand-navy)' : 'var(--neutral-200)';
+    const lbl = ehCustom ? `${_perfCalBr(pStr.split(':')[1] || '')} → ${_perfCalBr(pStr.split(':')[2] || '')}` : '';
+    btn.innerHTML = `<span class="material-symbols-rounded" style="font-size:17px;">calendar_month</span>` + (lbl ? `<span>${lbl}</span>` : '');
+  }
+};
+
 function _perfFiltroDatasHtml(compacto = false) {
   const p = String(window._perfPeriodo || '6m');
   const anos = [...new Set(_perfMesesDisponiveis().map(m => m.slice(0, 4)))].sort().reverse();
@@ -25802,7 +25892,7 @@ function _perfCalIso(d) {
 // Antes ele era um filho absoluto dentro da barra de abas — que tem overflow:hidden,
 // então o popover era criado mas ficava RECORTADO (parecia que o clique não fazia nada).
 function _perfCalPintaBtn(aberto) {
-  const btn = document.getElementById('perfCustomBtn');
+  const btn = document.getElementById(_dfCtxAtivo + 'CustomBtn') || document.getElementById('perfCustomBtn');
   if (!btn) return;
   const ativo = aberto || String(window._perfPeriodo || '').startsWith('custom:');
   btn.style.background = ativo ? 'var(--brand-navy)' : '#fff';
@@ -25822,7 +25912,7 @@ window._perfFecharCal = function() {
 
 function _perfCalCliqueFora(e) {
   const pop = document.getElementById('perfCalPopover');
-  const btn = document.getElementById('perfCustomBtn');
+  const btn = document.getElementById(_dfCtxAtivo + 'CustomBtn') || document.getElementById('perfCustomBtn');
   if (!pop) { window._perfFecharCal(); return; }
   const alvo = e.target;
   if (pop.contains(alvo) || (btn && btn.contains(alvo))) return;
@@ -25833,12 +25923,14 @@ function _perfCalEsc(e) {
   if (e.key === 'Escape') window._perfFecharCal();
 }
 
-window._perfToggleCustom = function() {
+window._perfToggleCustom = function(ctx) {
+  if (ctx) _dfCtxAtivo = ctx;
+  const C = _DF_CTX[_dfCtxAtivo] || _DF_CTX.perf;
   if (document.getElementById('perfCalPopover')) { window._perfFecharCal(); return; }
-  const btn = document.getElementById('perfCustomBtn');
+  const btn = document.getElementById(_dfCtxAtivo + 'CustomBtn') || document.getElementById('perfCustomBtn');
   if (!btn) return;
 
-  const p = String(window._perfPeriodo || '');
+  const p = C.getPeriodo();
   const st = window._perfCal;
   if (p.startsWith('custom:')) {
     st.ini = p.split(':')[1] || null;
@@ -25900,7 +25992,8 @@ window._perfCalDia = function(iso) {
     // o 2º clique já é a confirmação — não tem botão de "aplicar"
     setTimeout(() => {
       window._perfFecharCal();
-      _perfTrocarPeriodo(`custom:${st.ini}:${st.fim}`);
+      const C = _DF_CTX[_dfCtxAtivo] || _DF_CTX.perf;
+      C.aplicar(`custom:${st.ini}:${st.fim}`);   // aplica na tela que abriu o calendário
     }, 240);
   }
 };
@@ -25972,6 +26065,7 @@ window._perfTrocarPeriodo = async function(periodo) {
     const ativo = (p === periodo);
     btn.className = 'review-tab' + (ativo ? ' is-active' : '');
   });
+  if (typeof _dfSincronizar === 'function') _dfSincronizar('perf', periodo);  // Sprint 9.32.398
   // Sprint 9.32.388: sincroniza mês, ano e o botão do calendário
   const _pStr = String(periodo);
   const _ehCustom = _pStr.startsWith('custom:');
@@ -26031,7 +26125,7 @@ function renderNutriPerformanceFallback() {
             <button class="review-tab ${periodo === '12m' ? 'is-active' : ''}" id="perfBtn-12m" onclick="_perfTrocarPeriodo('12m')" style="white-space:nowrap;flex-shrink:0;">12m</button>
             <button class="review-tab ${periodo === 'tudo' ? 'is-active' : ''}" id="perfBtn-tudo" onclick="_perfTrocarPeriodo('tudo')" style="white-space:nowrap;flex-shrink:0;">Tudo</button>
           </div>
-          ${_perfFiltroDatasHtml(true)}
+          ${_dfFiltroHtml('perf', true)}
         </div>
 
         <div id="perfContent">
@@ -26085,7 +26179,7 @@ function renderNutriPerformanceDesktop() {
           </div>
         </div>
         <!-- Sprint 9.32.389: fora da .review-tabs — ela tem overflow:hidden e recortava o calendário -->
-        ${_perfFiltroDatasHtml(false)}
+        ${_dfFiltroHtml('perf', false)}
       </div>
 
       <div id="perfContent">
@@ -42001,28 +42095,60 @@ async function _roiCalcularEquipe({ periodo = '6m' }) {
   // 2) Pega TODAS as visitas realizadas (não canceladas) com instituição
   const { data: visitasRaw, error: errVis } = await db
     .from('visitas')
-    .select('id, nutricionista_id, checkin_timestamp, instituicao_id, visita_realizada, cancelado_em, instituicoes(id, nome, cnpj, cidade, estado)');
+    .select('id, nutricionista_id, checkin_timestamp, data_visita, instituicao_id, visita_realizada, cancelado_em, flag_sem_checkin, flag_gps_divergente, checkin_manual, resumo, instituicoes(id, nome, cnpj, cidade, estado)')
+    .limit(5000);   // Sprint 9.32.398: sem isso o PostgREST corta em 1000 e o ROI passa a mentir quando a base crescer
   if (errVis) return { erro: errVis.message };
 
+  // Sprint 9.32.398 — mesmos dois bugs que o Performance tinha:
+  //  (1) descartar visita_realizada===false fazia o HOSPITAL sumir da contagem de cobertura,
+  //      mesmo tendo havido check-in (a pessoa esteve lá). Agora conta à parte como tentativa.
+  //  (2) o período usava checkin_timestamp, que no check-in retroativo é a data do REGISTRO,
+  //      não a da visita. A data real é data_visita.
   const visitas = (visitasRaw || []).filter(v =>
-    v.checkin_timestamp && !v.cancelado_em && v.visita_realizada !== false
+    v.checkin_timestamp && !v.cancelado_em
   );
+  const _dataRealRoi = (v) => v.data_visita ? new Date(v.data_visita + 'T12:00:00') : new Date(v.checkin_timestamp);
 
-  // 3) Calcula janelas de tempo: período atual + período anterior equivalente (pra delta)
+  // 3) Janelas de tempo. Sprint 9.32.398: aceita mês/ano/intervalo, igual ao Performance.
   const agora = new Date();
   const subMesesData = (n) => new Date(agora.getFullYear(), agora.getMonth() - n + 1, 1);
-  let dataInicio = null, dataInicioAnterior = null;
-  if (periodo === '3m')  { dataInicio = subMesesData(3);  dataInicioAnterior = subMesesData(6); }
-  if (periodo === '6m')  { dataInicio = subMesesData(6);  dataInicioAnterior = subMesesData(12); }
-  if (periodo === '12m') { dataInicio = subMesesData(12); dataInicioAnterior = subMesesData(24); }
-  // 'tudo' → sem comparativo
+  let dataInicio = null, dataFim = null, dataInicioAnterior = null;
+  const pStr = String(periodo);
+  if (pStr === '3m')  { dataInicio = subMesesData(3);  dataInicioAnterior = subMesesData(6); }
+  else if (pStr === '6m')  { dataInicio = subMesesData(6);  dataInicioAnterior = subMesesData(12); }
+  else if (pStr === '12m') { dataInicio = subMesesData(12); dataInicioAnterior = subMesesData(24); }
+  else if (pStr.startsWith('mes:')) {
+    const [a, m] = pStr.slice(4).split('-').map(Number);
+    if (a && m) {
+      dataInicio = new Date(a, m - 1, 1, 0, 0, 0, 0);
+      dataFim = new Date(a, m, 0, 23, 59, 59, 999);
+      dataInicioAnterior = new Date(a, m - 2, 1, 0, 0, 0, 0);  // mês anterior = comparativo natural
+    }
+  } else if (pStr.startsWith('ano:')) {
+    const a = Number(pStr.slice(4));
+    if (a) {
+      dataInicio = new Date(a, 0, 1, 0, 0, 0, 0);
+      dataFim = new Date(a, 11, 31, 23, 59, 59, 999);
+      dataInicioAnterior = new Date(a - 1, 0, 1, 0, 0, 0, 0);  // ano anterior
+    }
+  } else if (pStr.startsWith('custom:')) {
+    const partes = pStr.split(':');
+    if (partes[1]) dataInicio = new Date(partes[1] + 'T00:00:00');
+    if (partes[2]) dataFim = new Date(partes[2] + 'T23:59:59');
+    if (dataInicio && !dataFim) dataFim = agora;
+  }
+  // 'tudo' → sem filtro nem comparativo
 
-  const visitasAtual = dataInicio
-    ? visitas.filter(v => new Date(v.checkin_timestamp) >= dataInicio)
-    : visitas;
+  const _dentro = (v) => {
+    const d = _dataRealRoi(v);
+    if (dataInicio && d < dataInicio) return false;
+    if (dataFim && d > dataFim) return false;
+    return true;
+  };
+  const visitasAtual = (dataInicio || dataFim) ? visitas.filter(_dentro) : visitas;
   const visitasAnt = dataInicioAnterior
     ? visitas.filter(v => {
-        const dt = new Date(v.checkin_timestamp);
+        const dt = _dataRealRoi(v);
         return dt >= dataInicioAnterior && dt < dataInicio;
       })
     : [];
@@ -42106,6 +42232,94 @@ async function _roiCalcularEquipe({ periodo = '6m' }) {
   const anterior = calcularMetricas(visitasAnt);
 
   // 6) Ranking por nutri (com deltas vs período anterior)
+  /* ═══ Sprint 9.32.400 — TRÊS CAMADAS ═══════════════════════════════════════
+     O faturamento da carteira é HERANÇA: o hospital já faturava antes do vendedor
+     chegar, e às vezes a conta foi designada pelos donos. Ranquear por isso premia
+     quem recebeu a carteira boa, não quem trabalha. Então separamos:
+
+       TERRITÓRIO  (exibido, NÃO ranqueia) — faturamento da carteira, hospitais
+       ESFORÇO     (o que ele controla)    — visitas, cobertura, R$/visita
+       RESULTADO   (o que ele MUDOU)       — Δ faturamento, ativados, reativados, venda PF
+
+     O ranking usa RESULTADO. É a única camada em que o mérito é dele.
+     ═══════════════════════════════════════════════════════════════════════════ */
+
+  // Faturamento mês a mês por CNPJ (clientes_mes tem TODOS os clientes, não só o top 50)
+  const fatMesPorCnpj = {};
+  (FAT_DATA.clientes_mes || []).forEach(cm => {
+    const cn = _perfNormalizaCnpj(cm['CNPJ/CPF']);
+    if (!cn) return;
+    if (!fatMesPorCnpj[cn]) fatMesPorCnpj[cn] = {};
+    fatMesPorCnpj[cn][cm.ano_mes] = (fatMesPorCnpj[cn][cm.ano_mes] || 0) + (cm.faturamento || 0);
+  });
+  const _mesesEntre = (ini, fim) => {
+    const set = new Set();
+    if (!ini) return null;   // null = sem recorte (tudo)
+    const d = new Date(ini.getFullYear(), ini.getMonth(), 1);
+    const f = fim || new Date();
+    while (d <= f) {
+      set.add(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+      d.setMonth(d.getMonth() + 1);
+    }
+    return set;
+  };
+  const mesesPeriodo  = _mesesEntre(dataInicio, dataFim);
+  const mesesAnterior = _mesesEntre(dataInicioAnterior, dataInicio);
+  const _somaFat = (cn, meses) => {
+    const porMes = fatMesPorCnpj[cn];
+    if (!porMes) return 0;
+    if (!meses) return Object.values(porMes).reduce((a, b) => a + b, 0);
+    let t = 0;
+    meses.forEach(m => { t += (porMes[m] || 0); });
+    return t;
+  };
+  // Já comprou ALGUMA VEZ antes do período anterior? (separa "novo" de "reativado")
+  const _comprouAntesDe = (cn, meses) => {
+    const porMes = fatMesPorCnpj[cn];
+    if (!porMes || !meses) return false;
+    const minMes = [...meses].sort()[0];
+    return Object.keys(porMes).some(m => m < minMes && porMes[m] > 0);
+  };
+
+  // Venda PF gerada pelo trabalho de campo (funil) — por visitador
+  const pfPorVisitador = {};
+  try {
+    let qf = db.from('funil_indicacoes')
+      .select('visitador_id, valor_venda, data_venda, status, teste')
+      .eq('status', 'vendida').eq('teste', false).limit(2000);
+    const { data: funilRows } = await qf;
+    (funilRows || []).forEach(f => {
+      if (!f.visitador_id || !f.valor_venda) return;
+      if (mesesPeriodo && f.data_venda) {
+        const ym = String(f.data_venda).slice(0, 7);
+        if (!mesesPeriodo.has(ym)) return;
+      }
+      pfPorVisitador[f.visitador_id] = (pfPorVisitador[f.visitador_id] || 0) + Number(f.valor_venda);
+    });
+  } catch (e) { /* funil pode não existir ainda — não quebra o ROI */ }
+
+  // Carteira histórica (todos os hospitais que ele já visitou alguma vez) → base da cobertura
+  const carteiraPorNutri = {};
+  visitas.forEach(v => {
+    const nId = v.nutricionista_id;
+    if (!nId || !v.instituicao_id) return;
+    if (!carteiraPorNutri[nId]) carteiraPorNutri[nId] = new Set();
+    carteiraPorNutri[nId].add(v.instituicao_id);
+  });
+
+  // Disciplina (higiene do registro — NÃO entra no ranking)
+  const discPorNutri = {};
+  visitasAtual.forEach(v => {
+    const nId = v.nutricionista_id;
+    if (!nId) return;
+    if (!discPorNutri[nId]) discPorNutri[nId] = { total: 0, checkinOk: 0, comRelatorio: 0, naoRealizadas: 0 };
+    const d = discPorNutri[nId];
+    d.total++;
+    if (!v.flag_sem_checkin && !v.flag_gps_divergente) d.checkinOk++;
+    if (v.resumo && String(v.resumo).trim().length > 20) d.comRelatorio++;
+    if (v.visita_realizada === false) d.naoRealizadas++;
+  });
+
   const ranking = (nutris || []).map(n => {
     const nId = n.id;
     const cnpjSet = atual.cnpjsPorNutri[nId] || new Set();
@@ -42120,6 +42334,32 @@ async function _roiCalcularEquipe({ periodo = '6m' }) {
     const visitasAnt_n = anterior.visitasPorNutri[nId] || 0;
     const nInst = (atual.instPorNutri[nId] || new Set()).size;
 
+    // ── RESULTADO ATRIBUÍVEL: o que mudou porque ele esteve lá ──
+    let deltaFat = 0, ativados = 0, reativados = 0;
+    cnpjSet.forEach(cn => {
+      const fatP = _somaFat(cn, mesesPeriodo);
+      const fatA = _somaFat(cn, mesesAnterior);
+      deltaFat += (fatP - fatA);
+      if (fatA === 0 && fatP > 0) {
+        if (_comprouAntesDe(cn, mesesAnterior)) reativados++;   // parou e voltou
+        else ativados++;                                        // nunca tinha comprado
+      }
+    });
+    const receitaPF = pfPorVisitador[nId] || 0;
+    // Ranking = R$ que ele efetivamente moveu. Pode ser negativo (carteira encolheu).
+    const resultado = deltaFat + receitaPF;
+
+    // ── ESFORÇO ──
+    const carteira = (carteiraPorNutri[nId] || new Set()).size;
+    const cobertura = carteira > 0 ? (nInst / carteira) * 100 : 0;
+    const rsPorVisita = visitas_n > 0 ? fatAtual / visitas_n : 0;
+
+    // ── DISCIPLINA (fora do ranking) ──
+    const d = discPorNutri[nId] || { total: 0, checkinOk: 0, comRelatorio: 0, naoRealizadas: 0 };
+    const pctCheckin   = d.total > 0 ? (d.checkinOk / d.total) * 100 : 0;
+    const pctRelatorio = d.total > 0 ? (d.comRelatorio / d.total) * 100 : 0;
+    const pctNaoRealiz = d.total > 0 ? (d.naoRealizadas / d.total) * 100 : 0;
+
     return {
       id: nId,
       nome: n.nome,
@@ -42128,17 +42368,22 @@ async function _roiCalcularEquipe({ periodo = '6m' }) {
       visitasAnt: visitasAnt_n,
       instituicoes: nInst,
       inst_com_match: cnpjSet.size,
-      faturamento: fatAtual,
+      faturamento: fatAtual,          // TERRITÓRIO (herança — não ranqueia)
       faturamentoAnt: fatAnt,
       ultimaVisita: atual.ultimaVisitaPorNutri[nId] || null,
       deltaVisitasPct: visitasAnt_n > 0 ? ((visitas_n - visitasAnt_n) / visitasAnt_n) * 100 : null,
       deltaFatPct: fatAnt > 0 ? ((fatAtual - fatAnt) / fatAnt) * 100 : null,
-      serieMensal: calcularSerie(nId),  // Sprint 9.32.46b: visitas mês a mês pra sparkline
+      serieMensal: calcularSerie(nId),
+      // Sprint 9.32.400
+      carteira, cobertura, rsPorVisita,
+      deltaFat, ativados, reativados, receitaPF, resultado,
+      pctCheckin, pctRelatorio, pctNaoRealiz,
     };
   });
 
   const rankingAtivo = ranking.filter(r => r.visitas > 0);
-  rankingAtivo.sort((a, b) => (b.faturamento - a.faturamento) || (b.visitas - a.visitas));
+  // Sprint 9.32.400: ranqueia por RESULTADO ATRIBUÍVEL, não por tamanho da carteira.
+  rankingAtivo.sort((a, b) => (b.resultado - a.resultado) || (b.visitas - a.visitas));
 
   // 7) Top hospitais cobertos (com última visita)
   const topHospitais = Object.keys(atual.cnpjParaFat).map(cn => ({
@@ -42352,12 +42597,13 @@ function _roiRenderEquipe() {
       <div style="display:grid;grid-template-columns:40px 1fr 100px 70px 70px 100px 130px 80px;gap:10px;padding:10px 14px;font-size:10.5px;color:var(--neutral-500);text-transform:uppercase;letter-spacing:0.4px;font-weight:700;border-bottom:1px solid var(--neutral-200);">
         <div>#</div>
         <div>Profissional</div>
-        <div style="text-align:center;">Tendência</div>
         <div style="text-align:right;">Visitas</div>
-        <div style="text-align:right;">Hospitais</div>
-        <div style="text-align:right;">Última</div>
-        <div style="text-align:right;">Faturamento</div>
-        <div style="text-align:right;">vs. ant.</div>
+        <div style="text-align:right;" title="% dos hospitais da carteira dele que ele visitou no período">Cobertura</div>
+        <div style="text-align:right;" title="Faturamento da carteira ÷ visitas">R$/visita</div>
+        <div style="text-align:right;" title="Hospitais que passaram a comprar / voltaram a comprar">Ativou</div>
+        <div style="text-align:right;" title="Venda pessoa física gerada pelo trabalho de campo (funil)">Venda PF</div>
+        <div style="text-align:right;" title="Faturamento da carteira — é herança do território, não produção. Não ranqueia.">Território</div>
+        <div style="text-align:right;" title="Δ faturamento + venda PF. É o que ele efetivamente moveu.">Resultado</div>
       </div>
       ${ranking.map((r, i) => {
         const pct = maxFat > 0 ? (r.faturamento / maxFat) * 100 : 0;
@@ -42366,21 +42612,25 @@ function _roiRenderEquipe() {
         const medalha = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '';
         const corUlt = corDataRelativa(r.ultimaVisita);
         return `
-          <div style="display:grid;grid-template-columns:40px 1fr 100px 70px 70px 100px 130px 80px;gap:10px;padding:12px 14px;align-items:center;border-bottom:1px solid var(--neutral-100);position:relative;">
+          <div style="display:grid;grid-template-columns:40px 1fr 70px 85px 95px 85px 100px 110px 120px;gap:10px;padding:12px 14px;align-items:center;border-bottom:1px solid var(--neutral-100);position:relative;">
             <div style="position:absolute;left:0;top:0;bottom:0;width:${pct}%;background:linear-gradient(90deg,rgba(139,198,63,0.06) 0%,rgba(139,198,63,0.01) 100%);pointer-events:none;z-index:0;"></div>
             <div style="position:relative;z-index:1;font-family:var(--font-mono);font-weight:700;color:var(--neutral-500);font-size:13px;">${medalha || (i + 1)}</div>
             <div style="position:relative;z-index:1;display:flex;align-items:center;gap:10px;min-width:0;">
               <div style="width:32px;height:32px;border-radius:50%;background:${fotoUrl ? `url('${fotoUrl}') center/cover` : 'linear-gradient(135deg,#0A1F5C,#1D4ED8)'};color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;">
                 ${fotoUrl ? '' : iniciais_}
               </div>
-              <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;">${(r.nome || '').replace(/</g,'&lt;')}</div>
+              <div style="min-width:0;">
+                <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${(r.nome || '').replace(/</g,'&lt;')}</div>
+                <div style="font-size:10px;color:${corUlt};font-weight:600;">${fmtRelativo(r.ultimaVisita)}</div>
+              </div>
             </div>
-            <div style="position:relative;z-index:1;text-align:center;" title="Visitas mês a mês — verde subindo, laranja descendo">${gerarSparkline(r.serieMensal)}</div>
             <div style="position:relative;z-index:1;text-align:right;font-family:var(--font-mono);font-weight:700;color:var(--brand-navy);font-size:13px;">${r.visitas}</div>
-            <div style="position:relative;z-index:1;text-align:right;font-family:var(--font-mono);font-size:12px;color:var(--neutral-600);">${r.instituicoes}</div>
-            <div style="position:relative;z-index:1;text-align:right;font-family:var(--font-mono);font-size:11.5px;color:${corUlt};font-weight:700;">${fmtRelativo(r.ultimaVisita)}</div>
-            <div style="position:relative;z-index:1;text-align:right;font-family:var(--font-mono);font-weight:700;color:var(--brand-navy);font-size:13px;">${_perfFmtMoeda(r.faturamento)}</div>
-            <div style="position:relative;z-index:1;text-align:right;">${deltaBadge(r.deltaFatPct) || '<span style="color:#9CA3AF;font-size:11px;">—</span>'}</div>
+            <div style="position:relative;z-index:1;text-align:right;font-family:var(--font-mono);font-size:12px;color:${r.cobertura >= 70 ? 'var(--status-success)' : r.cobertura >= 40 ? 'var(--status-warning)' : 'var(--status-danger)'};font-weight:700;" title="${r.instituicoes} de ${r.carteira} hospitais da carteira">${r.cobertura.toFixed(0)}%</div>
+            <div style="position:relative;z-index:1;text-align:right;font-family:var(--font-mono);font-size:11.5px;color:var(--neutral-600);">${_perfFmtMoeda(r.rsPorVisita)}</div>
+            <div style="position:relative;z-index:1;text-align:right;font-family:var(--font-mono);font-size:12px;font-weight:700;color:${(r.ativados + r.reativados) > 0 ? 'var(--status-success)' : 'var(--neutral-400)'};" title="${r.ativados} novo(s) · ${r.reativados} reativado(s)">${r.ativados + r.reativados > 0 ? '+' + (r.ativados + r.reativados) : '—'}</div>
+            <div style="position:relative;z-index:1;text-align:right;font-family:var(--font-mono);font-size:12px;font-weight:700;color:${r.receitaPF > 0 ? '#1D4ED8' : 'var(--neutral-400)'};">${r.receitaPF > 0 ? _perfFmtMoeda(r.receitaPF) : '—'}</div>
+            <div style="position:relative;z-index:1;text-align:right;font-family:var(--font-mono);font-size:12px;color:var(--neutral-500);" title="Faturamento da carteira — herança do território, não produção">${_perfFmtMoeda(r.faturamento)}</div>
+            <div style="position:relative;z-index:1;text-align:right;font-family:var(--font-mono);font-weight:700;font-size:13px;color:${r.resultado > 0 ? 'var(--status-success)' : r.resultado < 0 ? 'var(--status-danger)' : 'var(--neutral-400)'};">${r.resultado === 0 ? '—' : (r.resultado > 0 ? '+' : '') + _perfFmtMoeda(r.resultado)}</div>
           </div>
         `;
       }).join('')}
@@ -42505,18 +42755,58 @@ function _roiRenderEquipe() {
     `;
   }
 
+  // Sprint 9.32.400: DISCIPLINA — higiene do registro. Fica FORA do ranking de propósito:
+  // 100% de check-in com zero resultado não é produtividade, é organização.
+  let disciplinaHtml = '';
+  const rkDisc = (ranking || []).filter(r => r.visitas > 0);
+  if (rkDisc.length > 0) {
+    disciplinaHtml = `
+      <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:14px;padding:14px 4px;margin-top:18px;">
+        <div style="margin:0 16px 10px;">
+          <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:14.5px;display:flex;align-items:center;gap:8px;">
+            <span class="material-symbols-rounded" style="font-size:19px;color:var(--neutral-500);">fact_check</span>
+            Disciplina de registro
+          </div>
+          <div style="font-size:11.5px;color:var(--neutral-600);margin-top:2px;line-height:1.45;">
+            Qualidade do registro, <strong>não</strong> performance — por isso não entra no ranking. Serve pra confiar (ou não) nos números acima.
+          </div>
+        </div>
+        <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;"><div style="min-width:520px;">
+        <div style="display:grid;grid-template-columns:1fr 110px 120px 120px;gap:10px;padding:8px 16px;font-size:10.5px;color:var(--neutral-500);text-transform:uppercase;letter-spacing:0.4px;font-weight:700;border-bottom:1px solid var(--neutral-200);">
+          <div>Profissional</div>
+          <div style="text-align:right;" title="Visitas com check-in GPS válido (sem divergência)">Check-in ok</div>
+          <div style="text-align:right;" title="Visitas com relatório preenchido">Com relatório</div>
+          <div style="text-align:right;" title="Foi até o local mas a visita não se realizou">Não realizadas</div>
+        </div>
+        ${rkDisc.map(r => {
+          const cor = (v, bom, medio) => v >= bom ? 'var(--status-success)' : v >= medio ? 'var(--status-warning)' : 'var(--status-danger)';
+          return `
+          <div style="display:grid;grid-template-columns:1fr 110px 120px 120px;gap:10px;padding:10px 16px;align-items:center;border-bottom:1px solid var(--neutral-100);font-size:12.5px;">
+            <div style="font-weight:600;color:var(--brand-navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${(r.nome || '').replace(/</g,'&lt;')}</div>
+            <div style="text-align:right;font-family:var(--font-mono);font-weight:700;color:${cor(r.pctCheckin, 90, 70)};">${r.pctCheckin.toFixed(0)}%</div>
+            <div style="text-align:right;font-family:var(--font-mono);font-weight:700;color:${cor(r.pctRelatorio, 80, 50)};">${r.pctRelatorio.toFixed(0)}%</div>
+            <div style="text-align:right;font-family:var(--font-mono);font-weight:700;color:${r.pctNaoRealiz <= 5 ? 'var(--status-success)' : r.pctNaoRealiz <= 15 ? 'var(--status-warning)' : 'var(--status-danger)'};">${r.pctNaoRealiz.toFixed(0)}%</div>
+          </div>`;
+        }).join('')}
+        </div></div>
+      </div>`;
+  }
+
   el.innerHTML = `
     ${kpisHtml}
     <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:14px;padding:14px 4px;">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 16px 6px;">
         <div>
           <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:14.5px;">Ranking da equipe</div>
-          <div style="font-size:11.5px;color:var(--neutral-600);margin-top:2px;">Ordenado por faturamento dos hospitais visitados. Tendência compara com período anterior equivalente.</div>
+          <div style="font-size:11.5px;color:var(--neutral-600);margin-top:2px;line-height:1.45;">
+            Ordenado por <strong>Resultado</strong> — Δ faturamento da carteira + venda PF. <strong>Território</strong> é o faturamento herdado do hospital: aparece, mas <strong>não ranqueia</strong>, porque a conta já faturava antes do vendedor chegar.
+          </div>
         </div>
         <a href="#/admin/mapear-cnpjs" style="font-size:11.5px;color:var(--brand-lime);text-decoration:none;font-weight:600;white-space:nowrap;">+ Mapear CNPJs →</a>
       </div>
       ${rankingHtml}
     </div>
+    ${disciplinaHtml}
     ${esfriandoHtml}
     ${oportunidadesHtml}
     ${semRetornoHtml}
@@ -42531,6 +42821,7 @@ window._roiEquipeTrocarPeriodo = async function(p) {
     const b = document.getElementById('roiEquipeBtn-' + x);
     if (b) b.className = 'review-tab' + (x === p ? ' is-active' : '');
   });
+  if (typeof _dfSincronizar === 'function') _dfSincronizar('roi', p);  // Sprint 9.32.398
   _roiRenderEquipe();
   const state = await _roiCalcularEquipe({ periodo: p });
   window._roiEquipeState = state;
@@ -42570,6 +42861,7 @@ function renderAdminRoiEquipe() {
             <button class="review-tab ${periodo === '12m' ? 'is-active' : ''}" id="roiEquipeBtn-12m" onclick="_roiEquipeTrocarPeriodo('12m')">12m</button>
             <button class="review-tab ${periodo === 'tudo' ? 'is-active' : ''}" id="roiEquipeBtn-tudo" onclick="_roiEquipeTrocarPeriodo('tudo')">Tudo</button>
           </div>
+          ${_dfFiltroHtml('roi', true)}
         </div>
         <div id="roiEquipeContent"></div>
       </main>
@@ -42611,6 +42903,7 @@ function renderAdminRoiEquipeDesktop() {
             <button class="review-tab ${periodo === '12m' ? 'is-active' : ''}" id="roiEquipeBtn-12m" onclick="_roiEquipeTrocarPeriodo('12m')">12m</button>
             <button class="review-tab ${periodo === 'tudo' ? 'is-active' : ''}" id="roiEquipeBtn-tudo" onclick="_roiEquipeTrocarPeriodo('tudo')">Tudo</button>
           </div>
+          ${_dfFiltroHtml('roi', false)}
         </div>
       </div>
       <div id="roiEquipeContent"></div>
@@ -57334,6 +57627,33 @@ async function funilListarInstituicoes() {
   return data || [];
 }
 
+// Sprint 9.32.399: quem visita esse local pela B&N.
+// Deduzido das visitas reais: pega quem mais visitou, e desempata pela visita mais recente.
+async function funilVisitadorDoLocal(instId) {
+  if (!instId) return null;
+  const { data, error } = await db.from('visitas')
+    .select('nutricionista_id, data_visita, checkin_timestamp, usuarios:nutricionista_id(id, nome)')
+    .eq('instituicao_id', instId)
+    .not('checkin_timestamp', 'is', null)
+    .is('cancelado_em', null)
+    .limit(500);
+  if (error || !data || data.length === 0) return null;
+
+  const porNutri = {};
+  data.forEach(v => {
+    const id = v.nutricionista_id;
+    if (!id) return;
+    if (!porNutri[id]) {
+      porNutri[id] = { id, nome: v.usuarios?.nome || '—', visitas: 0, ultima: null };
+    }
+    porNutri[id].visitas++;
+    const d = v.data_visita ? new Date(v.data_visita + 'T12:00:00') : new Date(v.checkin_timestamp);
+    if (!porNutri[id].ultima || d > porNutri[id].ultima) porNutri[id].ultima = d;
+  });
+  const lista = Object.values(porNutri).sort((a, b) => b.visitas - a.visitas || b.ultima - a.ultima);
+  return { principal: lista[0], todos: lista };
+}
+
 async function funilProfissionaisDoLocal(instId) {
   if (!instId) return [];
   const { data } = await db.from('profissionais')
@@ -57344,7 +57664,7 @@ async function funilProfissionaisDoLocal(instId) {
 async function funilListar({ apenasMinhas = false, incluirTeste = null } = {}) {
   const user = getCurrentUser();
   let q = db.from('funil_indicacoes')
-    .select('*, instituicoes(id, nome, cidade), profissionais(id, nome, profissao), usuarios:atendente_id(id, nome), funil_itens(id, produto_descricao, quantidade)')
+    .select('*, instituicoes(id, nome, cidade), profissionais(id, nome, profissao), usuarios:atendente_id(id, nome), visitador:visitador_id(id, nome), funil_itens(id, produto_descricao, quantidade)')
     .order('data_indicacao', { ascending: false })
     .limit(500);
   if (apenasMinhas && user) q = q.eq('atendente_id', user.id);
@@ -57402,6 +57722,29 @@ function funilRanking(linhas) {
     ...p,
     conversao: p.indicacoes > 0 ? (p.vendas / p.indicacoes) * 100 : 0,
     ticket: p.vendas > 0 ? p.receita / p.vendas : 0,
+  })).sort((a, b) => b.receita - a.receita || b.vendas - a.vendas);
+}
+
+/* Sprint 9.32.399: ranking por VISITADOR — o mérito indireto do vendedor.
+   O vendedor trabalha a nutricionista do hospital; ela indica; quem compra é o CPF do
+   paciente. Esse valor nunca aparecia no faturamento dele, porque não é o CNPJ do hospital.
+   Aqui ele aparece. */
+function funilRankingVisitador(linhas) {
+  const porVis = {};
+  linhas.forEach(r => {
+    const nome = r.visitador?.nome || r.visitador_nome;
+    if (!nome) return;
+    const chave = r.visitador_id || ('nome:' + nome);
+    if (!porVis[chave]) porVis[chave] = { nome, indicacoes: 0, vendas: 0, receita: 0, locais: new Set() };
+    const p = porVis[chave];
+    p.indicacoes++;
+    if (r.instituicoes?.nome) p.locais.add(r.instituicoes.nome);
+    if (r.status === 'vendida') { p.vendas++; p.receita += Number(r.valor_venda || 0); }
+  });
+  return Object.values(porVis).map(p => ({
+    ...p,
+    locais: p.locais.size,
+    conversao: p.indicacoes > 0 ? (p.vendas / p.indicacoes) * 100 : 0,
   })).sort((a, b) => b.receita - a.receita || b.vendas - a.vendas);
 }
 
@@ -57631,6 +57974,8 @@ window.funilAbrirModal = async function() {
             ${insts.map(i => `<option value="${i.id}">${esc(i.nome)}${i.cidade ? ' · ' + esc(i.cidade) : ''}</option>`).join('')}
           </select>
           <div style="font-size:10.5px;color:var(--neutral-500);margin-top:4px;">Ao escolher o local, a lista de profissionais é filtrada.</div>
+          <!-- Sprint 9.32.399: quem da B&N visita esse local -->
+          <div id="fnVisitador" style="display:none;margin-top:8px;"></div>
         </div>
         <div class="report-field">
           <label>Quem indicou <span style="color:var(--status-danger)">*</span></label>
@@ -57687,14 +58032,56 @@ window.funilToggleVenda = function() {
 
 window.funilTrocarLocal = async function(instId) {
   const sel = document.getElementById('fnProf');
+  const boxVis = document.getElementById('fnVisitador');
+  window._funilVisitador = null;
   if (!sel) return;
-  if (!instId) { sel.innerHTML = '<option value="">Escolha o local primeiro…</option>'; return; }
+  if (!instId) {
+    sel.innerHTML = '<option value="">Escolha o local primeiro…</option>';
+    if (boxVis) boxVis.style.display = 'none';
+    return;
+  }
   sel.innerHTML = '<option value="">Carregando…</option>';
-  const profs = await funilProfissionaisDoLocal(instId);
+  if (boxVis) {
+    boxVis.style.display = '';
+    boxVis.innerHTML = '<span style="color:var(--neutral-500);font-size:11.5px;">Buscando o visitador…</span>';
+  }
+
   const esc = t => String(t || '').replace(/</g, '&lt;');
+  const [profs, vis] = await Promise.all([
+    funilProfissionaisDoLocal(instId),
+    funilVisitadorDoLocal(instId),
+  ]);
+
   sel.innerHTML = profs.length
     ? '<option value="">Selecione…</option>' + profs.map(pf => `<option value="${pf.id}">${esc(pf.nome)}${pf.profissao ? ' · ' + esc(pf.profissao) : ''}</option>`).join('')
     : '<option value="">Nenhum profissional cadastrado neste local</option>';
+
+  // Sprint 9.32.399: mostra QUEM da B&N visita esse local (e guarda pra salvar junto)
+  if (boxVis) {
+    if (vis && vis.principal) {
+      window._funilVisitador = { id: vis.principal.id, nome: vis.principal.nome };
+      const outros = vis.todos.length - 1;
+      const ult = vis.principal.ultima
+        ? vis.principal.ultima.toLocaleDateString('pt-BR')
+        : '';
+      boxVis.innerHTML = `
+        <div style="display:flex;align-items:center;gap:8px;background:var(--brand-lime-50,#F4F9EA);border:1px solid rgba(139,198,63,0.35);border-radius:9px;padding:9px 11px;">
+          <span class="material-symbols-rounded" style="font-size:17px;color:var(--brand-lime-dark,#6FA62E);">badge</span>
+          <div style="flex:1;min-width:0;font-size:11.5px;line-height:1.4;color:var(--neutral-700);">
+            Visitador deste local: <strong style="color:var(--brand-navy);">${esc(vis.principal.nome)}</strong>
+            <div style="font-size:10.5px;color:var(--neutral-500);">
+              ${vis.principal.visitas} visita${vis.principal.visitas === 1 ? '' : 's'}${ult ? ' · última em ' + ult : ''}${outros > 0 ? ` · +${outros} outro${outros === 1 ? '' : 's'}` : ''}
+            </div>
+          </div>
+        </div>`;
+    } else {
+      boxVis.innerHTML = `
+        <div style="display:flex;align-items:center;gap:8px;background:var(--neutral-100);border-radius:9px;padding:9px 11px;font-size:11.5px;color:var(--neutral-600);">
+          <span class="material-symbols-rounded" style="font-size:16px;color:var(--neutral-400);">person_off</span>
+          Nenhum visitador registrado neste local ainda.
+        </div>`;
+    }
+  }
 };
 
 window.funilSalvar = async function() {
@@ -57720,6 +58107,10 @@ window.funilSalvar = async function() {
     profissional_id: profId,
     profissional_nome: profSel && profSel.selectedIndex > 0 ? profSel.options[profSel.selectedIndex].text.split(' · ')[0] : null,
     forma_desconto: v('fnDesc') || null,
+    // Sprint 9.32.399: guarda o visitador — é o que permite medir a venda PF que o
+    // trabalho de campo do vendedor gerou indiretamente
+    visitador_id: window._funilVisitador?.id || null,
+    visitador_nome: window._funilVisitador?.nome || null,
     status: jaVendeu ? 'vendida' : 'indicada',
     data_venda: jaVendeu ? v('fnData') : null,
     valor_venda: jaVendeu ? valor : null,
@@ -57817,6 +58208,17 @@ function renderFunilAdmin() {
       </div>
       <div id="funilRanking"></div>
     </div>
+    <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:14px;padding:16px;margin-bottom:14px;">
+      <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:14px;display:flex;align-items:center;gap:8px;">
+        <span class="material-symbols-rounded" style="color:#1D4ED8;">badge</span>
+        Venda PF gerada pelo trabalho de campo
+      </div>
+      <div style="font-size:11.5px;color:var(--neutral-500);margin:4px 0 12px;line-height:1.4;">
+        Por <strong>visitador</strong> — o vendedor que cultiva o local. Ele nunca viu essa receita no faturamento dele, porque quem compra é o CPF do paciente, não o CNPJ do hospital.
+      </div>
+      <div id="funilRankingVis"></div>
+    </div>
+
     <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:14px;padding:16px;">
       <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:14px;margin-bottom:12px;">Lançamentos</div>
       <div id="funilAdminLista"></div>
@@ -57879,6 +58281,33 @@ async function funilCarregarAdmin() {
                 <div style="font-size:10px;color:var(--neutral-500);margin-top:1px;">
                   ${p.vendas}/${p.indicacoes} · <span style="color:${corConv};font-weight:700;">${p.conversao.toFixed(0)}%</span>
                 </div>
+              </div>
+            </div>`;
+        }).join('');
+  }
+
+  // Sprint 9.32.399: ranking dos visitadores
+  const rkVis = funilRankingVisitador(linhas);
+  const visEl = document.getElementById('funilRankingVis');
+  if (visEl) {
+    visEl.innerHTML = rkVis.length === 0
+      ? '<div style="padding:18px;text-align:center;color:var(--neutral-500);font-size:12.5px;">Nenhum lançamento com visitador identificado ainda.</div>'
+      : rkVis.slice(0, 10).map((p, i) => {
+          const max = rkVis[0].receita || 1;
+          const pct = (p.receita / max) * 100;
+          return `
+            <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px dashed var(--neutral-200);">
+              <div style="flex:0 0 26px;height:26px;border-radius:7px;background:${i < 3 ? '#1D4ED8' : 'var(--neutral-100)'};color:${i < 3 ? '#fff' : 'var(--neutral-600)'};display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11.5px;">${i + 1}</div>
+              <div style="flex:1;min-width:0;">
+                <div style="font-weight:700;color:var(--brand-navy);font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(p.nome)}</div>
+                <div style="font-size:10.5px;color:var(--neutral-500);margin-top:1px;">${p.locais} local${p.locais === 1 ? '' : 'is'} · ${p.vendas}/${p.indicacoes} convertidas</div>
+                <div style="height:4px;background:var(--neutral-100);border-radius:3px;margin-top:4px;overflow:hidden;">
+                  <div style="height:100%;width:${pct}%;background:#1D4ED8;border-radius:3px;"></div>
+                </div>
+              </div>
+              <div style="flex:0 0 auto;text-align:right;">
+                <div style="font-family:var(--font-mono);font-weight:700;color:#1D4ED8;font-size:12.5px;">${_fmtMoeda(p.receita, true)}</div>
+                <div style="font-size:10px;color:var(--neutral-500);margin-top:1px;">${p.conversao.toFixed(0)}% conv.</div>
               </div>
             </div>`;
         }).join('');
