@@ -8246,7 +8246,7 @@ mark.search-hl {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.376-cnpj-nutri-salva-e-mascara-viva',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.377-revisao-badge-exclui-canceladas',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -13126,7 +13126,7 @@ async function atualizarBadgesSidebarDesktop() {
       // Sprint 9.32.60: badge sidebar igual fila — exclui aprovadas, agendamentos e sugestões
       db.from('visitas').select('id', { count: 'exact', head: true })
         .or('flag_sem_checkin.eq.true,flag_sem_checkout.eq.true,flag_gps_divergente.eq.true,flag_horario_fora_margem.eq.true,checkin_manual.eq.true')
-        .not('status', 'in', '(aprovada_pos_revisao,agendada,sugerida)')
+        .not('status', 'in', '(aprovada_pos_revisao,agendada,sugerida,cancelada)')
         .then(r => r.count || 0)
         .catch(() => 0),
     ]);
@@ -13755,7 +13755,7 @@ async function carregarAdminDashboardDesktop() {
     const { count: emRevisao } = await db.from('visitas')
       .select('id', { count: 'exact', head: true })
       .or('flag_sem_checkin.eq.true,flag_sem_checkout.eq.true,flag_gps_divergente.eq.true,flag_horario_fora_margem.eq.true,checkin_manual.eq.true')
-      .not('status', 'in', '(aprovada_pos_revisao,agendada,sugerida)');
+      .not('status', 'in', '(aprovada_pos_revisao,agendada,sugerida,cancelada)');
 
     // Sprint 9.20: cálculos extras pra KPIs 5 e 6 (tempo médio + qualidade GPS)
     const duracoes = visitas
@@ -15514,14 +15514,14 @@ async function renderDsdAcoesPendentes() {
       // Sprint 9.32.60: 4ª query — exclui agendamentos puros e sugestões além das aprovadas
       db.from('visitas').select('id', { count: 'exact', head: true })
         .or('flag_sem_checkin.eq.true,flag_sem_checkout.eq.true,flag_gps_divergente.eq.true,flag_horario_fora_margem.eq.true,checkin_manual.eq.true')
-        .not('status', 'in', '(aprovada_pos_revisao,agendada,sugerida)'),
+        .not('status', 'in', '(aprovada_pos_revisao,agendada,sugerida,cancelada)'),
       // Sprint 9.32.248: usuários pendentes criados HOJE
       db.from('usuarios').select('id', { count: 'exact', head: true })
         .eq('status', 'pendente').gte('criado_em', inicioHojeIso).then(r => r, () => ({ count: 0 })),
       // Sprint 9.32.248: visitas em revisão criadas/checkin HOJE
       db.from('visitas').select('id', { count: 'exact', head: true })
         .or('flag_sem_checkin.eq.true,flag_sem_checkout.eq.true,flag_gps_divergente.eq.true,flag_horario_fora_margem.eq.true,checkin_manual.eq.true')
-        .not('status', 'in', '(aprovada_pos_revisao,agendada,sugerida)')
+        .not('status', 'in', '(aprovada_pos_revisao,agendada,sugerida,cancelada)')
         .gte('checkin_timestamp', inicioHojeIso).then(r => r, () => ({ count: 0 })),
       // Sprint 9.32.248: visitas concluídas HOJE (tem checkout no dia)
       db.from('visitas').select('id', { count: 'exact', head: true })
@@ -40459,7 +40459,7 @@ window.rejeitarObjetivoPendente = async function(id) {
 let FAT_DATA = null;
 let _fatDataPromise = null;
 // __FAT_VERSION_START__ — substituído pelo atualizar_index.py com hash do JSON
-const FAT_DATA_VERSION = '40d74500812d';
+const FAT_DATA_VERSION = '67fcf8314dbe';
 // __FAT_VERSION_END__
 const FAT_DATA_URL = 'faturamento_data_inline.json?v=' + FAT_DATA_VERSION;
 
