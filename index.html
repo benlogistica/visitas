@@ -6808,6 +6808,13 @@ mark.search-hl {
   color: var(--neutral-400);
 }
 
+/* Sprint 9.32.404: pulso do pin de quem está em campo */
+@keyframes itiPulse {
+  0%   { transform: scale(0.85); opacity: 0.45; }
+  70%  { transform: scale(1.7);  opacity: 0; }
+  100% { transform: scale(1.7);  opacity: 0; }
+}
+
 /* Sprint 9.32.402: "?" pulsante da metodologia do ROI */
 .roi-help-pulse {
   animation: roiHelpPulse 2s ease-in-out infinite;
@@ -8261,7 +8268,7 @@ mark.search-hl {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.403-presenca-online',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.404-itinerario-mapa',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -13162,6 +13169,7 @@ function sidebarActiveFromHash(hash) {
   if (hash.startsWith('#/admin/itens-padronizados')) return 'standardized';
   if (hash.startsWith('#/admin/faturamento')) return 'faturamento';
   if (hash.startsWith('#/admin/funil')) return 'funil';
+  if (hash.startsWith('#/admin/itinerario')) return 'itinerario';
   if (hash.startsWith('#/admin/roi-equipe')) return 'roi_equipe';
   if (hash.startsWith('#/admin/mapear-cnpjs')) return 'mapear_cnpjs';
   if (hash.startsWith('#/admin/pendentes')) return 'pendentes';
@@ -13188,6 +13196,7 @@ function desktopSidebar(activeId, itemsCustom = null) {
     { id: 'standardized', href: '#/admin/itens-padronizados', icon: 'inventory_2', label: 'Itens padronizados' },
     { id: 'faturamento',  href: '#/admin/faturamento',    icon: 'paid',            label: 'Faturamento' },
     { id: 'roi_equipe',   href: '#/admin/roi-equipe',     icon: 'insights',        label: 'ROI da Equipe' },
+    { id: 'itinerario',   href: '#/admin/itinerario',     icon: 'explore',         label: 'Itinerário' },
     { id: 'funil',        href: '#/admin/funil',          icon: 'filter_alt',      label: 'Funil de Vendas' },
     { id: 'mapear_cnpjs', href: '#/admin/mapear-cnpjs',   icon: 'link',            label: 'Mapear CNPJs' },
     { id: 'settings',     href: '#/admin/configuracoes',  icon: 'settings',        label: 'Configurações' },
@@ -21787,6 +21796,7 @@ const routes = {
   // Sprint 9.32.391: Funil de Vendas
   '#/funil':            { title: 'Funil de Vendas', icon: 'filter_alt', render: renderFunilAtendente },
   '#/admin/funil':      { title: 'Funil de Vendas', icon: 'filter_alt', render: renderFunilAdmin },
+  '#/admin/itinerario': { title: 'Itinerário', icon: 'explore', render: renderAdminItinerario },   // Sprint 9.32.404
   '#/admin/roi-equipe':{ title: 'ROI da Equipe', icon: 'insights', render: renderAdminRoiEquipe },
   '#/admin/mapear-cnpjs':{ title: 'Mapear CNPJs', icon: 'link', render: renderAdminMapearCnpjs },
   '#/admin/agenda':   { title: 'Agenda da equipe', icon: 'event_note', render: renderAdminAgenda },
@@ -58647,6 +58657,306 @@ window.funilExportarCsv = function() {
   a.download = `funil-vendas-${new Date().toISOString().slice(0, 10)}.csv`;
   a.click();
 };
+
+
+
+/* ==========================================================================
+   ITINERÁRIO — Sprint 9.32.404
+   --------------------------------------------------------------------------
+   Mostra no mapa onde a equipe está EM CAMPO agora e o roteiro do dia.
+
+   HONESTIDADE SOBRE O QUE ISTO É (e o que NÃO é):
+   O app não faz rastreamento contínuo de GPS. Ele guarda a coordenada do
+   CHECK-IN — o ponto onde a pessoa estava quando registrou a visita. Então o
+   pin não é "onde ela está neste segundo", é "onde ela bateu o ponto e ainda
+   não fez check-out". A tela diz isso, com todas as letras. Chamar isso de
+   "rastreamento em tempo real" seria vender o que não temos, criar expectativa
+   errada no gestor e quebrar a confiança da equipe.
+   ========================================================================== */
+
+const ITI_REFRESH_MS = 60 * 1000;
+let _itiTimer = null;
+let _itiMap = null;
+let _itiLayer = null;
+
+function _itiHojeIso(d) {
+  const x = d || new Date();
+  return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`;
+}
+function _itiHoraBr(ts) {
+  if (!ts) return '—';
+  return new Date(ts).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+}
+function _itiDuracao(min) {
+  if (min == null) return '';
+  const h = Math.floor(min / 60), m = Math.round(min % 60);
+  return h > 0 ? `${h}h${String(m).padStart(2, '0')}` : `${m}min`;
+}
+
+async function itiCarregarDados(dia) {
+  const d = dia || _itiHojeIso();
+  const ini = new Date(d + 'T00:00:00').toISOString();
+  const fim = new Date(d + 'T23:59:59').toISOString();
+
+  // Visitas do dia (com ou sem check-out)
+  const { data: vis } = await db.from('visitas')
+    .select('id, nutricionista_id, instituicao_id, status, data_visita, horario_inicio, checkin_timestamp, checkout_timestamp, checkin_latitude, checkin_longitude, checkin_precisao_metros, checkin_manual, distancia_checkin_metros, visita_realizada, cancelado_em, usuarios:nutricionista_id(id, nome, foto_url), instituicoes(id, nome, cidade, latitude, longitude)')
+    .or(`and(checkin_timestamp.gte.${ini},checkin_timestamp.lte.${fim}),and(data_visita.eq.${d},status.eq.agendada)`)
+    .limit(500);
+
+  const linhas = (vis || []).filter(v => !v.cancelado_em);
+
+  // Classifica
+  linhas.forEach(v => {
+    const temCheckin = !!v.checkin_timestamp;
+    const temCheckout = !!v.checkout_timestamp;
+    if (temCheckin && !temCheckout) {
+      v._estado = 'em_campo';
+      v._minEmCampo = Math.round((Date.now() - new Date(v.checkin_timestamp).getTime()) / 60000);
+    } else if (temCheckin && temCheckout) {
+      v._estado = 'concluida';
+      v._minEmCampo = Math.round((new Date(v.checkout_timestamp) - new Date(v.checkin_timestamp)) / 60000);
+    } else {
+      v._estado = 'agendada';
+    }
+    // Posição do pin: prefere a coord do check-in; senão a do hospital
+    const lat = Number(v.checkin_latitude ?? v.instituicoes?.latitude);
+    const lng = Number(v.checkin_longitude ?? v.instituicoes?.longitude);
+    v._lat = isFinite(lat) && lat !== 0 ? lat : null;
+    v._lng = isFinite(lng) && lng !== 0 ? lng : null;
+    v._posDoCheckin = v.checkin_latitude != null;
+  });
+
+  return linhas;
+}
+
+function itiRenderMapa(linhas) {
+  if (typeof L === 'undefined') return;
+  const el = document.getElementById('itiMapa');
+  if (!el) return;
+
+  const pontos = linhas.filter(v => v._lat && v._lng);
+  if (!_itiMap) {
+    const centro = pontos.length ? [pontos[0]._lat, pontos[0]._lng] : [-23.96, -46.33];
+    _itiMap = L.map('itiMapa', { zoomControl: true, scrollWheelZoom: true }).setView(centro, 11);
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+      attribution: 'Tiles © Esri', maxZoom: 19,
+    }).addTo(_itiMap);
+  }
+  if (_itiLayer) _itiLayer.remove();
+  _itiLayer = L.layerGroup().addTo(_itiMap);
+
+  const bounds = [];
+  pontos.forEach(v => {
+    const nome = v.usuarios?.nome || '—';
+    const iniciais = nome.split(' ').slice(0, 2).map(x => x[0]).join('').toUpperCase();
+    const cores = { em_campo: '#16A34A', concluida: '#1D4ED8', agendada: '#B45309' };
+    const cor = cores[v._estado] || '#6B7280';
+    const pulso = v._estado === 'em_campo'
+      ? `<span style="position:absolute;inset:-6px;border-radius:50%;background:${cor};opacity:0.35;animation:itiPulse 1.6s ease-out infinite;"></span>` : '';
+    const foto = v.usuarios?.foto_url
+      ? `background:url('${v.usuarios.foto_url}') center/cover;` : `background:${cor};`;
+
+    const icon = L.divIcon({
+      className: '',
+      html: `<div style="position:relative;width:34px;height:34px;">
+               ${pulso}
+               <div style="position:relative;width:34px;height:34px;border-radius:50%;${foto}border:3px solid ${cor};box-shadow:0 2px 6px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:11px;font-family:sans-serif;">
+                 ${v.usuarios?.foto_url ? '' : iniciais}
+               </div>
+             </div>`,
+      iconSize: [34, 34],
+      iconAnchor: [17, 17],
+    });
+
+    const rotuloEstado = v._estado === 'em_campo'
+      ? `<span style="color:#16A34A;font-weight:700;">EM CAMPO há ${_itiDuracao(v._minEmCampo)}</span>`
+      : v._estado === 'concluida'
+        ? `<span style="color:#1D4ED8;font-weight:700;">Concluída · ${_itiDuracao(v._minEmCampo)}</span>`
+        : `<span style="color:#B45309;font-weight:700;">Agendada ${v.horario_inicio ? 'às ' + String(v.horario_inicio).slice(0,5) : ''}</span>`;
+
+    const aviso = v._posDoCheckin
+      ? `<div style="font-size:10px;color:#6B7280;margin-top:4px;">Posição do check-in${v.checkin_precisao_metros ? ` · precisão ${Math.round(v.checkin_precisao_metros)}m` : ''}${v.checkin_manual ? ' · <strong>manual (sem GPS)</strong>' : ''}</div>`
+      : `<div style="font-size:10px;color:#B45309;margin-top:4px;">Sem GPS — pin no endereço do hospital</div>`;
+
+    L.marker([v._lat, v._lng], { icon }).addTo(_itiLayer).bindPopup(`
+      <div style="font-family:sans-serif;min-width:190px;">
+        <strong style="color:#0A1F5C;font-size:13px;">${(nome).replace(/</g,'&lt;')}</strong>
+        <div style="font-size:12px;color:#374151;margin-top:2px;">${(v.instituicoes?.nome || '—').replace(/</g,'&lt;')}</div>
+        <div style="font-size:11.5px;margin-top:5px;">${rotuloEstado}</div>
+        <div style="font-size:11px;color:#6B7280;margin-top:3px;">Check-in ${_itiHoraBr(v.checkin_timestamp)}${v.distancia_checkin_metros != null ? ` · ${Math.round(v.distancia_checkin_metros)}m do hospital` : ''}</div>
+        ${aviso}
+      </div>`);
+    bounds.push([v._lat, v._lng]);
+  });
+
+  if (bounds.length > 0) {
+    try { _itiMap.fitBounds(bounds, { padding: [40, 40], maxZoom: 14 }); } catch (e) {}
+  }
+  setTimeout(() => { try { _itiMap.invalidateSize(); } catch (e) {} }, 120);
+}
+
+function itiRenderLista(linhas) {
+  const el = document.getElementById('itiLista');
+  if (!el) return;
+  const esc = t => String(t || '').replace(/</g, '&lt;');
+
+  const porVend = {};
+  linhas.forEach(v => {
+    const id = v.nutricionista_id;
+    if (!porVend[id]) porVend[id] = { nome: v.usuarios?.nome || '—', foto: v.usuarios?.foto_url, itens: [] };
+    porVend[id].itens.push(v);
+  });
+
+  const lista = Object.values(porVend).map(g => {
+    g.itens.sort((a, b) => {
+      const ka = a.checkin_timestamp || (a.data_visita + 'T' + (a.horario_inicio || '23:59'));
+      const kb = b.checkin_timestamp || (b.data_visita + 'T' + (b.horario_inicio || '23:59'));
+      return String(ka).localeCompare(String(kb));
+    });
+    g.emCampo = g.itens.some(v => v._estado === 'em_campo');
+    return g;
+  }).sort((a, b) => (b.emCampo ? 1 : 0) - (a.emCampo ? 1 : 0) || a.nome.localeCompare(b.nome));
+
+  if (lista.length === 0) {
+    el.innerHTML = `<div style="padding:30px;text-align:center;color:var(--neutral-500);font-size:12.5px;">Nenhuma visita neste dia.</div>`;
+    return;
+  }
+
+  el.innerHTML = lista.map(g => {
+    const ini = g.nome.split(' ').slice(0, 2).map(x => x[0]).join('').toUpperCase();
+    const foto = g.foto ? `background:url('${g.foto}') center/cover;` : 'background:linear-gradient(135deg,#0A1F5C,#1D4ED8);';
+    return `
+      <div style="border-bottom:1px solid var(--neutral-100);padding:11px 14px;">
+        <div style="display:flex;align-items:center;gap:9px;margin-bottom:7px;">
+          <div style="position:relative;width:30px;height:30px;border-radius:50%;${foto}display:flex;align-items:center;justify-content:center;color:#fff;font-size:10.5px;font-weight:700;flex-shrink:0;">
+            ${g.foto ? '' : ini}
+            ${g.emCampo ? '<span style="position:absolute;bottom:-1px;right:-1px;width:10px;height:10px;border-radius:50%;background:#16A34A;border:2px solid #fff;"></span>' : ''}
+          </div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-weight:700;color:var(--brand-navy);font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(g.nome)}</div>
+            <div style="font-size:10.5px;color:${g.emCampo ? '#16A34A' : 'var(--neutral-500)'};font-weight:${g.emCampo ? '700' : '500'};">
+              ${g.emCampo ? 'em campo agora' : `${g.itens.length} ${g.itens.length === 1 ? 'parada' : 'paradas'}`}
+            </div>
+          </div>
+        </div>
+        <div style="padding-left:39px;">
+          ${g.itens.map(v => {
+            const cores = { em_campo: '#16A34A', concluida: '#1D4ED8', agendada: '#B45309' };
+            const cor = cores[v._estado];
+            const lbl = v._estado === 'em_campo' ? `em campo · ${_itiDuracao(v._minEmCampo)}`
+                      : v._estado === 'concluida' ? `${_itiHoraBr(v.checkin_timestamp)} · ${_itiDuracao(v._minEmCampo)}`
+                      : `agendada${v.horario_inicio ? ' ' + String(v.horario_inicio).slice(0,5) : ''}`;
+            return `
+              <div onclick="itiFocarVisita('${v.id}')" style="display:flex;align-items:center;gap:7px;padding:4px 0;cursor:pointer;">
+                <span style="width:7px;height:7px;border-radius:50%;background:${cor};flex-shrink:0;"></span>
+                <span style="flex:1;min-width:0;font-size:11.5px;color:var(--neutral-700);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(v.instituicoes?.nome || '—')}</span>
+                <span style="font-size:10.5px;color:${cor};font-weight:600;white-space:nowrap;">${lbl}</span>
+              </div>`;
+          }).join('')}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+window.itiFocarVisita = function(id) {
+  const v = (window._itiLinhas || []).find(x => x.id === id);
+  if (!v || !v._lat || !_itiMap) return;
+  _itiMap.setView([v._lat, v._lng], 16, { animate: true });
+};
+
+async function itiAtualizar() {
+  const dia = document.getElementById('itiDia')?.value || _itiHojeIso();
+  const linhas = await itiCarregarDados(dia);
+  window._itiLinhas = linhas;
+
+  const emCampo = linhas.filter(v => v._estado === 'em_campo');
+  const concl = linhas.filter(v => v._estado === 'concluida');
+  const agend = linhas.filter(v => v._estado === 'agendada');
+
+  const kpi = document.getElementById('itiKpis');
+  if (kpi) {
+    const card = (cor, n, lbl) => `
+      <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-left:3px solid ${cor};border-radius:10px;padding:9px 12px;">
+        <div style="font-family:var(--font-display);font-size:19px;font-weight:700;color:${cor};">${n}</div>
+        <div style="font-size:10.5px;color:var(--neutral-600);font-weight:600;">${lbl}</div>
+      </div>`;
+    kpi.innerHTML = card('#16A34A', emCampo.length, 'em campo agora')
+                  + card('#1D4ED8', concl.length, 'concluídas')
+                  + card('#B45309', agend.length, 'ainda agendadas');
+  }
+
+  const ts = document.getElementById('itiAtualizado');
+  if (ts) ts.textContent = `atualizado às ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
+
+  itiRenderMapa(linhas);
+  itiRenderLista(linhas);
+}
+
+window.itiTrocarDia = function() { itiAtualizar(); };
+
+function renderAdminItinerario() {
+  const user = requireAdmin();
+  if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
+
+  _itiMap = null; _itiLayer = null;
+  if (_itiTimer) clearInterval(_itiTimer);
+  setTimeout(() => {
+    itiAtualizar();
+    _itiTimer = setInterval(itiAtualizar, ITI_REFRESH_MS);
+  }, 120);
+
+  const corpo = `
+    <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:14px;padding:14px 16px;margin-bottom:14px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+        <div>
+          <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:15px;display:flex;align-items:center;gap:8px;">
+            <span class="material-symbols-rounded" style="color:#16A34A;">explore</span>
+            Itinerário da equipe
+          </div>
+          <div style="font-size:11.5px;color:var(--neutral-600);margin-top:3px;line-height:1.45;">
+            Onde a equipe bateu ponto e o roteiro do dia. <span id="itiAtualizado" style="color:var(--neutral-500);"></span>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <input type="date" id="itiDia" value="${_itiHojeIso()}" onchange="itiTrocarDia()"
+                 style="height:34px;padding:0 10px;border-radius:9px;border:1px solid var(--neutral-200);font-size:12.5px;font-family:inherit;color:var(--brand-navy);" />
+          <button onclick="itiAtualizar()" title="Atualizar agora"
+                  style="height:34px;width:34px;border-radius:9px;border:1px solid var(--neutral-200);background:#fff;color:var(--brand-navy);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;">
+            <span class="material-symbols-rounded" style="font-size:18px;">refresh</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- O aviso mais importante desta tela -->
+      <div style="margin-top:11px;background:#FEF4E1;border:1px solid rgba(180,83,9,0.25);border-radius:9px;padding:9px 12px;font-size:11.5px;color:#7C2D12;line-height:1.5;display:flex;gap:7px;">
+        <span class="material-symbols-rounded" style="font-size:16px;flex-shrink:0;">info</span>
+        <span><strong>Não é rastreamento contínuo.</strong> O pin mostra onde a pessoa estava <strong>ao bater o check-in</strong> — não onde ela está neste instante. O app não segue o GPS de ninguém em segundo plano.</span>
+      </div>
+
+      <div id="itiKpis" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-top:12px;"></div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:320px 1fr;gap:14px;align-items:start;" id="itiGrid">
+      <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:14px;overflow:hidden;">
+        <div style="padding:10px 14px;background:var(--neutral-50,#F5F6FA);border-bottom:1px solid var(--neutral-200);font-size:10.5px;font-weight:700;color:var(--neutral-600);text-transform:uppercase;letter-spacing:0.5px;">
+          Roteiro por pessoa
+        </div>
+        <div id="itiLista" style="max-height:560px;overflow-y:auto;"></div>
+      </div>
+      <div id="itiMapa" style="height:560px;border-radius:14px;border:1px solid var(--neutral-200);background:var(--neutral-100);"></div>
+    </div>`;
+
+  if (typeof isDesktop === 'function' && isDesktop()) {
+    return desktopShell({ title: 'Itinerário', breadcrumb: ['Admin', 'Operação', 'Itinerário'], content: corpo, activeId: 'itinerario' });
+  }
+  // Mobile: mapa em cima, roteiro embaixo (uma coluna)
+  return `<div class="mobile-app">${mobileTopBar({ title: 'Itinerário', showBack: true, backTo: '#/admin' })}
+    <main class="mcontent">
+      <style>#itiGrid{grid-template-columns:1fr !important;} #itiMapa{height:340px !important;} #itiLista{max-height:none !important;}</style>
+      ${corpo}
+    </main></div>`;
+}
 
 
 document.addEventListener('DOMContentLoaded', boot);
