@@ -8246,7 +8246,7 @@ mark.search-hl {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.381-insights-matematica-e-analises-novas',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.382-insights-analista-ia-cacheado',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -40636,7 +40636,7 @@ window.rejeitarObjetivoPendente = async function(id) {
 let FAT_DATA = null;
 let _fatDataPromise = null;
 // __FAT_VERSION_START__ — substituído pelo atualizar_index.py com hash do JSON
-const FAT_DATA_VERSION = '8d4e17aba4d0';
+const FAT_DATA_VERSION = 'aab2e084fe4a';
 // __FAT_VERSION_END__
 const FAT_DATA_URL = 'faturamento_data_inline.json?v=' + FAT_DATA_VERSION;
 
@@ -41029,6 +41029,8 @@ function _fatRenderInner() {
             </button>
           </div>
         </div>
+        <!-- Sprint 9.32.382: leitura do analista (IA) — gerada 1x por sincronização e cacheada -->
+        <div id="fatInsightsIA" style="margin-bottom:14px;"></div>
         <div id="fatInsights" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;"></div>
       </div>
 
@@ -44520,6 +44522,11 @@ function _fatRenderInsights() {
     }));
   }
 
+  // Sprint 9.32.382: guardados fora dos blocos pra alimentar o resumo enviado à IA
+  let _iaYoY = null;
+  let _iaQuebra = [];
+  let _iaCruzada = null;
+
   // [10c] Ano contra ano — Sprint 9.32.381
   // Comparar com o mesmo mês do ano anterior elimina sazonalidade; "vs média" não faz isso.
   if (ultFechado) {
@@ -44536,6 +44543,15 @@ function _fatRenderInsights() {
         if (par !== undefined) { accAtual += m.faturamento; accAnt += par; }
       });
       const accPct = accAnt > 0 ? ((accAtual - accAnt) / accAnt) * 100 : null;
+      _iaYoY = {
+        mes: ultFechado.ano_mes, mes_ano_anterior: chaveAnt,
+        faturamento_mes: Math.round(ultFechado.faturamento),
+        faturamento_mes_ano_anterior: Math.round(fatAnt),
+        variacao_pct: Number(yoyPct.toFixed(1)),
+        acumulado_ano_atual: Math.round(accAtual),
+        acumulado_ano_anterior: Math.round(accAnt),
+        acumulado_variacao_pct: accPct !== null ? Number(accPct.toFixed(1)) : null,
+      };
       cards.push(cardBase({
         tom: yoyPct >= 0 ? 'success' : 'danger',
         icone: 'compare_arrows',
@@ -44575,6 +44591,7 @@ function _fatRenderInsights() {
         .filter(([, v]) => v.meses.size >= 4 && !v.comprouUltimo && v.fat > 0)
         .map(([cn, v]) => ({ nome: nomePorCnpj[cn] || cn, mesesAtivos: v.meses.size, faturamento: v.fat }))
         .sort((a, b) => b.faturamento - a.faturamento);
+      _iaQuebra = quebra;
       if (quebra.length > 0) {
         const totalQuebra = quebra.reduce((sm, q) => sm + q.faturamento, 0);
         cards.push(cardBase({
@@ -44616,6 +44633,7 @@ function _fatRenderInsights() {
           melhor = { marca: mk.Marca, clientes: semAMarca, potencial, shareMarca: (mk.faturamento / totalMarcas) * 100 };
         }
       });
+      _iaCruzada = melhor;
       if (melhor && melhor.clientes.length > 0) {
         cards.push(cardBase({
           tom: 'info',
@@ -44755,6 +44773,156 @@ function _fatRenderInsights() {
     </div>
     ${cards.join('')}
   `;
+
+  // Sprint 9.32.382: resumo compacto enviado à IA — os MESMOS números dos cards,
+  // já calculados aqui. A IA não calcula nada: só lê, prioriza e escreve.
+  const resumoIA = {
+    periodo_inicio: _metaFat.periodo_inicio || null,
+    periodo_fim: _metaFat.periodo_fim || null,
+    faturamento_total_historico: _metaFat.faturamento_total || null,
+    clientes_unicos: _metaFat.qtd_clientes_unicos || null,
+    mensal_fechado: mensalFechado.slice(-13).map(m => ({
+      mes: m.ano_mes, faturamento: Math.round(m.faturamento),
+      notas: m.qtd_notas, clientes: m.qtd_clientes, ticket_medio: m.ticket_medio,
+    })),
+    mes_em_curso: mesParcial ? {
+      mes: mesParcial.ano_mes,
+      dias_apurados: mesParcial.diasComDados,
+      dias_no_mes: mesParcial.diasNoMes,
+      faturamento_parcial: Math.round(mesParcial.faturamento),
+      projecao_linear: Math.round(mesParcial.projecao),
+      AVISO: 'MES PARCIAL - nao comparar com meses fechados',
+    } : null,
+    ultimo_mes_fechado: ultFechado ? {
+      mes: ultFechado.ano_mes, faturamento: Math.round(ultFechado.faturamento),
+      vs_media_pct: Number(ultVsMediaPct.toFixed(1)),
+      media_meses_fechados: Math.round(mediaAnoAnt),
+    } : null,
+    ano_contra_ano: _iaYoY,
+    top_clientes: clientes.slice(0, 8).map(c => ({
+      nome: c['Cliente (Nome Fantasia)'], faturamento: Math.round(c.faturamento),
+      ultima_compra: c.ultima_compra,
+    })),
+    dormentes: {
+      qtd: dormentes.length, criterio_dias: R.dormenteDias,
+      faturamento_historico: Math.round(dormentesFatTotal),
+      top: dormentes.slice(0, 5).map(d => ({
+        nome: d.nome, faturamento: Math.round(d.faturamento), dias_sem_comprar: d.diasSemComprar,
+      })),
+    },
+    quebra_recorrencia: {
+      qtd: _iaQuebra.length,
+      criterio: 'comprava em 4+ dos 6 meses anteriores e nao comprou no ultimo mes fechado',
+      top: _iaQuebra.slice(0, 5).map(q => ({
+        nome: q.nome, meses_ativos_de_6: q.mesesAtivos, faturamento: Math.round(q.faturamento),
+      })),
+    },
+    canais: vendedoresComTrend.map(v => ({
+      nome: v.nome, faturamento: Math.round(v.total), tendencia_pct: Number(v.trendPct.toFixed(1)),
+    })),
+    marcas_top: marcas.slice(0, 6).map(m => ({
+      nome: m.Marca, faturamento: Math.round(m.faturamento),
+      share_pct: totalMarcas ? Number(((m.faturamento / totalMarcas) * 100).toFixed(1)) : null,
+    })),
+    venda_cruzada: _iaCruzada ? {
+      marca: _iaCruzada.marca,
+      clientes_top50_que_nao_compram: _iaCruzada.clientes.length,
+      faturamento_desses_clientes: Math.round(_iaCruzada.potencial),
+    } : null,
+    concentracao: {
+      maior_cliente_pct: Number(pctTopCliente.toFixed(1)),
+      maior_marca_pct: Number(pctTopMarca.toFixed(1)),
+      sp_pct: Number(pctSP.toFixed(1)),
+    },
+    devolucoes: picoDev ? {
+      pico_mes: picoDev.ano_mes, pico_valor: Math.round(picoDev.valor_devolucao),
+      media_mensal: Math.round(devMedia),
+    } : null,
+  };
+  window._fatResumoIA = resumoIA;
+  _fatCarregarAnaliseIA(resumoIA);
+}
+
+// ============================================================================
+// Sprint 9.32.382 — Leitura do analista (IA), cacheada por meta.gerado_em
+// ============================================================================
+window._fatAnaliseIAEmCurso = false;
+
+async function _fatCarregarAnaliseIA(resumo, forcar = false) {
+  const el = document.getElementById('fatInsightsIA');
+  if (!el || !resumo) return;
+  const dataHash = FAT_DATA?.meta?.gerado_em;
+  if (!dataHash) { el.innerHTML = ''; return; }
+
+  if (!forcar && window._fatAnaliseIACache && window._fatAnaliseIACache.hash === dataHash) {
+    _fatRenderAnaliseIA(window._fatAnaliseIACache.dados);
+    return;
+  }
+  if (window._fatAnaliseIAEmCurso) return;
+  window._fatAnaliseIAEmCurso = true;
+
+  el.innerHTML = '<div style="background:linear-gradient(135deg,#0A1F5C 0%,#1D4ED8 100%);border-radius:14px;padding:16px 20px;color:#fff;display:flex;align-items:center;gap:12px;"><span class="material-symbols-rounded" style="font-size:22px;">progress_activity</span><div style="font-size:12.5px;">Lendo os números do período…</div></div>';
+
+  try {
+    const url = CONFIG.SUPABASE_URL.replace(/\/$/, '') + '/functions/v1/insights-ia';
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + CONFIG.SUPABASE_ANON_KEY },
+      body: JSON.stringify({ data_hash: dataHash, resumo, forcar }),
+    });
+    const json = await resp.json().catch(() => ({}));
+    if (!resp.ok || !json.ok) throw new Error(json.error || ('HTTP ' + resp.status));
+    const dados = { analise: json.analise, modelo: json.modelo, gerado_em: json.gerado_em, cached: json.cached };
+    window._fatAnaliseIACache = { hash: dataHash, dados };
+    _fatRenderAnaliseIA(dados);
+  } catch (e) {
+    console.warn('[Insights IA]', e && e.message ? e.message : e);
+    el.innerHTML = '<div style="background:var(--neutral-100);border:1px dashed var(--neutral-300);border-radius:12px;padding:12px 16px;font-size:12px;color:var(--neutral-600);display:flex;align-items:center;gap:10px;"><span class="material-symbols-rounded" style="font-size:18px;">info</span><div>Leitura por IA indisponível. Os insights abaixo continuam válidos — são calculados no app e não dependem da IA.</div></div>';
+  } finally {
+    window._fatAnaliseIAEmCurso = false;
+  }
+}
+
+function _fatRenderAnaliseIA(dados) {
+  const el = document.getElementById('fatInsightsIA');
+  if (!el || !dados || !dados.analise) return;
+  const a = dados.analise;
+  const esc = s => String(s == null ? '' : s).replace(/</g, '&lt;').replace(/"/g, '&quot;');
+  const quando = dados.gerado_em ? new Date(dados.gerado_em).toLocaleString('pt-BR') : '';
+  const prioridades = Array.isArray(a.prioridades) ? a.prioridades : [];
+
+  const prioHtml = prioridades.slice(0, 3).map((p, i) =>
+    '<div style="background:rgba(255,255,255,0.12);border-radius:10px;padding:11px 13px;">' +
+      '<div style="font-size:10.5px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:rgba(255,255,255,0.75);">Prioridade ' + (i + 1) + '</div>' +
+      '<div style="font-weight:700;font-size:13px;margin-top:5px;">' + esc(p.titulo) + '</div>' +
+      '<div style="font-size:11.5px;color:rgba(255,255,255,0.85);margin-top:3px;line-height:1.45;">' + esc(p.porque) + '</div>' +
+      '<div style="font-size:11.5px;margin-top:6px;padding-top:6px;border-top:1px solid rgba(255,255,255,0.18);"><strong>' + esc(p.acao) + '</strong></div>' +
+    '</div>'
+  ).join('');
+
+  const riscoHtml = a.risco
+    ? '<div style="background:rgba(221,51,51,0.20);border-left:3px solid #FCA5A5;border-radius:8px;padding:9px 12px;font-size:11.5px;line-height:1.45;"><strong style="display:block;font-size:10.5px;text-transform:uppercase;color:#FECACA;margin-bottom:3px;">Maior risco</strong>' + esc(a.risco) + '</div>'
+    : '';
+  const oportHtml = a.oportunidade
+    ? '<div style="background:rgba(46,125,50,0.22);border-left:3px solid #86EFAC;border-radius:8px;padding:9px 12px;font-size:11.5px;line-height:1.45;"><strong style="display:block;font-size:10.5px;text-transform:uppercase;color:#BBF7D0;margin-bottom:3px;">Maior oportunidade</strong>' + esc(a.oportunidade) + '</div>'
+    : '';
+
+  el.innerHTML =
+    '<div style="background:linear-gradient(135deg,#0A1F5C 0%,#1D4ED8 100%);border-radius:14px;padding:18px 20px;color:#fff;">' +
+      '<div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:12px;">' +
+        '<div style="width:40px;height:40px;border-radius:10px;background:rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;flex-shrink:0;"><span class="material-symbols-rounded" style="font-size:22px;">neurology</span></div>' +
+        '<div style="flex:1;min-width:0;">' +
+          '<div style="font-family:var(--font-display);font-weight:700;font-size:16px;">Leitura do analista</div>' +
+          '<div style="font-size:13px;color:rgba(255,255,255,0.92);margin-top:4px;line-height:1.55;">' + esc(a.resumo) + '</div>' +
+        '</div>' +
+      '</div>' +
+      (prioHtml ? '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px;margin-top:14px;">' + prioHtml + '</div>' : '') +
+      ((riscoHtml || oportHtml) ? '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px;margin-top:10px;">' + riscoHtml + oportHtml + '</div>' : '') +
+      '<div style="margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:10.5px;color:rgba(255,255,255,0.65);">' +
+        '<div>Gerada a partir dos números do painel' + (quando ? ' · ' + esc(quando) : '') + (dados.cached ? ' · em cache' : '') + (dados.modelo ? ' · ' + esc(dados.modelo) : '') + '</div>' +
+        '<button onclick="_fatCarregarAnaliseIA(window._fatResumoIA, true)" style="background:rgba(255,255,255,0.14);border:0;color:#fff;padding:5px 11px;border-radius:9999px;font-size:10.5px;font-weight:700;cursor:pointer;font-family:inherit;">Regerar</button>' +
+      '</div>' +
+    '</div>';
 }
 
 // ============================================================================
