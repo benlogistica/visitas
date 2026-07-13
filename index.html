@@ -8246,7 +8246,7 @@ mark.search-hl {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.384-simulacao-usuario-super-admin',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.386-paridade-mobile-revisao-e-simulacao',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -35527,14 +35527,20 @@ function renderAdminRevisao() {
   const user = requireAdmin();
   if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
 
-  // Sprint 9.32.357: filtro inicial default = 'todas' (era 'com_flags')
-  const filtroInicial = window._routeParams?.filtro || 'todas';
+  // Sprint 9.32.386: abre no que aguarda decisão (mesma régua do desktop e do badge)
+  const filtroInicial = window._routeParams?.filtro || 'com_flags';
   window._reviewFilter = filtroInicial;
 
   // Sprint 9.32.292: estado de filtros de Tipo de flag pra alinhar com o desktop
   if (!window._reviewMobileFlags) {
     window._reviewMobileFlags = new Set(['noCheckin', 'gps', 'time', 'manual']);
   }
+
+  // Sprint 9.32.386: período e busca — aplicados NO BANCO (igual desktop)
+  if (!window._reviewMobileState) {
+    window._reviewMobileState = { periodo: 'all', dataIni: null, dataFim: null, busca: '' };
+  }
+  const sm = window._reviewMobileState;
 
   setTimeout(async () => {
     await carregarFilaRevisao();
@@ -35569,14 +35575,37 @@ function renderAdminRevisao() {
           </button>
         </div>
 
+        <!-- Sprint 9.32.386: busca agora vai ao BANCO (antes só escondia cards já carregados,
+             então não achava nada fora das 100 mais recentes — o filtro mentia) -->
         <div style="position:relative;margin:12px 0 8px;">
           <span class="material-symbols-rounded" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--neutral-500);font-size:18px;pointer-events:none;">search</span>
-          <input type="text"
+          <input type="search"
                  id="revisaoBusca"
-                 placeholder="Filtrar por instituição, profissional..."
-                 oninput="filtrarRevisaoLocal(this.value)"
+                 value="${(sm.busca || '').replace(/"/g, '&quot;')}"
+                 placeholder="Hospital, nutricionista ou palavra do resumo"
+                 oninput="buscarRevisaoMobile(this.value)"
                  style="width:100%;padding:10px 14px 10px 38px;border:1px solid var(--neutral-200);border-radius:10px;font-family:inherit;font-size:13px;background:var(--neutral-0);color:var(--brand-navy);" />
         </div>
+
+        <!-- Sprint 9.32.386: filtro de período (pílulas + intervalo) -->
+        <div style="display:flex;gap:6px;align-items:center;overflow-x:auto;padding-bottom:2px;margin-bottom:8px;">
+          ${[{v:'7',l:'7d'},{v:'30',l:'30d'},{v:'mes',l:'Mês'},{v:'all',l:'Tudo'}].map(pp => `
+            <button onclick="trocarPeriodoRevisaoMobile('${pp.v}')" id="mobRevPer_${pp.v}"
+                    style="flex:0 0 auto;height:32px;padding:0 12px;border-radius:9999px;border:1px solid ${sm.periodo === pp.v ? 'var(--brand-navy)' : 'var(--neutral-200)'};background:${sm.periodo === pp.v ? 'var(--brand-navy)' : '#fff'};color:${sm.periodo === pp.v ? '#fff' : 'var(--neutral-700)'};font-size:12px;font-weight:600;font-family:inherit;cursor:pointer;">${pp.l}</button>
+          `).join('')}
+          <button onclick="togglePeriodoCustomRevisaoMobile()" id="mobRevPerCustomBtn" title="Intervalo de datas"
+                  style="flex:0 0 auto;height:32px;width:32px;border-radius:9px;border:1px solid ${sm.periodo === 'custom' ? 'var(--brand-navy)' : 'var(--neutral-200)'};background:${sm.periodo === 'custom' ? 'var(--brand-navy)' : '#fff'};color:${sm.periodo === 'custom' ? '#fff' : 'var(--neutral-600)'};cursor:pointer;display:inline-flex;align-items:center;justify-content:center;">
+            <span class="material-symbols-rounded" style="font-size:17px;">calendar_month</span>
+          </button>
+        </div>
+        <div id="mobRevPerCustomWrap" style="display:${sm.periodo === 'custom' ? 'flex' : 'none'};gap:6px;align-items:center;margin-bottom:8px;">
+          <input type="date" id="mobRevDataIni" value="${sm.dataIni || ''}" onchange="aplicarDatasRevisaoMobile()" style="flex:1;min-width:0;height:34px;padding:0 8px;border-radius:9px;border:1px solid var(--neutral-200);font-size:12px;font-family:inherit;color:var(--brand-navy);" />
+          <span style="color:var(--neutral-400);font-size:11.5px;flex:0 0 auto;">até</span>
+          <input type="date" id="mobRevDataFim" value="${sm.dataFim || ''}" onchange="aplicarDatasRevisaoMobile()" style="flex:1;min-width:0;height:34px;padding:0 8px;border-radius:9px;border:1px solid var(--neutral-200);font-size:12px;font-family:inherit;color:var(--brand-navy);" />
+        </div>
+
+        <!-- Sprint 9.32.386: contador real + aviso de truncagem -->
+        <div id="mobRevCount" style="font-size:11.5px;color:var(--neutral-600);margin-bottom:8px;"></div>
 
         <!-- Sprint 9.32.311: toggle "Ocultar rascunhos" mobile -->
         ${(() => {
@@ -35777,12 +35806,28 @@ async function carregarFilaRevisao() {
   if (!listEl) return;
 
   try {
-    // Carrega counts + lista em paralelo
+    // Sprint 9.32.386: período e busca vão pro BANCO (paridade com o desktop).
+    // Antes a busca só escondia cards já carregados — não achava nada fora das 100 mais recentes.
+    const _sm = window._reviewMobileState || { periodo: 'all', dataIni: null, dataFim: null, busca: '' };
     const [counts, visitasRaw] = await Promise.all([
       contarVisitasPorFiltro(),
-      listarVisitasAdmin(window._reviewFilter || 'com_flags'),
+      listarVisitasAdmin(window._reviewFilter || 'com_flags', {
+        periodo: _sm.periodo,
+        dataIni: _sm.dataIni,
+        dataFim: _sm.dataFim,
+        busca: _sm.busca,
+      }),
     ]);
     let visitas = visitasRaw;
+
+    // Contador real do filtro + aviso quando a lista bate no teto de 100
+    const _cntEl = document.getElementById('mobRevCount');
+    if (_cntEl) {
+      const totalReal = (typeof visitas._total === 'number') ? visitas._total : visitas.length;
+      const truncado = totalReal > visitas.length;
+      _cntEl.innerHTML = `Exibindo <strong style="color:var(--brand-navy);">${visitas.length}${totalReal !== visitas.length ? ' de ' + totalReal : ''}</strong> visita${visitas.length === 1 ? '' : 's'}`
+        + (truncado ? ` <span style="background:#FEF4E1;color:#B45309;border-radius:9999px;padding:1px 7px;font-size:10.5px;font-weight:700;margin-left:4px;">limitado a 100</span>` : '');
+    }
 
     // Atualiza counts dos tabs
     if (document.getElementById('cntComFlags')) document.getElementById('cntComFlags').textContent = counts.com_flags;
@@ -36047,6 +36092,78 @@ window.trocarFiltroRevisao = function(filtro) {
 };
 
 // Filtro local nos cards da fila de revisão (Sprint 8.6)
+// ===== Sprint 9.32.386: período, intervalo e busca da Revisão MOBILE =====
+function _mobRevPintaPilulas(ativo) {
+  ['7', '30', 'mes', 'all'].forEach(v => {
+    const b = document.getElementById('mobRevPer_' + v);
+    if (!b) return;
+    const on = (v === ativo);
+    b.style.background = on ? 'var(--brand-navy)' : '#fff';
+    b.style.color = on ? '#fff' : 'var(--neutral-700)';
+    b.style.borderColor = on ? 'var(--brand-navy)' : 'var(--neutral-200)';
+  });
+  const cb = document.getElementById('mobRevPerCustomBtn');
+  if (cb) {
+    const on = (ativo === 'custom');
+    cb.style.background = on ? 'var(--brand-navy)' : '#fff';
+    cb.style.color = on ? '#fff' : 'var(--neutral-600)';
+    cb.style.borderColor = on ? 'var(--brand-navy)' : 'var(--neutral-200)';
+  }
+}
+
+window.trocarPeriodoRevisaoMobile = function(p) {
+  const sm = window._reviewMobileState;
+  if (!sm) return;
+  sm.periodo = p;
+  sm.dataIni = null;
+  sm.dataFim = null;
+  _mobRevPintaPilulas(p);
+  const wrap = document.getElementById('mobRevPerCustomWrap');
+  if (wrap) wrap.style.display = 'none';
+  carregarFilaRevisao();
+};
+
+window.togglePeriodoCustomRevisaoMobile = function() {
+  const sm = window._reviewMobileState;
+  if (!sm) return;
+  const wrap = document.getElementById('mobRevPerCustomWrap');
+  const abrindo = !(wrap && wrap.style.display === 'flex');
+  if (wrap) wrap.style.display = abrindo ? 'flex' : 'none';
+  if (abrindo) {
+    sm.periodo = 'custom';
+    _mobRevPintaPilulas('custom');
+  } else {
+    sm.periodo = 'all';
+    sm.dataIni = null;
+    sm.dataFim = null;
+    _mobRevPintaPilulas('all');
+    carregarFilaRevisao();
+  }
+};
+
+window.aplicarDatasRevisaoMobile = function() {
+  const sm = window._reviewMobileState;
+  if (!sm) return;
+  const ini = document.getElementById('mobRevDataIni');
+  const fim = document.getElementById('mobRevDataFim');
+  sm.periodo = 'custom';
+  sm.dataIni = (ini && ini.value) ? ini.value : null;
+  sm.dataFim = (fim && fim.value) ? fim.value : null;
+  _mobRevPintaPilulas('custom');
+  carregarFilaRevisao();
+};
+
+let _mobRevBuscaTimer = null;
+window.buscarRevisaoMobile = function(v) {
+  const sm = window._reviewMobileState;
+  if (!sm) return;
+  sm.busca = v || '';
+  clearTimeout(_mobRevBuscaTimer);
+  _mobRevBuscaTimer = setTimeout(() => carregarFilaRevisao(), 350); // debounce
+};
+
+// Legado: filtro local sobre os cards já carregados. Mantido só por compatibilidade
+// (a busca de verdade agora é buscarRevisaoMobile, que consulta o banco).
 window.filtrarRevisaoLocal = function(termo) {
   const t = (termo || '').trim().toLowerCase();
   const cards = document.querySelectorAll('#reviewList .review-card');
@@ -53862,7 +53979,16 @@ function renderEquipeCard(u, filtro) {
            Desativar
          </button>`;
 
+    // Sprint 9.32.386: "Ver como" também no mobile — só super admin, nunca na própria conta
+    const btnSimularMob = (typeof isSuperAdmin === 'function' && isSuperAdmin(getCurrentUserReal()) && !souEu)
+      ? `<button class="eq-btn eq-btn--warning-outline" onclick="entrarModoSimulacaoUsuario('${u.id}')" title="Ver o app como esta pessoa (somente leitura)">
+           <span class="material-symbols-rounded" style="font-size:16px;">visibility</span>
+           Ver como
+         </button>`
+      : '';
+
     acoes = `
+      ${btnSimularMob}
       ${btnPerfil}
       <button class="eq-btn eq-btn--secondary" onclick="editarCategoriaProfissional('${u.id}')">
         <span class="material-symbols-rounded" style="font-size:16px;">edit</span>
