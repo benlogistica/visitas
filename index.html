@@ -8261,7 +8261,7 @@ mark.search-hl {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.402-roi-fix-mes-parcial-e-metodologia',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.403-presenca-online',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -8418,6 +8418,107 @@ function getSession() {
 }
 function clearSession() {
   localStorage.removeItem(AUTH_KEY);
+}
+
+let _presencaRenderTimer = null;
+
+async function presencaRenderizar() {
+  const el = document.getElementById('dsPresenca');
+  if (!el) return;
+  const online = await presencaListarOnline();
+  const eu = getCurrentUserReal();
+  const outros = online.filter(u => u.id !== eu?.id);
+
+  if (online.length === 0) { el.innerHTML = ''; return; }
+
+  const esc = t => String(t || '').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+  const ini = (n) => String(n || '?').split(' ').slice(0, 2).map(x => x[0]).join('').toUpperCase();
+  const MOSTRAR = 5;
+  const visiveis = online.slice(0, MOSTRAR);
+  const resto = online.length - visiveis.length;
+
+  const avatares = visiveis.map((u, i) => {
+    const souEu = u.id === eu?.id;
+    const foto = u.foto_url
+      ? `background:url('${u.foto_url}') center/cover;`
+      : 'background:linear-gradient(135deg,#0A1F5C,#1D4ED8);';
+    return `
+      <div title="${esc(u.nome)}${souEu ? ' (você)' : ''} · online agora"
+           style="position:relative;width:30px;height:30px;border-radius:50%;${foto}border:2px solid #fff;box-shadow:0 1px 3px rgba(10,31,92,0.2);margin-left:${i === 0 ? '0' : '-9px'};z-index:${10 - i};display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:700;font-family:var(--font-display);cursor:default;">
+        ${u.foto_url ? '' : esc(ini(u.nome))}
+        <span style="position:absolute;bottom:-1px;right:-1px;width:9px;height:9px;border-radius:50%;background:#22C55E;border:1.5px solid #fff;"></span>
+      </div>`;
+  }).join('');
+
+  const maisHtml = resto > 0
+    ? `<div title="mais ${resto} online" style="width:30px;height:30px;border-radius:50%;background:var(--neutral-200);border:2px solid #fff;margin-left:-9px;display:flex;align-items:center;justify-content:center;color:var(--neutral-600);font-size:10px;font-weight:700;">+${resto}</div>`
+    : '';
+
+  el.innerHTML = `
+    <div title="${online.length} ${online.length === 1 ? 'pessoa' : 'pessoas'} online agora" style="display:flex;align-items:center;gap:7px;">
+      <span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;color:var(--neutral-500);white-space:nowrap;">
+        <span style="width:7px;height:7px;border-radius:50%;background:#22C55E;box-shadow:0 0 0 2px rgba(34,197,94,0.2);"></span>
+        ${online.length} online
+      </span>
+      <div style="display:flex;align-items:center;">${avatares}${maisHtml}</div>
+    </div>`;
+}
+
+function presencaIniciarUI() {
+  presencaRenderizar();
+  if (_presencaRenderTimer) return;
+  _presencaRenderTimer = setInterval(presencaRenderizar, PRESENCA_HEARTBEAT_MS);
+}
+
+/* ═══ Sprint 9.32.403: PRESENÇA ONLINE ═══════════════════════════════════════
+   `ultimo_login` não serve pra isso: ele só muda quando a pessoa digita a senha.
+   Alguém que logou às 8h e fechou o app às 9h continuaria "online" o dia todo.
+
+   Então usamos heartbeat: enquanto o app está aberto E a aba visível, gravamos
+   `ultima_atividade` a cada 60s. Online = atividade nos últimos 3 minutos.
+   Pausamos quando a aba fica em segundo plano — não faz sentido contar como
+   "online" quem deixou a aba esquecida, e evita escrita à toa no banco.
+   ═════════════════════════════════════════════════════════════════════════ */
+const PRESENCA_HEARTBEAT_MS = 60 * 1000;
+const PRESENCA_JANELA_MIN   = 3;         // online = ativo nos últimos 3 min
+let _presencaTimer = null;
+
+async function presencaBater() {
+  const u = getCurrentUserReal();
+  if (!u || !db) return;
+  if (document.hidden) return;           // aba em segundo plano não conta
+  try {
+    await db.from('usuarios')
+      .update({ ultima_atividade: new Date().toISOString() })
+      .eq('id', u.id);
+  } catch (e) { /* silencioso: presença não pode quebrar o app */ }
+}
+
+function presencaIniciar() {
+  if (_presencaTimer) return;
+  presencaBater();
+  _presencaTimer = setInterval(presencaBater, PRESENCA_HEARTBEAT_MS);
+  // Volta da aba em segundo plano → bate na hora, pra reaparecer online rápido
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) presencaBater();
+  });
+}
+
+function presencaParar() {
+  if (_presencaTimer) { clearInterval(_presencaTimer); _presencaTimer = null; }
+}
+
+async function presencaListarOnline() {
+  if (!db) return [];
+  const desde = new Date(Date.now() - PRESENCA_JANELA_MIN * 60 * 1000).toISOString();
+  const { data, error } = await db.from('usuarios')
+    .select('id, nome, foto_url, perfil, ultima_atividade')
+    .eq('status', 'ativo')
+    .gte('ultima_atividade', desde)
+    .order('ultima_atividade', { ascending: false })
+    .limit(20);
+  if (error) return [];
+  return data || [];
 }
 
 // Sincroniza a sessão local com dados frescos do banco (foto_url, nome, permissoes, status).
@@ -8752,6 +8853,7 @@ async function login(cpf, senha) {
   db.from('usuarios').update({ ultimo_login: new Date().toISOString() }).eq('id', user.id).then();
 
   saveSession(user);
+  if (typeof presencaIniciar === 'function') presencaIniciar();   // Sprint 9.32.403
   return user;
 }
 
@@ -10333,6 +10435,7 @@ window.handleInstalarApp = async function() {
 
 // Logout
 function logout() {
+  presencaParar();   // Sprint 9.32.403
   sessionStorage.removeItem('SIMULAR_NUTRI');
   sessionStorage.removeItem('SIMULAR_USER'); // Sprint 9.32.384
   // Sprint 9.32.103: limpa flash de notificação pendente ao sair
@@ -13157,6 +13260,9 @@ function desktopTopbar({ title, breadcrumb = [], titleExtra = '' } = {}) {
         </div>
         ${breadcrumbHtml}
       </div>
+
+      <!-- Sprint 9.32.403: quem está online agora -->
+      <div id="dsPresenca" style="display:flex;align-items:center;gap:8px;margin-left:auto;margin-right:14px;"></div>
 
       <div class="ds-topbar__search" onclick="if(event.target.id !== 'dsSearchFiltros') document.getElementById('dsSearchInput')?.focus()">
         <span class="material-symbols-rounded" style="font-size:17px;color:var(--neutral-500);">search</span>
@@ -57695,6 +57801,12 @@ async function boot() {
   window.addEventListener('hashchange', router);
   router();
 
+  // Sprint 9.32.403: o topbar é recriado a cada rota — re-renderiza a presença depois dele
+  window.addEventListener('hashchange', () => {
+    setTimeout(() => { if (document.getElementById('dsPresenca')) presencaIniciarUI(); }, 60);
+  });
+  setTimeout(() => { if (document.getElementById('dsPresenca')) presencaIniciarUI(); }, 400);
+
   // Sprint 9.13: re-renderiza quando o viewport cruza o breakpoint desktop↔mobile
   // (ex.: girou tablet, abriu dev tools, redimensionou janela)
   let _lastWasDesktop = isDesktop();
@@ -57714,6 +57826,7 @@ async function boot() {
   if (getCurrentUser()) {
     iniciarPollingNotificacoes();
     sincronizarSessaoComBanco(); // atualiza foto_url, nome, permissoes sem precisar relogar
+    presencaIniciar();           // Sprint 9.32.403: heartbeat de presença
     // Sprint 9.32.340: verifica pendências 72h também no boot (sessão persistida)
     setTimeout(() => {
       if (typeof verificarPendenciasNoLogin === 'function') {
