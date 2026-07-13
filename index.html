@@ -8246,7 +8246,7 @@ mark.search-hl {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.391-funil-de-vendas',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.392-funil-modo-teste',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -57141,6 +57141,49 @@ const FUNIL_DESCONTOS = [
 ];
 const _funilLabel = (arr, v) => (arr.find(x => x.v === v) || {}).l || (v || '—');
 
+/* ---------- Modo teste (Sprint 9.32.392) ----------
+   O admin precisa experimentar o fluxo da atendente de ponta a ponta — inclusive
+   LANÇANDO. O modo simulação normal é somente leitura, então não serviria aqui.
+   Solução: os lançamentos feitos em modo teste vão pro banco marcados com
+   teste=true, ficam FORA dos KPIs e do ranking, e podem ser apagados de uma vez.
+   Assim você testa de verdade sem sujar o indicador de quem indica mais. */
+function funilModoTeste() {
+  return sessionStorage.getItem('FUNIL_TESTE') === '1';
+}
+
+window.funilEntrarModoTeste = function() {
+  const real = getCurrentUserReal();
+  if (!real || real.perfil !== 'admin') {
+    setFlash('error', 'Só administradores podem abrir o modo teste.');
+    return;
+  }
+  sessionStorage.setItem('FUNIL_TESTE', '1');
+  setFlash('info', 'Modo teste ativo — seus lançamentos não entram nos indicadores.');
+  window.location.hash = '#/funil';
+  setTimeout(() => window.dispatchEvent(new HashChangeEvent('hashchange')), 10);
+};
+
+window.funilSairModoTeste = function() {
+  sessionStorage.removeItem('FUNIL_TESTE');
+  setFlash('success', 'Modo teste encerrado.');
+  window.location.hash = '#/admin/funil';
+  setTimeout(() => window.dispatchEvent(new HashChangeEvent('hashchange')), 10);
+};
+
+window.funilLimparTestes = async function() {
+  const ok = await showModalConfirmacao({
+    icone: 'delete_sweep', iconeCor: 'danger',
+    titulo: 'Apagar todos os lançamentos de teste?',
+    subtitulo: 'Só os marcados como teste são removidos. Os lançamentos reais das atendentes não são tocados.',
+    btnConfirmar: 'Apagar testes', btnCancelar: 'Cancelar',
+  });
+  if (!ok) return;
+  const { error } = await db.from('funil_indicacoes').delete().eq('teste', true);
+  if (error) { setFlash('error', error.message); return; }
+  setFlash('success', 'Lançamentos de teste removidos.');
+  if (typeof funilCarregarAdmin === 'function') await funilCarregarAdmin();
+};
+
 let _funilCatalogo = null;
 async function funilCarregarCatalogo() {
   if (_funilCatalogo) return _funilCatalogo;
@@ -57163,13 +57206,17 @@ async function funilProfissionaisDoLocal(instId) {
   return data || [];
 }
 
-async function funilListar({ apenasMinhas = false } = {}) {
+async function funilListar({ apenasMinhas = false, incluirTeste = null } = {}) {
   const user = getCurrentUser();
   let q = db.from('funil_indicacoes')
     .select('*, instituicoes(id, nome, cidade), profissionais(id, nome, profissao), usuarios:atendente_id(id, nome), funil_itens(id, produto_descricao, quantidade)')
     .order('data_indicacao', { ascending: false })
     .limit(500);
   if (apenasMinhas && user) q = q.eq('atendente_id', user.id);
+  // Sprint 9.32.392: por padrão, dados de teste NÃO aparecem (nem nos KPIs, nem no ranking).
+  // Na área da atendente em modo teste, mostramos os testes pra você ver o que lançou.
+  const verTeste = (incluirTeste === null) ? funilModoTeste() : incluirTeste;
+  if (!verTeste) q = q.eq('teste', false);
   const { data, error } = await q;
   if (error) { console.warn('[funil]', error.message); return []; }
   return data || [];
@@ -57181,6 +57228,7 @@ async function funilCriar(dados, itens) {
   const { data, error } = await db.from('funil_indicacoes').insert({
     ...dados,
     atendente_id: user.id,
+    teste: funilModoTeste(),   // Sprint 9.32.392
   }).select().single();
   if (error) throw new Error(error.message);
   if (itens && itens.length > 0) {
@@ -57243,9 +57291,19 @@ function funilKpis(linhas) {
 function renderFunilAtendente() {
   const user = requireAtendente();
   if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
-  setTimeout(() => funilCarregarLista(true), 0);
+  setTimeout(() => funilCarregarLista(true), 0);  // sempre "minhas" — a atendente só vê o que ela lançou
+
+  const bannerTeste = funilModoTeste() ? `
+    <div style="background:linear-gradient(135deg,#B45309 0%,#92400E 100%);color:#FFF8E5;border-radius:12px;padding:11px 14px;margin-bottom:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+      <span class="material-symbols-rounded" style="font-size:19px;">science</span>
+      <div style="flex:1;min-width:180px;font-size:12.5px;line-height:1.35;">
+        <strong>Modo teste</strong> — você está vendo a área da atendente. Pode lançar à vontade: fica marcado como teste e <strong>não entra nos indicadores</strong>.
+      </div>
+      <button onclick="funilSairModoTeste()" style="background:rgba(255,248,229,0.2);border:1px solid rgba(255,248,229,0.45);color:#FFF8E5;padding:6px 12px;border-radius:8px;cursor:pointer;font-size:11.5px;font-weight:700;font-family:inherit;">Sair do teste</button>
+    </div>` : '';
 
   const corpo = `
+    ${bannerTeste}
     <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:14px;">
       <div>
         <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:16px;display:flex;align-items:center;gap:8px;">
@@ -57545,6 +57603,17 @@ function renderFunilAdmin() {
   setTimeout(() => funilCarregarAdmin(), 0);
 
   const corpo = `
+    <!-- Sprint 9.32.392: experimentar o fluxo da atendente sem sujar os indicadores -->
+    <div style="background:var(--status-info-bg,#E4ECFD);border:1px solid rgba(29,78,216,0.25);border-radius:12px;padding:12px 14px;margin-bottom:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+      <span class="material-symbols-rounded" style="color:#1D4ED8;">science</span>
+      <div style="flex:1;min-width:190px;font-size:12px;color:#1E3A8A;line-height:1.4;">
+        Quer ver e testar a tela que a atendente usa? Abra o <strong>modo teste</strong> — os lançamentos ficam marcados e <strong>não entram nos KPIs nem no ranking</strong>.
+      </div>
+      <button onclick="funilEntrarModoTeste()" style="background:#1D4ED8;color:#fff;border:0;padding:8px 14px;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px;">
+        <span class="material-symbols-rounded" style="font-size:16px;">visibility</span>Abrir área da atendente
+      </button>
+      <button id="funilBtnLimparTeste" onclick="funilLimparTestes()" style="display:none;background:transparent;border:1px solid rgba(221,51,51,0.4);color:var(--status-danger);padding:8px 12px;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">Limpar testes</button>
+    </div>
     <div id="funilAdminKpis" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:16px;"></div>
     <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:14px;padding:16px;margin-bottom:14px;">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:4px;">
@@ -57573,9 +57642,19 @@ function renderFunilAdmin() {
 }
 
 async function funilCarregarAdmin() {
-  const linhas = await funilListar({ apenasMinhas: false });
+  // KPIs e ranking SEM os dados de teste — é o número que vale pro negócio
+  const linhas = await funilListar({ apenasMinhas: false, incluirTeste: false });
   window._funilLinhas = linhas;
   const k = funilKpis(linhas);
+
+  // Se houver lançamentos de teste sobrando, oferece limpar
+  const { count: qtdTeste } = await db.from('funil_indicacoes')
+    .select('id', { count: 'exact', head: true }).eq('teste', true);
+  const btnLimpar = document.getElementById('funilBtnLimparTeste');
+  if (btnLimpar) {
+    btnLimpar.style.display = (qtdTeste > 0) ? '' : 'none';
+    btnLimpar.textContent = `Limpar ${qtdTeste} de teste`;
+  }
 
   const kpiEl = document.getElementById('funilAdminKpis');
   if (kpiEl) {
