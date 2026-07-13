@@ -8246,7 +8246,7 @@ mark.search-hl {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.378-fila-abre-em-pendentes',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.379-revisao-filtro-data-busca-servidor',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -15748,6 +15748,11 @@ function renderAdminRevisaoDesktop() {
       flags: new Set(['noCheckin', 'gps', 'time', 'manual']), // chips ligados
       filtroBase: 'com_flags',  // Sprint 9.32.378: fila abre no que aguarda decisão do admin (bate com o badge da sidebar). Resolvidas/Todas seguem nas abas.
       ordenacao: 'severidade',  // 'severidade' | 'data_desc' | 'data_asc'
+      // Sprint 9.32.379: período, intervalo personalizado e busca — aplicados NO BANCO
+      periodo: 'all',           // '7' | '30' | 'mes' | 'all' | 'custom'
+      dataIni: null,            // 'YYYY-MM-DD' (quando periodo === 'custom')
+      dataFim: null,
+      busca: '',                // hospital / nutricionista / palavra do resumo
     };
   }
   // Sprint 9.32.307: restaura toggle "Ocultar rascunhos" da sessão
@@ -15845,7 +15850,39 @@ function renderAdminRevisaoDesktop() {
           </div>
         </div>
 
-        <div style="flex:1;"></div>
+        <div style="width:1px;height:42px;background:var(--neutral-200);"></div>
+
+        <!-- Sprint 9.32.379: filtro de período (pílulas + intervalo personalizado) -->
+        <div style="display:flex;flex-direction:column;gap:4px;">
+          <div style="font-size:10.5px;font-weight:600;color:var(--neutral-500);text-transform:uppercase;letter-spacing:0.05em;">Período</div>
+          <div style="display:flex;gap:6px;align-items:center;">
+            ${[{v:'7',l:'7d'},{v:'30',l:'30d'},{v:'mes',l:'Mês'},{v:'all',l:'Tudo'}].map(pp => `
+              <button onclick="trocarPeriodoRevisaoDesktop('${pp.v}')" id="dsdRevPer_${pp.v}" style="height:36px;padding:0 12px;border-radius:9999px;border:1px solid ${s.periodo === pp.v ? 'var(--brand-navy)' : 'var(--neutral-200)'};background:${s.periodo === pp.v ? 'var(--brand-navy)' : '#fff'};color:${s.periodo === pp.v ? '#fff' : 'var(--neutral-700)'};font-size:12.5px;font-weight:600;font-family:inherit;cursor:pointer;">${pp.l}</button>
+            `).join('')}
+            <button onclick="togglePeriodoCustomRevisaoDesktop()" id="dsdRevPerCustomBtn" title="Escolher um intervalo de datas" style="height:36px;width:36px;border-radius:10px;border:1px solid ${s.periodo === 'custom' ? 'var(--brand-navy)' : 'var(--neutral-200)'};background:${s.periodo === 'custom' ? 'var(--brand-navy)' : '#fff'};color:${s.periodo === 'custom' ? '#fff' : 'var(--neutral-600)'};cursor:pointer;display:inline-flex;align-items:center;justify-content:center;">
+              <span class="material-symbols-rounded" style="font-size:18px;">calendar_month</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Intervalo personalizado (abre pelo botão de calendário) -->
+        <div id="dsdRevPerCustomWrap" style="display:${s.periodo === 'custom' ? 'flex' : 'none'};flex-direction:column;gap:4px;">
+          <div style="font-size:10.5px;font-weight:600;color:var(--neutral-500);text-transform:uppercase;letter-spacing:0.05em;">Intervalo</div>
+          <div style="display:flex;gap:6px;align-items:center;">
+            <input type="date" id="dsdRevDataIni" value="${s.dataIni || ''}" onchange="aplicarDatasRevisaoDesktop()" style="height:36px;padding:0 10px;border-radius:10px;border:1px solid var(--neutral-200);font-size:12.5px;font-family:inherit;color:var(--brand-navy);" />
+            <span style="color:var(--neutral-400);font-size:12px;">até</span>
+            <input type="date" id="dsdRevDataFim" value="${s.dataFim || ''}" onchange="aplicarDatasRevisaoDesktop()" style="height:36px;padding:0 10px;border-radius:10px;border:1px solid var(--neutral-200);font-size:12.5px;font-family:inherit;color:var(--brand-navy);" />
+          </div>
+        </div>
+
+        <!-- Sprint 9.32.379: busca por palavra (hospital / nutricionista / resumo) -->
+        <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:230px;">
+          <div style="font-size:10.5px;font-weight:600;color:var(--neutral-500);text-transform:uppercase;letter-spacing:0.05em;">Buscar</div>
+          <div style="position:relative;">
+            <input type="search" id="dsdRevBusca" value="${(s.busca || '').replace(/"/g, '&quot;')}" oninput="buscarRevisaoDesktop(this.value)" placeholder="Hospital, nutricionista ou palavra do resumo" style="height:36px;width:100%;padding:0 12px 0 36px;border-radius:10px;border:1px solid var(--neutral-200);font-size:13px;font-family:inherit;color:var(--brand-navy);" />
+            <span class="material-symbols-rounded" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--neutral-500);font-size:16px;pointer-events:none;">search</span>
+          </div>
+        </div>
 
         <!-- Sprint 9.32.307: toggle pra ocultar visitas em Rascunho ativo -->
         <button id="dsdRevToggleRascunho" onclick="toggleOcultarRascunhosDesktop()" style="display:inline-flex;align-items:center;gap:8px;padding:7px 12px;background:${(window._reviewDesktopHideRascunhos === true) ? 'var(--brand-navy)' : 'var(--neutral-0)'};border:1px solid ${(window._reviewDesktopHideRascunhos === true) ? 'var(--brand-navy)' : 'var(--neutral-200)'};border-radius:9999px;cursor:pointer;font-size:12.5px;color:${(window._reviewDesktopHideRascunhos === true) ? '#fff' : 'var(--neutral-700)'};font-weight:600;font-family:inherit;">
@@ -15945,7 +15982,14 @@ async function carregarAdminRevisaoDesktop() {
   try {
     const [counts, visitas, nutris] = await Promise.all([
       contarVisitasPorFiltro(),
-      listarVisitasAdmin(state.filtroBase),
+      // Sprint 9.32.379: nutri, período e busca vão pro banco (não mais só nas 100 carregadas)
+      listarVisitasAdmin(state.filtroBase, {
+        nutri: state.nutri,
+        periodo: state.periodo,
+        dataIni: state.dataIni,
+        dataFim: state.dataFim,
+        busca: state.busca,
+      }),
       db.from('usuarios')
         .select('id, nome')
         .eq('perfil', 'nutricionista')
@@ -15973,11 +16017,10 @@ async function carregarAdminRevisaoDesktop() {
       sel.value = state.nutri;
     }
 
-    // Aplica filtros locais: nutri + chips
+    // Sprint 9.32.379: nutri/período/busca já vieram filtrados do banco.
+    // Sobram só os chips de flag — de propósito client-side, pra preservar a contagem por tipo
+    // exibida no badge de cada chip (e porque a aba "Com flags" tem poucas linhas, longe do teto de 100).
     let filtradas = visitas;
-    if (state.nutri !== 'todos') {
-      filtradas = filtradas.filter(v => v.nutricionista_id === state.nutri);
-    }
 
     // Para cada visita, calcula flags e mapeia pro nosso esquema de chips
     // Sprint 9.32.59: detecta "em andamento" (rascunho dentro da janela de 72h) — não permite aprovar
@@ -16071,9 +16114,8 @@ async function carregarAdminRevisaoDesktop() {
         { v: 'data_asc',   label: 'data (mais antigas)', icon: '↑' },
       ];
       const selOpts = opts.map(o => `<option value="${o.v}"${o.v === ord ? ' selected' : ''}>${o.label}</option>`).join('');
-      // Sprint 9.32.378: usa o total REAL da aba (counts) em vez do array truncado,
-      // e avisa quando a lista bateu no limite de 100 (antes truncava em silêncio).
-      const totalReal = (counts && typeof counts[state.filtroBase] === 'number') ? counts[state.filtroBase] : visitas.length;
+      // Sprint 9.32.379: total REAL vem do count do próprio filtro aplicado (não mais da aba global)
+      const totalReal = (typeof visitas._total === 'number') ? visitas._total : visitas.length;
       const truncado = totalReal > visitas.length;
       cntEl.innerHTML = `
         Exibindo <strong style="color:var(--brand-navy);">${filtradas.length}${totalReal !== filtradas.length ? ' de ' + totalReal : ''}</strong> visita${filtradas.length === 1 ? '' : 's'}
@@ -16457,6 +16499,72 @@ window.trocarNutriRevisaoDesktop = function(id) {
   carregarAdminRevisaoDesktop();
 };
 
+// ===== Sprint 9.32.379: período, intervalo personalizado e busca =====
+function _revPintaPilulas(ativo) {
+  ['7', '30', 'mes', 'all'].forEach(v => {
+    const b = document.getElementById('dsdRevPer_' + v);
+    if (!b) return;
+    const on = (v === ativo);
+    b.style.background = on ? 'var(--brand-navy)' : '#fff';
+    b.style.color = on ? '#fff' : 'var(--neutral-700)';
+    b.style.borderColor = on ? 'var(--brand-navy)' : 'var(--neutral-200)';
+  });
+  const cb = document.getElementById('dsdRevPerCustomBtn');
+  if (cb) {
+    const on = (ativo === 'custom');
+    cb.style.background = on ? 'var(--brand-navy)' : '#fff';
+    cb.style.color = on ? '#fff' : 'var(--neutral-600)';
+    cb.style.borderColor = on ? 'var(--brand-navy)' : 'var(--neutral-200)';
+  }
+}
+
+window.trocarPeriodoRevisaoDesktop = function(p) {
+  const s = window._reviewDesktopState;
+  s.periodo = p;
+  s.dataIni = null;
+  s.dataFim = null;
+  _revPintaPilulas(p);
+  const wrap = document.getElementById('dsdRevPerCustomWrap');
+  if (wrap) wrap.style.display = 'none';
+  carregarAdminRevisaoDesktop();
+};
+
+window.togglePeriodoCustomRevisaoDesktop = function() {
+  const s = window._reviewDesktopState;
+  const wrap = document.getElementById('dsdRevPerCustomWrap');
+  const abrindo = !(wrap && wrap.style.display === 'flex');
+  if (wrap) wrap.style.display = abrindo ? 'flex' : 'none';
+  if (abrindo) {
+    s.periodo = 'custom';
+    _revPintaPilulas('custom');
+    // só recarrega quando o usuário escolher as datas (evita consulta vazia)
+  } else {
+    s.periodo = 'all';
+    s.dataIni = null;
+    s.dataFim = null;
+    _revPintaPilulas('all');
+    carregarAdminRevisaoDesktop();
+  }
+};
+
+window.aplicarDatasRevisaoDesktop = function() {
+  const s = window._reviewDesktopState;
+  const ini = document.getElementById('dsdRevDataIni');
+  const fim = document.getElementById('dsdRevDataFim');
+  s.periodo = 'custom';
+  s.dataIni = (ini && ini.value) ? ini.value : null;
+  s.dataFim = (fim && fim.value) ? fim.value : null;
+  _revPintaPilulas('custom');
+  carregarAdminRevisaoDesktop();
+};
+
+let _revBuscaTimer = null;
+window.buscarRevisaoDesktop = function(v) {
+  window._reviewDesktopState.busca = v || '';
+  clearTimeout(_revBuscaTimer);
+  _revBuscaTimer = setTimeout(() => carregarAdminRevisaoDesktop(), 350); // debounce
+};
+
 // Sprint 9.15.2: troca ordenação da lista de revisão
 window.trocarOrdenacaoRevisaoDesktop = function(v) {
   window._reviewDesktopState.ordenacao = v;
@@ -16495,6 +16603,20 @@ window.desligarFlagRevisaoDesktop = function(k) {
 window.limparFiltrosRevisaoDesktop = function() {
   window._reviewDesktopState.nutri = 'todos';
   window._reviewDesktopState.flags = new Set(['noCheckin', 'gps', 'time', 'manual']);
+  // Sprint 9.32.379: limpa também período, intervalo e busca
+  window._reviewDesktopState.periodo = 'all';
+  window._reviewDesktopState.dataIni = null;
+  window._reviewDesktopState.dataFim = null;
+  window._reviewDesktopState.busca = '';
+  const _inpBusca = document.getElementById('dsdRevBusca');
+  if (_inpBusca) _inpBusca.value = '';
+  const _dIni = document.getElementById('dsdRevDataIni');
+  if (_dIni) _dIni.value = '';
+  const _dFim = document.getElementById('dsdRevDataFim');
+  if (_dFim) _dFim.value = '';
+  const _wrapCustom = document.getElementById('dsdRevPerCustomWrap');
+  if (_wrapCustom) _wrapCustom.style.display = 'none';
+  if (typeof _revPintaPilulas === 'function') _revPintaPilulas('all');
   // Sprint 9.32.307: limpar filtros também desliga "ocultar rascunhos"
   window._reviewDesktopHideRascunhos = false;
   try { sessionStorage.removeItem('reviewDesktop_hideRascunhos'); } catch (e) {}
@@ -21084,11 +21206,18 @@ function getNivelCritico(flags) {
 // filtro: 'todas' | 'com_flags' | 'em_revisao' | 'resolvidas'
 //   em_revisao aqui = visitas devolvidas pro profissional, aguardando a correção.
 //   (status='rascunho' + revisao_motivo preenchido + ainda não resolvida)
-async function listarVisitasAdmin(filtro = 'com_flags') {
+async function listarVisitasAdmin(filtro = 'com_flags', opts = {}) {
   if (!db) return [];
 
+  // Sprint 9.32.379: filtros passam a ir pro BANCO. Antes eram aplicados só sobre as 100
+  // linhas carregadas — então filtrar por um profissional cujas visitas estavam fora das
+  // 100 mais recentes devolvia vazio, mesmo ele tendo visitas. O filtro mentia.
+  const { nutri = 'todos', periodo = 'all', dataIni = null, dataFim = null, busca = '' } = opts;
+
+  // count:'exact' devolve o total REAL do filtro (a lista em si segue limitada a 100)
   let query = db.from('visitas').select(
-    '*, instituicoes(id, nome, cidade, latitude, longitude), usuarios:nutricionista_id(id, nome, foto_url)'
+    '*, instituicoes(id, nome, cidade, latitude, longitude), usuarios:nutricionista_id(id, nome, foto_url)',
+    { count: 'exact' }
   );
 
   if (filtro === 'com_flags') {
@@ -21109,14 +21238,57 @@ async function listarVisitasAdmin(filtro = 'com_flags') {
     query = query.not('status', 'in', '(agendada,sugerida)');
   }
 
+  // --- Sprint 9.32.379: filtros server-side ---
+  if (nutri && nutri !== 'todos') {
+    query = query.eq('nutricionista_id', nutri);
+  }
+
+  // Período: filtra por data_visita (e NÃO por checkin_timestamp — visitas "sem check-in"
+  // não têm timestamp e sumiriam justamente as mais críticas).
+  const _ymd = (iso) => {
+    const d = new Date(iso);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
+  if (periodo === 'custom') {
+    if (dataIni) query = query.gte('data_visita', dataIni);
+    if (dataFim) query = query.lte('data_visita', dataFim);
+  } else if (periodo && periodo !== 'all') {
+    const iso = calcularDataInicio(periodo);
+    if (iso) query = query.gte('data_visita', _ymd(iso));
+  }
+
+  // Busca por palavra: hospital, nutricionista ou resumo.
+  // PostgREST não faz OR direto em tabela embarcada, então resolvemos nome -> ids antes.
+  const termo = (busca || '').trim();
+  if (termo.length >= 2) {
+    const safe = termo.replace(/[,()*]/g, ' ').trim();
+    if (safe) {
+      const [instRes, userRes] = await Promise.all([
+        db.from('instituicoes').select('id').ilike('nome', `%${safe}%`).limit(300),
+        db.from('usuarios').select('id').ilike('nome', `%${safe}%`).limit(300),
+      ]);
+      const instIds = (instRes.data || []).map(r => r.id);
+      const userIds = (userRes.data || []).map(r => r.id);
+      const partes = [`resumo.ilike.*${safe}*`];
+      if (instIds.length) partes.push(`instituicao_id.in.(${instIds.join(',')})`);
+      if (userIds.length) partes.push(`nutricionista_id.in.(${userIds.join(',')})`);
+      query = query.or(partes.join(','));
+    }
+  }
+
   query = query.order('checkin_timestamp', { ascending: false, nullsFirst: false }).limit(100);
 
-  const { data, error } = await query;
+  const { data, error, count } = await query;
   if (error) {
     console.warn('[AdminRevisao] Erro:', error.message);
-    return [];
+    const vazio = [];
+    vazio._total = 0;
+    return vazio;
   }
-  return data || [];
+  const rows = data || [];
+  // _total = quantas existem no banco pro filtro atual (a lista vem capada em 100)
+  rows._total = (typeof count === 'number') ? count : rows.length;
+  return rows;
 }
 
 // Conta visitas por tipo de filtro (pra mostrar nos tabs)
@@ -40464,7 +40636,7 @@ window.rejeitarObjetivoPendente = async function(id) {
 let FAT_DATA = null;
 let _fatDataPromise = null;
 // __FAT_VERSION_START__ — substituído pelo atualizar_index.py com hash do JSON
-const FAT_DATA_VERSION = '9c9e47108445';
+const FAT_DATA_VERSION = '67fcf8314dbe';
 // __FAT_VERSION_END__
 const FAT_DATA_URL = 'faturamento_data_inline.json?v=' + FAT_DATA_VERSION;
 
