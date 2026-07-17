@@ -8268,7 +8268,7 @@ mark.search-hl {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.405-fix-validacao-silenciosa-instituicao',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.406-funil-loja-produtos-visitador-export',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -42513,20 +42513,21 @@ async function _roiCalcularEquipe({ periodo = '6m' }) {
     return Object.keys(porMes).some(m => m < minMes && porMes[m] > 0);
   };
 
-  // Venda PF gerada pelo trabalho de campo (funil) — por visitador
+  // Sprint 9.32.406: o Funil não guarda mais valor R$ — mede UNIDADES vendidas.
   const pfPorVisitador = {};
   try {
     let qf = db.from('funil_indicacoes')
-      .select('visitador_id, valor_venda, data_venda, status, teste')
+      .select('visitador_id, data_venda, status, teste, funil_itens(quantidade)')
       .eq('status', 'vendida').eq('teste', false).limit(2000);
     const { data: funilRows } = await qf;
     (funilRows || []).forEach(f => {
-      if (!f.visitador_id || !f.valor_venda) return;
+      if (!f.visitador_id) return;
       if (mesesPeriodo && f.data_venda) {
         const ym = String(f.data_venda).slice(0, 7);
         if (!mesesPeriodo.has(ym)) return;
       }
-      pfPorVisitador[f.visitador_id] = (pfPorVisitador[f.visitador_id] || 0) + Number(f.valor_venda);
+      const un = (f.funil_itens || []).reduce((a, b) => a + Number(b.quantidade || 0), 0);
+      pfPorVisitador[f.visitador_id] = (pfPorVisitador[f.visitador_id] || 0) + un;
     });
   } catch (e) { /* funil pode não existir ainda — não quebra o ROI */ }
 
@@ -42577,9 +42578,9 @@ async function _roiCalcularEquipe({ periodo = '6m' }) {
         else ativados++;                                        // nunca tinha comprado
       }
     });
-    const receitaPF = pfPorVisitador[nId] || 0;
-    // Ranking = R$ que ele efetivamente moveu. Pode ser negativo (carteira encolheu).
-    const resultado = deltaFat + receitaPF;
+    const unidadesPF = pfPorVisitador[nId] || 0;
+    // Ranking = R$ que ele moveu na carteira. Unidades do funil ficam à parte (não são R$).
+    const resultado = deltaFat;
 
     // ── ESFORÇO ──
     const carteira = (carteiraPorNutri[nId] || new Set()).size;
@@ -42608,7 +42609,7 @@ async function _roiCalcularEquipe({ periodo = '6m' }) {
       serieMensal: calcularSerie(nId),
       // Sprint 9.32.400
       carteira, cobertura, rsPorVisita,
-      deltaFat, ativados, reativados, receitaPF, resultado,
+      deltaFat, ativados, reativados, unidadesPF, resultado,
       pctCheckin, pctRelatorio, pctNaoRealiz,
     };
   });
@@ -42834,7 +42835,7 @@ function _roiRenderEquipe() {
         <div style="text-align:right;" title="% dos hospitais da carteira dele que ele visitou no período">Cobertura</div>
         <div style="text-align:right;" title="Faturamento da carteira ÷ visitas">R$/visita</div>
         <div style="text-align:right;" title="Hospitais que passaram a comprar / voltaram a comprar">Ativou</div>
-        <div style="text-align:right;" title="Venda pessoa física gerada pelo trabalho de campo (funil)">Venda PF</div>
+        <div style="text-align:right;" title="Unidades vendidas PF pelo trabalho de campo (funil). Informativo — não entra no Resultado.">Venda PF</div>
         <div style="text-align:right;" title="Faturamento da carteira — é herança do território, não produção. Não ranqueia.">Território</div>
         <div style="text-align:right;" title="Δ faturamento + venda PF. É o que ele efetivamente moveu.">Resultado</div>
       </div>
@@ -42861,7 +42862,7 @@ function _roiRenderEquipe() {
             <div style="position:relative;z-index:1;text-align:right;font-family:var(--font-mono);font-size:12px;color:${r.cobertura >= 70 ? 'var(--status-success)' : r.cobertura >= 40 ? 'var(--status-warning)' : 'var(--status-danger)'};font-weight:700;" title="${r.instituicoes} de ${r.carteira} hospitais da carteira">${r.cobertura.toFixed(0)}%</div>
             <div style="position:relative;z-index:1;text-align:right;font-family:var(--font-mono);font-size:11.5px;color:var(--neutral-600);">${_perfFmtMoeda(r.rsPorVisita)}</div>
             <div style="position:relative;z-index:1;text-align:right;font-family:var(--font-mono);font-size:12px;font-weight:700;color:${(r.ativados + r.reativados) > 0 ? 'var(--status-success)' : 'var(--neutral-400)'};" title="${r.ativados} novo(s) · ${r.reativados} reativado(s)">${r.ativados + r.reativados > 0 ? '+' + (r.ativados + r.reativados) : '—'}</div>
-            <div style="position:relative;z-index:1;text-align:right;font-family:var(--font-mono);font-size:12px;font-weight:700;color:${r.receitaPF > 0 ? '#1D4ED8' : 'var(--neutral-400)'};">${r.receitaPF > 0 ? _perfFmtMoeda(r.receitaPF) : '—'}</div>
+            <div style="position:relative;z-index:1;text-align:right;font-family:var(--font-mono);font-size:12px;font-weight:700;color:${r.unidadesPF > 0 ? '#1D4ED8' : 'var(--neutral-400)'};">${r.unidadesPF > 0 ? r.unidadesPF + ' un' : '—'}</div>
             <div style="position:relative;z-index:1;text-align:right;font-family:var(--font-mono);font-size:12px;color:var(--neutral-500);" title="Faturamento da carteira — herança do território, não produção">${_perfFmtMoeda(r.faturamento)}</div>
             <div style="position:relative;z-index:1;text-align:right;font-family:var(--font-mono);font-weight:700;font-size:13px;color:${r.resultado > 0 ? 'var(--status-success)' : r.resultado < 0 ? 'var(--status-danger)' : 'var(--neutral-400)'};">${r.resultado === 0 ? '—' : (r.resultado > 0 ? '+' : '') + _perfFmtMoeda(r.resultado)}</div>
           </div>
@@ -43106,8 +43107,8 @@ window._roiAbrirMetodologia = function() {
         ${secao('var(--status-success)', 'trending_up', 'Resultado atribuível', 'É por AQUI que o ranking ordena',
           '<strong>Δ faturamento</strong> — quanto o faturamento dos hospitais que ele cobre <strong>cresceu ou caiu</strong> no período, contra o período anterior de mesmo tamanho. Ele não criou a base; mas se ela cresceu sob a cobertura dele, isso é atribuível. Pode ser <strong>negativo</strong>: carteira que encolheu derruba no ranking, e isso é honesto.<br><br>' +
           '<strong>Ativou</strong> — hospitais que <strong>não compravam nada</strong> e passaram a comprar (novos), mais os <strong>dormentes que voltaram</strong> (reativados). Produção pura: ninguém herda uma ativação.<br><br>' +
-          '<strong>Venda PF</strong> — receita do Funil de Vendas atribuída a ele como <strong>visitador</strong> do local. É a compra que o paciente fez no CPF dele porque a nutricionista do hospital indicou — receita que nunca aparecia no faturamento do vendedor, porque não é o CNPJ do hospital.<br><br>' +
-          '<strong style="color:var(--status-success);">Resultado = Δ faturamento + Venda PF.</strong> É o R$ que ele efetivamente moveu.')}
+          '<strong>Venda PF</strong> — unidades vendidas no CPF do paciente porque um profissional do local indicou (Funil), atribuídas ao <strong>visitador</strong>. A loja registra volume, não R$: é informativo e <strong>não entra no Resultado</strong>.<br><br>' +
+          '<strong style="color:var(--status-success);">Resultado = Δ faturamento da carteira.</strong> É o R$ que ele moveu no CNPJ dos hospitais.')}
 
         ${secao('var(--neutral-500)', 'fact_check', 'Disciplina', 'Fora do ranking, de propósito',
           '% de check-in válido, % de relatório preenchido e taxa de "não realizadas". <strong>Não é performance, é higiene.</strong> Quem tem 100% de check-in e zero resultado é organizado, não produtivo. Serve pra você saber se <em>pode confiar</em> nos números de cima: disciplina ruim significa dado ruim.')}
@@ -57883,6 +57884,7 @@ async function boot() {
 const FUNIL_TIPOS_LOCAL = [
   { v: 'hospital',     l: 'Hospital' },
   { v: 'clinica',      l: 'Clínica' },
+  { v: 'consultorio',  l: 'Consultório' },
   { v: 'home_care',    l: 'Home care' },
   { v: 'casa_repouso', l: 'Casa de repouso' },
   { v: 'outro',        l: 'Outro' },
@@ -58025,7 +58027,12 @@ async function funilCriar(dados, itens) {
 }
 
 /* ---------- Indicador: quem indica mais ---------- */
+function _funilUnidades(r) {
+  return (r.funil_itens || []).reduce((a, b) => a + Number(b.quantidade || 0), 0);
+}
+
 function funilRanking(linhas) {
+  // Sprint 9.32.406: sem valor R$ — mede VENDAS e UNIDADES de produto indicadas
   const porProf = {};
   linhas.forEach(r => {
     const nome = r.profissionais?.nome || r.profissional_nome || '(sem profissional)';
@@ -58035,19 +58042,14 @@ function funilRanking(linhas) {
         nome,
         local: r.instituicoes?.nome || r.local_nome || '—',
         profissao: r.profissionais?.profissao || '',
-        indicacoes: 0, vendas: 0, perdidas: 0, receita: 0,
+        vendas: 0, unidades: 0,
       };
     }
     const p = porProf[chave];
-    p.indicacoes++;
-    if (r.status === 'vendida') { p.vendas++; p.receita += Number(r.valor_venda || 0); }
-    if (r.status === 'perdida') p.perdidas++;
+    p.vendas++;
+    p.unidades += _funilUnidades(r);
   });
-  return Object.values(porProf).map(p => ({
-    ...p,
-    conversao: p.indicacoes > 0 ? (p.vendas / p.indicacoes) * 100 : 0,
-    ticket: p.vendas > 0 ? p.receita / p.vendas : 0,
-  })).sort((a, b) => b.receita - a.receita || b.vendas - a.vendas);
+  return Object.values(porProf).sort((a, b) => b.unidades - a.unidades || b.vendas - a.vendas);
 }
 
 /* Sprint 9.32.399: ranking por VISITADOR — o mérito indireto do vendedor.
@@ -58060,32 +58062,22 @@ function funilRankingVisitador(linhas) {
     const nome = r.visitador?.nome || r.visitador_nome;
     if (!nome) return;
     const chave = r.visitador_id || ('nome:' + nome);
-    if (!porVis[chave]) porVis[chave] = { nome, indicacoes: 0, vendas: 0, receita: 0, locais: new Set() };
+    if (!porVis[chave]) porVis[chave] = { nome, vendas: 0, unidades: 0, locais: new Set() };
     const p = porVis[chave];
-    p.indicacoes++;
+    p.vendas++;
+    p.unidades += _funilUnidades(r);
     if (r.instituicoes?.nome) p.locais.add(r.instituicoes.nome);
-    if (r.status === 'vendida') { p.vendas++; p.receita += Number(r.valor_venda || 0); }
   });
-  return Object.values(porVis).map(p => ({
-    ...p,
-    locais: p.locais.size,
-    conversao: p.indicacoes > 0 ? (p.vendas / p.indicacoes) * 100 : 0,
-  })).sort((a, b) => b.receita - a.receita || b.vendas - a.vendas);
+  return Object.values(porVis).map(p => ({ ...p, locais: p.locais.size }))
+    .sort((a, b) => b.unidades - a.unidades || b.vendas - a.vendas);
 }
 
 function funilKpis(linhas) {
-  const ind = linhas.length;
-  const vend = linhas.filter(r => r.status === 'vendida');
-  const receita = vend.reduce((sm, r) => sm + Number(r.valor_venda || 0), 0);
-  return {
-    indicacoes: ind,
-    vendas: vend.length,
-    perdidas: linhas.filter(r => r.status === 'perdida').length,
-    abertas: linhas.filter(r => r.status === 'indicada').length,
-    receita,
-    conversao: ind > 0 ? (vend.length / ind) * 100 : 0,
-    ticket: vend.length > 0 ? receita / vend.length : 0,
-  };
+  // Sprint 9.32.406: métricas por volume (vendas e unidades), não mais R$
+  const vendas = linhas.length;
+  const unidades = linhas.reduce((sm, r) => sm + _funilUnidades(r), 0);
+  const clientes = new Set(linhas.map(r => (r.cliente_cpf || r.cliente_nome || '').toLowerCase()).filter(Boolean)).size;
+  return { vendas, unidades, clientes };
 }
 
 /* ==========================================================================
@@ -58163,17 +58155,16 @@ async function funilCarregarLista(apenasMinhas) {
   if (kpiEl) {
     const k = funilKpis(linhas);
     kpiEl.innerHTML =
-      funilCardKpi('Indicações', k.indicacoes) +
       funilCardKpi('Vendas', k.vendas, 'var(--status-success)') +
-      funilCardKpi('Conversão', k.conversao.toFixed(0) + '%', k.conversao >= 50 ? 'var(--status-success)' : 'var(--status-warning)') +
-      funilCardKpi('Receita', _fmtMoeda(k.receita, true), 'var(--brand-lime-dark,#6FA62E)');
+      funilCardKpi('Unidades', k.unidades, 'var(--brand-lime-dark,#6FA62E)') +
+      funilCardKpi('Clientes', k.clientes);
   }
 
   if (linhas.length === 0) {
     listEl.innerHTML = `<div class="empty-state" style="margin:0;">
       <div class="empty-state__icon"><span class="material-symbols-rounded">filter_alt</span></div>
       <div class="empty-state__title">Nenhum lançamento ainda</div>
-      <div class="empty-state__desc">Clique em "Novo lançamento" para registrar a primeira indicação.</div>
+      <div class="empty-state__desc">Clique em "Novo lançamento" para registrar a primeira venda.</div>
     </div>`;
     return;
   }
@@ -58182,14 +58173,12 @@ async function funilCarregarLista(apenasMinhas) {
 
   // Sprint 9.32.393: no desktop, a atendente lança em volume — tabela lê melhor que cards.
   if (typeof isDesktop === 'function' && isDesktop()) {
-    const cores = { indicada: ['#B45309', 'Aguardando'], vendida: ['#2E7D32', 'Vendida'], perdida: ['#B91C1C', 'Não converteu'] };
     listEl.innerHTML = `
       <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:14px;overflow:hidden;">
         <div style="display:grid;grid-template-columns:1.4fr 1.3fr 1.2fr 90px 110px 110px 170px;gap:10px;padding:11px 14px;background:var(--neutral-50);border-bottom:1px solid var(--neutral-200);font-size:10.5px;font-weight:700;color:var(--neutral-600);text-transform:uppercase;letter-spacing:0.04em;">
-          <div>Cliente</div><div>Indicado por</div><div>Local</div><div>Data</div><div>Situação</div><div style="text-align:right;">Valor</div><div></div>
+          <div>Cliente</div><div>Indicado por</div><div>Local</div><div>Data</div><div>Desconto</div><div style="text-align:right;">Unidades</div><div></div>
         </div>
         ${linhas.map(r => {
-          const [cor, lbl] = cores[r.status] || cores.indicada;
           const prof = r.profissionais?.nome || r.profissional_nome || '—';
           const local = r.instituicoes?.nome || r.local_nome || _funilLabel(FUNIL_TIPOS_LOCAL, r.tipo_local);
           const itens = (r.funil_itens || []).map(i => `${esc(i.produto_descricao)} ×${Number(i.quantidade)}`).join(', ');
@@ -58202,17 +58191,9 @@ async function funilCarregarLista(apenasMinhas) {
               <div style="min-width:0;color:var(--neutral-700);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(prof)}</div>
               <div style="min-width:0;color:var(--neutral-600);font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(local)}</div>
               <div style="color:var(--neutral-600);font-size:11.5px;">${new Date(r.data_indicacao + 'T12:00:00').toLocaleDateString('pt-BR')}</div>
-              <div style="color:${cor};font-weight:700;font-size:11.5px;">${lbl}</div>
-              <div style="text-align:right;font-family:var(--font-mono);font-weight:700;color:${r.status === 'vendida' ? 'var(--brand-lime-dark,#6FA62E)' : 'var(--neutral-400)'};">
-                ${r.status === 'vendida' ? _fmtMoeda(Number(r.valor_venda || 0)) : '—'}
-              </div>
-              <div style="display:flex;gap:5px;justify-content:flex-end;">
-                ${r.status === 'indicada' ? `
-                  <button onclick="funilConverter('${r.id}')" style="background:var(--status-success-bg,#E6F6EF);color:var(--status-success);border:0;padding:6px 10px;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;">Converter</button>
-                  <button onclick="funilPerder('${r.id}')" title="Não converteu" style="background:var(--neutral-100);color:var(--neutral-600);border:0;padding:6px 8px;border-radius:7px;cursor:pointer;display:inline-flex;align-items:center;">
-                    <span class="material-symbols-rounded" style="font-size:15px;">close</span>
-                  </button>` : ''}
-              </div>
+              <div style="color:var(--neutral-600);font-size:11px;">${r.forma_desconto ? _funilLabel(FUNIL_DESCONTOS, r.forma_desconto) : '—'}</div>
+              <div style="text-align:right;font-family:var(--font-mono);font-weight:700;color:var(--brand-lime-dark,#6FA62E);">${_funilUnidades(r)} un</div>
+              <div></div>
             </div>`;
         }).join('')}
       </div>`;
@@ -58220,8 +58201,7 @@ async function funilCarregarLista(apenasMinhas) {
   }
 
   listEl.innerHTML = linhas.map(r => {
-    const cores = { indicada: ['#B45309', '#FEF4E1', 'Aguardando compra'], vendida: ['#2E7D32', '#E7F5E7', 'Vendida'], perdida: ['#B91C1C', '#FCE8E8', 'Não converteu'] };
-    const [cor, bg, lbl] = cores[r.status] || cores.indicada;
+    const cor = '#2E7D32';
     const prof = r.profissionais?.nome || r.profissional_nome || '—';
     const local = r.instituicoes?.nome || r.local_nome || _funilLabel(FUNIL_TIPOS_LOCAL, r.tipo_local);
     const itens = (r.funil_itens || []).map(i => `${esc(i.produto_descricao)} ×${Number(i.quantidade)}`).join(', ');
@@ -58240,15 +58220,10 @@ async function funilCarregarLista(apenasMinhas) {
             </div>
           </div>
           <div style="text-align:right;flex-shrink:0;">
-            <span style="background:${bg};color:${cor};padding:3px 9px;border-radius:9999px;font-size:10.5px;font-weight:700;">${lbl}</span>
-            ${r.status === 'vendida' ? `<div style="font-family:var(--font-mono);font-weight:700;color:var(--brand-lime-dark,#6FA62E);margin-top:5px;font-size:13px;">${_fmtMoeda(Number(r.valor_venda || 0))}</div>` : ''}
+            <span style="background:#E7F5E7;color:#2E7D32;padding:3px 9px;border-radius:9999px;font-size:10.5px;font-weight:700;">Vendida</span>
+            <div style="font-family:var(--font-mono);font-weight:700;color:var(--brand-lime-dark,#6FA62E);margin-top:5px;font-size:13px;">${_funilUnidades(r)} un</div>
           </div>
         </div>
-        ${r.status === 'indicada' ? `
-          <div style="display:flex;gap:6px;margin-top:10px;padding-top:9px;border-top:1px dashed var(--neutral-200);">
-            <button onclick="funilConverter('${r.id}')" style="flex:1;background:var(--status-success-bg,#E6F6EF);color:var(--status-success);border:0;padding:7px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">Converter em venda</button>
-            <button onclick="funilPerder('${r.id}')" style="flex:1;background:var(--neutral-100);color:var(--neutral-600);border:0;padding:7px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;">Não converteu</button>
-          </div>` : ''}
       </div>`;
   }).join('');
 }
@@ -58271,7 +58246,7 @@ window.funilAbrirModal = async function() {
           <span class="material-symbols-rounded">filter_alt</span>
         </div>
         <div class="modal-card__title">Novo lançamento</div>
-        <div class="modal-card__subtitle">Registre a indicação. Se já virou venda, marque abaixo e informe o valor.</div>
+        <div class="modal-card__subtitle">Registre a venda indicada por um profissional de saúde.</div>
       </div>
       <div class="modal-card__body" style="display:flex;flex-direction:column;gap:12px;">
         <div class="report-field">
@@ -58294,12 +58269,14 @@ window.funilAbrirModal = async function() {
         </div>
         <div class="report-field">
           <label>Local de atuação</label>
-          <select id="fnInst" onchange="funilTrocarLocal(this.value)" style="width:100%;padding:10px;border:1.5px solid var(--neutral-200);border-radius:10px;font-family:inherit;font-size:14px;">
-            <option value="">Selecione a instituição…</option>
-            ${insts.map(i => `<option value="${i.id}">${esc(i.nome)}${i.cidade ? ' · ' + esc(i.cidade) : ''}</option>`).join('')}
-          </select>
-          <div style="font-size:10.5px;color:var(--neutral-500);margin-top:4px;">Ao escolher o local, a lista de profissionais é filtrada.</div>
-          <!-- Sprint 9.32.399: quem da B&N visita esse local -->
+          <!-- Sprint 9.32.406: busca por digitação (218 locais não cabem num select simples) -->
+          <input type="text" id="fnInstBusca" list="fnInstDatalist" autocomplete="off"
+                 placeholder="Digite para buscar o local…" oninput="funilInstSelecionar(this.value)"
+                 style="width:100%;padding:10px;border:1.5px solid var(--neutral-200);border-radius:10px;font-family:inherit;font-size:14px;" />
+          <datalist id="fnInstDatalist">
+            ${insts.map(i => `<option value="${esc(i.nome)}${i.cidade ? ' · ' + esc(i.cidade) : ''}"></option>`).join('')}
+          </datalist>
+          <div style="font-size:10.5px;color:var(--neutral-500);margin-top:4px;">Ao escolher o local, aparece o visitador e a lista de profissionais.</div>
           <div id="fnVisitador" style="display:none;margin-top:8px;"></div>
         </div>
         <div class="report-field">
@@ -58316,28 +58293,16 @@ window.funilAbrirModal = async function() {
           </select>
         </div>
 
+        <!-- Sprint 9.32.406: todo lançamento já é uma venda. Produtos: um ou vários. Sem valor R$. -->
         <div style="border-top:1px dashed var(--neutral-200);padding-top:12px;">
-          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:700;color:var(--brand-navy);font-size:13px;">
-            <input type="checkbox" id="fnJaVendeu" onchange="funilToggleVenda()" style="width:17px;height:17px;accent-color:var(--brand-lime);" />
-            Já virou venda
+          <label style="font-weight:700;color:var(--brand-navy);font-size:13px;display:flex;align-items:center;gap:6px;">
+            <span class="material-symbols-rounded" style="font-size:17px;color:var(--brand-lime-dark,#6FA62E);">shopping_bag</span>
+            Produtos vendidos
           </label>
-        </div>
-        <div id="fnVendaWrap" style="display:none;flex-direction:column;gap:12px;">
-          <div class="report-field">
-            <label>Valor da venda (R$) <span style="color:var(--status-danger)">*</span></label>
-            <input type="number" id="fnValor" min="0" step="0.01" placeholder="0,00" style="width:100%;padding:10px;border:1.5px solid var(--neutral-200);border-radius:10px;font-family:var(--font-mono);font-size:14px;" />
-          </div>
-          <div class="report-field">
-            <label>Produto</label>
-            <select id="fnProduto" style="width:100%;padding:10px;border:1.5px solid var(--neutral-200);border-radius:10px;font-family:inherit;font-size:13px;">
-              <option value="">Selecione…</option>
-              ${prods.map(pr => `<option value="${pr.id}" data-desc="${esc(pr.descricao)}">${esc(pr.descricao)}${pr.marca ? ' · ' + esc(pr.marca) : ''}</option>`).join('')}
-            </select>
-          </div>
-          <div class="report-field">
-            <label>Quantidade</label>
-            <input type="number" id="fnQtd" min="1" step="1" value="1" style="width:100%;padding:10px;border:1.5px solid var(--neutral-200);border-radius:10px;font-family:var(--font-mono);font-size:14px;" />
-          </div>
+          <div id="fnProdutos" style="display:flex;flex-direction:column;gap:8px;margin-top:8px;"></div>
+          <button type="button" onclick="funilAddProduto()" style="margin-top:8px;background:var(--brand-lime-50,#F4F9EA);color:var(--brand-lime-dark,#6FA62E);border:1px dashed rgba(139,198,63,0.5);border-radius:9px;padding:8px;width:100%;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;justify-content:center;gap:5px;">
+            <span class="material-symbols-rounded" style="font-size:16px;">add</span>Adicionar produto
+          </button>
         </div>
       </div>
       <div class="modal-card__footer">
@@ -58347,12 +58312,50 @@ window.funilAbrirModal = async function() {
     </div>`;
   document.body.appendChild(bd);
   if (typeof applyMasks === 'function') applyMasks(bd);
+
+  // Sprint 9.32.406: catálogo, mapa nome->id do local, e 1 linha de produto de largada
+  window._funilCatalogo = prods;
+  window._funilInstMap = {};
+  insts.forEach(i => { window._funilInstMap[i.nome + (i.cidade ? ' · ' + i.cidade : '')] = i.id; });
+  window._funilInstId = null;
+  window._funilProdSeq = 0;
+  funilAddProduto();
 };
 
-window.funilToggleVenda = function() {
-  const w = document.getElementById('fnVendaWrap');
-  const c = document.getElementById('fnJaVendeu');
-  if (w && c) w.style.display = c.checked ? 'flex' : 'none';
+// Sprint 9.32.406: linha de produto (produto + quantidade + remover)
+window.funilAddProduto = function() {
+  const wrap = document.getElementById('fnProdutos');
+  if (!wrap) return;
+  const prods = window._funilCatalogo || [];
+  const esc = t => String(t || '').replace(/"/g, '&quot;');
+  const idx = (window._funilProdSeq = (window._funilProdSeq || 0) + 1);
+  const row = document.createElement('div');
+  row.className = 'fn-prod-row';
+  row.dataset.idx = idx;
+  row.style.cssText = 'display:flex;gap:6px;align-items:center;';
+  row.innerHTML = `
+    <select class="fn-prod-sel" style="flex:1;min-width:0;padding:9px;border:1.5px solid var(--neutral-200);border-radius:9px;font-family:inherit;font-size:12.5px;">
+      <option value="">Selecione o produto…</option>
+      ${prods.map(pr => `<option value="${pr.id}" data-desc="${esc(pr.descricao)}">${esc(pr.descricao)}${pr.marca ? ' · ' + esc(pr.marca) : ''}</option>`).join('')}
+    </select>
+    <input type="number" class="fn-prod-qtd" min="1" step="1" value="1" title="Quantidade" style="width:64px;padding:9px;border:1.5px solid var(--neutral-200);border-radius:9px;font-family:var(--font-mono);font-size:13px;text-align:center;" />
+    <button type="button" onclick="this.closest('.fn-prod-row').remove()" title="Remover" style="flex-shrink:0;width:34px;height:34px;border:0;background:var(--neutral-100);color:var(--neutral-500);border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;">
+      <span class="material-symbols-rounded" style="font-size:17px;">close</span>
+    </button>`;
+  wrap.appendChild(row);
+};
+
+// Sprint 9.32.406: casa o texto digitado no local com o id
+window.funilInstSelecionar = function(texto) {
+  const map = window._funilInstMap || {};
+  const id = map[texto];
+  if (id) {
+    window._funilInstId = id;
+    window._funilInstNome = texto;
+    funilTrocarLocal(id);
+  } else {
+    window._funilInstId = null;
+  }
 };
 
 window.funilTrocarLocal = async function(instId) {
@@ -58381,21 +58384,31 @@ window.funilTrocarLocal = async function(instId) {
     ? '<option value="">Selecione…</option>' + profs.map(pf => `<option value="${pf.id}">${esc(pf.nome)}${pf.profissao ? ' · ' + esc(pf.profissao) : ''}</option>`).join('')
     : '<option value="">Nenhum profissional cadastrado neste local</option>';
 
-  // Sprint 9.32.399: mostra QUEM da B&N visita esse local (e guarda pra salvar junto)
+  // Sprint 9.32.406: alguns locais têm MAIS DE UM visitador (ex.: a nutricionista de dietas
+  // e a enfermeira de curativos). Quando há vários, a atendente ESCOLHE de quem foi a indicação.
   if (boxVis) {
-    if (vis && vis.principal) {
+    if (vis && vis.todos && vis.todos.length > 1) {
       window._funilVisitador = { id: vis.principal.id, nome: vis.principal.nome };
-      const outros = vis.todos.length - 1;
-      const ult = vis.principal.ultima
-        ? vis.principal.ultima.toLocaleDateString('pt-BR')
-        : '';
+      boxVis.innerHTML = `
+        <div style="background:var(--brand-lime-50,#F4F9EA);border:1px solid rgba(139,198,63,0.35);border-radius:9px;padding:9px 11px;">
+          <div style="font-size:11px;color:var(--neutral-600);font-weight:600;margin-bottom:5px;display:flex;align-items:center;gap:5px;">
+            <span class="material-symbols-rounded" style="font-size:15px;color:var(--brand-lime-dark,#6FA62E);">badge</span>
+            Este local tem ${vis.todos.length} visitadores — de quem foi a indicação?
+          </div>
+          <select id="fnVisitadorSel" onchange="funilTrocarVisitador(this.value)" style="width:100%;padding:8px;border:1.5px solid var(--neutral-200);border-radius:8px;font-family:inherit;font-size:12.5px;">
+            ${vis.todos.map((t, i) => `<option value="${t.id}" ${i === 0 ? 'selected' : ''}>${esc(t.nome)} · ${t.visitas} visita${t.visitas === 1 ? '' : 's'}</option>`).join('')}
+          </select>
+        </div>`;
+    } else if (vis && vis.principal) {
+      window._funilVisitador = { id: vis.principal.id, nome: vis.principal.nome };
+      const ult = vis.principal.ultima ? vis.principal.ultima.toLocaleDateString('pt-BR') : '';
       boxVis.innerHTML = `
         <div style="display:flex;align-items:center;gap:8px;background:var(--brand-lime-50,#F4F9EA);border:1px solid rgba(139,198,63,0.35);border-radius:9px;padding:9px 11px;">
           <span class="material-symbols-rounded" style="font-size:17px;color:var(--brand-lime-dark,#6FA62E);">badge</span>
           <div style="flex:1;min-width:0;font-size:11.5px;line-height:1.4;color:var(--neutral-700);">
             Visitador deste local: <strong style="color:var(--brand-navy);">${esc(vis.principal.nome)}</strong>
             <div style="font-size:10.5px;color:var(--neutral-500);">
-              ${vis.principal.visitas} visita${vis.principal.visitas === 1 ? '' : 's'}${ult ? ' · última em ' + ult : ''}${outros > 0 ? ` · +${outros} outro${outros === 1 ? '' : 's'}` : ''}
+              ${vis.principal.visitas} visita${vis.principal.visitas === 1 ? '' : 's'}${ult ? ' · última em ' + ult : ''}
             </div>
           </div>
         </div>`;
@@ -58409,6 +58422,12 @@ window.funilTrocarLocal = async function(instId) {
   }
 };
 
+window.funilTrocarVisitador = function(id) {
+  const sel = document.getElementById('fnVisitadorSel');
+  const nome = sel && sel.selectedIndex >= 0 ? sel.options[sel.selectedIndex].text.split(' · ')[0] : '';
+  window._funilVisitador = { id, nome };
+};
+
 window.funilSalvar = async function() {
   const v = id => (document.getElementById(id)?.value || '').trim();
   const cliente = v('fnCliente');
@@ -58417,44 +58436,41 @@ window.funilSalvar = async function() {
   if (!cliente) { setFlash('warning', 'Informe o nome do cliente.'); return; }
   if (!profId) { setFlash('warning', 'Escolha quem indicou.'); return; }
 
-  const jaVendeu = !!document.getElementById('fnJaVendeu')?.checked;
-  const valor = parseFloat(v('fnValor'));
-  if (jaVendeu && (!isFinite(valor) || valor < 0)) { setFlash('warning', 'Informe o valor da venda.'); return; }
+  // Sprint 9.32.406: coleta os produtos (um ou vários). Todo lançamento já é venda.
+  const itens = [];
+  document.querySelectorAll('#fnProdutos .fn-prod-row').forEach(row => {
+    const sel = row.querySelector('.fn-prod-sel');
+    if (!sel || !sel.value) return;
+    const qtd = parseFloat(row.querySelector('.fn-prod-qtd')?.value) || 1;
+    itens.push({
+      produto_id: sel.value,
+      produto_descricao: sel.options[sel.selectedIndex].getAttribute('data-desc') || sel.options[sel.selectedIndex].text,
+      quantidade: qtd,
+    });
+  });
+  if (itens.length === 0) { setFlash('warning', 'Adicione ao menos um produto vendido.'); return; }
 
-  const instSel = document.getElementById('fnInst');
   const dados = {
     data_indicacao: v('fnData'),
+    data_venda: v('fnData'),
     cliente_nome: cliente,
     cliente_cpf: v('fnCpf') || null,
     tipo_local: v('fnTipoLocal') || 'outro',
-    instituicao_id: v('fnInst') || null,
-    local_nome: instSel && instSel.selectedIndex > 0 ? instSel.options[instSel.selectedIndex].text : null,
+    instituicao_id: window._funilInstId || null,
+    local_nome: window._funilInstNome || null,
     profissional_id: profId,
     profissional_nome: profSel && profSel.selectedIndex > 0 ? profSel.options[profSel.selectedIndex].text.split(' · ')[0] : null,
     forma_desconto: v('fnDesc') || null,
-    // Sprint 9.32.399: guarda o visitador — é o que permite medir a venda PF que o
-    // trabalho de campo do vendedor gerou indiretamente
     visitador_id: window._funilVisitador?.id || null,
     visitador_nome: window._funilVisitador?.nome || null,
-    status: jaVendeu ? 'vendida' : 'indicada',
-    data_venda: jaVendeu ? v('fnData') : null,
-    valor_venda: jaVendeu ? valor : null,
+    status: 'vendida',      // sempre venda (a loja só lança o que já vendeu)
+    valor_venda: null,      // sem valor: a loja mede produto e quantidade, não R$
   };
-
-  const itens = [];
-  const pSel = document.getElementById('fnProduto');
-  if (jaVendeu && pSel && pSel.value) {
-    itens.push({
-      produto_id: pSel.value,
-      produto_descricao: pSel.options[pSel.selectedIndex].getAttribute('data-desc') || pSel.options[pSel.selectedIndex].text,
-      quantidade: parseFloat(v('fnQtd')) || 1,
-    });
-  }
 
   try {
     await funilCriar(dados, itens);
     document.getElementById('funilModal')?.remove();
-    setFlash('success', 'Lançamento registrado.');
+    setFlash('success', 'Venda registrada.');
     await funilCarregarLista(true);
   } catch (e) {
     setFlash('error', 'Erro ao salvar: ' + e.message);
@@ -58545,7 +58561,13 @@ function renderFunilAdmin() {
     </div>
 
     <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:14px;padding:16px;">
-      <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:14px;margin-bottom:12px;">Lançamentos</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:12px;">
+        <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:14px;">Lançamentos</div>
+        <div style="position:relative;flex:1;max-width:280px;min-width:180px;">
+          <span class="material-symbols-rounded" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--neutral-400);font-size:16px;pointer-events:none;">search</span>
+          <input type="search" value="${(window._funilBuscaAdmin || '').replace(/"/g,'&quot;')}" oninput="funilBuscarAdmin(this.value)" placeholder="Cliente, profissional, produto…" style="width:100%;height:34px;padding:0 10px 0 32px;border:1px solid var(--neutral-200);border-radius:9px;font-size:12.5px;font-family:inherit;color:var(--brand-navy);" />
+        </div>
+      </div>
       <div id="funilAdminLista"></div>
     </div>`;
 
@@ -58573,12 +58595,10 @@ async function funilCarregarAdmin() {
   const kpiEl = document.getElementById('funilAdminKpis');
   if (kpiEl) {
     kpiEl.innerHTML =
-      funilCardKpi('Indicações', k.indicacoes) +
       funilCardKpi('Vendas', k.vendas, 'var(--status-success)') +
-      funilCardKpi('Conversão', k.conversao.toFixed(1) + '%', k.conversao >= 50 ? 'var(--status-success)' : 'var(--status-warning)') +
-      funilCardKpi('Receita PF', _fmtMoeda(k.receita), 'var(--brand-lime-dark,#6FA62E)') +
-      funilCardKpi('Ticket médio', _fmtMoeda(k.ticket, true)) +
-      funilCardKpi('Em aberto', k.abertas, 'var(--status-warning)');
+      funilCardKpi('Unidades', k.unidades, 'var(--brand-lime-dark,#6FA62E)') +
+      funilCardKpi('Clientes', k.clientes) +
+      funilCardKpi('Profissionais', new Set(linhas.map(r => r.profissional_id).filter(Boolean)).size);
   }
 
   const esc = t => String(t || '').replace(/</g, '&lt;');
@@ -58588,9 +58608,8 @@ async function funilCarregarAdmin() {
     rankEl.innerHTML = rk.length === 0
       ? '<div style="padding:20px;text-align:center;color:var(--neutral-500);font-size:12.5px;">Sem indicações registradas ainda.</div>'
       : rk.slice(0, 15).map((p, i) => {
-          const max = rk[0].receita || 1;
-          const pct = (p.receita / max) * 100;
-          const corConv = p.conversao >= 60 ? 'var(--status-success)' : p.conversao >= 30 ? 'var(--status-warning)' : 'var(--status-danger)';
+          const max = rk[0].unidades || 1;
+          const pct = (p.unidades / max) * 100;
           return `
             <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px dashed var(--neutral-200);">
               <div style="flex:0 0 26px;height:26px;border-radius:7px;background:${i < 3 ? 'var(--brand-lime)' : 'var(--neutral-100)'};color:${i < 3 ? '#fff' : 'var(--neutral-600)'};display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11.5px;">${i + 1}</div>
@@ -58602,10 +58621,8 @@ async function funilCarregarAdmin() {
                 </div>
               </div>
               <div style="flex:0 0 auto;text-align:right;">
-                <div style="font-family:var(--font-mono);font-weight:700;color:var(--brand-lime-dark,#6FA62E);font-size:12.5px;">${_fmtMoeda(p.receita, true)}</div>
-                <div style="font-size:10px;color:var(--neutral-500);margin-top:1px;">
-                  ${p.vendas}/${p.indicacoes} · <span style="color:${corConv};font-weight:700;">${p.conversao.toFixed(0)}%</span>
-                </div>
+                <div style="font-family:var(--font-mono);font-weight:700;color:var(--brand-lime-dark,#6FA62E);font-size:12.5px;">${p.unidades} un</div>
+                <div style="font-size:10px;color:var(--neutral-500);margin-top:1px;">${p.vendas} venda${p.vendas === 1 ? '' : 's'}</div>
               </div>
             </div>`;
         }).join('');
@@ -58618,21 +58635,20 @@ async function funilCarregarAdmin() {
     visEl.innerHTML = rkVis.length === 0
       ? '<div style="padding:18px;text-align:center;color:var(--neutral-500);font-size:12.5px;">Nenhum lançamento com visitador identificado ainda.</div>'
       : rkVis.slice(0, 10).map((p, i) => {
-          const max = rkVis[0].receita || 1;
-          const pct = (p.receita / max) * 100;
+          const max = rkVis[0].unidades || 1;
+          const pct = (p.unidades / max) * 100;
           return `
             <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px dashed var(--neutral-200);">
               <div style="flex:0 0 26px;height:26px;border-radius:7px;background:${i < 3 ? '#1D4ED8' : 'var(--neutral-100)'};color:${i < 3 ? '#fff' : 'var(--neutral-600)'};display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11.5px;">${i + 1}</div>
               <div style="flex:1;min-width:0;">
                 <div style="font-weight:700;color:var(--brand-navy);font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(p.nome)}</div>
-                <div style="font-size:10.5px;color:var(--neutral-500);margin-top:1px;">${p.locais} local${p.locais === 1 ? '' : 'is'} · ${p.vendas}/${p.indicacoes} convertidas</div>
+                <div style="font-size:10.5px;color:var(--neutral-500);margin-top:1px;">${p.locais} local${p.locais === 1 ? '' : 'is'} · ${p.vendas} venda${p.vendas === 1 ? '' : 's'}</div>
                 <div style="height:4px;background:var(--neutral-100);border-radius:3px;margin-top:4px;overflow:hidden;">
                   <div style="height:100%;width:${pct}%;background:#1D4ED8;border-radius:3px;"></div>
                 </div>
               </div>
               <div style="flex:0 0 auto;text-align:right;">
-                <div style="font-family:var(--font-mono);font-weight:700;color:#1D4ED8;font-size:12.5px;">${_fmtMoeda(p.receita, true)}</div>
-                <div style="font-size:10px;color:var(--neutral-500);margin-top:1px;">${p.conversao.toFixed(0)}% conv.</div>
+                <div style="font-family:var(--font-mono);font-weight:700;color:#1D4ED8;font-size:12.5px;">${p.unidades} un</div>
               </div>
             </div>`;
         }).join('');
@@ -58640,35 +58656,65 @@ async function funilCarregarAdmin() {
 
   const listaEl = document.getElementById('funilAdminLista');
   if (listaEl) {
-    listaEl.innerHTML = linhas.length === 0
+    const linhasLista = _funilLinhasFiltradas(linhas);   // Sprint 9.32.406: aplica a busca
+    listaEl.innerHTML = linhasLista.length === 0
       ? '<div style="padding:20px;text-align:center;color:var(--neutral-500);font-size:12.5px;">Nenhum lançamento.</div>'
-      : linhas.slice(0, 50).map(r => {
-          const cores = { indicada: ['#B45309', 'Aguardando'], vendida: ['#2E7D32', 'Vendida'], perdida: ['#B91C1C', 'Não converteu'] };
-          const [cor, lbl] = cores[r.status] || cores.indicada;
+      : linhasLista.slice(0, 100).map(r => {
+          const prods = (r.funil_itens || []).map(i => `${esc(i.produto_descricao)} ×${Number(i.quantidade)}`).join(', ');
           return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px dashed var(--neutral-200);font-size:12px;flex-wrap:wrap;">
             <div style="flex:1;min-width:150px;">
               <strong style="color:var(--brand-navy);">${esc(r.cliente_nome)}</strong>
-              <div style="font-size:10.5px;color:var(--neutral-500);">${esc(r.profissionais?.nome || r.profissional_nome || '—')} · ${esc(r.instituicoes?.nome || r.local_nome || '—')}</div>
+              <div style="font-size:10.5px;color:var(--neutral-500);">${esc(r.profissionais?.nome || r.profissional_nome || '—')} · ${esc(r.instituicoes?.nome || r.local_nome || '—')}${prods ? ' · ' + prods : ''}</div>
             </div>
-            <div style="flex:0 0 auto;color:var(--neutral-500);font-size:10.5px;">${new Date(r.data_indicacao + 'T12:00:00').toLocaleDateString('pt-BR')}</div>
-            <div style="flex:0 0 auto;color:${cor};font-weight:700;font-size:10.5px;">${lbl}</div>
-            <div style="flex:0 0 70px;text-align:right;font-family:var(--font-mono);font-weight:700;color:var(--brand-navy);">${r.status === 'vendida' ? _fmtMoeda(Number(r.valor_venda || 0), true) : '—'}</div>
+            <div style="flex:0 0 auto;color:var(--neutral-500);font-size:10.5px;">${new Date(r.data_venda || r.data_indicacao + 'T12:00:00').toLocaleDateString('pt-BR')}</div>
+            <div style="flex:0 0 70px;text-align:right;font-family:var(--font-mono);font-weight:700;color:var(--brand-lime-dark,#6FA62E);">${_funilUnidades(r)} un</div>
           </div>`;
         }).join('');
   }
 }
 
 window.funilExportarCsv = function() {
-  const rk = funilRanking(window._funilLinhas || []);
-  if (rk.length === 0) { setFlash('info', 'Nada pra exportar.'); return; }
-  const head = ['Profissional', 'Local', 'Indicações', 'Vendas', 'Conversão %', 'Receita', 'Ticket médio'];
-  const rows = rk.map(p => [p.nome, p.local, p.indicacoes, p.vendas, p.conversao.toFixed(1), p.receita.toFixed(2), p.ticket.toFixed(2)]);
-  const csv = [head, ...rows].map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(';')).join('\n');
+  const linhas = _funilLinhasFiltradas(window._funilLinhas || []);
+  if (linhas.length === 0) { setFlash('info', 'Nada pra exportar.'); return; }
+  const head = ['Data', 'Hora', 'Cliente', 'CPF', 'Produto', 'Quantidade', 'Indicado por', 'Visitador', 'Local', 'Tipo de local', 'Forma de desconto'];
+  const rows = [];
+  linhas.forEach(r => {
+    const dt = r.criado_em ? new Date(r.criado_em) : (r.data_venda ? new Date(r.data_venda + 'T00:00:00') : null);
+    const data = dt ? dt.toLocaleDateString('pt-BR') : '';
+    const hora = (r.criado_em && dt) ? dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '';
+    const base = [data, hora, r.cliente_nome || '', r.cliente_cpf || '', '', '',
+                  r.profissionais?.nome || r.profissional_nome || '',
+                  r.visitador?.nome || r.visitador_nome || '',
+                  r.instituicoes?.nome || r.local_nome || '',
+                  _funilLabel(FUNIL_TIPOS_LOCAL, r.tipo_local),
+                  r.forma_desconto ? _funilLabel(FUNIL_DESCONTOS, r.forma_desconto) : ''];
+    const itens = r.funil_itens || [];
+    if (itens.length === 0) { rows.push(base); return; }
+    itens.forEach(it => { const l = base.slice(); l[4] = it.produto_descricao || ''; l[5] = Number(it.quantidade || 0); rows.push(l); });
+  });
+  const csv = [head, ...rows].map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(';')).join('\r\n');
   const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = `funil-vendas-${new Date().toISOString().slice(0, 10)}.csv`;
   a.click();
+};
+
+// Sprint 9.32.406: filtro/busca dos lançamentos no painel admin
+function _funilLinhasFiltradas(linhas) {
+  const t = (window._funilBuscaAdmin || '').trim().toLowerCase();
+  if (!t) return linhas;
+  return linhas.filter(r =>
+    String(r.cliente_nome || '').toLowerCase().includes(t) ||
+    String(r.profissionais?.nome || r.profissional_nome || '').toLowerCase().includes(t) ||
+    String(r.visitador?.nome || r.visitador_nome || '').toLowerCase().includes(t) ||
+    String(r.instituicoes?.nome || r.local_nome || '').toLowerCase().includes(t) ||
+    (r.funil_itens || []).some(i => String(i.produto_descricao || '').toLowerCase().includes(t))
+  );
+}
+window.funilBuscarAdmin = function(v) {
+  window._funilBuscaAdmin = v || '';
+  if (typeof funilCarregarAdmin === 'function') funilCarregarAdmin();
 };
 
 
