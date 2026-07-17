@@ -8268,7 +8268,7 @@ mark.search-hl {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.404-itinerario-mapa',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.405-fix-validacao-silenciosa-instituicao',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -40659,9 +40659,22 @@ function showModalInstituicaoNova({ valorInicialNome = '', modo = 'cadastro', in
       const cidade = cidadeEl.value.trim();
       if (!nome) { nomeEl.focus(); setFlash('info', 'Nome é obrigatório.'); return; }
       if (!perfilAdmin) {
-        // Nutri: continua com regras antigas (endereço e cidade obrigatórios)
-        if (!logradouro) { endEl.focus(); return; }
-        if (!cidade) { cidadeEl.focus(); return; }
+        // Nutri: endereço e cidade obrigatórios.
+        // Sprint 9.32.405 — BUG: antes o `return` era SILENCIOSO (só dava foco no campo).
+        // A pessoa clicava em Salvar, nada acontecia, nenhuma mensagem — e concluía que
+        // "não cadastra de jeito nenhum". Agora dizemos exatamente o que falta.
+        if (!logradouro) {
+          endEl.focus();
+          endEl.style.borderColor = 'var(--status-danger,#D33)';
+          setFlash('warning', 'Preencha o endereço (rua e número) para cadastrar.');
+          return;
+        }
+        if (!cidade) {
+          cidadeEl.focus();
+          cidadeEl.style.borderColor = 'var(--status-danger,#D33)';
+          setFlash('warning', 'Preencha a cidade para cadastrar.');
+          return;
+        }
         // Sprint 9.4: se permitirCoords, coleta lat/lng (opcionais) do nutri
         let latitude = null, longitude = null;
         if (permitirCoords && latEl && lngEl) {
