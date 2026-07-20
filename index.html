@@ -8268,7 +8268,7 @@ mark.search-hl {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.408-churn-mensal-e-esfriando-nutri',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.409-clientes-mes-a-mes-tela',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -13172,6 +13172,7 @@ function sidebarActiveFromHash(hash) {
   if (hash.startsWith('#/admin/objetivos')) return 'objectives';
   if (hash.startsWith('#/admin/itens-padronizados')) return 'standardized';
   if (hash.startsWith('#/admin/faturamento')) return 'faturamento';
+  if (hash.startsWith('#/admin/clientes-mes')) return 'faturamento';
   if (hash.startsWith('#/admin/funil')) return 'funil';
   if (hash.startsWith('#/admin/itinerario')) return 'itinerario';
   if (hash.startsWith('#/admin/roi-equipe')) return 'roi_equipe';
@@ -21797,6 +21798,7 @@ const routes = {
   // Sprint 9.32.18: tela de Ranking & Insights (mesma rota pra admin e nutri)
   '#/itens-padronizados/ranking': { title: 'Ranking & Insights', icon: 'emoji_events', render: renderItensRankingInsights },
   '#/admin/faturamento':{ title: 'Faturamento', icon: 'paid', render: renderFaturamento },
+  '#/admin/clientes-mes':{ title: 'Clientes mês a mês', icon: 'calendar_view_month', render: renderAdminClientesMes },   // Sprint 9.32.409
   // Sprint 9.32.391: Funil de Vendas
   '#/funil':            { title: 'Funil de Vendas', icon: 'filter_alt', render: renderFunilAtendente },
   '#/admin/funil':      { title: 'Funil de Vendas', icon: 'filter_alt', render: renderFunilAdmin },
@@ -45333,6 +45335,219 @@ function _fatRenderEvolSeg() {
 
 // === Seção 4: Insights de concentração e saúde da carteira ===
 /* ==========================================================================
+   CLIENTES MÊS A MÊS — Sprint 9.32.409 (tela dedicada, matriz cliente × mês)
+   ========================================================================== */
+window._cmState = null;
+function _cmMesesDisp() {
+  return [...new Set((FAT_DATA?.clientes_mes || []).map(c => c.ano_mes))].sort();
+}
+function _cmIntervalo(ini, fim) {
+  const out = [];
+  let [ay, am] = ini.split('-').map(Number);
+  const [fy, fm] = fim.split('-').map(Number);
+  while (ay < fy || (ay === fy && am <= fm)) {
+    out.push(`${ay}-${String(am).padStart(2, '0')}`);
+    am++; if (am > 12) { am = 1; ay++; }
+  }
+  return out;
+}
+function _cmAgregar() {
+  const st = window._cmState;
+  const meses = _cmIntervalo(st.ini, st.fim);
+  const nome = {};
+  (FAT_DATA.clientes_lista || []).forEach(c => { nome[c.cnpj] = c.nome_fantasia; });
+  (FAT_DATA.clientes_top || []).forEach(c => { nome[c['CNPJ/CPF']] = c['Cliente (Nome Fantasia)']; });
+  const setMeses = new Set(meses);
+  const porCli = {};
+  (FAT_DATA.clientes_mes || []).forEach(c => {
+    if (!setMeses.has(c.ano_mes)) return;
+    const cn = c['CNPJ/CPF']; if (!cn) return;
+    if (!porCli[cn]) porCli[cn] = { cnpj: cn, nome: nome[cn] || cn, porMes: {}, total: 0, mesesComprou: 0 };
+    porCli[cn].porMes[c.ano_mes] = (porCli[cn].porMes[c.ano_mes] || 0) + (c.faturamento || 0);
+    porCli[cn].total += (c.faturamento || 0);
+  });
+  let lista = Object.values(porCli);
+  lista.forEach(c => { c.mesesComprou = meses.filter(m => (c.porMes[m] || 0) > 0).length; });
+  const ultimo = meses[meses.length - 1];
+  // filtro
+  if (st.filtro === 'pararam') {
+    lista = lista.filter(c => (c.porMes[ultimo] || 0) === 0 && c.total > 0);
+  }
+  // busca
+  const t = (st.busca || '').trim().toLowerCase();
+  if (t) lista = lista.filter(c => String(c.nome).toLowerCase().includes(t));
+  // ordena
+  if (st.ordem === 'nome') lista.sort((a, b) => a.nome.localeCompare(b.nome));
+  else lista.sort((a, b) => b.total - a.total);
+  return { meses, lista, ultimo };
+}
+
+window.renderAdminClientesMes = function() {
+  const user = requireAdmin();
+  if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
+  const meses = _cmMesesDisp();
+  if (!window._cmState) {
+    window._cmState = {
+      ini: meses[Math.max(0, meses.length - 6)],
+      fim: meses[meses.length - 1],
+      filtro: 'todos', ordem: 'total', busca: '', page: 0, pageSize: 10,
+    };
+  }
+  setTimeout(() => _cmRender(), 60);
+  const st = window._cmState;
+  const optM = (sel) => meses.map(m => `<option value="${m}" ${m === sel ? 'selected' : ''}>${_mesLabel(m)}</option>`).join('');
+  const corpo = `
+    <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:14px;padding:14px 16px;margin-bottom:14px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+        <span class="material-symbols-rounded" style="color:var(--brand-lime);">calendar_view_month</span>
+        <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:15px;">Clientes mês a mês</div>
+      </div>
+      <div style="font-size:11.5px;color:var(--neutral-600);line-height:1.45;">Quanto cada cliente comprou em cada mês do período. Célula vazia = não comprou naquele mês — é onde mora o churn.</div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:12px;">
+        <span style="font-size:11.5px;color:var(--neutral-600);">De</span>
+        <select id="cmIni" onchange="_cmTrocar()" style="height:34px;padding:0 8px;border-radius:8px;border:1px solid var(--neutral-200);font-family:inherit;font-size:12.5px;color:var(--brand-navy);font-weight:600;">${optM(st.ini)}</select>
+        <span style="font-size:11.5px;color:var(--neutral-600);">até</span>
+        <select id="cmFim" onchange="_cmTrocar()" style="height:34px;padding:0 8px;border-radius:8px;border:1px solid var(--neutral-200);font-family:inherit;font-size:12.5px;color:var(--brand-navy);font-weight:600;">${optM(st.fim)}</select>
+        <div style="width:1px;height:26px;background:var(--neutral-200);"></div>
+        <select id="cmFiltro" onchange="_cmTrocar()" style="height:34px;padding:0 8px;border-radius:8px;border:1px solid var(--neutral-200);font-family:inherit;font-size:12.5px;color:var(--brand-navy);font-weight:600;">
+          <option value="todos" ${st.filtro === 'todos' ? 'selected' : ''}>Todos os clientes</option>
+          <option value="pararam" ${st.filtro === 'pararam' ? 'selected' : ''}>Só quem parou no último mês</option>
+        </select>
+        <div style="position:relative;flex:1;min-width:160px;max-width:260px;">
+          <span class="material-symbols-rounded" style="position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--neutral-400);font-size:16px;pointer-events:none;">search</span>
+          <input type="search" id="cmBusca" value="${(st.busca || '').replace(/"/g, '&quot;')}" oninput="_cmBuscar(this.value)" placeholder="Buscar cliente…" style="width:100%;height:34px;padding:0 8px 0 30px;border-radius:8px;border:1px solid var(--neutral-200);font-size:12.5px;font-family:inherit;color:var(--brand-navy);" />
+        </div>
+        <button onclick="_cmExportar()" style="height:34px;padding:0 12px;border-radius:8px;border:1px solid var(--neutral-200);background:#fff;color:var(--brand-navy);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:5px;">
+          <span class="material-symbols-rounded" style="font-size:15px;">download</span>Exportar tudo
+        </button>
+      </div>
+    </div>
+    <div id="cmResumo" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:14px;"></div>
+    <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:14px;overflow:hidden;">
+      <div id="cmTabela" style="overflow-x:auto;-webkit-overflow-scrolling:touch;"></div>
+      <div id="cmPag" style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 14px;border-top:1px solid var(--neutral-200);flex-wrap:wrap;"></div>
+    </div>`;
+  if (typeof isDesktop === 'function' && isDesktop()) {
+    return desktopShell({ title: 'Clientes mês a mês', breadcrumb: ['Admin', 'Faturamento', 'Clientes mês a mês'], content: corpo, activeId: 'faturamento' });
+  }
+  return `<div class="mobile-app">${mobileTopBar({ title: 'Clientes mês a mês', showBack: true, backTo: '#/admin/faturamento' })}<main class="mcontent">${corpo}</main></div>`;
+};
+
+window._cmTrocar = function() {
+  const st = window._cmState;
+  st.ini = document.getElementById('cmIni')?.value || st.ini;
+  st.fim = document.getElementById('cmFim')?.value || st.fim;
+  st.filtro = document.getElementById('cmFiltro')?.value || 'todos';
+  if (st.ini > st.fim) { const t = st.ini; st.ini = st.fim; st.fim = t; }
+  st.page = 0;
+  _cmRender();
+};
+let _cmBuscaTimer = null;
+window._cmBuscar = function(v) {
+  window._cmState.busca = v || ''; window._cmState.page = 0;
+  clearTimeout(_cmBuscaTimer); _cmBuscaTimer = setTimeout(() => _cmRender(true), 300);
+};
+window._cmPagina = function(delta) {
+  window._cmState.page += delta; _cmRender();
+  const el = document.getElementById('cmTabela'); if (el) el.scrollTop = 0;
+};
+
+function _cmRender(mantemFoco) {
+  const st = window._cmState;
+  const { meses, lista, ultimo } = _cmAgregar();
+  const esc = t => String(t || '').replace(/</g, '&lt;');
+
+  // resumo
+  const rEl = document.getElementById('cmResumo');
+  if (rEl) {
+    const totalPeriodo = lista.reduce((s, c) => s + c.total, 0);
+    const pararam = Object.values(_cmAgregarSemFiltro()).filter(c => (c.porMes[ultimo] || 0) === 0 && c.total > 0).length;
+    rEl.innerHTML =
+      `<div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:10px;padding:10px 13px;"><div style="font-family:var(--font-display);font-size:20px;font-weight:700;color:var(--brand-navy);">${lista.length}</div><div style="font-size:10.5px;color:var(--neutral-600);font-weight:600;">clientes ${st.filtro === 'pararam' ? 'que pararam' : 'no período'}</div></div>`
+    + `<div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:10px;padding:10px 13px;"><div style="font-family:var(--font-display);font-size:18px;font-weight:700;color:var(--brand-navy);">${_fmtMoeda(totalPeriodo, true)}</div><div style="font-size:10.5px;color:var(--neutral-600);font-weight:600;">faturamento no período</div></div>`
+    + `<div style="background:#FEF2F2;border:1px solid rgba(185,28,28,0.2);border-radius:10px;padding:10px 13px;"><div style="font-family:var(--font-display);font-size:20px;font-weight:700;color:#B91C1C;">${pararam}</div><div style="font-size:10.5px;color:var(--neutral-600);font-weight:600;">pararam em ${_mesLabel(ultimo)}</div></div>`;
+  }
+
+  // paginação
+  const totalPag = Math.max(1, Math.ceil(lista.length / st.pageSize));
+  if (st.page >= totalPag) st.page = totalPag - 1;
+  if (st.page < 0) st.page = 0;
+  const ini = st.page * st.pageSize;
+  const pagina = lista.slice(ini, ini + st.pageSize);
+
+  const tEl = document.getElementById('cmTabela');
+  if (tEl) {
+    if (lista.length === 0) {
+      tEl.innerHTML = '<div style="padding:30px;text-align:center;color:var(--neutral-500);font-size:12.5px;">Nenhum cliente com esse filtro.</div>';
+    } else {
+      const larguraMes = 92;
+      const head = `<div style="display:grid;grid-template-columns:220px repeat(${meses.length}, ${larguraMes}px) 100px;gap:0;min-width:max-content;background:var(--neutral-50);border-bottom:1px solid var(--neutral-200);position:sticky;top:0;">
+          <div style="padding:9px 12px;font-size:10px;font-weight:700;color:var(--neutral-600);text-transform:uppercase;letter-spacing:0.04em;position:sticky;left:0;background:var(--neutral-50);z-index:2;border-right:1px solid var(--neutral-200);">Cliente</div>
+          ${meses.map(m => `<div style="padding:9px 8px;font-size:10px;font-weight:700;color:var(--neutral-600);text-align:right;">${_mesLabel(m)}</div>`).join('')}
+          <div style="padding:9px 8px;font-size:10px;font-weight:700;color:var(--brand-navy);text-align:right;">Total</div>
+        </div>`;
+      const linhas = pagina.map((c, idx) => {
+        const parou = (c.porMes[ultimo] || 0) === 0 && c.total > 0;
+        return `<div style="display:grid;grid-template-columns:220px repeat(${meses.length}, ${larguraMes}px) 100px;gap:0;min-width:max-content;border-bottom:1px solid var(--neutral-100);${parou ? 'background:rgba(185,28,28,0.03);' : ''}">
+          <div style="padding:8px 12px;font-size:12px;font-weight:600;color:var(--brand-navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;position:sticky;left:0;background:${parou ? '#FDF3F3' : '#fff'};z-index:1;border-right:1px solid var(--neutral-200);border-left:3px solid ${parou ? '#DC2626' : 'transparent'};" title="${esc(c.nome)}">${ini + idx + 1}. ${esc(c.nome)}</div>
+          ${meses.map((m, mi) => {
+            const val = c.porMes[m] || 0;
+            const anterior = mi > 0 ? (c.porMes[meses[mi - 1]] || 0) : 0;
+            const caiuAzero = val === 0 && anterior > 0;
+            return `<div style="padding:8px;font-size:11px;text-align:right;font-family:var(--font-mono);color:${val > 0 ? 'var(--brand-navy)' : (caiuAzero ? '#DC2626' : 'var(--neutral-300)')};font-weight:${val > 0 ? '600' : '400'};${caiuAzero ? 'background:rgba(220,38,38,0.06);' : ''}">${val > 0 ? _fmtMoeda(val, true) : (caiuAzero ? 'parou' : '—')}</div>`;
+          }).join('')}
+          <div style="padding:8px;font-size:11.5px;text-align:right;font-family:var(--font-mono);font-weight:700;color:var(--brand-lime-dark,#6FA62E);">${_fmtMoeda(c.total, true)}</div>
+        </div>`;
+      }).join('');
+      tEl.innerHTML = head + linhas;
+    }
+  }
+
+  const pEl = document.getElementById('cmPag');
+  if (pEl) {
+    const de = lista.length === 0 ? 0 : ini + 1;
+    const ate = Math.min(ini + st.pageSize, lista.length);
+    pEl.innerHTML = `
+      <div style="font-size:11.5px;color:var(--neutral-600);">${de}–${ate} de <strong>${lista.length}</strong></div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <button onclick="_cmPagina(-1)" ${st.page === 0 ? 'disabled' : ''} style="height:32px;padding:0 12px;border-radius:8px;border:1px solid var(--neutral-200);background:#fff;color:${st.page === 0 ? 'var(--neutral-300)' : 'var(--brand-navy)'};font-size:12px;font-weight:600;cursor:${st.page === 0 ? 'default' : 'pointer'};font-family:inherit;">← Anterior</button>
+        <span style="font-size:11.5px;color:var(--neutral-500);">${st.page + 1} / ${totalPag}</span>
+        <button onclick="_cmPagina(1)" ${st.page >= totalPag - 1 ? 'disabled' : ''} style="height:32px;padding:0 12px;border-radius:8px;border:1px solid var(--neutral-200);background:#fff;color:${st.page >= totalPag - 1 ? 'var(--neutral-300)' : 'var(--brand-navy)'};font-size:12px;font-weight:600;cursor:${st.page >= totalPag - 1 ? 'default' : 'pointer'};font-family:inherit;">Próximos →</button>
+      </div>`;
+  }
+  if (mantemFoco) { const b = document.getElementById('cmBusca'); if (b) { const v = b.value; b.focus(); b.value = ''; b.value = v; } }
+}
+
+// mesma agregação sem o filtro "pararam" (pro contador do resumo)
+function _cmAgregarSemFiltro() {
+  const st = window._cmState;
+  const meses = _cmIntervalo(st.ini, st.fim);
+  const setMeses = new Set(meses);
+  const porCli = {};
+  (FAT_DATA.clientes_mes || []).forEach(c => {
+    if (!setMeses.has(c.ano_mes)) return;
+    const cn = c['CNPJ/CPF']; if (!cn) return;
+    if (!porCli[cn]) porCli[cn] = { porMes: {}, total: 0 };
+    porCli[cn].porMes[c.ano_mes] = (porCli[cn].porMes[c.ano_mes] || 0) + (c.faturamento || 0);
+    porCli[cn].total += (c.faturamento || 0);
+  });
+  return porCli;
+}
+
+window._cmExportar = function() {
+  const { meses, lista } = _cmAgregar();
+  if (lista.length === 0) { setFlash('info', 'Nada pra exportar.'); return; }
+  const head = ['Cliente', 'CNPJ/CPF', ...meses.map(m => _mesLabel(m)), 'Total'];
+  const rows = lista.map(c => [c.nome, c.cnpj, ...meses.map(m => (c.porMes[m] || 0).toFixed(2)), c.total.toFixed(2)]);
+  const csv = [head, ...rows].map(r => r.map(x => `"${String(x).replace(/"/g, '""')}"`).join(';')).join('\r\n');
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `clientes-mes-a-mes-${window._cmState.ini}_a_${window._cmState.fim}.csv`;
+  a.click();
+};
+
+/* ==========================================================================
    CLIENTES QUE SUMIRAM — Sprint 9.32.408
    Quem comprou num mês e NÃO comprou no mês seguinte. Sinal de churn barato de pegar.
    ========================================================================== */
@@ -45343,9 +45558,13 @@ function _fatMesesComVenda() {
 }
 
 window._fatAbrirChurn = function() {
+  // Sprint 9.32.409: agora abre a TELA DEDICADA (matriz cliente × mês)
+  window.location.hash = '#/admin/clientes-mes';
+};
+
+window._fatAbrirChurnModal_LEGADO = function() {
   const meses = _fatMesesComVenda();
   if (meses.length < 2) { setFlash('info', 'Preciso de pelo menos 2 meses de dados.'); return; }
-  // Default: penúltimo mês (anterior) vs último (atual)
   if (!window._fatChurnMeses) {
     window._fatChurnMeses = { anterior: meses[meses.length - 2], atual: meses[meses.length - 1] };
   }
