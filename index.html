@@ -8268,7 +8268,7 @@ mark.search-hl {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.410-fix-rota-clientes-mes',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.411-presenca-so-fotos',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -8455,23 +8455,19 @@ async function presencaRenderizar() {
       : 'background:linear-gradient(135deg,#0A1F5C,#1D4ED8);';
     return `
       <div title="${esc(u.nome)}${souEu ? ' (você)' : ''} · online agora"
-           style="position:relative;width:30px;height:30px;border-radius:50%;${foto}border:2px solid #fff;box-shadow:0 1px 3px rgba(10,31,92,0.2);margin-left:${i === 0 ? '0' : '-9px'};z-index:${10 - i};display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:700;font-family:var(--font-display);cursor:default;">
+           style="position:relative;width:36px;height:36px;border-radius:50%;${foto}border:2px solid #fff;box-shadow:0 1px 3px rgba(10,31,92,0.2);margin-left:${i === 0 ? '0' : '-10px'};z-index:${10 - i};display:flex;align-items:center;justify-content:center;color:#fff;font-size:11.5px;font-weight:700;font-family:var(--font-display);cursor:default;">
         ${u.foto_url ? '' : esc(ini(u.nome))}
-        <span style="position:absolute;bottom:-1px;right:-1px;width:9px;height:9px;border-radius:50%;background:#22C55E;border:1.5px solid #fff;"></span>
+        <span style="position:absolute;bottom:0;right:0;width:10px;height:10px;border-radius:50%;background:#22C55E;border:2px solid #fff;"></span>
       </div>`;
   }).join('');
 
   const maisHtml = resto > 0
-    ? `<div title="mais ${resto} online" style="width:30px;height:30px;border-radius:50%;background:var(--neutral-200);border:2px solid #fff;margin-left:-9px;display:flex;align-items:center;justify-content:center;color:var(--neutral-600);font-size:10px;font-weight:700;">+${resto}</div>`
+    ? `<div title="mais ${resto} online" style="width:36px;height:36px;border-radius:50%;background:var(--neutral-200);border:2px solid #fff;margin-left:-10px;display:flex;align-items:center;justify-content:center;color:var(--neutral-600);font-size:11px;font-weight:700;">+${resto}</div>`
     : '';
 
   el.innerHTML = `
-    <div title="${online.length} ${online.length === 1 ? 'pessoa' : 'pessoas'} online agora" style="display:flex;align-items:center;gap:7px;">
-      <span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;color:var(--neutral-500);white-space:nowrap;">
-        <span style="width:7px;height:7px;border-radius:50%;background:#22C55E;box-shadow:0 0 0 2px rgba(34,197,94,0.2);"></span>
-        ${online.length} online
-      </span>
-      <div style="display:flex;align-items:center;">${avatares}${maisHtml}</div>
+    <div title="${online.length} ${online.length === 1 ? 'pessoa online' : 'pessoas online'} agora" style="display:flex;align-items:center;">
+      ${avatares}${maisHtml}
     </div>`;
 }
 
