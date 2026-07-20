@@ -8268,7 +8268,7 @@ mark.search-hl {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.407-fix-super-admin-na-sessao',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.408-churn-mensal-e-esfriando-nutri',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -25657,8 +25657,35 @@ function _perfRender() {
     }
   }
 
+  // Sprint 9.32.408: hospitais DELE esfriando — visitados mas sem retorno há 30+ dias.
+  // Mesma lógica do painel do admin, agora na mão do próprio visitador.
+  const _agoraP = Date.now();
+  const _limiteEsfriar = 30 * 24 * 60 * 60 * 1000;
+  const esfriandoNutri = (rows || [])
+    .filter(r => r.ultima_visita && (_agoraP - new Date(r.ultima_visita).getTime()) > _limiteEsfriar)
+    .sort((a, b) => new Date(a.ultima_visita) - new Date(b.ultima_visita))
+    .slice(0, 12);
+  const bannerEsfriando = esfriandoNutri.length > 0 ? `
+    <div style="background:linear-gradient(135deg,#FFF8EE 0%,#FFEFD6 100%);border:1px solid rgba(245,158,11,0.35);border-radius:12px;padding:12px 15px;margin-bottom:14px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+        <span class="material-symbols-rounded" style="font-size:19px;color:#B45309;">ac_unit</span>
+        <div style="font-family:var(--font-display);font-weight:700;color:#92400E;font-size:13.5px;">${esfriandoNutri.length} ${esfriandoNutri.length === 1 ? 'hospital seu está esfriando' : 'hospitais seus estão esfriando'} — sem visita há mais de 30 dias</div>
+      </div>
+      <div style="font-size:11.5px;color:#7C4A0F;margin-bottom:9px;line-height:1.4;">Você já cobre esses locais, mas faz tempo que não passa. Uma visita agora costuma reativar a compra.</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;">
+        ${esfriandoNutri.map(h => {
+          const dias = Math.floor((_agoraP - new Date(h.ultima_visita).getTime()) / 86400000);
+          return `<span style="background:#fff;border:1px solid rgba(245,158,11,0.35);border-radius:8px;padding:5px 10px;display:inline-flex;align-items:center;gap:6px;font-size:11.5px;">
+            <strong style="color:#92400E;">${(h.nome || '').replace(/</g,'&lt;').slice(0, 36)}</strong>
+            <span style="color:#B45309;font-weight:600;">${dias}d</span>
+          </span>`;
+        }).join('')}
+      </div>
+    </div>` : '';
+
   container.innerHTML = `
     ${bannerMatch}
+    ${bannerEsfriando}
     ${kpisHtml}
     ${conteudoHtml}
   `;
@@ -41862,6 +41889,10 @@ function _fatRenderInner() {
               <select id="fatEvolAno" onchange="_fatTrocarAnoEvol(this.value)" title="Recorte do gráfico" style="padding:5px 9px;border:1.5px solid var(--neutral-200);border-radius:7px;font-size:11.5px;font-family:inherit;background:var(--neutral-0);color:var(--brand-navy);font-weight:600;cursor:pointer;">
                 <option value="ult12">Últimos 12 meses</option>
               </select>
+              <!-- Sprint 9.32.408: clientes que sumiram de um mês pro outro -->
+              <button onclick="_fatAbrirChurn()" title="Clientes que compraram num mês e não no seguinte" style="padding:5px 11px;border:1.5px solid #FCA5A5;border-radius:7px;font-size:11.5px;font-family:inherit;background:#FEF2F2;color:#B91C1C;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:5px;">
+                <span class="material-symbols-rounded" style="font-size:15px;">person_off</span>Clientes que sumiram
+              </button>
             </div>
           </div>
           <canvas id="fatChartEvol" style="max-height:320px;"></canvas>
@@ -45301,6 +45332,146 @@ function _fatRenderEvolSeg() {
 }
 
 // === Seção 4: Insights de concentração e saúde da carteira ===
+/* ==========================================================================
+   CLIENTES QUE SUMIRAM — Sprint 9.32.408
+   Quem comprou num mês e NÃO comprou no mês seguinte. Sinal de churn barato de pegar.
+   ========================================================================== */
+window._fatChurnMeses = null;   // { anterior:'YYYY-MM', atual:'YYYY-MM' }
+
+function _fatMesesComVenda() {
+  return [...new Set((FAT_DATA?.clientes_mes || []).map(c => c.ano_mes))].sort();
+}
+
+window._fatAbrirChurn = function() {
+  const meses = _fatMesesComVenda();
+  if (meses.length < 2) { setFlash('info', 'Preciso de pelo menos 2 meses de dados.'); return; }
+  // Default: penúltimo mês (anterior) vs último (atual)
+  if (!window._fatChurnMeses) {
+    window._fatChurnMeses = { anterior: meses[meses.length - 2], atual: meses[meses.length - 1] };
+  }
+  const bd = document.createElement('div');
+  bd.className = 'modal-backdrop';
+  bd.id = 'fatChurnModal';
+  bd.innerHTML = `
+    <div class="modal-card" style="max-width:640px;max-height:90vh;overflow-y:auto;">
+      <div class="modal-card__header">
+        <div class="modal-card__icon" style="background:#FEE2E2;color:#B91C1C;"><span class="material-symbols-rounded">person_off</span></div>
+        <div class="modal-card__title">Clientes que sumiram</div>
+        <div class="modal-card__subtitle">Compraram no primeiro mês e não no segundo. Pegar aqui é bem mais barato que reconquistar depois.</div>
+      </div>
+      <div class="modal-card__body" style="display:flex;flex-direction:column;gap:12px;">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <span style="font-size:12px;color:var(--neutral-600);">Comprou em</span>
+          <select id="fatChurnAnt" onchange="_fatChurnTrocar()" style="padding:7px 9px;border:1.5px solid var(--neutral-200);border-radius:8px;font-family:inherit;font-size:12.5px;color:var(--brand-navy);font-weight:600;">
+            ${meses.map(m => `<option value="${m}" ${m === window._fatChurnMeses.anterior ? 'selected' : ''}>${_mesLabel(m)}</option>`).join('')}
+          </select>
+          <span style="font-size:12px;color:var(--neutral-600);">e não em</span>
+          <select id="fatChurnAtu" onchange="_fatChurnTrocar()" style="padding:7px 9px;border:1.5px solid var(--neutral-200);border-radius:8px;font-family:inherit;font-size:12.5px;color:var(--brand-navy);font-weight:600;">
+            ${meses.map(m => `<option value="${m}" ${m === window._fatChurnMeses.atual ? 'selected' : ''}>${_mesLabel(m)}</option>`).join('')}
+          </select>
+        </div>
+        <div id="fatChurnAviso"></div>
+        <div id="fatChurnResumo" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;"></div>
+        <div id="fatChurnLista"></div>
+      </div>
+      <div class="modal-card__footer">
+        <button class="modal-btn modal-btn--secondary" onclick="_fatChurnExportar()" style="display:inline-flex;align-items:center;gap:6px;"><span class="material-symbols-rounded" style="font-size:16px;">download</span>Exportar</button>
+        <button class="modal-btn modal-btn--primary" onclick="document.getElementById('fatChurnModal').remove()">Fechar</button>
+      </div>
+    </div>`;
+  document.body.appendChild(bd);
+  bd.onclick = (e) => { if (e.target === bd) bd.remove(); };
+  _fatChurnCalcular();
+};
+
+window._fatChurnTrocar = function() {
+  window._fatChurnMeses = {
+    anterior: document.getElementById('fatChurnAnt')?.value,
+    atual: document.getElementById('fatChurnAtu')?.value,
+  };
+  _fatChurnCalcular();
+};
+
+function _fatChurnDados() {
+  const { anterior, atual } = window._fatChurnMeses;
+  const fatMes = {};   // cnpj -> {ant, atu}
+  (FAT_DATA.clientes_mes || []).forEach(c => {
+    const cn = c['CNPJ/CPF'];
+    if (!cn) return;
+    if (!fatMes[cn]) fatMes[cn] = { ant: 0, atu: 0 };
+    if (c.ano_mes === anterior) fatMes[cn].ant += (c.faturamento || 0);
+    if (c.ano_mes === atual) fatMes[cn].atu += (c.faturamento || 0);
+  });
+  // nomes
+  const nome = {};
+  (FAT_DATA.clientes_lista || []).forEach(c => { nome[c.cnpj] = c.nome_fantasia; });
+  (FAT_DATA.clientes_top || []).forEach(c => { nome[c['CNPJ/CPF']] = c['Cliente (Nome Fantasia)']; });
+  const sumiram = Object.entries(fatMes)
+    .filter(([, v]) => v.ant > 0 && v.atu === 0)
+    .map(([cn, v]) => ({ cnpj: cn, nome: nome[cn] || cn, valorAnt: v.ant }))
+    .sort((a, b) => b.valorAnt - a.valorAnt);
+  return sumiram;
+}
+
+function _fatChurnCalcular() {
+  const { anterior, atual } = window._fatChurnMeses;
+  const avisoEl = document.getElementById('fatChurnAviso');
+  const resumoEl = document.getElementById('fatChurnResumo');
+  const listaEl = document.getElementById('fatChurnLista');
+  if (!listaEl) return;
+
+  if (anterior >= atual) {
+    if (avisoEl) avisoEl.innerHTML = '<div style="background:#FEF4E1;color:#B45309;border-radius:9px;padding:10px 12px;font-size:12px;">O segundo mês precisa ser depois do primeiro.</div>';
+    resumoEl.innerHTML = ''; listaEl.innerHTML = ''; return;
+  }
+  // Aviso se o mês "atual" é o mês parcial
+  const pf = FAT_DATA?.meta?.periodo_fim;
+  let parcial = false;
+  if (pf) {
+    const d = new Date(pf + 'T12:00:00');
+    const ymFim = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    const diasNoMes = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+    if (atual === ymFim && d.getDate() < diasNoMes) parcial = true;
+  }
+  if (avisoEl) avisoEl.innerHTML = parcial
+    ? `<div style="background:#FEF4E1;color:#B45309;border-radius:9px;padding:10px 12px;font-size:12px;display:flex;gap:7px;"><span class="material-symbols-rounded" style="font-size:16px;">info</span><span><strong>${_mesLabel(atual)}</strong> ainda está em curso — quem costuma comprar mais pro fim do mês pode aparecer aqui por engano.</span></div>`
+    : '';
+
+  const sumiram = _fatChurnDados();
+  window._fatChurnResultado = sumiram;
+  const total = sumiram.reduce((s, c) => s + c.valorAnt, 0);
+
+  resumoEl.innerHTML =
+    `<div style="background:#FEF2F2;border:1px solid rgba(185,28,28,0.2);border-radius:10px;padding:11px 13px;"><div style="font-family:var(--font-display);font-size:22px;font-weight:700;color:#B91C1C;">${sumiram.length}</div><div style="font-size:10.5px;color:var(--neutral-600);font-weight:600;">clientes sumiram</div></div>`
+  + `<div style="background:#FEF2F2;border:1px solid rgba(185,28,28,0.2);border-radius:10px;padding:11px 13px;"><div style="font-family:var(--font-display);font-size:18px;font-weight:700;color:#B91C1C;">${_fmtMoeda(total, true)}</div><div style="font-size:10.5px;color:var(--neutral-600);font-weight:600;">faturaram em ${_mesLabel(anterior)}</div></div>`;
+
+  const esc = t => String(t || '').replace(/</g, '&lt;');
+  listaEl.innerHTML = sumiram.length === 0
+    ? '<div style="padding:24px;text-align:center;color:var(--neutral-500);font-size:12.5px;">Ninguém sumiu entre esses dois meses. 🎉</div>'
+    : `<div style="border:1px solid var(--neutral-200);border-radius:10px;overflow:hidden;">
+        ${sumiram.slice(0, 100).map((c, i) => `
+          <div style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid var(--neutral-100);font-size:12.5px;">
+            <div style="flex:0 0 24px;color:var(--neutral-400);font-family:var(--font-mono);font-size:11px;">${i + 1}</div>
+            <div style="flex:1;min-width:0;font-weight:600;color:var(--brand-navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(c.nome)}</div>
+            <div style="flex:0 0 auto;font-family:var(--font-mono);font-weight:700;color:var(--neutral-600);">${_fmtMoeda(c.valorAnt)}</div>
+          </div>`).join('')}
+       </div>${sumiram.length > 100 ? `<div style="text-align:center;font-size:11px;color:var(--neutral-500);padding:8px;">+ ${sumiram.length - 100} outros — use Exportar pra ver todos</div>` : ''}`;
+}
+
+window._fatChurnExportar = function() {
+  const dados = window._fatChurnResultado || [];
+  if (dados.length === 0) { setFlash('info', 'Nada pra exportar.'); return; }
+  const { anterior, atual } = window._fatChurnMeses;
+  const head = ['Cliente', 'CNPJ/CPF', `Faturou em ${_mesLabel(anterior)}`, `Comprou em ${_mesLabel(atual)}`];
+  const rows = dados.map(c => [c.nome, c.cnpj, c.valorAnt.toFixed(2), 'Não']);
+  const csv = [head, ...rows].map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(';')).join('\r\n');
+  const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `clientes-que-sumiram-${anterior}-vs-${atual}.csv`;
+  a.click();
+};
+
 function _fatRenderInsights() {
   const el = document.getElementById('fatInsights');
   if (!el || !FAT_DATA) return;
