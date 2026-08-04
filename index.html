@@ -8268,7 +8268,7 @@ mark.search-hl {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.412-presenca-avatares-separados',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.413-fix-login-atendente',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -10537,6 +10537,16 @@ function requireAuth() {
     window.location.hash = '#/login';
     return null;
   }
+  // Sprint 9.32.413: a atendente não tem visitas/check-in. Se cair numa tela do nutri
+  // (por link antigo, histórico ou bottomNav), devolve pra área dela em vez de mostrar
+  // uma tela vazia e confusa.
+  if (user.perfil === 'atendente') {
+    const h = window.location.hash || '';
+    if (!h.startsWith('#/funil') && !h.startsWith('#/logout') && !h.startsWith('#/login')) {
+      window.location.hash = '#/funil';
+      return null;
+    }
+  }
   return user;
 }
 // Sprint 9.32.391: área do Funil — atendente de loja (admin também entra, pra dar suporte)
@@ -10574,8 +10584,13 @@ function requireAdmin() {
 // Redireciona após login baseado no perfil
 function redirectAfterLogin(user) {
   iniciarPollingNotificacoes();
+  // Sprint 9.32.413 — BUG: só existiam dois casos (admin vs "todo o resto"), então a
+  // ATENDENTE de loja caía em #/inicio, que é a home do nutricionista. Ela não tem visitas:
+  // a área dela é o Funil. Agora usamos o mesmo destino do resto do app (_fallbackPorPerfil).
   if (user.perfil === 'admin') {
     window.location.hash = '#/admin';
+  } else if (user.perfil === 'atendente') {
+    window.location.hash = '#/funil';
   } else {
     window.location.hash = '#/inicio';
   }
