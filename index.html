@@ -8268,7 +8268,7 @@ mark.search-hl {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.413-fix-login-atendente',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.414-cadencia-revisita',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -20270,6 +20270,7 @@ async function finalizarRelatorio(visitaId, dados) {
     resumo: (dados.resumo || '').replace(/&nbsp;/gi, ' ').replace(/&amp;nbsp;/gi, ' ').replace(/&#160;/g, ' ').trim() || null,
     proximos_passos: dados.proximos_passos || null,
     proxima_visita_programada: dados.proxima_visita_programada || null,
+    cadencia_dias: dados.cadencia_dias ?? null,   // Sprint 9.32.414
     // flag_horario_fora_margem nao vai no payload — trigger do banco recalcula sozinho (Sprint 9.32.329)
     status: 'completa',
     atualizado_em: new Date().toISOString(),
@@ -23517,6 +23518,102 @@ async function carregarFraseDoDia() {
   el.style.display = 'block';
 }
 
+/* Sprint 9.32.414 — LEMBRETE DE REVISITA
+   O vendedor marca no relatório de quantos em quantos dias vale voltar naquele cliente.
+   Aqui a gente lembra ele quando a data chega — na home, onde ele começa o dia.
+   Mostra o que está vencido primeiro (é o que mais dói) e o que vence nos próximos 7 dias. */
+async function carregarRevisitasNutri() {
+  const el = document.getElementById('nutriRevisitarBanner');
+  if (!el || !db) return;
+  const user = getCurrentUser();
+  if (!user) return;
+
+  const hoje = new Date();
+  const hojeIso = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}-${String(hoje.getDate()).padStart(2, '0')}`;
+  const limite = new Date(hoje.getTime() + 7 * 86400000);
+  const limiteIso = `${limite.getFullYear()}-${String(limite.getMonth() + 1).padStart(2, '0')}-${String(limite.getDate()).padStart(2, '0')}`;
+
+  const { data, error } = await db.from('visitas')
+    .select('id, instituicao_id, proxima_visita_programada, cadencia_dias, data_visita, instituicoes(id, nome, cidade)')
+    .eq('nutricionista_id', user.id)
+    .not('proxima_visita_programada', 'is', null)
+    .lte('proxima_visita_programada', limiteIso)
+    .order('proxima_visita_programada', { ascending: true })
+    .limit(60);
+  if (error || !data || data.length === 0) { el.style.display = 'none'; return; }
+
+  // Uma linha por instituição (a programação mais recente vence)
+  const porInst = {};
+  data.forEach(v => {
+    const id = v.instituicao_id;
+    if (!id) return;
+    if (!porInst[id] || v.data_visita > porInst[id].data_visita) porInst[id] = v;
+  });
+
+  // Se já visitou DEPOIS da data programada, a pendência está resolvida
+  const ids = Object.keys(porInst);
+  if (ids.length === 0) { el.style.display = 'none'; return; }
+  const { data: recentes } = await db.from('visitas')
+    .select('instituicao_id, data_visita')
+    .eq('nutricionista_id', user.id)
+    .in('instituicao_id', ids)
+    .not('checkin_timestamp', 'is', null)
+    .is('cancelado_em', null)
+    .limit(500);
+  const ultimaPorInst = {};
+  (recentes || []).forEach(r => {
+    if (!ultimaPorInst[r.instituicao_id] || r.data_visita > ultimaPorInst[r.instituicao_id]) {
+      ultimaPorInst[r.instituicao_id] = r.data_visita;
+    }
+  });
+
+  const lista = Object.values(porInst).filter(v => {
+    const ult = ultimaPorInst[v.instituicao_id];
+    return !ult || ult < v.proxima_visita_programada;   // ainda não voltou
+  }).sort((a, b) => String(a.proxima_visita_programada).localeCompare(String(b.proxima_visita_programada)));
+
+  if (lista.length === 0) { el.style.display = 'none'; return; }
+
+  const esc = t => String(t || '').replace(/</g, '&lt;');
+  const vencidos = lista.filter(v => v.proxima_visita_programada < hojeIso);
+  const semana = lista.filter(v => v.proxima_visita_programada >= hojeIso);
+
+  const item = (v, atrasado) => {
+    const d = new Date(v.proxima_visita_programada + 'T12:00:00');
+    const dias = Math.round((d - new Date(hojeIso + 'T12:00:00')) / 86400000);
+    const quando = atrasado
+      ? `${Math.abs(dias)}d atrasada`
+      : (dias === 0 ? 'hoje' : dias === 1 ? 'amanhã' : `em ${dias}d`);
+    const cor = atrasado ? '#B91C1C' : '#B45309';
+    return `
+      <div onclick="window.location.hash='#/agenda'" style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:#fff;border:1px solid ${atrasado ? 'rgba(185,28,28,0.25)' : 'rgba(245,158,11,0.3)'};border-radius:9px;cursor:pointer;">
+        <span class="material-symbols-rounded" style="font-size:17px;color:${cor};flex-shrink:0;">${atrasado ? 'error' : 'event_upcoming'}</span>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:12.5px;font-weight:700;color:var(--brand-navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(v.instituicoes?.nome || 'Instituição')}</div>
+          <div style="font-size:10.5px;color:var(--neutral-500);">${v.cadencia_dias ? `a cada ${v.cadencia_dias} dias · ` : ''}${d.toLocaleDateString('pt-BR')}</div>
+        </div>
+        <span style="flex-shrink:0;font-size:10.5px;font-weight:700;color:${cor};background:${atrasado ? 'rgba(185,28,28,0.08)' : 'rgba(245,158,11,0.12)'};padding:3px 8px;border-radius:9999px;white-space:nowrap;">${quando}</span>
+      </div>`;
+  };
+
+  el.style.display = '';
+  el.innerHTML = `
+    <div style="background:linear-gradient(135deg,#FFF8EE 0%,#FFF1DC 100%);border:1px solid rgba(245,158,11,0.35);border-radius:12px;padding:12px 14px;margin-bottom:12px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:9px;">
+        <span class="material-symbols-rounded" style="font-size:19px;color:#B45309;">event_repeat</span>
+        <div style="font-family:var(--font-display);font-weight:700;color:#92400E;font-size:13.5px;">
+          Hora de revisitar — ${lista.length} ${lista.length === 1 ? 'cliente' : 'clientes'}
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px;">
+        ${vencidos.slice(0, 4).map(v => item(v, true)).join('')}
+        ${semana.slice(0, 4).map(v => item(v, false)).join('')}
+      </div>
+      ${lista.length > 8 ? `<div style="font-size:11px;color:#7C4A0F;margin-top:7px;text-align:center;">+ ${lista.length - 8} outros</div>` : ''}
+      <div style="font-size:10.5px;color:#7C4A0F;margin-top:8px;line-height:1.4;">Toque num cliente pra abrir a agenda e programar.</div>
+    </div>`;
+}
+
 function renderInicio() {
   const user = requireAuth();
   if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
@@ -23544,6 +23641,9 @@ function renderInicio() {
 
       // Sprint 9.11: carrega KPIs extras (Semana, Ano, Hospitais, comparação mês anterior)
       carregarKpisHomeNutri().catch(err => console.warn('[Home KPIs]', err));
+
+      // Sprint 9.32.414: lembrete de revisita (cadência definida no relatório)
+      carregarRevisitasNutri().catch(err => console.warn('[Revisitas]', err));
 
       // Atualiza lista de visitas
       const lista = document.getElementById('recentVisitsList');
@@ -23639,6 +23739,9 @@ function renderInicio() {
         <div id="nutriCheckinEsquecidoBanner" style="display:none;"></div>
         <!-- Banner de pendências de revisão (Sprint 9.32.8) — preenchido async -->
         <div id="nutriPendenciasRevisaoBanner" style="display:none;"></div>
+
+        <!-- Sprint 9.32.414: hora de revisitar (cadência) — preenchido async -->
+        <div id="nutriRevisitarBanner" style="display:none;"></div>
 
         <a href="#/checkin" class="cta-checkin">
           <span class="cta-checkin__icon">
@@ -29319,9 +29422,18 @@ Cada bloco de 3 linhas (ação / responsável / data) vira uma linha da tabela q
           <span class="material-symbols-rounded">event</span>
           Programar próxima visita
         </div>
-        <div class="report-section__help">Opcional. Selecione uma data sugerida.</div>
+        <div class="report-section__help">De quantos em quantos dias vale voltar aqui? Toque numa opção — a data é calculada e você recebe um lembrete quando chegar perto.</div>
         <div class="report-field">
-          <input type="date" id="fProxData" ${readonly ? 'disabled' : ''} value="${v.proxima_visita_programada || ''}" oninput="handleReportChange('proxima_visita_programada', this.value || null)" />
+          <div id="fCadenciaBtns" style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:10px;">
+            ${[15, 30, 45, 60, 90, 120].map(d => `
+              <button type="button" ${readonly ? 'disabled' : ''} onclick="_setCadencia(${d})" data-cad="${d}"
+                      style="flex:1;min-width:64px;padding:11px 8px;border-radius:10px;border:1.5px solid ${v.cadencia_dias === d ? 'var(--brand-lime-dark,#6FA62E)' : 'var(--neutral-200)'};background:${v.cadencia_dias === d ? 'var(--brand-lime-50,#F4F9EA)' : '#fff'};color:${v.cadencia_dias === d ? 'var(--brand-lime-dark,#6FA62E)' : 'var(--brand-navy)'};font-weight:700;font-size:13px;font-family:inherit;cursor:${readonly ? 'default' : 'pointer'};">
+                ${d}<span style="font-size:10px;font-weight:600;display:block;opacity:0.7;">dias</span>
+              </button>`).join('')}
+          </div>
+          <div style="font-size:11px;color:var(--neutral-500);margin-bottom:5px;">Ou escolha a data exata:</div>
+          <input type="date" id="fProxData" ${readonly ? 'disabled' : ''} value="${v.proxima_visita_programada || ''}" oninput="handleReportChange('proxima_visita_programada', this.value || null); _limpaCadenciaSel();" />
+          <div id="fCadenciaAviso" style="font-size:11.5px;color:var(--brand-lime-dark,#6FA62E);font-weight:600;margin-top:6px;">${v.proxima_visita_programada ? '✓ Você será lembrado a partir de 7 dias antes.' : ''}</div>
         </div>
       </section>
 
@@ -30253,6 +30365,39 @@ function atualizarBadgePendencias() {
     }
   });
 }
+
+// Sprint 9.32.414: toque num botão de cadência → calcula a data a partir da data da visita
+window._setCadencia = function(dias) {
+  const v = ReportState?.visita || {};
+  const base = v.data_visita ? new Date(v.data_visita + 'T12:00:00') : new Date();
+  const alvo = new Date(base.getTime() + dias * 86400000);
+  const iso = `${alvo.getFullYear()}-${String(alvo.getMonth() + 1).padStart(2, '0')}-${String(alvo.getDate()).padStart(2, '0')}`;
+  const inp = document.getElementById('fProxData');
+  if (inp) inp.value = iso;
+  handleReportChange('proxima_visita_programada', iso);
+  handleReportChange('cadencia_dias', dias);
+  // pinta o botão escolhido
+  document.querySelectorAll('#fCadenciaBtns button[data-cad]').forEach(b => {
+    const sel = Number(b.dataset.cad) === dias;
+    b.style.borderColor = sel ? 'var(--brand-lime-dark,#6FA62E)' : 'var(--neutral-200)';
+    b.style.background = sel ? 'var(--brand-lime-50,#F4F9EA)' : '#fff';
+    b.style.color = sel ? 'var(--brand-lime-dark,#6FA62E)' : 'var(--brand-navy)';
+  });
+  const aviso = document.getElementById('fCadenciaAviso');
+  if (aviso) aviso.textContent = `✓ Retorno em ${alvo.toLocaleDateString('pt-BR')} — você será lembrado a partir de 7 dias antes.`;
+};
+
+// Se o usuário escolher a data na mão, desmarca os botões (a cadência deixa de ser fixa)
+window._limpaCadenciaSel = function() {
+  document.querySelectorAll('#fCadenciaBtns button[data-cad]').forEach(b => {
+    b.style.borderColor = 'var(--neutral-200)';
+    b.style.background = '#fff';
+    b.style.color = 'var(--brand-navy)';
+  });
+  handleReportChange('cadencia_dias', null);
+  const aviso = document.getElementById('fCadenciaAviso');
+  if (aviso) aviso.textContent = '✓ Você será lembrado a partir de 7 dias antes.';
+};
 
 window.handleReportChange = function(campo, valor) {
   ReportState.pendingChanges[campo] = valor;
@@ -31359,6 +31504,7 @@ window.handleFinalizarRelatorio = async function() {
     resumo: document.getElementById('fResumo')?.value,
     proximos_passos: document.getElementById('fProximos')?.value,
     proxima_visita_programada: document.getElementById('fProxData')?.value || null,
+    cadencia_dias: ('cadencia_dias' in uc) ? uc.cadencia_dias : (v.cadencia_dias || null),   // Sprint 9.32.414
     profissionais_ids: ReportState.profissionaisSelecionados.map(p => p.id),
     objetivos_ids: Array.from(ReportState.objetivosSelecionados),
     checkin_timestamp: v.checkin_timestamp,
