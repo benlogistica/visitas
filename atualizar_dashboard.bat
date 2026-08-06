@@ -198,5 +198,24 @@ echo   Backup dos XLSX em: %LOG_DIR%
 echo   ^(arquivos mantidos em entrada\ pro proximo sync^)
 echo.
 
+REM ---- Sprint 9.32.415: alarme de tamanho do repositorio -----------------
+REM  O JSON de ~20 MB e' recommitado a cada sync e o git guarda TODAS as
+REM  versoes. Perto de 1 GB o GitHub Pages para de publicar silenciosamente
+REM  (o push funciona, mas o site nao atualiza). Avisamos antes de doer.
+for /f %%s in ('powershell -NoProfile -Command "[int]((Get-ChildItem .git -Recurse -File -ErrorAction SilentlyContinue ^| Measure-Object Length -Sum).Sum/1MB)" 2^>nul') do set GITMB=%%s
+if defined GITMB (
+    if !GITMB! GTR 500 (
+        echo   ==================================================================
+        echo   [ATENCAO] Repositorio git com !GITMB! MB.
+        if !GITMB! GTR 800 (
+            echo   RISCO ALTO: perto de 1 GB o GitHub Pages PARA de publicar.
+            echo   Rode AGORA:  limpar_historico_git.bat
+        ) else (
+            echo   Quando passar de 800 MB, rode: limpar_historico_git.bat
+        )
+        echo   ==================================================================
+        echo.
+    )
+)
 
 exit /b 0
