@@ -149,11 +149,11 @@ echo.
 echo [7/7] Compactando e enviando pro GitHub...
 git reflog expire --expire=now --all >nul 2>&1
 git gc --prune=now --aggressive
-git push origin main --force
+git push -u origin main --force
 if errorlevel 1 (
     echo.
     echo   [ERRO] Push falhou. O repositorio LOCAL ja esta limpo.
-    echo   Tente manualmente:  git push origin main --force
+    echo   Tente manualmente:  git push -u origin main --force
     pause
     exit /b 1
 )
