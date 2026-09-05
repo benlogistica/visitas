@@ -8268,7 +8268,7 @@ mark.search-hl {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.414-cadencia-revisita',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.416-funil-editar-observacao',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -58578,6 +58578,37 @@ async function funilCriar(dados, itens) {
   return data;
 }
 
+/* --------------------------------------------------------------------------
+   Sprint 9.32.416 — EDITAR um lancamento ja feito (pedido da Paula)
+   A atendente lanca no balcao, as vezes com o cliente esperando. Errar o nome
+   do produto ou a quantidade e' normal; sem edicao, o unico jeito de corrigir
+   seria lancar de novo (duplicando) ou deixar errado (sujando o indicador).
+   Os itens sao trocados por inteiro: e' mais simples e mais seguro do que
+   tentar casar linha a linha o que mudou.
+   -------------------------------------------------------------------------- */
+async function funilAtualizar(id, dados, itens) {
+  const campos = Object.assign({}, dados);
+  delete campos.valor_venda;   // o modulo nao usa mais R$ — nao sobrescreve historico
+  campos.atualizado_em = new Date().toISOString();
+
+  const { error } = await db.from('funil_indicacoes').update(campos).eq('id', id);
+  if (error) throw new Error(error.message);
+
+  const { error: eDel } = await db.from('funil_itens').delete().eq('indicacao_id', id);
+  if (eDel) throw new Error('Nao consegui atualizar os produtos: ' + eDel.message);
+
+  if (itens && itens.length > 0) {
+    const linhas = itens.map(i => ({
+      indicacao_id: id,
+      produto_id: i.produto_id || null,
+      produto_descricao: i.produto_descricao,
+      quantidade: i.quantidade,
+    }));
+    const { error: e2 } = await db.from('funil_itens').insert(linhas);
+    if (e2) throw new Error(e2.message);
+  }
+}
+
 /* ---------- Indicador: quem indica mais ---------- */
 function _funilUnidades(r) {
   return (r.funil_itens || []).reduce((a, b) => a + Number(b.quantidade || 0), 0);
@@ -58739,13 +58770,19 @@ async function funilCarregarLista(apenasMinhas) {
               <div style="min-width:0;">
                 <div style="font-weight:700;color:var(--brand-navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(r.cliente_nome)}</div>
                 ${itens ? `<div style="font-size:10.5px;color:var(--neutral-500);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${itens}</div>` : ''}
+                ${r.observacao ? `<div title="${esc(r.observacao)}" style="font-size:10.5px;color:var(--neutral-500);font-style:italic;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px;">“${esc(r.observacao)}”</div>` : ''}
               </div>
               <div style="min-width:0;color:var(--neutral-700);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(prof)}</div>
               <div style="min-width:0;color:var(--neutral-600);font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(local)}</div>
               <div style="color:var(--neutral-600);font-size:11.5px;">${new Date(r.data_indicacao + 'T12:00:00').toLocaleDateString('pt-BR')}</div>
               <div style="color:var(--neutral-600);font-size:11px;">${r.forma_desconto ? _funilLabel(FUNIL_DESCONTOS, r.forma_desconto) : '—'}</div>
               <div style="text-align:right;font-family:var(--font-mono);font-weight:700;color:var(--brand-lime-dark,#6FA62E);">${_funilUnidades(r)} un</div>
-              <div></div>
+              <div style="text-align:right;">
+                <button onclick="funilAbrirModal('${r.id}')" title="Editar lançamento"
+                        style="background:var(--neutral-100);color:var(--neutral-700);border:0;border-radius:8px;padding:6px 11px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:5px;">
+                  <span class="material-symbols-rounded" style="font-size:15px;">edit</span>Editar
+                </button>
+              </div>
             </div>`;
         }).join('')}
       </div>`;
@@ -58766,6 +58803,7 @@ async function funilCarregarLista(apenasMinhas) {
               Indicado por <strong>${esc(prof)}</strong> · ${esc(local)}
             </div>
             ${itens ? `<div style="font-size:11px;color:var(--neutral-500);margin-top:3px;">${itens}</div>` : ''}
+            ${r.observacao ? `<div style="font-size:11px;color:var(--neutral-500);font-style:italic;margin-top:3px;line-height:1.35;">“${esc(r.observacao)}”</div>` : ''}
             <div style="font-size:11px;color:var(--neutral-500);margin-top:3px;">
               ${new Date(r.data_indicacao + 'T12:00:00').toLocaleDateString('pt-BR')}
               ${r.forma_desconto ? ' · ' + _funilLabel(FUNIL_DESCONTOS, r.forma_desconto) : ''}
@@ -58774,6 +58812,10 @@ async function funilCarregarLista(apenasMinhas) {
           <div style="text-align:right;flex-shrink:0;">
             <span style="background:#E7F5E7;color:#2E7D32;padding:3px 9px;border-radius:9999px;font-size:10.5px;font-weight:700;">Vendida</span>
             <div style="font-family:var(--font-mono);font-weight:700;color:var(--brand-lime-dark,#6FA62E);margin-top:5px;font-size:13px;">${_funilUnidades(r)} un</div>
+            <button onclick="funilAbrirModal('${r.id}')" title="Editar lançamento"
+                    style="margin-top:7px;background:var(--neutral-100);color:var(--neutral-700);border:0;border-radius:8px;padding:6px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:4px;">
+              <span class="material-symbols-rounded" style="font-size:14px;">edit</span>Editar
+            </button>
           </div>
         </div>
       </div>`;
@@ -58781,7 +58823,17 @@ async function funilCarregarLista(apenasMinhas) {
 }
 
 /* ---------- Modal de lançamento ---------- */
-window.funilAbrirModal = async function() {
+window.funilAbrirModal = async function(editId) {
+  // Sprint 9.32.416: o MESMO modal cria e edita. Com editId, carrega o registro.
+  let reg = null;
+  if (editId) {
+    const { data, error } = await db.from('funil_indicacoes')
+      .select('*, funil_itens(id, produto_id, produto_descricao, quantidade)')
+      .eq('id', editId).single();
+    if (error || !data) { setFlash('error', 'Nao consegui carregar esse lancamento.'); return; }
+    reg = data;
+  }
+  window._funilEditId = editId || null;
   const [insts, prods] = await Promise.all([funilListarInstituicoes(), funilCarregarCatalogo()]);
   window._funilInsts = insts;
   const hoje = new Date();
@@ -58797,8 +58849,8 @@ window.funilAbrirModal = async function() {
         <div class="modal-card__icon" style="background:var(--brand-lime-50,#F4F9EA);color:var(--brand-lime-dark,#6FA62E);">
           <span class="material-symbols-rounded">filter_alt</span>
         </div>
-        <div class="modal-card__title">Novo lançamento</div>
-        <div class="modal-card__subtitle">Registre a venda indicada por um profissional de saúde.</div>
+        <div class="modal-card__title">${reg ? 'Editar lançamento' : 'Novo lançamento'}</div>
+        <div class="modal-card__subtitle">${reg ? 'Corrija o que estiver errado e salve.' : 'Registre a venda indicada por um profissional de saúde.'}</div>
       </div>
       <div class="modal-card__body" style="display:flex;flex-direction:column;gap:12px;">
         <div class="report-field">
@@ -58856,9 +58908,20 @@ window.funilAbrirModal = async function() {
             <span class="material-symbols-rounded" style="font-size:16px;">add</span>Adicionar produto
           </button>
         </div>
+
+        <!-- Sprint 9.32.416: observacao — o campo livre pro que nao cabe nos outros
+             (cliente pediu pra avisar quando chegar, trocou de tamanho, etc.) -->
+        <div class="report-field" style="border-top:1px dashed var(--neutral-200);padding-top:12px;">
+          <label style="display:flex;align-items:center;gap:6px;">
+            <span class="material-symbols-rounded" style="font-size:16px;color:var(--neutral-500);">sticky_note_2</span>
+            Observação
+          </label>
+          <textarea id="fnObs" rows="3" maxlength="500" placeholder="Algo que valha registrar sobre essa venda (opcional)"
+                    style="width:100%;padding:10px;border:1.5px solid var(--neutral-200);border-radius:10px;font-family:inherit;font-size:13.5px;resize:vertical;"></textarea>
+        </div>
       </div>
       <div class="modal-card__footer">
-        <button class="modal-btn modal-btn--primary" onclick="funilSalvar()">Salvar</button>
+        <button class="modal-btn modal-btn--primary" onclick="funilSalvar()">${reg ? 'Salvar alterações' : 'Salvar'}</button>
         <button class="modal-btn modal-btn--secondary" onclick="document.getElementById('funilModal').remove()">Cancelar</button>
       </div>
     </div>`;
@@ -58871,11 +58934,47 @@ window.funilAbrirModal = async function() {
   insts.forEach(i => { window._funilInstMap[i.nome + (i.cidade ? ' · ' + i.cidade : '')] = i.id; });
   window._funilInstId = null;
   window._funilProdSeq = 0;
-  funilAddProduto();
+
+  if (!reg) { funilAddProduto(); return; }
+
+  // ---- Sprint 9.32.416: modo edicao — repoe tudo que ja estava salvo ------
+  // Os valores vao por JS (e nao no HTML) pra nao ter problema de escape com
+  // nomes que contenham aspas ou sinais de menor/maior.
+  const setv = (id, val) => { const el = document.getElementById(id); if (el) el.value = (val == null ? '' : val); };
+  setv('fnData', reg.data_indicacao);
+  setv('fnCliente', reg.cliente_nome);
+  setv('fnCpf', reg.cliente_cpf);
+  setv('fnTipoLocal', reg.tipo_local);
+  setv('fnDesc', reg.forma_desconto);
+  setv('fnObs', reg.observacao);
+
+  if (reg.instituicao_id) {
+    const nomeLocal = Object.keys(window._funilInstMap).find(k => window._funilInstMap[k] === reg.instituicao_id);
+    if (nomeLocal) {
+      setv('fnInstBusca', nomeLocal);
+      window._funilInstId = reg.instituicao_id;
+      window._funilInstNome = nomeLocal;
+      // precisa aguardar: e' quem popula a lista de profissionais do local
+      await funilTrocarLocal(reg.instituicao_id);
+      if (reg.profissional_id) setv('fnProf', reg.profissional_id);
+      if (reg.visitador_id) {
+        const selVis = document.getElementById('fnVisitadorSel');
+        if (selVis) { selVis.value = reg.visitador_id; funilTrocarVisitador(reg.visitador_id); }
+        else { window._funilVisitador = { id: reg.visitador_id, nome: reg.visitador_nome }; }
+      }
+    }
+  } else if (reg.local_nome) {
+    setv('fnInstBusca', reg.local_nome);
+    window._funilInstNome = reg.local_nome;
+  }
+
+  const itensSalvos = reg.funil_itens || [];
+  if (itensSalvos.length === 0) funilAddProduto();
+  else itensSalvos.forEach(it => funilAddProduto(it));
 };
 
 // Sprint 9.32.406: linha de produto (produto + quantidade + remover)
-window.funilAddProduto = function() {
+window.funilAddProduto = function(item) {
   const wrap = document.getElementById('fnProdutos');
   if (!wrap) return;
   const prods = window._funilCatalogo || [];
@@ -58888,9 +58987,9 @@ window.funilAddProduto = function() {
   row.innerHTML = `
     <select class="fn-prod-sel" style="flex:1;min-width:0;padding:9px;border:1.5px solid var(--neutral-200);border-radius:9px;font-family:inherit;font-size:12.5px;">
       <option value="">Selecione o produto…</option>
-      ${prods.map(pr => `<option value="${pr.id}" data-desc="${esc(pr.descricao)}">${esc(pr.descricao)}${pr.marca ? ' · ' + esc(pr.marca) : ''}</option>`).join('')}
+      ${prods.map(pr => `<option value="${pr.id}" data-desc="${esc(pr.descricao)}" ${item && String(item.produto_id) === String(pr.id) ? 'selected' : ''}>${esc(pr.descricao)}${pr.marca ? ' · ' + esc(pr.marca) : ''}</option>`).join('')}
     </select>
-    <input type="number" class="fn-prod-qtd" min="1" step="1" value="1" title="Quantidade" style="width:64px;padding:9px;border:1.5px solid var(--neutral-200);border-radius:9px;font-family:var(--font-mono);font-size:13px;text-align:center;" />
+    <input type="number" class="fn-prod-qtd" min="1" step="1" value="${item ? Number(item.quantidade || 1) : 1}" title="Quantidade" style="width:64px;padding:9px;border:1.5px solid var(--neutral-200);border-radius:9px;font-family:var(--font-mono);font-size:13px;text-align:center;" />
     <button type="button" onclick="this.closest('.fn-prod-row').remove()" title="Remover" style="flex-shrink:0;width:34px;height:34px;border:0;background:var(--neutral-100);color:var(--neutral-500);border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;">
       <span class="material-symbols-rounded" style="font-size:17px;">close</span>
     </button>`;
@@ -59013,17 +59112,26 @@ window.funilSalvar = async function() {
     profissional_id: profId,
     profissional_nome: profSel && profSel.selectedIndex > 0 ? profSel.options[profSel.selectedIndex].text.split(' · ')[0] : null,
     forma_desconto: v('fnDesc') || null,
+    observacao: v('fnObs') || null,        // Sprint 9.32.416
     visitador_id: window._funilVisitador?.id || null,
     visitador_nome: window._funilVisitador?.nome || null,
     status: 'vendida',      // sempre venda (a loja só lança o que já vendeu)
     valor_venda: null,      // sem valor: a loja mede produto e quantidade, não R$
   };
 
+  // Sprint 9.32.416: mesmo botao grava criacao e edicao
+  const editId = window._funilEditId || null;
   try {
-    await funilCriar(dados, itens);
+    if (editId) await funilAtualizar(editId, dados, itens);
+    else        await funilCriar(dados, itens);
+
     document.getElementById('funilModal')?.remove();
-    setFlash('success', 'Venda registrada.');
-    await funilCarregarLista(true);
+    window._funilEditId = null;
+    setFlash('success', editId ? 'Lançamento atualizado.' : 'Venda registrada.');
+
+    // recarrega a tela em que a pessoa esta (admin ou area da atendente)
+    if (String(location.hash || '').startsWith('#/admin')) await funilCarregarAdmin();
+    else await funilCarregarLista(true);
   } catch (e) {
     setFlash('error', 'Erro ao salvar: ' + e.message);
   }
@@ -59217,9 +59325,16 @@ async function funilCarregarAdmin() {
             <div style="flex:1;min-width:150px;">
               <strong style="color:var(--brand-navy);">${esc(r.cliente_nome)}</strong>
               <div style="font-size:10.5px;color:var(--neutral-500);">${esc(r.profissionais?.nome || r.profissional_nome || '—')} · ${esc(r.instituicoes?.nome || r.local_nome || '—')}${prods ? ' · ' + prods : ''}</div>
+              ${r.observacao ? `<div style="font-size:10.5px;color:var(--neutral-500);font-style:italic;margin-top:2px;">“${esc(r.observacao)}”</div>` : ''}
             </div>
             <div style="flex:0 0 auto;color:var(--neutral-500);font-size:10.5px;">${new Date(r.data_venda || r.data_indicacao + 'T12:00:00').toLocaleDateString('pt-BR')}</div>
             <div style="flex:0 0 70px;text-align:right;font-family:var(--font-mono);font-weight:700;color:var(--brand-lime-dark,#6FA62E);">${_funilUnidades(r)} un</div>
+            <div style="flex:0 0 auto;">
+              <button onclick="funilAbrirModal('${r.id}')" title="Editar lançamento"
+                      style="background:var(--neutral-100);color:var(--neutral-700);border:0;border-radius:7px;width:30px;height:30px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;">
+                <span class="material-symbols-rounded" style="font-size:16px;">edit</span>
+              </button>
+            </div>
           </div>`;
         }).join('');
   }
@@ -59228,7 +59343,7 @@ async function funilCarregarAdmin() {
 window.funilExportarCsv = function() {
   const linhas = _funilLinhasFiltradas(window._funilLinhas || []);
   if (linhas.length === 0) { setFlash('info', 'Nada pra exportar.'); return; }
-  const head = ['Data', 'Hora', 'Cliente', 'CPF', 'Produto', 'Quantidade', 'Indicado por', 'Visitador', 'Local', 'Tipo de local', 'Forma de desconto'];
+  const head = ['Data', 'Hora', 'Cliente', 'CPF', 'Produto', 'Quantidade', 'Indicado por', 'Visitador', 'Local', 'Tipo de local', 'Forma de desconto', 'Observação'];
   const rows = [];
   linhas.forEach(r => {
     const dt = r.criado_em ? new Date(r.criado_em) : (r.data_venda ? new Date(r.data_venda + 'T00:00:00') : null);
@@ -59239,7 +59354,8 @@ window.funilExportarCsv = function() {
                   r.visitador?.nome || r.visitador_nome || '',
                   r.instituicoes?.nome || r.local_nome || '',
                   _funilLabel(FUNIL_TIPOS_LOCAL, r.tipo_local),
-                  r.forma_desconto ? _funilLabel(FUNIL_DESCONTOS, r.forma_desconto) : ''];
+                  r.forma_desconto ? _funilLabel(FUNIL_DESCONTOS, r.forma_desconto) : '',
+                  r.observacao || ''];
     const itens = r.funil_itens || [];
     if (itens.length === 0) { rows.push(base); return; }
     itens.forEach(it => { const l = base.slice(); l[4] = it.produto_descricao || ''; l[5] = Number(it.quantidade || 0); rows.push(l); });
@@ -59261,6 +59377,7 @@ function _funilLinhasFiltradas(linhas) {
     String(r.profissionais?.nome || r.profissional_nome || '').toLowerCase().includes(t) ||
     String(r.visitador?.nome || r.visitador_nome || '').toLowerCase().includes(t) ||
     String(r.instituicoes?.nome || r.local_nome || '').toLowerCase().includes(t) ||
+    String(r.observacao || '').toLowerCase().includes(t) ||
     (r.funil_itens || []).some(i => String(i.produto_descricao || '').toLowerCase().includes(t))
   );
 }

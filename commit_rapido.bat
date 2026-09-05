@@ -143,7 +143,13 @@ if errorlevel 1 (
 
 echo.
 echo Enviando pro GitHub...
+REM Sprint 9.32.415: se o branch nao tiver upstream (acontece apos reescrita de
+REM historico), configura na hora em vez de falhar.
 git push
+if errorlevel 1 (
+    echo   Reconfigurando vinculo com o GitHub...
+    git push -u origin main
+)
 if errorlevel 1 (
     echo.
     echo [ERRO] Push falhou! Verifique sua conexao e autenticacao.
