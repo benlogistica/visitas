@@ -8356,7 +8356,7 @@ mark.search-hl {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.428-rolagem-lateral',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.429-grafico-sem-vazios',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -14160,8 +14160,9 @@ function renderAdminDashboardDesktop() {
                 <div class="ds-chart-card__subtitle">Agrupadas por período · meta diária configurável</div>
               </div>
               <div style="display:inline-flex;align-items:center;gap:10px;font-size:11px;color:var(--neutral-600);">
-                <div style="display:inline-flex;align-items:center;gap:5px;"><span style="width:9px;height:9px;border-radius:2px;background:#3B6D11;display:inline-block;"></span> ≥ meta</div>
-                <div style="display:inline-flex;align-items:center;gap:5px;"><span style="width:9px;height:9px;border-radius:2px;background:#C0DD97;display:inline-block;"></span> < meta</div>
+                <div style="display:inline-flex;align-items:center;gap:5px;"><span style="width:9px;height:9px;border-radius:2px;background:#3B6D11;display:inline-block;"></span> na meta</div>
+                <div style="display:inline-flex;align-items:center;gap:5px;"><span style="width:9px;height:9px;border-radius:2px;background:#E8A33D;display:inline-block;"></span> abaixo</div>
+                <div style="display:inline-flex;align-items:center;gap:5px;"><span style="width:5px;height:9px;border-radius:2px;background:var(--neutral-300);display:inline-block;"></span> fim de semana</div>
                 <button onclick="window.editarMetaVisitasDia()" title="Ajustar meta diária" style="background:transparent;border:1px solid var(--neutral-200);width:28px;height:28px;border-radius:6px;cursor:pointer;color:var(--neutral-600);display:flex;align-items:center;justify-content:center;font-family:inherit;">
                   <span class="material-symbols-rounded" style="font-size:15px;">tune</span>
                 </button>
@@ -15137,6 +15138,22 @@ function renderGraficoVisitasTemporal() {
     return;
   }
 
+  // ---- Sprint 9.32.428b: corta o vazio da esquerda ----------------------
+  // Quando o periodo comeca antes da primeira visita (pessoa entrou depois,
+  // estava de ferias, filtro de um visitador so), o grafico reservava metade
+  // da largura para dias que nunca tiveram nada. As barras de verdade ficavam
+  // espremidas na ponta direita.
+  // Cortamos so o vazio INICIAL. Buraco no meio do periodo continua visivel —
+  // ali o zero e informacao, nao sobra de calendario.
+  if (gran === 'dia') {
+    const primeiroComDado = buckets.findIndex(b => b.count > 0);
+    if (primeiroComDado > 1) {
+      buckets = buckets.slice(primeiroComDado);
+      headerLabel = `${fmtData(buckets[0].inicio)} – ${fmtData(buckets[buckets.length - 1].inicio)} · desde a primeira visita`;
+      if (subtitle) subtitle.textContent = headerLabel;
+    }
+  }
+
   // Sprint 9.32.98: refatorado pra barras + linha de meta
   // Lê meta diária do localStorage (default: 4). Configurável em /admin/configuracoes.
   const metaDiaria = parseInt(localStorage.getItem('bn_meta_visitas_dia') || '4', 10);
@@ -15175,9 +15192,10 @@ function renderGraficoVisitasTemporal() {
     const larg = b.fds ? barW * 0.44 : barW;
     const xb   = b.fds ? x + (barW - larg) / 2 : x;
 
-    // ROTULO DE DADOS — o pedido principal. Some no fim de semana zerado,
-    // que nao tem o que informar.
-    const mostraRotulo = !(b.fds && b.count === 0);
+    // ROTULO DE DADOS — o pedido principal.
+    // Zero nao ganha rotulo: uma fileira de "0" e' ruido, e a ausencia de
+    // barra ja diz o que precisa ser dito.
+    const mostraRotulo = b.count > 0;
     const rotulo = mostraRotulo ? `
       <text x="${x + barW / 2}" y="${y - 7}" font-size="15" text-anchor="middle"
             font-weight="${b.fds ? '500' : '700'}"
