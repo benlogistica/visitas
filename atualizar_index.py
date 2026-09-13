@@ -34,6 +34,7 @@ Se o script abortar dizendo que o index.html está corrompido, restaure com:
 
 Uso: python3 atualizar_index.py
 """
+import gzip
 import hashlib
 import json
 import os
@@ -135,6 +136,32 @@ def main():
     # 1) Lê JSON e calcula hash (cache buster)
     json_bytes = json_path.read_bytes()
     json_hash = hashlib.sha1(json_bytes).hexdigest()[:12]
+
+    # ---- Sprint 9.32.426: gera a versao COMPRIMIDA -----------------------
+    # O JSON tem ~20 MB e entra no git 2x por dia. Como o git guarda cada
+    # versao para sempre, o repositorio crescia ~41 MB/dia — e perto de 1 GB
+    # o GitHub Pages para de publicar (aconteceu em 06/09/2026).
+    # Comprimido cai ~91%. So o .gz e versionado; o .json fica local.
+    # mtime=0 deixa a saida deterministica: mesmo conteudo, mesmo arquivo,
+    # entao rodar o script duas vezes nao gera commit a toa.
+    gz_path = Path('faturamento_data_inline.json.gz')
+    tmp_gz = gz_path.with_suffix('.gz.tmp')
+    with gzip.GzipFile(filename='', mode='wb', fileobj=open(tmp_gz, 'wb'),
+                       compresslevel=9, mtime=0) as f:
+        f.write(json_bytes)
+    os.replace(tmp_gz, gz_path)
+
+    gz_mb = gz_path.stat().st_size / 1024 / 1024
+    print(f"   ✓ Comprimido: {gz_mb:.2f} MB "
+          f"({100 - 100 * gz_path.stat().st_size / len(json_bytes):.0f}% menor)")
+
+    # Confere que da pra descomprimir de volta. Publicar um .gz corrompido
+    # deixaria a tela de faturamento morta sem aviso nenhum.
+    with gzip.open(gz_path, 'rb') as f:
+        if f.read() != json_bytes:
+            print("❌ O arquivo comprimido nao confere com o original. Abortado.")
+            sys.exit(1)
+    print("   ✓ Descompressao conferida")
 
     dados = json.loads(json_bytes.decode('utf-8'))
     periodo = f"{dados['meta']['periodo_inicio']} → {dados['meta']['periodo_fim']}"
