@@ -8268,7 +8268,7 @@ mark.search-hl {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.420-push-checkout',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.421-push-convite',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -9252,6 +9252,25 @@ window.toggleNotifDropdown = async function(ev) {
   // (simulação mantém user.id do admin, então deletaria as notif reais dele)
   const temLidas = list.some(n => n.lida);
   const mostrarLimpar = temLidas && !estaSimulando();
+  // Sprint 9.32.421: atalho de ativação aqui também. O sininho é o primeiro
+  // lugar em que as pessoas clicam — deixar a ativação só na tela cheia fazia
+  // todo mundo passar batido.
+  dropdown.innerHTML += `<div id="pushAtalhoDropdown" style="display:none;"></div>`;
+  setTimeout(async () => {
+    const alvo = document.getElementById('pushAtalhoDropdown');
+    if (!alvo) return;
+    if ((await pushEstado()) !== 'desligado') return;
+    alvo.style.display = '';
+    alvo.innerHTML = `
+      <div style="display:flex;align-items:center;gap:9px;padding:10px 12px;background:#E4ECFD;border-top:1px solid rgba(29,78,216,0.18);">
+        <span class="material-symbols-rounded" style="font-size:17px;color:#1D4ED8;flex-shrink:0;">notifications_active</span>
+        <div style="flex:1;min-width:0;font-size:11.5px;color:var(--neutral-700);line-height:1.35;">
+          Receba os avisos no celular
+        </div>
+        <button onclick="pushAtivarClick()" style="flex-shrink:0;background:var(--brand-lime);color:#fff;border:0;border-radius:8px;padding:6px 12px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:inherit;">Ativar</button>
+      </div>`;
+  }, 0);
+
   dropdown.innerHTML += `
     <div class="notif-dropdown__footer" style="display:flex;align-items:stretch;">
       <a href="#/notificacoes" onclick="document.getElementById('notifDropdown')?.remove();"
@@ -10581,6 +10600,75 @@ window.pushDesligarClick = async function() {
   pushPintarCartao();
 };
 
+/* --------------------------------------------------------------------------
+   Sprint 9.32.421 — convidar no momento certo
+   Pedir permissao na tela de Notificacoes nao funciona: ninguem vai la'. O
+   momento util e' logo depois do check-in, com a visita aberta na tela.
+   Pedimos UMA vez; se a pessoa disser "agora nao", so' voltamos a perguntar
+   depois de 30 dias. Insistir e' pior que nao pedir: o navegador guarda a
+   recusa e, depois de algumas, bloqueia o site de vez.
+   -------------------------------------------------------------------------- */
+const PUSH_CONVITE_CHAVE = 'pushConviteAdiadoAte';
+
+function pushConvitePodeMostrar() {
+  try {
+    const ate = Number(localStorage.getItem(PUSH_CONVITE_CHAVE) || 0);
+    return !ate || Date.now() > ate;
+  } catch (e) { return true; }
+}
+
+function pushConviteAdiar(dias) {
+  try { localStorage.setItem(PUSH_CONVITE_CHAVE, String(Date.now() + dias * 86400000)); } catch (e) {}
+}
+
+async function pushPintarConvite() {
+  const el = document.getElementById('pushConvite');
+  if (!el) return;
+  if (!pushConvitePodeMostrar()) return;
+
+  const estado = await pushEstado();
+  // So' convida quem PODE aceitar: sem suporte, ja' ativo ou ja' bloqueado
+  // pelo navegador nao ha o que oferecer.
+  if (estado !== 'desligado') return;
+
+  el.style.display = '';
+  el.innerHTML = `
+    <div style="background:#E4ECFD;border:1px solid rgba(29,78,216,0.25);border-radius:12px;padding:12px 14px;">
+      <div style="display:flex;align-items:flex-start;gap:10px;">
+        <span class="material-symbols-rounded" style="font-size:20px;color:#1D4ED8;flex-shrink:0;margin-top:1px;">notifications_active</span>
+        <div style="flex:1;min-width:0;">
+          <div style="font-weight:700;color:var(--brand-navy);font-size:13px;">Quer que eu te lembre do check-out?</div>
+          <div style="font-size:11.5px;color:var(--neutral-600);margin-top:3px;line-height:1.4;">
+            Se esta visita ficar aberta, aviso no seu celular — mesmo com o app fechado.
+          </div>
+          <div style="display:flex;gap:8px;margin-top:10px;">
+            <button onclick="pushConviteAceitar()" style="background:var(--brand-lime);color:#fff;border:0;border-radius:9px;padding:9px 16px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit;">Sim, avisar</button>
+            <button onclick="pushConviteRecusar()" style="background:transparent;color:var(--neutral-600);border:0;border-radius:9px;padding:9px 12px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;">Agora não</button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+}
+
+window.pushConviteAceitar = async function() {
+  const ok = await pushAtivar();
+  const el = document.getElementById('pushConvite');
+  // Aceitou ou recusou no navegador: de qualquer forma nao perguntamos de novo tao cedo.
+  pushConviteAdiar(ok ? 3650 : 30);
+  if (el) el.style.display = 'none';
+  if (typeof setFlash === 'function') {
+    setFlash(ok ? 'success' : 'info',
+      ok ? 'Pronto. Aviso você se esquecer o check-out.' : 'Sem problema — dá pra ativar depois em Notificações.');
+  }
+};
+
+window.pushConviteRecusar = function() {
+  pushConviteAdiar(30);
+  const el = document.getElementById('pushConvite');
+  if (el) el.style.display = 'none';
+};
+
+window.pushPintarConvite = pushPintarConvite;
 window.pushPintarCartao = pushPintarCartao;
 window.pushAtivar = pushAtivar;
 window.pushDesativar = pushDesativar;
@@ -27632,6 +27720,10 @@ function renderCheckinAtivo() {
       return;
     }
 
+    // Sprint 9.32.421: só depois de confirmar que a visita existe — convidar
+    // numa tela que vai redirecionar seria pedir permissão e sumir.
+    try { pushPintarConvite(); } catch (e) {}
+
     // Atualiza dados do card
     const nameEl = document.getElementById('activeInstName');
     const startEl = document.getElementById('activeInstStart');
@@ -27661,6 +27753,10 @@ function renderCheckinAtivo() {
         <div id="checkinAtivoAlerta" style="display:none;margin-bottom:14px;"></div>
         <!-- Sprint 9.32.267: toasts de notificações backend (visita_aviso_2h/4h/6h) -->
         <div id="checkinAtivoNotifs" style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px;"></div>
+        <!-- Sprint 9.32.421: convite pra ativar o aviso de check-out, pedido AQUI
+             porque e' o unico instante em que o valor e' obvio: a visita acabou
+             de abrir e o esquecimento ainda esta por vir. -->
+        <div id="pushConvite" style="display:none;margin-bottom:14px;"></div>
 
         <div class="active-card">
           <div class="active-card__icon">
