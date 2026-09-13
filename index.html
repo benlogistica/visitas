@@ -8361,7 +8361,7 @@ mark.search-hl {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.431-dias',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.432-meses',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -14082,13 +14082,9 @@ function renderAdminDashboardDesktop() {
   const mesVigente = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2,'0')}`;
   const valorDropdown = ehMesEspecifico ? periodoAtual.slice(4) : mesVigente;
   const mesNomes = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-  const opcoesMes = [];
-  for (let off = 0; off >= -23; off--) {
-    const m = new Date(hoje.getFullYear(), hoje.getMonth() + off, 1);
-    const valor = `${m.getFullYear()}-${String(m.getMonth() + 1).padStart(2,'0')}`;
-    const label = `${mesNomes[m.getMonth()]}/${m.getFullYear()}`;
-    opcoesMes.push(`<option value="${valor}"${valor === valorDropdown ? ' selected' : ''}>${label}</option>`);
-  }
+  // Sprint 9.32.432: a lista deixou de ser "os ultimos 24 meses" e passou a ser
+  // "os meses do ano que tem visita" — ver carregarMesesComVisita().
+  const opcoesMes = opcoesMesTopoHtml(valorDropdown);
 
   const titleExtra = `
     <div style="display:inline-flex;gap:4px;background:var(--neutral-100);border-radius:9999px;padding:3px;">
@@ -14096,8 +14092,8 @@ function renderAdminDashboardDesktop() {
         <button onclick="trocarPeriodoDashDesktop('${p.id}')" id="dsdPeriod_${p.id}" style="padding:5px 12px;border:0;background:${isAtivo(p.id) ? 'var(--brand-navy)' : 'transparent'};color:${isAtivo(p.id) ? '#fff' : 'var(--neutral-600)'};border-radius:9999px;font-size:11.5px;font-weight:600;cursor:pointer;font-family:inherit;">${p.label}</button>
       `).join('')}
     </div>
-    <select onchange="trocarMesDashDesktop(this.value)" title="Escolher mês específico" style="height:32px;padding:0 10px;border:1px solid ${ehMesEspecifico ? 'var(--brand-navy)' : 'var(--neutral-200)'};border-radius:9999px;background:${ehMesEspecifico ? 'var(--brand-navy)' : '#fff'};color:${ehMesEspecifico ? '#fff' : 'var(--neutral-600)'};font-family:inherit;font-size:11.5px;font-weight:600;cursor:pointer;margin-left:6px;outline:none;">
-      ${opcoesMes.join('')}
+    <select id="dsdSelMesTopo" onchange="trocarMesDashDesktop(this.value)" title="Escolher mês específico" style="height:32px;padding:0 10px;border:1px solid ${ehMesEspecifico ? 'var(--brand-navy)' : 'var(--neutral-200)'};border-radius:9999px;background:${ehMesEspecifico ? 'var(--brand-navy)' : '#fff'};color:${ehMesEspecifico ? '#fff' : 'var(--neutral-600)'};font-family:inherit;font-size:11.5px;font-weight:600;cursor:pointer;margin-left:6px;outline:none;">
+      ${opcoesMes}
     </select>
     <button onclick="abrirCustomizarDashDesktop()" title="Personalizar indicadores" style="width:38px;height:38px;border-radius:10px;border:1px solid var(--neutral-200);background:#fff;color:var(--neutral-600);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;margin-left:8px;transition:all 120ms;" onmouseover="this.style.borderColor='var(--brand-navy)';this.style.color='var(--brand-navy)'" onmouseout="this.style.borderColor='var(--neutral-200)';this.style.color='var(--neutral-600)'">
       <span class="material-symbols-rounded" style="font-size:20px;">tune</span>
@@ -15003,6 +14999,186 @@ window.dsdLimparFiltroNutri = function() {
   if (typeof carregarAdminDashboardDesktop === 'function') carregarAdminDashboardDesktop();
 };
 
+/* ==========================================================================
+   MESES QUE REALMENTE TEM VISITA — Sprint 9.32.432
+   --------------------------------------------------------------------------
+   Os dois dropdowns de mes do dashboard montavam a lista contando para tras a
+   partir de hoje (12 meses num, 24 no outro). Dava dois defeitos de uma vez:
+
+     · meses que nunca tiveram visita abriam tela vazia. O banco so comeca em
+       05/2026, entao metade da lista nao levava a lugar nenhum — e 24 itens
+       ainda faziam nascer barra de rolagem no dropdown.
+     · o mes QUE VEM nao aparecia. Havia 11 visitas agendadas para 10/2026 sem
+       nenhum jeito de olhar para elas.
+
+   Agora a lista vem do banco (RPC meses_com_visita, SECURITY INVOKER: cada um
+   ve os meses em que tem visita).
+   ========================================================================== */
+const MESES_CACHE_KEY = 'bn_meses_com_visita';
+window._mesesComVisita = null;
+let _mesesComVisitaPromise = null;
+
+function mesAtualISO() {
+  const h = new Date();
+  return `${h.getFullYear()}-${String(h.getMonth() + 1).padStart(2, '0')}`;
+}
+
+// Sempre devolve algo utilizavel. Enquanto o banco nao respondeu, o dropdown
+// mostra o mes corrente sozinho em vez de ficar vazio.
+function mesesDisponiveis() {
+  const lista = window._mesesComVisita;
+  return (Array.isArray(lista) && lista.length) ? lista : [mesAtualISO()];
+}
+
+function rotuloMesISO(iso, longo) {
+  const curtos  = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  const inteiros = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  const [ano, mes] = String(iso).split('-');
+  const i = parseInt(mes, 10) - 1;
+  return `${(longo ? inteiros : curtos)[i]}/${ano}`;
+}
+
+function carregarMesesComVisita() {
+  if (_mesesComVisitaPromise) return _mesesComVisitaPromise;
+  // Antes do login nao ha conexao — e nem dropdown para preencher.
+  if (!db) return Promise.resolve(null);
+
+  // Cache de sessao: sem ele o dropdown apareceria com um item so a cada troca
+  // de tela, ate a resposta do banco chegar.
+  try {
+    const salvo = JSON.parse(sessionStorage.getItem(MESES_CACHE_KEY) || 'null');
+    if (salvo && salvo.ano === new Date().getFullYear() && Array.isArray(salvo.meses) && salvo.meses.length) {
+      window._mesesComVisita = salvo.meses;
+    }
+  } catch (e) { /* sessionStorage bloqueado — segue sem cache */ }
+
+  _mesesComVisitaPromise = db.rpc('meses_com_visita')
+    .then(({ data, error }) => {
+      if (error) throw new Error(error.message);
+      const meses = (data || []).map(r => r.mes).filter(Boolean);
+      // O mes corrente entra sempre, mesmo sem visita nenhuma ainda: senao, no
+      // dia 1 de cada mes a lista perderia justamente o mes que a pessoa quer.
+      const atual = mesAtualISO();
+      if (!meses.includes(atual)) meses.push(atual);
+      meses.sort();
+      window._mesesComVisita = meses;
+      try {
+        sessionStorage.setItem(MESES_CACHE_KEY, JSON.stringify({ ano: new Date().getFullYear(), meses }));
+      } catch (e) {}
+      repovoarDropdownsDeMes();
+      return meses;
+    })
+    .catch((e) => {
+      console.warn('[meses] nao consegui ler os meses com visita:', e && e.message);
+      _mesesComVisitaPromise = null; // deixa tentar de novo na proxima tela
+      return null;
+    });
+
+  return _mesesComVisitaPromise;
+}
+
+// Repovoa os selects ja desenhados, preservando o que estava escolhido.
+// Trocar so as <option> evita redesenhar o dashboard inteiro so por causa
+// de uma lista que chegou atrasada.
+function repovoarDropdownsDeMes() {
+  try {
+    const topo = document.getElementById('dsdSelMesTopo');
+    if (topo) {
+      const atual = topo.value;
+      topo.innerHTML = opcoesMesTopoHtml(atual);
+      topo.value = atual;
+    }
+    const graf = document.getElementById('dsdSelMesGrafico');
+    if (graf) {
+      const atual = graf.value;
+      graf.innerHTML = opcoesMesGraficoHtml(parseInt(atual, 10) || 0);
+      graf.value = atual;
+    }
+  } catch (e) { console.warn('[meses] repovoar:', e && e.message); }
+}
+
+// Lista do dropdown do TOPO (valor = "YYYY-MM"), mais recente em cima.
+function opcoesMesTopoHtml(selecionado) {
+  if (!window._mesesComVisita) carregarMesesComVisita();
+  const lista = mesesDisponiveis().slice();
+  // Se o mes escolhido saiu da lista (ex.: era um mes sem visita), ele
+  // continua aparecendo — senao o seletor mudaria de valor sozinho.
+  if (selecionado && !lista.includes(selecionado)) lista.push(selecionado);
+  return lista.sort().reverse().map(iso =>
+    `<option value="${iso}"${iso === selecionado ? ' selected' : ''}>${rotuloMesISO(iso, false)}</option>`
+  ).join('');
+}
+
+// Lista do dropdown do GRAFICO. O valor segue sendo o deslocamento em meses
+// (0 = mes atual, -1 = anterior, +1 = o que vem), que e o que a funcao de
+// desenho ja entende. Deslocamento positivo funciona: new Date(a, m+1, 1).
+function opcoesMesGraficoHtml(offSelecionado) {
+  if (!window._mesesComVisita) carregarMesesComVisita();
+  const agora = new Date();
+  return mesesDisponiveis().slice().sort().reverse().map(iso => {
+    const [ano, mes] = iso.split('-').map(Number);
+    const off = (ano - agora.getFullYear()) * 12 + (mes - 1 - agora.getMonth());
+    return `<option value="${off}"${off === offSelecionado ? ' selected' : ''}>${rotuloMesISO(iso, true)}</option>`;
+  }).join('');
+}
+
+/* ==========================================================================
+   O GRAFICO PASSA A BUSCAR A PROPRIA JANELA — Sprint 9.32.432
+   --------------------------------------------------------------------------
+   Ele recebia a fatia de visitas do periodo escolhido LA EM CIMA e desenhava
+   em cima dela. Como o periodo padrao e "mes atual", "Ultimos 30 dias" na
+   verdade mostrava so os dias do mes corrente — os de tras vinham zerados
+   porque o dado nem tinha sido buscado. E escolher outro mes no dropdown do
+   proprio grafico devolvia um mes inteiro vazio, pelo mesmo motivo.
+
+   Agora ele busca exatamente a janela que desenha. O rotulo passa a ser
+   verdade e o dropdown de mes volta a servir para alguma coisa.
+   ========================================================================== */
+function janelaDoGrafico() {
+  const gran  = window._dsdSemanaGranularidade || 'dia';
+  const off   = window._dsdSemanaMesOffset || 0;
+  const agora = new Date();
+  let ini, fim;
+
+  if (gran === 'mes') {
+    ini = new Date(agora.getFullYear(), agora.getMonth() + off, 1, 0, 0, 0, 0);
+    fim = new Date(agora.getFullYear(), agora.getMonth() + off + 1, 0, 23, 59, 59, 999);
+  } else if (gran === 'semana') {
+    ini = new Date(agora); ini.setDate(ini.getDate() - 11 * 7);
+    const dia = ini.getDay();
+    ini.setDate(ini.getDate() - (dia === 0 ? 6 : dia - 1)); // volta pra segunda
+    ini.setHours(0, 0, 0, 0);
+    fim = new Date(agora); fim.setHours(23, 59, 59, 999);
+  } else {
+    ini = new Date(agora); ini.setDate(ini.getDate() - 29); ini.setHours(0, 0, 0, 0);
+    fim = new Date(agora); fim.setHours(23, 59, 59, 999);
+  }
+  return { ini, fim };
+}
+
+async function atualizarDadosDoGrafico() {
+  const { ini, fim } = janelaDoGrafico();
+  // Marca a busca: se a pessoa clicar em tres granularidades seguidas, so a
+  // ultima pode escrever o resultado. Sem isso, a resposta mais lenta chegaria
+  // depois e sobrescreveria o grafico com dados da janela errada.
+  const marca = (window._dsdSemanaBusca = (window._dsdSemanaBusca || 0) + 1);
+  try {
+    let q = db.from('visitas')
+      .select('checkin_timestamp, visita_realizada, nutricionista_id')
+      .gte('checkin_timestamp', ini.toISOString())
+      .lte('checkin_timestamp', fim.toISOString());
+    if (window._dashFiltroNutri) q = q.eq('nutricionista_id', window._dashFiltroNutri);
+
+    const { data, error } = await q;
+    if (error) throw new Error(error.message);
+    if (marca !== window._dsdSemanaBusca) return; // chegou atrasada, descarta
+    window._dsdSemanaVisitas = data || [];
+    renderGraficoVisitasTemporal();
+  } catch (e) {
+    console.warn('[grafico] nao consegui buscar as visitas da janela:', e && e.message);
+  }
+}
+
 // Renderiza gráfico de linha: visitas por semana (últimas 12 semanas)
 // Sprint 9.20.6: gráfico com granularidade selecionável (dia/semana/mês)
 // + dropdown pra escolher qual mês específico quando em modo "Mês"
@@ -15010,12 +15186,17 @@ function renderDsdVisitasSemana(visitasPeriodo) {
   const container = document.getElementById('dsdVisitasSemana');
   if (!container) return;
 
-  // Cacheia visitas pra trocar granularidade sem refetch
+  // A fatia que chega aqui e a do periodo escolhido no topo. Serve para pintar
+  // alguma coisa na hora, sem tela em branco — mas nao e a janela do grafico.
   window._dsdSemanaVisitas = visitasPeriodo;
   if (!window._dsdSemanaGranularidade) window._dsdSemanaGranularidade = 'dia';
-  if (!window._dsdSemanaMesOffset) window._dsdSemanaMesOffset = 0; // 0 = mês atual, -1 = mês passado
+  if (!window._dsdSemanaMesOffset) window._dsdSemanaMesOffset = 0; // 0 = mês atual, -1 = passado, +1 = o que vem
 
   renderGraficoVisitasTemporal();
+
+  // Sprint 9.32.432: e agora busca de fato a janela que o grafico diz mostrar.
+  carregarMesesComVisita();
+  atualizarDadosDoGrafico();
 }
 
 function renderGraficoVisitasTemporal() {
@@ -15089,7 +15270,10 @@ function renderGraficoVisitasTemporal() {
       buckets.push({
         inicio: d, fim,
         label: fmtData(d),
-        labelX: (dia % 3 === 1 || dia === diasNoMes) ? String(dia).padStart(2,'0') : '',
+        // Sprint 9.32.432: mesma regra do modo "Dia" — o numero embaixo de
+        // toda barra. Antes saia de 3 em 3 tambem aqui.
+        labelX: String(dia).padStart(2,'0'),
+        fds: (d.getDay() === 0 || d.getDay() === 6),
         count: 0,
       });
     }
@@ -15108,15 +15292,9 @@ function renderGraficoVisitasTemporal() {
   // Monta dropdown de mês (últimos 12 meses disponíveis)
   let dropdownMesHtml = '';
   if (gran === 'mes') {
-    const opts = [];
-    for (let off = 0; off >= -11; off--) {
-      const m = new Date(agora.getFullYear(), agora.getMonth() + off, 1);
-      const label = `${mesNomesLongos[m.getMonth()]}/${m.getFullYear()}`;
-      opts.push(`<option value="${off}"${off === mesOffset ? ' selected' : ''}>${label}</option>`);
-    }
     dropdownMesHtml = `
-      <select onchange="trocarMesDsdGrafico(this.value)" style="height:28px;padding:0 8px;border:1px solid var(--neutral-200);border-radius:8px;background:#fff;font-family:inherit;font-size:11.5px;color:var(--brand-navy);cursor:pointer;">
-        ${opts.join('')}
+      <select id="dsdSelMesGrafico" onchange="trocarMesDsdGrafico(this.value)" style="height:28px;padding:0 8px;border:1px solid var(--neutral-200);border-radius:8px;background:#fff;font-family:inherit;font-size:11.5px;color:var(--brand-navy);cursor:pointer;">
+        ${opcoesMesGraficoHtml(mesOffset)}
       </select>
     `;
   }
@@ -15259,7 +15437,7 @@ function renderGraficoVisitasTemporal() {
   const diasAbaixo  = baseComparacao.length - diasComMeta;
   const diasAtivos = buckets.filter(b => b.count > 0).length;
   const taxaMeta = baseComparacao.length > 0 ? Math.round((diasComMeta / baseComparacao.length) * 100) : 0;
-  const rotuloBase = gran === 'dia' ? 'dias úteis' : (gran === 'semana' ? 'semanas' : 'meses');
+  const rotuloBase = gran === 'semana' ? 'semanas' : 'dias úteis';
   const periodo = gran === 'dia' ? 'dias' : (gran === 'semana' ? 'semanas' : 'meses');
   const granLabel = gran === 'dia' ? 'dia' : (gran === 'semana' ? 'sem' : 'mês');
 
@@ -15270,7 +15448,7 @@ function renderGraficoVisitasTemporal() {
          papinha. O grafico ganha rolagem horizontal PROPRIA — so ele desliza,
          o resto da pagina fica parado. No desktop nada muda: cabe inteiro. -->
     <div data-rolax style="position:relative;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;">
-      <svg viewBox="0 0 ${W} ${H}" style="width:100%;min-width:${gran === 'dia' ? Math.max(560, buckets.length * 30) + 'px' : '100%'};height:auto;max-height:340px;display:block;">
+      <svg viewBox="0 0 ${W} ${H}" style="width:100%;min-width:${buckets.length > 14 ? Math.max(560, buckets.length * 30) + 'px' : '100%'};height:auto;max-height:340px;display:block;">
         ${gridLines}
         ${bars}
         ${metaLine}
@@ -15344,7 +15522,8 @@ window.trocarGranDsdGrafico = function(gran) {
   if (gran === 'mes' && window._dsdSemanaMesOffset === undefined) {
     window._dsdSemanaMesOffset = 0;
   }
-  renderGraficoVisitasTemporal();
+  renderGraficoVisitasTemporal();   // pinta ja, com o que tem em maos
+  atualizarDadosDoGrafico();        // e corrige com a janela certa
 };
 
 // Sprint 9.32.98: editar meta diária (salva em localStorage e re-renderiza gráfico)
@@ -15415,7 +15594,9 @@ window._metaVisSalvar = function() {
 
 window.trocarMesDsdGrafico = function(offset) {
   window._dsdSemanaMesOffset = parseInt(offset, 10);
-  renderGraficoVisitasTemporal();
+  // Sem esta busca, escolher outro mes aqui devolvia um mes inteiro zerado:
+  // o dado desse mes nunca tinha sido trazido do banco.
+  atualizarDadosDoGrafico();
 };
 
 // Sprint 9.32.108: editar meta MENSAL de visitas do nutri (painel de Indicadores)
@@ -25707,13 +25888,9 @@ function renderNutriIndicadoresDesktop() {
   const mesVigente = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
   const valorDropdown = ehMesEspecifico ? periodoAtual.slice(4) : mesVigente;
   const mesNomes = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-  const opcoesMes = [];
-  for (let off = 0; off >= -23; off--) {
-    const m = new Date(hoje.getFullYear(), hoje.getMonth() + off, 1);
-    const valor = `${m.getFullYear()}-${String(m.getMonth() + 1).padStart(2, '0')}`;
-    const label = `${mesNomes[m.getMonth()]}/${m.getFullYear()}`;
-    opcoesMes.push(`<option value="${valor}"${valor === valorDropdown ? ' selected' : ''}>${label}</option>`);
-  }
+  // Sprint 9.32.432: a lista deixou de ser "os ultimos 24 meses" e passou a ser
+  // "os meses do ano que tem visita" — ver carregarMesesComVisita().
+  const opcoesMes = opcoesMesTopoHtml(valorDropdown);
 
   const titleExtra = `
     <div class="no-print" style="display:inline-flex;gap:4px;background:var(--neutral-100);border-radius:9999px;padding:3px;">
@@ -25721,10 +25898,10 @@ function renderNutriIndicadoresDesktop() {
         <button onclick="window.trocarPeriodoNutri('${p.id}')" style="padding:5px 12px;border:0;background:${isAtivo(p.id) ? 'var(--brand-navy)' : 'transparent'};color:${isAtivo(p.id) ? '#fff' : 'var(--neutral-600)'};border-radius:9999px;font-size:11.5px;font-weight:600;cursor:pointer;font-family:inherit;">${p.label}</button>
       `).join('')}
     </div>
-    <select onchange="window.trocarMesNutri(this.value)" title="Escolher mês específico"
+    <select id="dsdSelMesTopo" onchange="window.trocarMesNutri(this.value)" title="Escolher mês específico"
       class="no-print"
       style="height:32px;padding:0 10px;border:1px solid ${ehMesEspecifico ? 'var(--brand-navy)' : 'var(--neutral-200)'};border-radius:9999px;background:${ehMesEspecifico ? 'var(--brand-navy)' : '#fff'};color:${ehMesEspecifico ? '#fff' : 'var(--neutral-600)'};font-family:inherit;font-size:11.5px;font-weight:600;cursor:pointer;margin-left:6px;outline:none;">
-      ${opcoesMes.join('')}
+      ${opcoesMes}
     </select>
     <button onclick="window.imprimirIndicadoresNutri()" title="Imprimir / Salvar PDF"
       class="no-print"
@@ -34512,13 +34689,9 @@ function renderNutriIndicadores() {
   const mesVigente = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
   const valorDropdown = ehMesEspecifico ? periodoAtual.slice(4) : mesVigente;
   const mesNomes = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-  const opcoesMes = [];
-  for (let off = 0; off >= -23; off--) {
-    const m = new Date(hoje.getFullYear(), hoje.getMonth() + off, 1);
-    const valor = `${m.getFullYear()}-${String(m.getMonth() + 1).padStart(2, '0')}`;
-    const label = `${mesNomes[m.getMonth()]}/${m.getFullYear()}`;
-    opcoesMes.push(`<option value="${valor}"${valor === valorDropdown ? ' selected' : ''}>${label}</option>`);
-  }
+  // Sprint 9.32.432: a lista deixou de ser "os ultimos 24 meses" e passou a ser
+  // "os meses do ano que tem visita" — ver carregarMesesComVisita().
+  const opcoesMes = opcoesMesTopoHtml(valorDropdown);
 
   return `
     <div class="mobile-app">
@@ -34532,9 +34705,9 @@ function renderNutriIndicadores() {
             `).join('')}
           </div>
           <div style="display:flex;gap:8px;align-items:center;">
-            <select onchange="window.trocarMesNutri(this.value)" title="Escolher mês"
+            <select id="dsdSelMesTopo" onchange="window.trocarMesNutri(this.value)" title="Escolher mês"
               style="flex:1;height:36px;padding:0 12px;border:1px solid ${ehMesEspecifico ? 'var(--brand-navy)' : 'var(--neutral-200)'};border-radius:9999px;background:${ehMesEspecifico ? 'var(--brand-navy)' : '#fff'};color:${ehMesEspecifico ? '#fff' : 'var(--neutral-600)'};font-family:inherit;font-size:12.5px;font-weight:600;cursor:pointer;outline:none;-webkit-appearance:none;appearance:none;background-image:url(&quot;data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='${ehMesEspecifico ? 'white' : '%236B7280'}'%3e%3cpath d='M7 10l5 5 5-5z'/%3e%3c/svg%3e&quot;);background-repeat:no-repeat;background-position:right 8px center;background-size:18px;padding-right:32px;">
-              ${opcoesMes.join('')}
+              ${opcoesMes}
             </select>
             <button onclick="window.imprimirIndicadoresNutri()" title="Imprimir / Salvar PDF"
               style="width:36px;height:36px;border-radius:9999px;border:1px solid var(--neutral-200);background:#fff;color:var(--neutral-600);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;">
@@ -35541,13 +35714,9 @@ function renderAdminDashboard() {
   const mesVigente = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2,'0')}`;
   const valorDropdown = ehMesEspecifico ? periodoAtual.slice(4) : mesVigente;
   const mesNomes = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-  const opcoesMes = [];
-  for (let off = 0; off >= -23; off--) {
-    const m = new Date(hoje.getFullYear(), hoje.getMonth() + off, 1);
-    const valor = `${m.getFullYear()}-${String(m.getMonth() + 1).padStart(2,'0')}`;
-    const label = `${mesNomes[m.getMonth()]}/${m.getFullYear()}`;
-    opcoesMes.push(`<option value="${valor}"${valor === valorDropdown ? ' selected' : ''}>${label}</option>`);
-  }
+  // Sprint 9.32.432: a lista deixou de ser "os ultimos 24 meses" e passou a ser
+  // "os meses do ano que tem visita" — ver carregarMesesComVisita().
+  const opcoesMes = opcoesMesTopoHtml(valorDropdown);
 
   return `
     <div class="mobile-app">
@@ -35568,8 +35737,8 @@ function renderAdminDashboard() {
             `).join('')}
           </div>
           <div style="display:flex;gap:8px;align-items:center;">
-            <select onchange="trocarMesDashDesktop(this.value)" title="Escolher mês" style="flex:1;height:36px;padding:0 12px;border:1px solid ${ehMesEspecifico ? 'var(--brand-navy)' : 'var(--neutral-200)'};border-radius:9999px;background:${ehMesEspecifico ? 'var(--brand-navy)' : '#fff'};color:${ehMesEspecifico ? '#fff' : 'var(--neutral-600)'};font-family:inherit;font-size:12.5px;font-weight:600;cursor:pointer;outline:none;-webkit-appearance:none;appearance:none;background-image:url(&quot;data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='${ehMesEspecifico ? 'white' : '%236B7280'}'%3e%3cpath d='M7 10l5 5 5-5z'/%3e%3c/svg%3e&quot;);background-repeat:no-repeat;background-position:right 8px center;background-size:18px;padding-right:32px;">
-              ${opcoesMes.join('')}
+            <select id="dsdSelMesTopo" onchange="trocarMesDashDesktop(this.value)" title="Escolher mês" style="flex:1;height:36px;padding:0 12px;border:1px solid ${ehMesEspecifico ? 'var(--brand-navy)' : 'var(--neutral-200)'};border-radius:9999px;background:${ehMesEspecifico ? 'var(--brand-navy)' : '#fff'};color:${ehMesEspecifico ? '#fff' : 'var(--neutral-600)'};font-family:inherit;font-size:12.5px;font-weight:600;cursor:pointer;outline:none;-webkit-appearance:none;appearance:none;background-image:url(&quot;data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='${ehMesEspecifico ? 'white' : '%236B7280'}'%3e%3cpath d='M7 10l5 5 5-5z'/%3e%3c/svg%3e&quot;);background-repeat:no-repeat;background-position:right 8px center;background-size:18px;padding-right:32px;">
+              ${opcoesMes}
             </select>
             <button onclick="abrirCustomizarDashDesktop()" title="Personalizar indicadores" style="width:36px;height:36px;border-radius:9999px;border:1px solid var(--neutral-200);background:#fff;color:var(--neutral-600);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;">
               <span class="material-symbols-rounded" style="font-size:18px;">tune</span>
