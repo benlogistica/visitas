@@ -8268,7 +8268,7 @@ mark.search-hl {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.416-funil-editar-observacao',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.417-seguranca-login-rpc',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -8836,12 +8836,15 @@ async function login(cpf, senha) {
   const cpfFmt = maskCPF(cpf);
   const senhaHash = await hashSenha(senha);
 
-  const { data: user, error } = await db
-    .from('usuarios')
-    .select('*')
-    .eq('cpf', cpfFmt)
-    .eq('senha_hash', senhaHash)
-    .maybeSingle();
+  // Sprint 9.32.417 (seguranca): quem confere a senha agora e' o BANCO.
+  // Antes o navegador filtrava por senha_hash, o que obrigava a coluna a ficar
+  // legivel — e coluna legivel com a chave publica no HTML significa que
+  // qualquer um baixava todos os hashes. A funcao devolve o usuario ja sem o
+  // hash, entao a coluna pode ficar fechada.
+  const { data: user, error } = await db.rpc('autenticar', {
+    p_cpf: cpfFmt,
+    p_senha_hash: senhaHash,
+  });
 
   if (error) throw new Error(`Erro ao consultar banco: ${error.message}`);
   if (!user) throw new Error('CPF ou senha incorretos');
@@ -9547,14 +9550,16 @@ window.handleTrocarSenha = async function(ev) {
     const user = getCurrentUser();
     if (!user) throw new Error('Sessão expirou. Faça login de novo.');
 
-    // 1. Confirma senha atual contra senha_hash do banco
+    // 1. Confirma a senha atual — Sprint 9.32.417 (seguranca)
+    // A conferencia acontece no banco e volta so true/false. O hash nao
+    // trafega mais ate o navegador.
     const hashAtualInformada = await hashSenha(atual);
-    const { data: row, error: errSel } = await db.from('usuarios')
-      .select('id, senha_hash')
-      .eq('id', user.id)
-      .maybeSingle();
+    const { data: confere, error: errSel } = await db.rpc('conferir_senha', {
+      p_usuario_id: user.id,
+      p_senha_hash: hashAtualInformada,
+    });
     if (errSel) throw new Error('Erro ao verificar usuário: ' + errSel.message);
-    if (!row || row.senha_hash !== hashAtualInformada) {
+    if (!confere) {
       throw new Error('Senha atual incorreta.');
     }
 
