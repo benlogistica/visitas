@@ -147,7 +147,10 @@ echo   Arquivos modificados:
 git status --short index.html faturamento_data_inline.json
 echo.
 
-git add index.html faturamento_data_inline.json
+REM Sprint 9.32.426: versiona o COMPRIMIDO (1,9 MB) e nao o cru (20,5 MB).
+REM O git guarda cada versao para sempre; com o arquivo cru o repositorio
+REM crescia ~41 MB/dia e o GitHub Pages parava de publicar perto de 1 GB.
+git add index.html faturamento_data_inline.json.gz
 git commit -m "Sync faturamento: %PERIODO%"
 if errorlevel 1 (
     echo.

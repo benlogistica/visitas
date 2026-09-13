@@ -28,3 +28,9 @@ Thumbs.db
 .vscode/
 .idea/
 *.swp
+
+# Sprint 9.32.426: o faturamento vai pro repo COMPRIMIDO (.json.gz, 1,9 MB).
+# O .json cru (20,5 MB) fica so na maquina — versiona-lo fazia o repositorio
+# crescer ~41 MB/dia e o GitHub Pages parar de publicar perto de 1 GB.
+# A barra no fim do padrao evita pegar o .gz por engano.
+faturamento_data_inline.json
