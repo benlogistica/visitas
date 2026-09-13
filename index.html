@@ -8268,7 +8268,7 @@ mark.search-hl {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.421-push-convite',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.422-push-respeitar-escolha',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -10453,6 +10453,22 @@ function _b64ParaUint8(base64) {
   return Uint8Array.from([...bruto].map(c => c.charCodeAt(0)));
 }
 
+// Sprint 9.32.422 (correcao): guarda a ESCOLHA de desligar.
+// Sem isso, o religamento silencioso do login desfazia a decisao da pessoa no
+// proximo acesso — o app "sabia" que havia permissao e reinscrevia sozinho.
+// Permissao concedida nao e' o mesmo que querer receber.
+const PUSH_DESLIGADO_CHAVE = 'pushDesligadoPeloUsuario';
+
+function pushDesligadoPeloUsuario() {
+  try { return localStorage.getItem(PUSH_DESLIGADO_CHAVE) === '1'; } catch (e) { return false; }
+}
+function pushMarcarDesligado(valor) {
+  try {
+    if (valor) localStorage.setItem(PUSH_DESLIGADO_CHAVE, '1');
+    else localStorage.removeItem(PUSH_DESLIGADO_CHAVE);
+  } catch (e) {}
+}
+
 function pushSuportado() {
   return ('serviceWorker' in navigator) && ('PushManager' in window) && ('Notification' in window);
 }
@@ -10483,6 +10499,11 @@ async function pushAtivar({ silencioso = false } = {}) {
   // Em modo silencioso so' segue se a pessoa JA' autorizou antes. Nunca
   // dispara o pedido de permissao sem ela ter clicado em alguma coisa.
   if (silencioso && Notification.permission !== 'granted') return false;
+  // Sprint 9.32.422: e nunca religa o que a pessoa desligou de proposito.
+  if (silencioso && pushDesligadoPeloUsuario()) return false;
+
+  // Ativacao explicita (a pessoa clicou): desfaz a marca de desligado.
+  if (!silencioso) pushMarcarDesligado(false);
 
   try {
     const permissao = Notification.permission === 'granted'
@@ -10523,6 +10544,7 @@ async function pushAtivar({ silencioso = false } = {}) {
 }
 
 async function pushDesativar() {
+  pushMarcarDesligado(true);   // Sprint 9.32.422: a escolha vale pros proximos logins
   try {
     const reg = await navigator.serviceWorker.ready;
     const sub = await reg.pushManager.getSubscription();
