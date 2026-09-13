@@ -8206,7 +8206,12 @@ mark.search-hl {
   align-items: flex-start;
   margin-bottom: 16px;
   gap: 12px;
+  /* Sprint 9.32.430: sem isso, titulo e legenda disputam a largura e um dos
+     dois acaba cortado na borda. Com wrap, a legenda desce para a linha de
+     baixo quando o espaco aperta — em vez de sumir pela direita. */
+  flex-wrap: wrap;
 }
+.ds-chart-card__header > div:first-child { min-width: 0; flex: 1 1 200px; }
 .ds-chart-card__title {
   font-family: 'Poppins', sans-serif;
   font-size: 15px;
@@ -8356,7 +8361,7 @@ mark.search-hl {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.429-grafico-sem-vazios',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.431-dias',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -14159,11 +14164,14 @@ function renderAdminDashboardDesktop() {
                 <div class="ds-chart-card__title">Visitas realizadas</div>
                 <div class="ds-chart-card__subtitle">Agrupadas por período · meta diária configurável</div>
               </div>
-              <div style="display:inline-flex;align-items:center;gap:10px;font-size:11px;color:var(--neutral-600);">
-                <div style="display:inline-flex;align-items:center;gap:5px;"><span style="width:9px;height:9px;border-radius:2px;background:#3B6D11;display:inline-block;"></span> na meta</div>
-                <div style="display:inline-flex;align-items:center;gap:5px;"><span style="width:9px;height:9px;border-radius:2px;background:#E8A33D;display:inline-block;"></span> abaixo</div>
-                <div style="display:inline-flex;align-items:center;gap:5px;"><span style="width:5px;height:9px;border-radius:2px;background:var(--neutral-300);display:inline-block;"></span> fim de semana</div>
-                <button onclick="window.editarMetaVisitasDia()" title="Ajustar meta diária" style="background:transparent;border:1px solid var(--neutral-200);width:28px;height:28px;border-radius:6px;cursor:pointer;color:var(--neutral-600);display:flex;align-items:center;justify-content:center;font-family:inherit;">
+              <!-- Sprint 9.32.430: a legenda virou 3 itens e estourou a largura
+                   ("fim de sem..." cortado). Agora ela quebra em duas linhas em
+                   vez de espremer, e cada item se mantem inteiro. -->
+              <div style="display:flex;align-items:center;justify-content:flex-end;gap:8px 12px;font-size:11px;color:var(--neutral-600);flex-wrap:wrap;max-width:340px;">
+                <div style="display:inline-flex;align-items:center;gap:5px;white-space:nowrap;"><span style="width:9px;height:9px;border-radius:2px;background:#3B6D11;display:inline-block;flex-shrink:0;"></span> na meta</div>
+                <div style="display:inline-flex;align-items:center;gap:5px;white-space:nowrap;"><span style="width:9px;height:9px;border-radius:2px;background:#E8A33D;display:inline-block;flex-shrink:0;"></span> abaixo</div>
+                <div style="display:inline-flex;align-items:center;gap:5px;white-space:nowrap;"><span style="width:5px;height:9px;border-radius:2px;background:var(--neutral-300);display:inline-block;flex-shrink:0;"></span> fim de semana</div>
+                <button onclick="window.editarMetaVisitasDia()" title="Ajustar meta diária" style="background:transparent;border:1px solid var(--neutral-200);width:28px;height:28px;border-radius:6px;cursor:pointer;color:var(--neutral-600);display:flex;align-items:center;justify-content:center;font-family:inherit;flex-shrink:0;">
                   <span class="material-symbols-rounded" style="font-size:15px;">tune</span>
                 </button>
               </div>
@@ -15038,7 +15046,11 @@ function renderGraficoVisitasTemporal() {
       buckets.push({
         inicio: d, fim,
         label: fmtData(d),
-        labelX: (i % 3 === 0) ? String(d.getDate()).padStart(2,'0') : '', // mostra label a cada 3 dias
+        // Sprint 9.32.431: o dia aparece embaixo de TODA barra. Antes saia de
+        // 3 em 3, e quem olhava tinha que contar no dedo pra saber a data de
+        // uma barra especifica. Cabe porque a largura minima acompanha a
+        // quantidade de barras (ver min-width do <svg>).
+        labelX: String(d.getDate()).padStart(2,'0'),
         // Sprint 9.32.427: sabado e domingo nao sao dia de falha — sao dia de
         // descanso. Antes entravam no "X abaixo da meta" e faziam a equipe
         // parecer pior do que e: de 30 dias, 10 sao fim de semana.
@@ -15233,7 +15245,7 @@ function renderGraficoVisitasTemporal() {
   const labels = buckets.map((b, i) => {
     if (!b.labelX) return '';
     const x = padL + i * (barW + barGap) + barW / 2;
-    return `<text x="${x}" y="${H - 10}" font-size="12" fill="var(--neutral-400)" text-anchor="middle" font-family="JetBrains Mono">${b.labelX}</text>`;
+    return `<text x="${x}" y="${H - 8}" font-size="16" fill="var(--neutral-500)" text-anchor="middle" font-family="JetBrains Mono">${b.labelX}</text>`;
   }).join('');
 
   // Stats no rodapé
@@ -15257,8 +15269,8 @@ function renderGraficoVisitasTemporal() {
     <!-- Sprint 9.32.427: no celular, 30 barras com rotulo nao cabem sem virar
          papinha. O grafico ganha rolagem horizontal PROPRIA — so ele desliza,
          o resto da pagina fica parado. No desktop nada muda: cabe inteiro. -->
-    <div style="position:relative;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;">
-      <svg viewBox="0 0 ${W} ${H}" style="width:100%;min-width:${gran === 'dia' ? '620px' : '100%'};height:auto;max-height:340px;display:block;">
+    <div data-rolax style="position:relative;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;">
+      <svg viewBox="0 0 ${W} ${H}" style="width:100%;min-width:${gran === 'dia' ? Math.max(560, buckets.length * 30) + 'px' : '100%'};height:auto;max-height:340px;display:block;">
         ${gridLines}
         ${bars}
         ${metaLine}
@@ -15310,6 +15322,20 @@ function renderGraficoVisitasTemporal() {
       if (bar) bar.style.opacity = '1';
     });
   });
+
+  // Sprint 9.32.431 — seta no lugar da barra de rolagem.
+  // O router ja chama aplicarRolagemLateral aos 120ms e 700ms, mas este
+  // grafico so existe DEPOIS da consulta ao banco, que costuma demorar mais
+  // que isso. Sem esta chamada o grafico ficava de fora e continuava com a
+  // barra de rolagem cinza, diferente do resto do app.
+  // O requestAnimationFrame espera o navegador medir o SVG: antes disso
+  // scrollWidth e clientWidth sao iguais e a funcao concluiria, errado, que
+  // nao ha nada para rolar.
+  if (typeof window.aplicarRolagemLateral === 'function') {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => window.aplicarRolagemLateral(container));
+    });
+  }
 }
 
 // Handlers de granularidade e mês do gráfico temporal
@@ -22477,9 +22503,9 @@ function aplicarRolagemLateral(raiz) {
         // O wrapper entra no lugar do elemento no layout, entao herda o que
         // define a posicao dele. Sem isso, um scroller dentro de flex/grid
         // mudaria de tamanho ao ser envolvido.
-        ['flex', 'alignSelf', 'gridColumn', 'gridRow', 'width', 'maxWidth', 'margin'].forEach(function (prop) {
+        ['flex', 'alignSelf', 'gridColumn', 'gridRow', 'maxWidth', 'margin'].forEach(function (prop) {
           const v = estilo[prop];
-          if (v && v !== 'auto' && v !== 'normal' && v !== '0px') env.style[prop] = v;
+          if (v && v !== 'auto' && v !== 'normal' && v !== 'none' && v !== '0px') env.style[prop] = v;
         });
         el.style.margin = '0';
 
