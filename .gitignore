@@ -41,3 +41,7 @@ backups-privados/
 
 # Maquetes de design — validacao visual, nao fazem parte do site publicado.
 design/
+
+# Comparativo de provedores de mapa — material de decisao, nao faz parte do
+# site. Sem ele aqui, um "git add ." publicaria a pagina em benlogistica.com.br.
+comparar-mapas.html
