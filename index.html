@@ -8268,7 +8268,7 @@ mark.search-hl {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.417-seguranca-login-rpc',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.418-gps-precisao',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -10828,36 +10828,62 @@ function getGeolocationFresh(opts = {}) {
       reject(new Error('Geolocalização não suportada neste navegador'));
       return;
     }
-    const timeout = opts.timeout || 12000;
+    // ---- Sprint 9.32.418 -------------------------------------------------
+    // ANTES: aceitava a PRIMEIRA leitura que chegasse. Acontece que a primeira
+    // costuma ser a grosseira, feita por antena de telefonia (±500 a ±2000 m);
+    // o GPS de verdade so' refina alguns segundos depois. Era isso que gerava
+    // as leituras de 2 km que marcavam a visita como divergente sem motivo.
+    //
+    // AGORA: continua ouvindo por alguns segundos e fica com a MELHOR leitura.
+    // Devolve antes da hora se ja' conseguiu uma boa (<= alvo), pra nao fazer
+    // ninguem esperar a' toa no balcao do hospital.
+    const timeout  = opts.timeout || 12000;
+    const alvo     = opts.alvoPrecisao || 50;    // metros: bom o bastante, pode sair
+    const minEspera= opts.minEspera    || 2500;  // da' tempo do chip de GPS acordar
     let watchId = null;
     let resolved = false;
+    let melhor = null;
     const started = Date.now();
 
-    const timer = setTimeout(() => {
+    const entregar = (motivo) => {
       if (resolved) return;
       resolved = true;
+      clearTimeout(timer);
       if (watchId !== null) navigator.geolocation.clearWatch(watchId);
-      reject(new Error('Tempo esgotado. Tente novamente'));
-    }, timeout);
+      if (!melhor) { reject(new Error('Tempo esgotado. Tente novamente')); return; }
+      melhor.elapsedMs = Date.now() - started;
+      console.log('[getGeolocationFresh] %s · %dms · ±%dm (%d leituras)',
+        motivo, melhor.elapsedMs, Math.round(melhor.accuracy), melhor.leituras);
+      resolve(melhor);
+    };
+
+    // No fim do prazo entrega a melhor que conseguiu, em vez de simplesmente
+    // falhar: uma leitura ruim ainda e' melhor que nenhuma.
+    const timer = setTimeout(() => entregar('prazo esgotado'), timeout);
 
     watchId = navigator.geolocation.watchPosition(
       (pos) => {
         if (resolved) return;
-        resolved = true;
-        clearTimeout(timer);
-        if (watchId !== null) navigator.geolocation.clearWatch(watchId);
-        const elapsed = Date.now() - started;
-        const result = {
-          lat: pos.coords.latitude,
-          lng: pos.coords.longitude,
-          accuracy: pos.coords.accuracy,
-          timestamp: pos.timestamp,
-          capturedAt: Date.now(),
-          elapsedMs: elapsed,
-        };
-        console.log('[getGeolocationFresh] capturado em %dms · lat: %s · lng: %s · ±%dm',
-          elapsed, result.lat.toFixed(5), result.lng.toFixed(5), Math.round(result.accuracy));
-        resolve(result);
+        const leiturasAte = (melhor ? melhor.leituras : 0) + 1;
+        const acc = pos.coords.accuracy;
+
+        if (!melhor || acc < melhor.accuracy) {
+          melhor = {
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude,
+            accuracy: acc,
+            timestamp: pos.timestamp,
+            capturedAt: Date.now(),
+            elapsedMs: Date.now() - started,
+            leituras: leiturasAte,
+          };
+        } else {
+          melhor.leituras = leiturasAte;
+        }
+
+        const decorrido = Date.now() - started;
+        if (melhor.accuracy <= alvo && decorrido >= 600) entregar('precisao boa');
+        else if (decorrido >= minEspera && melhor.accuracy <= 150) entregar('aceitavel');
       },
       (err) => {
         if (resolved) return;
@@ -10865,6 +10891,8 @@ function getGeolocationFresh(opts = {}) {
         clearTimeout(timer);
         if (watchId !== null) navigator.geolocation.clearWatch(watchId);
         console.warn('[getGeolocationFresh] erro código %d: %s', err.code, err.message);
+        // Se ja' havia alguma leitura, entrega ela em vez de perder tudo.
+        if (melhor) { resolve(melhor); return; }
         reject(new Error(
           err.code === 1 ? 'Permissão de localização negada' :
           err.code === 2 ? 'Posição indisponível' :
@@ -11103,7 +11131,7 @@ async function carregarDashboardData(periodo) {
   // Sprint 9.32.97: incluído latitude/longitude/cidade/estado pra mapa geográfico
   let query = db.from('visitas').select(`
     id, status, data_visita, checkin_timestamp, checkout_timestamp, checkin_manual,
-    flag_gps_divergente, visita_realizada,
+    flag_gps_divergente, flag_gps_impreciso, visita_realizada,
     nutricionista_id, instituicao_id,
     usuarios:nutricionista_id(nome),
     instituicoes(nome, cidade, estado, latitude, longitude)
@@ -12450,7 +12478,7 @@ async function listarMinhasVisitas(limit = 5) {
   // com play button. Filtros das outras abas excluem eles.
   const { data, error } = await db
     .from('visitas')
-    .select('id, data_visita, horario_inicio, horario_termino, status, revisao_motivo, revisao_solicitada_em, revisao_resolvida_em, reabertura_expira_em, visita_realizada, cancelamento_motivo, cancelado_em, cancelamento_origem, checkin_retroativo, checkin_dias_atraso, checkin_timestamp, checkout_timestamp, resumo, proximos_passos, motivo_nao_realizada, flag_sem_checkin, flag_sem_checkout, flag_gps_divergente, flag_horario_fora_margem, checkin_manual, instituicoes(nome, bairro, cidade), visita_anexos(count)')
+    .select('id, data_visita, horario_inicio, horario_termino, status, revisao_motivo, revisao_solicitada_em, revisao_resolvida_em, reabertura_expira_em, visita_realizada, cancelamento_motivo, cancelado_em, cancelamento_origem, checkin_retroativo, checkin_dias_atraso, checkin_timestamp, checkout_timestamp, resumo, proximos_passos, motivo_nao_realizada, flag_sem_checkin, flag_sem_checkout, flag_gps_divergente, flag_gps_impreciso, flag_horario_fora_margem, checkin_manual, instituicoes(nome, bairro, cidade), visita_anexos(count)')
     .eq('nutricionista_id', user.id)
     .order('checkin_timestamp', { ascending: false, nullsFirst: false })
     .limit(limit);
@@ -14021,7 +14049,7 @@ async function carregarAdminDashboardDesktop() {
     // Query principal de visitas no período
     let query = db.from('visitas').select(`
       id, status, data_visita, checkin_timestamp, checkout_timestamp, checkin_manual,
-      flag_gps_divergente, visita_realizada,
+      flag_gps_divergente, flag_gps_impreciso, visita_realizada,
       nutricionista_id, instituicao_id,
       usuarios:nutricionista_id(nome, foto_url),
       instituicoes(nome, cidade, estado, latitude, longitude)
@@ -18706,7 +18734,7 @@ async function carregarListaVisitasDesktop() {
 
   let query = db.from('visitas').select(`
     id, status, data_visita, checkin_timestamp, checkout_timestamp,
-    checkin_manual, flag_gps_divergente, flag_horario_fora_margem,
+    checkin_manual, flag_gps_divergente, flag_gps_impreciso, flag_horario_fora_margem,
     flag_sem_checkin, flag_sem_checkout,
     visita_realizada, revisao_motivo, revisao_resolvida_em,
     nutricionista_id, instituicao_id,
@@ -21520,7 +21548,16 @@ const FlagsMeta = {
     titulo: 'GPS divergente',
     icone: 'wrong_location',
     nivel: 'warning',
-    descricao: 'Check-in foi feito fora do raio do hospital.',
+    descricao: 'Check-in foi feito fora do raio do hospital, já descontada a margem de erro do aparelho.',
+  },
+  // Sprint 9.32.418: nem acusa nem inocenta — o aparelho estava impreciso
+  // demais pra afirmar qualquer coisa. Dizer "não sei" é mais honesto do que
+  // acusar alguém por causa de sinal ruim.
+  flag_gps_impreciso: {
+    titulo: 'Leitura imprecisa',
+    icone: 'location_searching',
+    nivel: 'info',
+    descricao: 'O GPS do aparelho estava impreciso demais para confirmar ou desmentir a localização. Não é uma divergência.',
   },
   flag_horario_fora_margem: {
     titulo: 'Horário fora da margem',
@@ -24736,7 +24773,7 @@ function renderCheckinConfirmarDesktopNutri() {
         ` : !dentro && dist !== null ? `
           <div style="background:#E4ECFD;border:1px solid rgba(24,95,165,0.25);border-radius:12px;padding:12px 14px;font-size:12.5px;color:var(--status-info);display:flex;gap:8px;">
             <span class="material-symbols-rounded" style="font-size:18px;flex-shrink:0;">info</span>
-            <span>Você está a ${formatarDistancia(dist)} do local. O check-in será registrado com a flag <strong>"GPS divergente"</strong> para revisão do admin.</span>
+            <span>Você está a ${formatarDistancia(dist)} do local${userPos && userPos.accuracy ? ` (sinal com margem de ±${Math.round(userPos.accuracy)}m)` : ''}. O check-in será registrado e o admin poderá revisar.</span>
           </div>
         ` : ''}
 
@@ -27252,7 +27289,7 @@ function renderCheckinConfirmar() {
         ` : !dentro && dist !== null ? `
           <div class="flash flash--info">
             <span class="material-symbols-rounded" style="font-size:18px">info</span>
-            <span>Você está a ${formatarDistancia(dist)} do local. O check-in será registrado com a flag "GPS divergente" para revisão do admin.</span>
+            <span>Você está a ${formatarDistancia(dist)} do local${userPos && userPos.accuracy ? ` (sinal com margem de ±${Math.round(userPos.accuracy)}m)` : ''}. O check-in será registrado e o admin poderá revisar.</span>
           </div>
         ` : ''}
 
@@ -35335,7 +35372,7 @@ async function carregarRelatorio(periodo, user) {
   // Busca visitas do período (9.32.215: incluir tipo da instituição)
   let query = db.from('visitas').select(`
     id, status, data_visita, checkin_timestamp, checkout_timestamp,
-    checkin_manual, flag_gps_divergente, flag_horario_fora_margem,
+    checkin_manual, flag_gps_divergente, flag_gps_impreciso, flag_horario_fora_margem,
     flag_sem_checkin, flag_sem_checkout,
     visita_realizada, revisao_motivo,
     nutricionista_id, instituicao_id,
@@ -37343,7 +37380,7 @@ async function carregarListaVisitas() {
 
   let query = db.from('visitas').select(`
     id, status, data_visita, checkin_timestamp, checkout_timestamp,
-    checkin_manual, flag_gps_divergente, flag_horario_fora_margem,
+    checkin_manual, flag_gps_divergente, flag_gps_impreciso, flag_horario_fora_margem,
     flag_sem_checkin, flag_sem_checkout,
     visita_realizada, revisao_motivo, revisao_resolvida_em,
     nutricionista_id, instituicao_id,
