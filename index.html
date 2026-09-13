@@ -8361,7 +8361,7 @@ mark.search-hl {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.435-mapa',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.436-mapatam',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -8403,6 +8403,55 @@ function mapaTilesUrl() {
          '/static/tile/{z}/{y}/{x}?token=' + CONFIG.MAPA_CHAVE;
 }
 const MAPA_OPCOES = { attribution: 'Tiles &copy; Esri', tileSize: 512, zoomOffset: -1, maxZoom: 19 };
+
+/* --------------------------------------------------------------------------
+   vigiarMapa — Sprint 9.32.436
+
+   O SINTOMA: as vezes o mapa abria com tiles so' no canto superior esquerdo e
+   o resto cinza. Nao era erro de rede nem de chave.
+
+   A CAUSA: o Leaflet calcula quantos tiles pedir a partir do tamanho do
+   container NO MOMENTO em que o mapa e' criado. Se nesse instante o cartao
+   ainda nao tinha largura final — e no dashboard ele nao tem, porque o layout
+   customizado reordena as secoes e o aplicarRolagemLateral reflui a pagina
+   logo depois — o Leaflet pede poucos tiles e nunca mais revisa a conta.
+
+   POR QUE ERA INTERMITENTE: dependia de quem ganhava a corrida, o desenho do
+   mapa ou o acerto do layout. Maquina rapida e cache quente escondiam o
+   problema; primeira carga e conexao lenta expunham.
+
+   A CORRECAO: em vez de chutar um tempo de espera, observamos o container.
+   Qualquer mudanca de tamanho — inclusive as que acontecem depois — refaz a
+   conta. Os timers ficam como piso, para navegador sem ResizeObserver.
+   -------------------------------------------------------------------------- */
+function vigiarMapa(map, el, aoRedimensionar) {
+  if (!map || !el) return;
+
+  const refazer = () => {
+    // Container sem tamanho ainda (aba escondida, cartao fechado): nao adianta
+    // recalcular agora — o observer chama de novo quando ele aparecer.
+    if (!el.clientWidth || !el.clientHeight) return;
+    try { map.invalidateSize({ animate: false }); } catch (e) {}
+    if (typeof aoRedimensionar === 'function') { try { aoRedimensionar(); } catch (e) {} }
+  };
+
+  [50, 250, 800].forEach(t => setTimeout(refazer, t));
+
+  if (typeof ResizeObserver !== 'undefined') {
+    let pendente = null;
+    const ro = new ResizeObserver(() => {
+      // Sem o debounce, um reflow em cadeia dispararia dezenas de recalculos.
+      clearTimeout(pendente);
+      pendente = setTimeout(() => {
+        // O dashboard recria o mapa a cada render. Sem esta saida, o observer
+        // do mapa antigo continuaria vivo apontando para um no' orfao.
+        if (!el.isConnected) { ro.disconnect(); return; }
+        refazer();
+      }, 60);
+    });
+    try { ro.observe(el); } catch (e) {}
+  }
+}
 
 /* ==========================================================================
    SUPABASE CLIENT
@@ -16170,11 +16219,19 @@ async function renderDsdMapaVisitas(visitas) {
           ? pontos.filter(p => (p.cidade || '').trim().toLowerCase() === cidadeLiderNome.toLowerCase())
           : [];
         const pontosFocus = pontosLider.length > 0 ? pontosLider : pontos;
-        if (pontosFocus.length > 1) {
-          map.fitBounds(pontosFocus.map(p => [Number(p.latitude), Number(p.longitude)]), { padding: [40, 40], maxZoom: 14 });
-        } else if (pontosFocus.length === 1) {
-          map.setView([Number(pontosFocus[0].latitude), Number(pontosFocus[0].longitude)], 14);
-        }
+
+        // Sprint 9.32.436: o enquadramento vira funcao para poder repetir.
+        // Recalcular o tamanho sem reenquadrar deixaria o mapa certo em tiles
+        // mas torto em posicao — os pinos apareceriam fora de vista.
+        const enquadrar = () => {
+          if (pontosFocus.length > 1) {
+            map.fitBounds(pontosFocus.map(p => [Number(p.latitude), Number(p.longitude)]), { padding: [40, 40], maxZoom: 14 });
+          } else if (pontosFocus.length === 1) {
+            map.setView([Number(pontosFocus[0].latitude), Number(pontosFocus[0].longitude)], 14);
+          }
+        };
+        enquadrar();
+        vigiarMapa(map, mapEl, enquadrar);
       } catch (e) {
         console.warn('[dash mapa leaflet]', e);
       }
@@ -39864,9 +39921,9 @@ function _initMapaLeafletVisita(v) {
     try { map.invalidateSize(); } catch (e) {}
     fitAll();
   };
-  setTimeout(invalidate, 50);
-  setTimeout(invalidate, 250);
-  setTimeout(invalidate, 800);
+  // Sprint 9.32.436: os tres timers viraram observacao do container. Chute de
+  // tempo acerta na maioria das vezes; observar o elemento acerta sempre.
+  vigiarMapa(map, map.getContainer(), fitAll);
 
   // Também invalida no primeiro evento de resize da janela
   window.addEventListener('resize', invalidate, { once: true });
@@ -60561,7 +60618,12 @@ function itiRenderMapa(linhas) {
   if (bounds.length > 0) {
     try { _itiMap.fitBounds(bounds, { padding: [40, 40], maxZoom: 14 }); } catch (e) {}
   }
-  setTimeout(() => { try { _itiMap.invalidateSize(); } catch (e) {} }, 120);
+  // Sprint 9.32.436: um unico timer de 120ms era a protecao mais fraca das tres.
+  vigiarMapa(_itiMap, _itiMap.getContainer(), () => {
+    if (bounds.length > 0) {
+      try { _itiMap.fitBounds(bounds, { padding: [40, 40], maxZoom: 14 }); } catch (e) {}
+    }
+  });
 }
 
 function itiRenderLista(linhas) {
