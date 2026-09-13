@@ -8268,7 +8268,7 @@ mark.search-hl {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.418-gps-precisao',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.420-push-checkout',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -8858,6 +8858,11 @@ async function login(cpf, senha) {
   if (user.status === 'inativo') {
     throw new Error('Conta inativa. Fale com o administrador');
   }
+
+  // Sprint 9.32.420: se a pessoa ja' autorizou os avisos neste aparelho,
+  // regrava a inscricao em silencio. Cobre troca de aparelho, reinstalacao e
+  // endpoint renovado pelo navegador — sem incomodar com pedido de permissao.
+  setTimeout(() => { try { pushAtivar({ silencioso: true }); } catch (e) {} }, 1500);
 
   // Atualiza ultimo_login (não bloqueia o login se falhar)
   db.from('usuarios').update({ ultimo_login: new Date().toISOString() }).eq('id', user.id).then();
@@ -10402,6 +10407,184 @@ if ('serviceWorker' in navigator) {
       .catch((err) => console.warn('[PWA] Falha ao registrar SW:', err));
   });
 }
+
+/* ==========================================================================
+   NOTIFICACOES PUSH — Sprint 9.32.420
+   --------------------------------------------------------------------------
+   O PORQUE: 189 das 1.004 visitas ficaram sem check-out. A rotina do servidor
+   ja' avisava em 2h, 4h e 6h, mas o aviso so' aparecia DENTRO do app — e quem
+   esqueceu o check-out, por definicao, nao abriu o app. Com push o aviso
+   chega na tela do celular com o app fechado.
+
+   COMO FUNCIONA: o navegador gera um endereco unico por aparelho (endpoint) e
+   guardamos ele. O servidor manda a mensagem pro servico do navegador
+   (Google/Apple/Mozilla), que entrega no aparelho. Nada de dado pessoal
+   trafega nesse endereco.
+
+   NO IPHONE so' funciona se o app estiver INSTALADO na tela de inicio
+   (limitacao do iOS, nao do nosso codigo).
+   ========================================================================== */
+
+const VAPID_PUBLIC_KEY = 'BFB4VDUQGmHOmeoZZ5d7Mks4XXByPqIte-ijLJaDZldcSljOrlkdTLcOwPf7rKe1udKnC8fFontjR4oFq_OPhNc';
+
+function _b64ParaUint8(base64) {
+  const pad = '='.repeat((4 - (base64.length % 4)) % 4);
+  const b64 = (base64 + pad).replace(/-/g, '+').replace(/_/g, '/');
+  const bruto = atob(b64);
+  return Uint8Array.from([...bruto].map(c => c.charCodeAt(0)));
+}
+
+function pushSuportado() {
+  return ('serviceWorker' in navigator) && ('PushManager' in window) && ('Notification' in window);
+}
+
+// iOS so' entrega push pra app instalado na tela de inicio.
+function pushPrecisaInstalar() {
+  const ios = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  const instalado = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+  return ios && !instalado;
+}
+
+async function pushEstado() {
+  if (!pushSuportado()) return 'sem-suporte';
+  if (pushPrecisaInstalar()) return 'precisa-instalar';
+  if (Notification.permission === 'denied') return 'bloqueado';
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+    return sub ? 'ativo' : 'desligado';
+  } catch (e) { return 'desligado'; }
+}
+
+async function pushAtivar({ silencioso = false } = {}) {
+  if (!pushSuportado()) return false;
+  const user = typeof getCurrentUser === 'function' ? getCurrentUser() : null;
+  if (!user) return false;
+
+  // Em modo silencioso so' segue se a pessoa JA' autorizou antes. Nunca
+  // dispara o pedido de permissao sem ela ter clicado em alguma coisa.
+  if (silencioso && Notification.permission !== 'granted') return false;
+
+  try {
+    const permissao = Notification.permission === 'granted'
+      ? 'granted'
+      : await Notification.requestPermission();
+    if (permissao !== 'granted') return false;
+
+    const reg = await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: _b64ParaUint8(VAPID_PUBLIC_KEY),
+      });
+    }
+
+    const j = sub.toJSON();
+    if (!j.keys || !j.keys.p256dh || !j.keys.auth) return false;
+
+    // onConflict no endpoint: reinstalar o app nao cria linha duplicada.
+    const { error } = await db.from('push_inscricoes').upsert({
+      usuario_id: user.id,
+      endpoint: sub.endpoint,
+      p256dh: j.keys.p256dh,
+      auth: j.keys.auth,
+      aparelho: (navigator.userAgent || '').slice(0, 180),
+      falhas: 0,
+      ultimo_uso: null,
+    }, { onConflict: 'endpoint' });
+
+    if (error) { console.warn('[push] nao consegui gravar a inscricao:', error.message); return false; }
+    console.log('[push] aparelho inscrito');
+    return true;
+  } catch (e) {
+    console.warn('[push] falha ao ativar:', e && e.message);
+    return false;
+  }
+}
+
+async function pushDesativar() {
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+    if (!sub) return true;
+    await db.from('push_inscricoes').delete().eq('endpoint', sub.endpoint);
+    await sub.unsubscribe();
+    return true;
+  } catch (e) {
+    console.warn('[push] falha ao desativar:', e && e.message);
+    return false;
+  }
+}
+
+// Se o navegador trocar o endpoint sozinho, o SW avisa e nos reinscrevemos.
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.addEventListener('message', (ev) => {
+    if (ev.data && ev.data.tipo === 'push-reinscrever') pushAtivar({ silencioso: true });
+  });
+}
+
+// Desenha o cartao na tela de notificacoes (desktop e mobile usam o mesmo id).
+async function pushPintarCartao() {
+  const el = document.getElementById('pushCard');
+  if (!el) return;
+  const estado = await pushEstado();
+
+  const molde = (cor, bg, icone, titulo, texto, botao) => `
+    <div style="background:${bg};border:1px solid ${cor}33;border-radius:12px;padding:12px 14px;display:flex;align-items:center;gap:11px;flex-wrap:wrap;">
+      <span class="material-symbols-rounded" style="font-size:21px;color:${cor};flex-shrink:0;">${icone}</span>
+      <div style="flex:1;min-width:190px;">
+        <div style="font-weight:700;color:var(--brand-navy);font-size:13px;">${titulo}</div>
+        <div style="font-size:11.5px;color:var(--neutral-600);margin-top:2px;line-height:1.4;">${texto}</div>
+      </div>
+      ${botao || ''}
+    </div>`;
+
+  const btn = (txt, fn, cor) => `<button onclick="${fn}" style="flex-shrink:0;background:${cor};color:#fff;border:0;border-radius:9px;padding:9px 15px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit;">${txt}</button>`;
+
+  if (estado === 'sem-suporte') { el.style.display = 'none'; return; }
+  el.style.display = '';
+
+  if (estado === 'ativo') {
+    el.innerHTML = molde('#2E7D32', '#E7F5E7', 'notifications_active',
+      'Avisos no celular ligados',
+      'Você será avisado na tela do celular se esquecer de fazer o check-out de uma visita.',
+      btn('Desligar', 'pushDesligarClick()', 'var(--neutral-500)'));
+  } else if (estado === 'bloqueado') {
+    el.innerHTML = molde('#B45309', '#FEF4E1', 'notifications_off',
+      'Avisos bloqueados neste aparelho',
+      'Você recusou as notificações antes. Para reativar, abra os ajustes do navegador para este site e permita notificações.', '');
+  } else if (estado === 'precisa-instalar') {
+    el.innerHTML = molde('#1D4ED8', '#E4ECFD', 'install_mobile',
+      'Instale o app para receber avisos',
+      'No iPhone, os avisos só funcionam com o app na tela de início: toque em Compartilhar e depois em "Adicionar à Tela de Início".', '');
+  } else {
+    el.innerHTML = molde('#1D4ED8', '#E4ECFD', 'notifications',
+      'Receber avisos no celular',
+      'Ative para ser lembrado quando esquecer o check-out de uma visita — funciona mesmo com o app fechado.',
+      btn('Ativar', 'pushAtivarClick()', 'var(--brand-lime)'));
+  }
+}
+
+window.pushAtivarClick = async function() {
+  const ok = await pushAtivar();
+  if (typeof setFlash === 'function') {
+    setFlash(ok ? 'success' : 'warning',
+      ok ? 'Pronto. Você será avisado no celular.' : 'Não consegui ativar. Verifique se as notificações estão permitidas para este site.');
+  }
+  pushPintarCartao();
+};
+
+window.pushDesligarClick = async function() {
+  await pushDesativar();
+  if (typeof setFlash === 'function') setFlash('info', 'Avisos no celular desligados.');
+  pushPintarCartao();
+};
+
+window.pushPintarCartao = pushPintarCartao;
+window.pushAtivar = pushAtivar;
+window.pushDesativar = pushDesativar;
+window.pushEstado = pushEstado;
 
 window.addEventListener('beforeinstallprompt', (e) => {
   // Previne o mini-banner padrão do Chrome
@@ -31699,10 +31882,13 @@ function renderNotificacoesDesktop() {
 
   setTimeout(async () => {
     await carregarNotificacoesDesktop();
+    pushPintarCartao();          // Sprint 9.32.420
   }, 0);
 
   const content = `
     <div style="max-width:1280px;margin:0 auto;">
+<!-- Sprint 9.32.420: cartao de ativacao do aviso no celular -->
+<div id="pushCard" style="display:none;margin-bottom:12px;"></div>
       <div style="background:#fff;border:1px solid var(--neutral-200);border-radius:14px;overflow:hidden;display:grid;grid-template-columns:340px 1fr;height:calc(100vh - 140px);min-height:500px;">
 
         <aside style="border-right:1px solid var(--neutral-200);display:flex;flex-direction:column;min-width:0;">
@@ -32100,6 +32286,7 @@ function renderNotificacoes() {
   window._notifPageSize = 30;
 
   setTimeout(async () => {
+    pushPintarCartao();          // Sprint 9.32.420
     await carregarListaNotificacoes();
   }, 0);
 
@@ -32107,6 +32294,8 @@ function renderNotificacoes() {
     <div class="mobile-app">
       ${mobileTopBar({ title: 'Notificações', showBack: true })}
       <main class="mcontent">
+<!-- Sprint 9.32.420: cartao de ativacao do aviso no celular -->
+<div id="pushCard" style="display:none;margin-bottom:12px;"></div>
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:10px;">
           <div class="review-tabs" style="flex:1;margin-bottom:0;">
             <button class="review-tab ${filtroInicial === 'todas' ? 'is-active' : ''}" onclick="trocarFiltroNotif('todas')">
@@ -40191,6 +40380,8 @@ function showModalInstituicaoNova({ valorInicialNome = '', modo = 'cadastro', in
     const valCnpj    = ehEdicao && instExistente?.cnpj       ? instExistente.cnpj      : '';
     const valCep     = ehEdicao && instExistente?.cep        ? instExistente.cep       : '';
     const valEstado  = ehEdicao && instExistente?.estado     ? instExistente.estado    : '';
+    // Sprint 9.32.419: raio proprio do local (campus grande pede mais folga)
+    const valRaio    = ehEdicao && instExistente?.raio_checkin_metros != null ? String(instExistente.raio_checkin_metros) : '';
     const valLat     = ehEdicao && instExistente?.latitude != null  ? String(instExistente.latitude)  : '';
     const valLng     = ehEdicao && instExistente?.longitude != null ? String(instExistente.longitude) : '';
     // Sprint 9.3: campos de perfil enriquecido (todos opcionais)
@@ -40340,6 +40531,26 @@ function showModalInstituicaoNova({ valorInicialNome = '', modo = 'cadastro', in
           <div class="report-field">
             <label style="font-size:11px;">Longitude</label>
             <input type="text" id="mniLng" placeholder="-46.6333" value="${(valLngInicial || '').replace(/"/g,'&quot;')}" style="width:100%;padding:9px 12px;border:1.5px solid var(--neutral-200);border-radius:10px;font-size:12.5px;font-family:var(--font-mono);" />
+          </div>
+        </div>
+
+        <!-- Sprint 9.32.419: tolerancia de check-in especifica deste local.
+             Um campus hospitalar grande e um consultorio de rua nao deveriam
+             ter a mesma folga. Em branco = usa o raio geral do sistema. -->
+        <div class="report-field" style="margin-top:8px;">
+          <label style="font-size:11px;display:flex;align-items:center;gap:5px;">
+            <span class="material-symbols-rounded" style="font-size:14px;color:var(--neutral-500);">adjust</span>
+            Raio de check-in deste local
+          </label>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <input type="number" id="mniRaio" min="100" max="5000" step="50" placeholder="padrão do sistema"
+                   value="${(valRaio || '').replace(/"/g,'&quot;')}"
+                   style="flex:1;min-width:0;padding:9px 12px;border:1.5px solid var(--neutral-200);border-radius:10px;font-size:12.5px;font-family:var(--font-mono);" />
+            <span style="font-size:12px;color:var(--neutral-500);font-weight:600;">metros</span>
+          </div>
+          <div style="font-size:10.5px;color:var(--neutral-500);margin-top:4px;line-height:1.4;">
+            Deixe em branco para usar o raio geral. Aumente em hospitais de campus grande,
+            onde a portaria fica longe do ponto cadastrado. Entre 100 e 5000.
           </div>
         </div>
       </div>
@@ -40581,6 +40792,7 @@ function showModalInstituicaoNova({ valorInicialNome = '', modo = 'cadastro', in
     const estadoEl = backdrop.querySelector('#mniEstado');
     const latEl    = backdrop.querySelector('#mniLat');
     const lngEl    = backdrop.querySelector('#mniLng');
+    const raioEl   = backdrop.querySelector('#mniRaio');   // Sprint 9.32.419
 
     // Aplica máscaras nos novos campos
     applyMasks(backdrop); // Sprint 9.32.376: máscara viva (CNPJ/CEP/fone) também pro nutri, não só admin
@@ -41019,6 +41231,14 @@ function showModalInstituicaoNova({ valorInicialNome = '', modo = 'cadastro', in
         estado: estado || null,
         latitude,
         longitude,
+        // Sprint 9.32.419: vazio = herda o raio geral do sistema
+        raio_checkin_metros: (() => {
+          const bruto = raioEl ? String(raioEl.value || '').trim() : '';
+          if (!bruto) return null;
+          const n = parseInt(bruto, 10);
+          if (!isFinite(n) || n < 100 || n > 5000) return null;
+          return n;
+        })(),
         // Sprint 9.32.361: matriz_id se marcado como unidade
         matriz_id: _mniMatrizId,
         // Sprint 9.3 — perfil enriquecido
