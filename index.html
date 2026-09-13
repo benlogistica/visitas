@@ -8268,7 +8268,7 @@ mark.search-hl {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.422-push-respeitar-escolha',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.423-cracha-fase1',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -8287,6 +8287,84 @@ let connectionStatus = {
   details: {},
 };
 
+/* ==========================================================================
+   CRACHA DE IDENTIDADE — Fase 1 da seguranca (Sprint 9.32.423)
+   --------------------------------------------------------------------------
+   O PROBLEMA: o navegador fala com o banco usando a chave publica que esta
+   no proprio index.html. O banco atende, mas nao sabe QUEM esta perguntando.
+   Sem isso, nao ha como escrever "cada visitador ve so as visitas dele".
+
+   A SOLUCAO: no login, o servidor confere CPF e senha e devolve um cracha
+   assinado com o segredo do projeto. O app apresenta esse cracha em toda
+   requisicao, e o banco passa a saber quem e a pessoa e qual o perfil.
+
+   NESTA FASE NADA DEPENDE DELE. Se a emissao falhar, o app funciona
+   exatamente como antes — as travas so entram numa etapa seguinte, uma
+   tabela por vez. E de proposito: ligar trava sem rede de seguranca
+   derrubaria a equipe inteira de uma vez.
+   ========================================================================== */
+
+const CRACHA_KEY = 'bn_cracha';
+
+// Devolve o cracha guardado, ou null se nao existe / esta vencido.
+// Margem de 1 minuto: cracha prestes a vencer nao serve pra nada.
+function crachaGuardado() {
+  try {
+    const raw = localStorage.getItem(CRACHA_KEY);
+    if (!raw) return null;
+    const o = JSON.parse(raw);
+    if (!o || !o.cracha || !o.expiraEm) return null;
+    if (Date.now() > (Number(o.expiraEm) - 60000)) {
+      localStorage.removeItem(CRACHA_KEY);
+      return null;
+    }
+    return o.cracha;
+  } catch (e) { return null; }
+}
+
+// O supabase-js fixa os cabecalhos na criacao do cliente, entao trocar de
+// cracha significa recriar o cliente. E seguro aqui: `db` e global, ninguem
+// guarda referencia antiga, e o projeto nao usa realtime (que precisaria
+// reassinar os canais).
+function conectarBanco(cracha) {
+  const opcoes = cracha
+    ? { global: { headers: { Authorization: 'Bearer ' + cracha } } }
+    : {};
+  db = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY, opcoes);
+  window._temCracha = Boolean(cracha);
+  return db;
+}
+
+async function obterCracha(cpfFmt, senhaHash) {
+  try {
+    const resp = await fetch(CONFIG.SUPABASE_URL + '/functions/v1/emitir-cracha', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: CONFIG.SUPABASE_ANON_KEY },
+      body: JSON.stringify({ cpf: cpfFmt, senha_hash: senhaHash }),
+    });
+    if (!resp.ok) { console.warn('[cracha] nao emitido (HTTP ' + resp.status + ')'); return false; }
+    const d = await resp.json();
+    if (!d || !d.cracha) return false;
+    localStorage.setItem(CRACHA_KEY, JSON.stringify({ cracha: d.cracha, expiraEm: d.expira_em }));
+    conectarBanco(d.cracha);
+    console.log('[cracha] emitido e aplicado');
+    return true;
+  } catch (e) {
+    // Falhar aqui NAO pode impedir ninguem de trabalhar: nesta fase o cracha
+    // ainda e opcional, entao o login segue normalmente sem ele.
+    console.warn('[cracha] falha ao emitir:', e && e.message);
+    return false;
+  }
+}
+
+function limparCracha() {
+  try { localStorage.removeItem(CRACHA_KEY); } catch (e) {}
+  conectarBanco(null);
+}
+
+window.conectarBanco = conectarBanco;
+window.limparCracha = limparCracha;
+
 function initSupabase() {
   if (CONFIG.SUPABASE_URL.includes('SEU-PROJETO')) {
     console.warn('[B&N] Supabase não configurado. Modo demo ativo.');
@@ -8294,8 +8372,9 @@ function initSupabase() {
     return null;
   }
   try {
-    db = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
-    console.log('[B&N] Supabase inicializado.');
+    // Sprint 9.32.423: se ja ha cracha valido, o cliente ja nasce identificado.
+    conectarBanco(crachaGuardado());
+    console.log('[B&N] Supabase inicializado.' + (window._temCracha ? ' (identificado)' : ''));
     connectionStatus.connected = true;
     return db;
   } catch (err) {
@@ -8421,6 +8500,7 @@ function getSession() {
     // Checa idade da sessao
     if (sess && sess.loggedAt && (Date.now() - sess.loggedAt) > _SESSAO_TTL_MS) {
       localStorage.removeItem(AUTH_KEY);
+      try { limparCracha(); } catch (e) {}   // Sprint 9.32.423
       console.info('[sessao] expirada apos 24h, forçando relogin');
       return null;
     }
@@ -8429,6 +8509,9 @@ function getSession() {
 }
 function clearSession() {
   localStorage.removeItem(AUTH_KEY);
+  // Sprint 9.32.423: o cracha nao pode sobreviver ao logout — senao a proxima
+  // pessoa a usar o aparelho herdaria a identidade de quem saiu.
+  try { limparCracha(); } catch (e) {}
 }
 
 let _presencaRenderTimer = null;
@@ -8863,6 +8946,11 @@ async function login(cpf, senha) {
   // regrava a inscricao em silencio. Cobre troca de aparelho, reinstalacao e
   // endpoint renovado pelo navegador — sem incomodar com pedido de permissao.
   setTimeout(() => { try { pushAtivar({ silencioso: true }); } catch (e) {} }, 1500);
+
+  // Sprint 9.32.423: emite o cracha ANTES das proximas requisicoes, pra que
+  // ja saiam identificadas. Aguardamos de proposito — mas se falhar, o login
+  // continua: nesta fase o cracha ainda nao e obrigatorio.
+  await obterCracha(cpfFmt, senhaHash);
 
   // Atualiza ultimo_login (não bloqueia o login se falhar)
   db.from('usuarios').update({ ultimo_login: new Date().toISOString() }).eq('id', user.id).then();
