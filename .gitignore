@@ -34,3 +34,10 @@ Thumbs.db
 # crescer ~41 MB/dia e o GitHub Pages parar de publicar perto de 1 GB.
 # A barra no fim do padrao evita pegar o .gz por engano.
 faturamento_data_inline.json
+
+# Backups locais com dado pessoal (CPF, e-mail, hash de senha).
+# NUNCA devem ir pro GitHub — o site e publico.
+backups-privados/
+
+# Maquetes de design — validacao visual, nao fazem parte do site publicado.
+design/

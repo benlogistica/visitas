@@ -1345,22 +1345,110 @@ a {
   z-index: 1100;
 }
 
+/* ==========================================================================
+   ROLAGEM LATERAL — Sprint 9.32.428
+   --------------------------------------------------------------------------
+   Padrao do Google: quando algo continua para o lado, uma setinha discreta
+   avisa, e so uma PONTINHA do proximo item aparece na borda.
+
+   O problema que resolve: hoje o app tem 20 areas que rolam de lado (abas,
+   tabelas, o grafico) e nenhuma avisa que ha mais conteudo. No celular,
+   quem nao arrasta por acaso nunca descobre.
+
+   Aplicado automaticamente pelo aplicarRolagemLateral(), sem precisar mexer
+   nas 20 telas uma a uma.
+   ========================================================================== */
+.rolax-wrap { position: relative; }
+
+.rolax-seta {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  background: var(--neutral-0, #fff);
+  border: 1px solid rgba(10,31,92,0.07);
+  box-shadow: 0 1px 5px rgba(10,31,92,0.16);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--brand-navy);
+  cursor: pointer;
+  z-index: 3;
+  padding: 0;
+  /* nasce invisivel: so aparece quando ha mesmo para onde rolar */
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 160ms ease;
+}
+.rolax-seta.rolax-on { opacity: 1; pointer-events: auto; }
+.rolax-seta:active { transform: translateY(-50%) scale(0.92); }
+.rolax-seta--esq { left: 3px; }
+.rolax-seta--dir { right: 3px; }
+.rolax-seta span { font-size: 18px; line-height: 1; }
+
+/* A "pontinha" da borda: faixa estreita de propósito — 18px. O suficiente
+   para insinuar que continua, sem comer meio item como no exemplo. */
+.rolax-borda {
+  position: absolute;
+  top: 0; bottom: 0;
+  width: 18px;
+  pointer-events: none;
+  z-index: 2;
+  opacity: 0;
+  transition: opacity 160ms ease;
+}
+.rolax-borda.rolax-on { opacity: 1; }
+.rolax-borda--esq { left: 0;  background: linear-gradient(90deg, var(--neutral-0, #fff), transparent); }
+.rolax-borda--dir { right: 0; background: linear-gradient(270deg, var(--neutral-0, #fff), transparent); }
+
+/* Esconde a barra de rolagem: a seta ja comunica, e a barra sujava o visual */
+.rolax-area { scrollbar-width: none; -ms-overflow-style: none; }
+.rolax-area::-webkit-scrollbar { display: none; }
+
 .mbar__row {
   display: flex;
   align-items: center;
   gap: 12px;
   min-height: 40px;
+  /* Trava de seguranca: se ainda assim algo passar do limite, corta por
+     dentro em vez de vazar pela borda da tela. */
+  max-width: 100%;
+}
+
+/* Sprint 9.32.427 — telas estreitas (iPhone SE, Android pequeno e afins).
+   Em vez de mirar num aparelho, reduzimos respiro e tamanhos conforme a
+   largura vai apertando: funciona em qualquer tela, inclusive as que ainda
+   nao existem. */
+@media (max-width: 400px) {
+  .mbar { padding-left: 14px; padding-right: 14px; }
+  .mbar__row { gap: 8px; }
+  .mbar__avatar { width: 36px; height: 36px; font-size: 14px; }
+  .mbar__icon-btn { width: 36px; height: 36px; }
+}
+@media (max-width: 340px) {
+  .mbar { padding-left: 10px; padding-right: 10px; }
+  .mbar__row { gap: 6px; }
+  .mbar__avatar { width: 32px; height: 32px; font-size: 12.5px; }
+  .mbar__icon-btn { width: 32px; height: 32px; }
+  .mbar__logo { height: 20px; }
 }
 
 .mbar__logo {
   height: 24px;
   flex: 1;
+  /* Sprint 9.32.427: sem min-width:0 um item flex nunca encolhe abaixo do
+     proprio conteudo. O logo empurrava a linha e o avatar era cortado na
+     borda direita em telas estreitas. Agora ele cede espaco primeiro. */
+  min-width: 0;
   object-fit: contain;
   object-position: left;
 }
 
 .mbar__title {
   flex: 1;
+  min-width: 0;                 /* mesma razao do logo */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-family: var(--font-display);
   font-size: 17px;
   font-weight: 600;
@@ -8268,7 +8356,7 @@ mark.search-hl {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.426-gz-e-funil-rpc',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.428-rolagem-lateral',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -14950,6 +15038,10 @@ function renderGraficoVisitasTemporal() {
         inicio: d, fim,
         label: fmtData(d),
         labelX: (i % 3 === 0) ? String(d.getDate()).padStart(2,'0') : '', // mostra label a cada 3 dias
+        // Sprint 9.32.427: sabado e domingo nao sao dia de falha — sao dia de
+        // descanso. Antes entravam no "X abaixo da meta" e faziam a equipe
+        // parecer pior do que e: de 30 dias, 10 sao fim de semana.
+        fds: (d.getDay() === 0 || d.getDay() === 6),
         count: 0,
       });
     }
@@ -15066,21 +15158,37 @@ function renderGraficoVisitasTemporal() {
   // Linha de meta (Y position)
   const yMeta = padT + chartH - (metaEfetiva / max) * chartH;
 
-  // Cores: verde escuro se >= meta; verde claro se < meta; cinza claro se 0
-  const corBarra = (count) => {
-    if (count === 0) return 'var(--neutral-200)';
-    if (count >= metaEfetiva) return '#3B6D11';   // verde escuro
-    return '#C0DD97';                              // verde claro
+  // Sprint 9.32.427 — cores por situacao, com fim de semana em papel de apoio
+  const corBarra = (b) => {
+    if (b.fds) return 'var(--neutral-300)';        // fim de semana: cinza discreto
+    if (b.count === 0) return 'var(--neutral-200)';
+    if (b.count >= metaEfetiva) return '#3B6D11';  // bateu a meta
+    return '#E8A33D';                              // abaixo: ambar, nao verde claro
   };
 
   const bars = buckets.map((b, i) => {
     const x = padL + i * (barW + barGap);
     const h = b.count > 0 ? Math.max(2, (b.count / max) * chartH) : 0;
     const y = yBase - h;
+    // Fim de semana ocupa menos largura: continua visivel no calendario, mas
+    // para de competir por atencao com os dias de trabalho.
+    const larg = b.fds ? barW * 0.44 : barW;
+    const xb   = b.fds ? x + (barW - larg) / 2 : x;
+
+    // ROTULO DE DADOS — o pedido principal. Some no fim de semana zerado,
+    // que nao tem o que informar.
+    const mostraRotulo = !(b.fds && b.count === 0);
+    const rotulo = mostraRotulo ? `
+      <text x="${x + barW / 2}" y="${y - 7}" font-size="15" text-anchor="middle"
+            font-weight="${b.fds ? '500' : '700'}"
+            fill="${b.fds ? 'var(--neutral-400)' : 'var(--brand-navy)'}"
+            font-family="Inter, sans-serif">${b.count}</text>` : '';
+
     return `
-      <g class="dsd-bar-grp" data-count="${b.count}" data-label="${b.label.replace(/"/g,'&quot;')}" data-meta="${metaEfetiva}" style="cursor:pointer;">
+      <g class="dsd-bar-grp" data-count="${b.count}" data-label="${b.label.replace(/"/g,'&quot;')}" data-meta="${metaEfetiva}" data-fds="${b.fds ? '1' : '0'}" style="cursor:pointer;">
         <rect x="${x - 0.5}" y="${padT}" width="${barW + 1}" height="${chartH}" fill="transparent"/>
-        <rect x="${x}" y="${y}" width="${barW}" height="${h}" fill="${corBarra(b.count)}" rx="2" class="dsd-bar"/>
+        <rect x="${xb}" y="${y}" width="${larg}" height="${h}" fill="${corBarra(b)}" rx="2" class="dsd-bar"/>
+        ${rotulo}
       </g>
     `;
   }).join('');
@@ -15097,9 +15205,11 @@ function renderGraficoVisitasTemporal() {
   }).join('');
 
   // Linha de meta + label
+  // Sprint 9.32.427: o rotulo da meta ficava POR CIMA das ultimas barras.
+  // Agora a linha para antes da margem e o texto ocupa a faixa livre a direita.
   const metaLine = metaEfetiva > 0 ? `
-    <line x1="${padL}" y1="${yMeta}" x2="${W - padR}" y2="${yMeta}" stroke="#F59E0B" stroke-width="2" stroke-dasharray="8,5" />
-    <text x="${W - padR - 6}" y="${yMeta - 6}" font-size="14" fill="#92400E" text-anchor="end" font-weight="700" font-family="Inter, sans-serif">${metaLabel}</text>
+    <line x1="${padL}" y1="${yMeta}" x2="${W - padR - 96}" y2="${yMeta}" stroke="#E8A33D" stroke-width="2" stroke-dasharray="7,5" />
+    <text x="${W - padR - 88}" y="${yMeta + 5}" font-size="14" fill="#92400E" text-anchor="start" font-weight="700" font-family="Inter, sans-serif">${metaLabel}</text>
   ` : '';
 
   const labels = buckets.map((b, i) => {
@@ -15109,17 +15219,28 @@ function renderGraficoVisitasTemporal() {
   }).join('');
 
   // Stats no rodapé
-  const diasComMeta = buckets.filter(b => b.count >= metaEfetiva && metaEfetiva > 0).length;
+  // Sprint 9.32.427 — o rodape contava fim de semana como dia que falhou.
+  // Com 10 de 30 dias caindo no fim de semana, o numero saia muito pior que a
+  // realidade: mostrava "7 bateu / 23 abaixo" quando o correto era 18 de 20
+  // dias uteis. Agora a base de comparacao sao os dias em que se trabalha.
+  const uteis = buckets.filter(b => !b.fds);
+  const baseComparacao = uteis.length > 0 ? uteis : buckets;
+  const diasComMeta = baseComparacao.filter(b => b.count >= metaEfetiva && metaEfetiva > 0).length;
+  const diasAbaixo  = baseComparacao.length - diasComMeta;
   const diasAtivos = buckets.filter(b => b.count > 0).length;
-  const taxaMeta = buckets.length > 0 ? Math.round((diasComMeta / buckets.length) * 100) : 0;
+  const taxaMeta = baseComparacao.length > 0 ? Math.round((diasComMeta / baseComparacao.length) * 100) : 0;
+  const rotuloBase = gran === 'dia' ? 'dias úteis' : (gran === 'semana' ? 'semanas' : 'meses');
   const periodo = gran === 'dia' ? 'dias' : (gran === 'semana' ? 'semanas' : 'meses');
   const granLabel = gran === 'dia' ? 'dia' : (gran === 'semana' ? 'sem' : 'mês');
 
   container.style.display = 'block';
   container.innerHTML = `
     ${headerHtml}
-    <div style="position:relative;">
-      <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;max-height:340px;display:block;">
+    <!-- Sprint 9.32.427: no celular, 30 barras com rotulo nao cabem sem virar
+         papinha. O grafico ganha rolagem horizontal PROPRIA — so ele desliza,
+         o resto da pagina fica parado. No desktop nada muda: cabe inteiro. -->
+    <div style="position:relative;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;">
+      <svg viewBox="0 0 ${W} ${H}" style="width:100%;min-width:${gran === 'dia' ? '620px' : '100%'};height:auto;max-height:340px;display:block;">
         ${gridLines}
         ${bars}
         ${metaLine}
@@ -15132,7 +15253,7 @@ function renderGraficoVisitasTemporal() {
       </div>
     </div>
     <div style="display:flex;justify-content:space-between;align-items:center;gap:14px;margin-top:8px;padding-top:8px;border-top:0.5px solid var(--neutral-100);font-size:11px;color:var(--neutral-600);flex-wrap:wrap;">
-      <span><strong style="color:#3B6D11;">${diasComMeta} ${periodo.slice(0,-1)}${diasComMeta !== 1 ? 's' : ''}</strong> bateu meta · <strong style="color:#854F0B;">${buckets.length - diasComMeta} abaixo</strong></span>
+      <span><strong style="color:#3B6D11;">${diasComMeta} de ${baseComparacao.length} ${rotuloBase}</strong> na meta${diasAbaixo > 0 ? ` · <strong style="color:#854F0B;">${diasAbaixo} abaixo</strong>` : ''}</span>
       <span>Total: <strong style="color:var(--brand-navy);">${total} visita${total !== 1 ? 's' : ''}</strong></span>
       <span style="margin-left:auto;color:#3B6D11;font-weight:600;">${taxaMeta}% acima da meta</span>
     </div>
@@ -22302,6 +22423,115 @@ function getRendererForRoute(hash, route) {
   return DESKTOP_RENDERERS_NUTRI[hash] || route.render;
 }
 
+
+/* ==========================================================================
+   aplicarRolagemLateral — Sprint 9.32.428
+   --------------------------------------------------------------------------
+   Varre a tela, acha o que rola de lado e instala seta + pontinha na borda.
+   Roda a cada navegacao. Idempotente: passar duas vezes no mesmo elemento
+   nao duplica nada.
+
+   Por que envolver o elemento num wrapper: a seta precisa ficar PARADA
+   enquanto o conteudo desliza por baixo. Se fosse filha do proprio scroller,
+   ela rolaria junto e sairia de vista.
+   ========================================================================== */
+function aplicarRolagemLateral(raiz) {
+  try {
+    const alvo = raiz || document;
+    const areas = alvo.querySelectorAll('[data-rolax], .review-tabs, [style*="overflow-x"]');
+
+    areas.forEach(function (el) {
+      try {
+        if (el.dataset.rolaxPronto === '1') { atualizarRolax(el); return; }
+
+        const estilo = getComputedStyle(el);
+        const rola = estilo.overflowX === 'auto' || estilo.overflowX === 'scroll';
+        if (!rola) return;
+        // Nao adianta enfeitar o que cabe inteiro na tela.
+        if (el.scrollWidth <= el.clientWidth + 4) return;
+
+        // ---- wrapper ----
+        const pai = el.parentNode;
+        if (!pai) return;
+        const env = document.createElement('div');
+        env.className = 'rolax-wrap';
+
+        // O wrapper entra no lugar do elemento no layout, entao herda o que
+        // define a posicao dele. Sem isso, um scroller dentro de flex/grid
+        // mudaria de tamanho ao ser envolvido.
+        ['flex', 'alignSelf', 'gridColumn', 'gridRow', 'width', 'maxWidth', 'margin'].forEach(function (prop) {
+          const v = estilo[prop];
+          if (v && v !== 'auto' && v !== 'normal' && v !== '0px') env.style[prop] = v;
+        });
+        el.style.margin = '0';
+
+        pai.insertBefore(env, el);
+        env.appendChild(el);
+        el.classList.add('rolax-area');
+
+        // ---- bordas e setas ----
+        const bordaE = document.createElement('div'); bordaE.className = 'rolax-borda rolax-borda--esq';
+        const bordaD = document.createElement('div'); bordaD.className = 'rolax-borda rolax-borda--dir';
+        const setaE  = document.createElement('button');
+        const setaD  = document.createElement('button');
+        setaE.type = 'button'; setaD.type = 'button';
+        setaE.className = 'rolax-seta rolax-seta--esq';
+        setaD.className = 'rolax-seta rolax-seta--dir';
+        setaE.setAttribute('aria-label', 'Ver itens anteriores');
+        setaD.setAttribute('aria-label', 'Ver mais itens');
+        setaE.innerHTML = '<span class="material-symbols-rounded">chevron_left</span>';
+        setaD.innerHTML = '<span class="material-symbols-rounded">chevron_right</span>';
+
+        const passo = function () { return Math.max(120, el.clientWidth * 0.8); };
+        setaE.addEventListener('click', function (ev) {
+          ev.preventDefault(); ev.stopPropagation();
+          el.scrollBy({ left: -passo(), behavior: 'smooth' });
+        });
+        setaD.addEventListener('click', function (ev) {
+          ev.preventDefault(); ev.stopPropagation();
+          el.scrollBy({ left: passo(), behavior: 'smooth' });
+        });
+
+        env.appendChild(bordaE); env.appendChild(bordaD);
+        env.appendChild(setaE);  env.appendChild(setaD);
+
+        el._rolax = { env: env, setaE: setaE, setaD: setaD, bordaE: bordaE, bordaD: bordaD };
+        el.dataset.rolaxPronto = '1';
+
+        el.addEventListener('scroll', function () { atualizarRolax(el); }, { passive: true });
+
+        if (typeof ResizeObserver !== 'undefined') {
+          const ro = new ResizeObserver(function () { atualizarRolax(el); });
+          ro.observe(el);
+        }
+        atualizarRolax(el);
+      } catch (e) { /* uma area com problema nao pode derrubar as outras */ }
+    });
+  } catch (e) { console.warn('[rolax]', e && e.message); }
+}
+
+// Liga e desliga seta/borda conforme a posicao. Some ao chegar na ponta —
+// seta que nao leva a lugar nenhum e' ruido.
+function atualizarRolax(el) {
+  const r = el && el._rolax;
+  if (!r) return;
+  const temEsq = el.scrollLeft > 4;
+  const temDir = el.scrollLeft + el.clientWidth < el.scrollWidth - 4;
+  r.setaE.classList.toggle('rolax-on', temEsq);
+  r.bordaE.classList.toggle('rolax-on', temEsq);
+  r.setaD.classList.toggle('rolax-on', temDir);
+  r.bordaD.classList.toggle('rolax-on', temDir);
+}
+
+window.aplicarRolagemLateral = aplicarRolagemLateral;
+
+// Reavalia quando a tela muda de tamanho (girar o celular, redimensionar).
+window.addEventListener('resize', function () {
+  try {
+    document.querySelectorAll('[data-rolax-pronto="1"]').forEach(atualizarRolax);
+  } catch (e) {}
+});
+
 function router() {
   const fullHash = window.location.hash || '#/';
   // Separa hash e query (ex: #/visitas/relatorio?id=abc)
@@ -22357,6 +22587,12 @@ function router() {
   if (getCurrentUser()) {
     setTimeout(() => atualizarBadgeNotificacoes(), 200);
   }
+
+  // Sprint 9.32.428: depois que a tela monta, instala as setas de rolagem
+  // lateral onde fizer falta. Dois tempos porque parte do conteudo (tabelas,
+  // graficos) chega por consulta e so existe depois.
+  setTimeout(() => aplicarRolagemLateral(), 120);
+  setTimeout(() => aplicarRolagemLateral(), 700);
 
   // Sprint 9.32.300: banner global de visita ativa — atualiza a cada navegação
   // (cobre o caso "iOS matou app, reabriu em outra rota" — banner re-aparece)
