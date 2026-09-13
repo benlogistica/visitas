@@ -8361,11 +8361,48 @@ mark.search-hl {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.432-meses',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.435-mapa',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
+
+  /* ------------------------------------------------------------------------
+     MAPA — Sprint 9.32.435
+     O sistema usava https://server.arcgisonline.com/.../World_Street_Map, um
+     endereco que a Esri pediu para abandonar ate 30/04/2022 e mantem em
+     "suporte maduro": sem atualizacao e sem garantia de continuidade. Ele
+     funcionava por inercia, e sem licenca para uso comercial.
+
+     Agora e o servico oficial, com chave. A chave FICA VISIVEL neste arquivo
+     — e assim que o modelo funciona para aplicacao publica. O que a protege:
+       · referenciadores travados em benlogistica.com.br e *.benlogistica.com.br
+         (testado: de fora do dominio a Esri recusa com "Invalid token")
+       · um unico privilegio, premium:user:staticbasemaptiles — so carrega
+         tile de mapa, nao acessa mais nada da conta
+     Nao confundir com VAPID_PRIVATE_KEY, APP_JWT_SECRET e a service_role do
+     Supabase: essas NUNCA podem entrar aqui.
+
+     VENCE EM 13/09/2027. Depois disso os mapas ficam cinza vazio, sem
+     mensagem de erro. Para renovar: gerar chave nova no item "Mapa do
+     sistema de visitas" em benlogistica.maps.arcgis.com e trocar so a linha
+     MAPA_CHAVE abaixo. Ha lembrete automatico agendado para 16/08/2027.
+
+     Estilos validos (testados em 13/09/2026): arcgis/navigation,
+     arcgis/streets, arcgis/light-gray, arcgis/outdoor.
+     ---------------------------------------------------------------------- */
+  MAPA_CHAVE: 'AAPTaHZ1G4k-AP531xeqSpvtg1Q..yfk3klyUw9rqytaXOlXB7Uz2fVjQOztR6fHsnlXg_iPWA_baaLxVqMPlRxYXHUWNzef6kh08x2892cjJEXX5hS8REWkjAR__Ee0foWmxi2vSGZ4p2uf1WX9ZbrDY2Iy8bEb24s7X4q6G0iDCx02uYTIzpqajRBgCn62JAWDBAgZ2cYGQaQsN4HoC4mA30c910gd4NXExHunmChOOuoMCEbYOfMT4n2mwYXwQqC_APFRhL7WVCOPzzRz_lwtjAT1_eXzcxsXW',
+  MAPA_ESTILO: 'arcgis/navigation',
+  MAPA_VENCE_EM: '2027-09-13',
 };
+
+// Monta a URL dos tiles. Os tiles da Esri sao 512x512 (os antigos eram 256),
+// por isso o tileSize/zoomOffset que acompanham em toda chamada.
+function mapaTilesUrl() {
+  return 'https://static-map-tiles-api.arcgis.com/arcgis/rest/services/' +
+         'static-basemap-tiles-service/v1/' + CONFIG.MAPA_ESTILO +
+         '/static/tile/{z}/{y}/{x}?token=' + CONFIG.MAPA_CHAVE;
+}
+const MAPA_OPCOES = { attribution: 'Tiles &copy; Esri', tileSize: 512, zoomOffset: -1, maxZoom: 19 };
 
 /* ==========================================================================
    SUPABASE CLIENT
@@ -9438,20 +9475,7 @@ window.toggleNotifDropdown = async function(ev) {
   // lugar em que as pessoas clicam — deixar a ativação só na tela cheia fazia
   // todo mundo passar batido.
   dropdown.innerHTML += `<div id="pushAtalhoDropdown" style="display:none;"></div>`;
-  setTimeout(async () => {
-    const alvo = document.getElementById('pushAtalhoDropdown');
-    if (!alvo) return;
-    if ((await pushEstado()) !== 'desligado') return;
-    alvo.style.display = '';
-    alvo.innerHTML = `
-      <div style="display:flex;align-items:center;gap:9px;padding:10px 12px;background:#E4ECFD;border-top:1px solid rgba(29,78,216,0.18);">
-        <span class="material-symbols-rounded" style="font-size:17px;color:#1D4ED8;flex-shrink:0;">notifications_active</span>
-        <div style="flex:1;min-width:0;font-size:11.5px;color:var(--neutral-700);line-height:1.35;">
-          Receba os avisos no celular
-        </div>
-        <button onclick="pushAtivarClick()" style="flex-shrink:0;background:var(--brand-lime);color:#fff;border:0;border-radius:8px;padding:6px 12px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:inherit;">Ativar</button>
-      </div>`;
-  }, 0);
+  setTimeout(() => pushPintarAtalhoSino(false), 0);
 
   dropdown.innerHTML += `
     <div class="notif-dropdown__footer" style="display:flex;align-items:stretch;">
@@ -10789,19 +10813,72 @@ async function pushPintarCartao() {
   }
 }
 
-window.pushAtivarClick = async function() {
-  const ok = await pushAtivar();
+/* Pinta o convite de push dentro do dropdown do sino.
+   `confirmado` = acabou de ligar agora: em vez de sumir sem dizer nada, o
+   convite vira uma confirmacao verde no mesmo lugar. Some sozinha quando o
+   dropdown for aberto de novo. */
+async function pushPintarAtalhoSino(confirmado) {
+  const alvo = document.getElementById('pushAtalhoDropdown');
+  if (!alvo) return;
+
+  let estado = 'desligado';
+  try { estado = await pushEstado(); } catch (e) { return; }
+
+  if (estado !== 'desligado') {
+    if (!confirmado) { alvo.style.display = 'none'; alvo.innerHTML = ''; return; }
+    alvo.style.display = '';
+    alvo.innerHTML = `
+      <div style="display:flex;align-items:center;gap:9px;padding:10px 12px;background:#F0F7E1;border-top:1px solid rgba(59,109,17,0.22);">
+        <span class="material-symbols-rounded" style="font-size:17px;color:#3B6D11;flex-shrink:0;">check_circle</span>
+        <div style="flex:1;min-width:0;font-size:11.5px;color:#27500A;line-height:1.35;">
+          Pronto — os avisos chegam no celular.
+        </div>
+      </div>`;
+    return;
+  }
+
+  alvo.style.display = '';
+  alvo.innerHTML = `
+    <div style="display:flex;align-items:center;gap:9px;padding:10px 12px;background:#E4ECFD;border-top:1px solid rgba(29,78,216,0.18);">
+      <span class="material-symbols-rounded" style="font-size:17px;color:#1D4ED8;flex-shrink:0;">notifications_active</span>
+      <div style="flex:1;min-width:0;font-size:11.5px;color:var(--neutral-700);line-height:1.35;">
+        Receba os avisos no celular
+      </div>
+      <button onclick="pushAtivarClick(this)" style="flex-shrink:0;background:var(--brand-lime);color:#fff;border:0;border-radius:8px;padding:6px 12px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:inherit;">Ativar</button>
+    </div>`;
+}
+window.pushPintarAtalhoSino = pushPintarAtalhoSino;
+
+window.pushAtivarClick = async function(botao) {
+  // O navegador abre a caixa de permissao e o clique fica "pendurado" ate a
+  // pessoa responder. Sem este aviso o botao parecia morto — e dava para
+  // clicar de novo, disparando duas inscricoes.
+  const rotuloOriginal = botao ? botao.textContent : null;
+  if (botao) { botao.disabled = true; botao.style.opacity = '0.65'; botao.textContent = 'Ativando…'; }
+
+  let ok = false;
+  try {
+    ok = await pushAtivar();
+  } finally {
+    if (botao && botao.isConnected) {
+      botao.disabled = false; botao.style.opacity = '1';
+      botao.textContent = rotuloOriginal || 'Ativar';
+    }
+  }
+
   if (typeof setFlash === 'function') {
     setFlash(ok ? 'success' : 'warning',
       ok ? 'Pronto. Você será avisado no celular.' : 'Não consegui ativar. Verifique se as notificações estão permitidas para este site.');
   }
   pushPintarCartao();
+  pushPintarAtalhoSino(ok);   // <- o que faltava: o sino agora acompanha
 };
 
 window.pushDesligarClick = async function() {
   await pushDesativar();
   if (typeof setFlash === 'function') setFlash('info', 'Avisos no celular desligados.');
   pushPintarCartao();
+  pushPintarAtalhoSino(false);
 };
 
 /* --------------------------------------------------------------------------
@@ -14166,7 +14243,7 @@ function renderAdminDashboardDesktop() {
               <div style="display:flex;align-items:center;justify-content:flex-end;gap:8px 12px;font-size:11px;color:var(--neutral-600);flex-wrap:wrap;max-width:340px;">
                 <div style="display:inline-flex;align-items:center;gap:5px;white-space:nowrap;"><span style="width:9px;height:9px;border-radius:2px;background:#3B6D11;display:inline-block;flex-shrink:0;"></span> na meta</div>
                 <div style="display:inline-flex;align-items:center;gap:5px;white-space:nowrap;"><span style="width:9px;height:9px;border-radius:2px;background:#E8A33D;display:inline-block;flex-shrink:0;"></span> abaixo</div>
-                <div style="display:inline-flex;align-items:center;gap:5px;white-space:nowrap;"><span style="width:5px;height:9px;border-radius:2px;background:var(--neutral-300);display:inline-block;flex-shrink:0;"></span> fim de semana</div>
+                <div class="dsd-leg-fds" style="display:inline-flex;align-items:center;gap:5px;white-space:nowrap;"><span style="width:5px;height:9px;border-radius:2px;background:var(--neutral-300);display:inline-block;flex-shrink:0;"></span> fim de semana</div>
                 <button onclick="window.editarMetaVisitasDia()" title="Ajustar meta diária" style="background:transparent;border:1px solid var(--neutral-200);width:28px;height:28px;border-radius:6px;cursor:pointer;color:var(--neutral-600);display:flex;align-items:center;justify-content:center;font-family:inherit;flex-shrink:0;">
                   <span class="material-symbols-rounded" style="font-size:15px;">tune</span>
                 </button>
@@ -14890,6 +14967,18 @@ async function togglePopoverProfissionais(anchor) {
 }
 
 // Renderiza ranking Top 10 nutris (barras horizontais com avatar + posição)
+/* Nome + sobrenome de verdade — Sprint 9.32.433.
+   Pegar as duas primeiras palavras parava na preposicao: "Andressa de Melo
+   Rodrigues" virava "Andressa de". Agora a segunda palavra e a primeira que
+   nao for particula, entao sai "Andressa Melo". */
+const PARTICULAS_NOME = ['de','da','do','das','dos','e','di','du','del','dela','van','von','la','le'];
+function nomeCurto(nome) {
+  const partes = String(nome || '').trim().split(/\s+/).filter(Boolean);
+  if (partes.length <= 1) return partes[0] || '';
+  const sobrenome = partes.slice(1).find(p => !PARTICULAS_NOME.includes(p.toLowerCase()));
+  return sobrenome ? `${partes[0]} ${sobrenome}` : partes.slice(0, 2).join(' ');
+}
+
 function renderDsdRankingNutri(visitas) {
   const container = document.getElementById('dsdRankingNutri');
   const subtitle = document.getElementById('dsdRankingSubtitle');
@@ -14938,7 +15027,7 @@ function renderDsdRankingNutri(visitas) {
     const avatar = n.foto
       ? `<div style="width:26px;height:26px;border-radius:50%;background-image:url('${n.foto}');background-size:cover;background-position:center;flex-shrink:0;"></div>`
       : `<div style="width:26px;height:26px;border-radius:50%;background:var(--brand-navy);color:#fff;display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:700;font-family:'Poppins',sans-serif;flex-shrink:0;">${iniciais(n.nome)}</div>`;
-    const primeiroNome = n.nome.split(' ').slice(0, 2).join(' ');
+    const primeiroNome = nomeCurto(n.nome);
     const isAtivo = filtroAtivo === n.id;
     return `
       <div class="dsd-nutri-row" data-nutri-id="${escAttr(n.id)}" data-nutri-nome="${escAttr(n.nome)}" title="Clique pra filtrar todo o dashboard por ${escAttr(n.nome)}" style="display:flex;align-items:center;gap:12px;padding:8px 10px;margin:0 -10px;border-bottom:${idx < ranking.length - 1 ? '1px solid var(--neutral-100)' : 'none'};cursor:pointer;border-radius:6px;transition:background 120ms;${isAtivo ? 'background:#F0F7E1;' : ''}" data-ativo="${isAtivo ? '1' : ''}">
@@ -15035,7 +15124,11 @@ function rotuloMesISO(iso, longo) {
   const inteiros = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
   const [ano, mes] = String(iso).split('-');
   const i = parseInt(mes, 10) - 1;
-  return `${(longo ? inteiros : curtos)[i]}/${ano}`;
+  const base = `${(longo ? inteiros : curtos)[i]}/${ano}`;
+  // Mes que so tem visita marcada, nenhuma feita ainda. Sem este aviso o
+  // dashboard abria vazio e parecia defeito.
+  const soAgendado = Array.isArray(window._mesesSoAgendados) && window._mesesSoAgendados.includes(iso);
+  return soAgendado ? `${base} · só agendadas` : base;
 }
 
 function carregarMesesComVisita() {
@@ -15049,12 +15142,19 @@ function carregarMesesComVisita() {
     const salvo = JSON.parse(sessionStorage.getItem(MESES_CACHE_KEY) || 'null');
     if (salvo && salvo.ano === new Date().getFullYear() && Array.isArray(salvo.meses) && salvo.meses.length) {
       window._mesesComVisita = salvo.meses;
+      window._mesesSoAgendados = Array.isArray(salvo.soAgendados) ? salvo.soAgendados : [];
     }
   } catch (e) { /* sessionStorage bloqueado — segue sem cache */ }
 
   _mesesComVisitaPromise = db.rpc('meses_com_visita')
     .then(({ data, error }) => {
       if (error) throw new Error(error.message);
+      // Sprint 9.32.433: guarda tambem quantas foram REALIZADAS. Out/2026
+      // entrou na lista com 11 visitas e nenhuma realizada — quem escolhia
+      // caia num dashboard vazio sem entender por que.
+      window._mesesSoAgendados = (data || [])
+        .filter(r => r && Number(r.realizadas || 0) === 0)
+        .map(r => r.mes);
       const meses = (data || []).map(r => r.mes).filter(Boolean);
       // O mes corrente entra sempre, mesmo sem visita nenhuma ainda: senao, no
       // dia 1 de cada mes a lista perderia justamente o mes que a pessoa quer.
@@ -15063,7 +15163,9 @@ function carregarMesesComVisita() {
       meses.sort();
       window._mesesComVisita = meses;
       try {
-        sessionStorage.setItem(MESES_CACHE_KEY, JSON.stringify({ ano: new Date().getFullYear(), meses }));
+        sessionStorage.setItem(MESES_CACHE_KEY, JSON.stringify({
+          ano: new Date().getFullYear(), meses, soAgendados: window._mesesSoAgendados,
+        }));
       } catch (e) {}
       repovoarDropdownsDeMes();
       return meses;
@@ -15350,8 +15452,16 @@ function renderGraficoVisitasTemporal() {
   // Calcula meta efetiva conforme granularidade
   let metaEfetiva = metaDiaria;
   let metaLabel = `Meta: ${metaDiaria}/dia`;
-  if (gran === 'semana') { metaEfetiva = metaDiaria * 5; metaLabel = `Meta: ${metaEfetiva}/sem (${metaDiaria}×5 dias úteis)`; }
-  else if (gran === 'mes') { metaEfetiva = metaDiaria * 22; metaLabel = `Meta: ${metaEfetiva}/mês (${metaDiaria}×22 dias úteis)`; }
+  let metaDetalhe = `${metaDiaria}/dia útil`;
+  if (gran === 'semana') {
+    metaEfetiva = metaDiaria * 5;
+    metaLabel = `Meta: ${metaEfetiva}/sem`;
+    metaDetalhe = `${metaEfetiva}/sem (${metaDiaria} × 5 dias úteis)`;
+  } else if (gran === 'mes') {
+    metaEfetiva = metaDiaria * 22;
+    metaLabel = `Meta: ${metaEfetiva}/mês`;
+    metaDetalhe = `${metaEfetiva}/mês (${metaDiaria} × 22 dias úteis)`;
+  }
 
   // === SVG compacto com BARRAS — Sprint 9.32.119: viewBox proporcional pro desktop, sem distorcer fontes ===
   const W = 1200, H = 320, padL = 60, padR = 30, padT = 30, padB = 40;
@@ -15415,9 +15525,13 @@ function renderGraficoVisitasTemporal() {
   // Linha de meta + label
   // Sprint 9.32.427: o rotulo da meta ficava POR CIMA das ultimas barras.
   // Agora a linha para antes da margem e o texto ocupa a faixa livre a direita.
+  // Largura estimada do texto: Inter 700 a 14px fica perto de 7.4 unidades por
+  // caractere. Nao precisa ser exato — precisa nunca subestimar, senao a linha
+  // tracejada volta a passar por baixo das letras.
+  const metaTextoW = metaLabel.length * 7.6;
   const metaLine = metaEfetiva > 0 ? `
-    <line x1="${padL}" y1="${yMeta}" x2="${W - padR - 96}" y2="${yMeta}" stroke="#E8A33D" stroke-width="2" stroke-dasharray="7,5" />
-    <text x="${W - padR - 88}" y="${yMeta + 5}" font-size="14" fill="#92400E" text-anchor="start" font-weight="700" font-family="Inter, sans-serif">${metaLabel}</text>
+    <line x1="${padL}" y1="${yMeta}" x2="${Math.max(padL + 20, W - padR - metaTextoW - 10)}" y2="${yMeta}" stroke="#E8A33D" stroke-width="2" stroke-dasharray="7,5" />
+    <text x="${W - padR}" y="${yMeta + 5}" font-size="14" fill="#92400E" text-anchor="end" font-weight="700" font-family="Inter, sans-serif">${metaLabel}</text>
   ` : '';
 
   const labels = buckets.map((b, i) => {
@@ -15440,6 +15554,17 @@ function renderGraficoVisitasTemporal() {
   const rotuloBase = gran === 'semana' ? 'semanas' : 'dias úteis';
   const periodo = gran === 'dia' ? 'dias' : (gran === 'semana' ? 'semanas' : 'meses');
   const granLabel = gran === 'dia' ? 'dia' : (gran === 'semana' ? 'sem' : 'mês');
+
+  // O "(4 × 22 dias úteis)" saiu de dentro do grafico, onde cortava. Vai para
+  // o subtitulo do card, que tem largura de sobra.
+  const subEl = container.closest('.ds-chart-card');
+  const subAlvo = subEl ? subEl.querySelector('.ds-chart-card__subtitle') : null;
+  if (subAlvo && metaEfetiva > 0) subAlvo.textContent = `Agrupadas por período · meta ${metaDetalhe}`;
+
+  // A legenda e HTML fixo no cabecalho e nao sabe a granularidade. No modo
+  // "Semana" nao existe barra de fim de semana, entao o item so confundia.
+  const legFds = subEl ? subEl.querySelector('.dsd-leg-fds') : null;
+  if (legFds) legFds.style.display = (gran === 'semana') ? 'none' : 'inline-flex';
 
   container.style.display = 'block';
   container.innerHTML = `
@@ -16020,10 +16145,7 @@ async function renderDsdMapaVisitas(visitas) {
       try {
         const map = L.map(mapId, { zoomControl: true, scrollWheelZoom: false }).setView([pontos[0].latitude, pontos[0].longitude], 12);
         // Sprint 9.32.136: tile Esri World Street Map (visual estilo Google Maps clássico, gratuito)
-        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
-          attribution: 'Tiles © Esri',
-          maxZoom: 19,
-        }).addTo(map);
+        L.tileLayer(mapaTilesUrl(), MAPA_OPCOES).addTo(map);
         const bounds = [];
         pontos.forEach(p => {
           const cor = corPino(p.count);
@@ -39699,10 +39821,7 @@ function _initMapaLeafletVisita(v) {
   container._leaflet_map = map;
 
   // Sprint 9.32.136: tile Esri World Street Map (visual estilo Google Maps clássico, gratuito)
-  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
-    attribution: 'Tiles © Esri',
-    maxZoom: 19,
-  }).addTo(map);
+  L.tileLayer(mapaTilesUrl(), MAPA_OPCOES).addTo(map);
 
   // Adiciona pinos coloridos (DivIcon HTML)
   const bounds = [];
@@ -60390,9 +60509,7 @@ function itiRenderMapa(linhas) {
   if (!_itiMap) {
     const centro = pontos.length ? [pontos[0]._lat, pontos[0]._lng] : [-23.96, -46.33];
     _itiMap = L.map('itiMapa', { zoomControl: true, scrollWheelZoom: true }).setView(centro, 11);
-    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
-      attribution: 'Tiles © Esri', maxZoom: 19,
-    }).addTo(_itiMap);
+    L.tileLayer(mapaTilesUrl(), MAPA_OPCOES).addTo(_itiMap);
   }
   if (_itiLayer) _itiLayer.remove();
   _itiLayer = L.layerGroup().addTo(_itiMap);
