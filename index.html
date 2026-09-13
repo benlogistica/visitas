@@ -1358,6 +1358,49 @@ a {
    Aplicado automaticamente pelo aplicarRolagemLateral(), sem precisar mexer
    nas 20 telas uma a uma.
    ========================================================================== */
+/* ==========================================================================
+   BOTOES DE ZOOM DO MAPA — Sprint 9.32.437
+   O Leaflet entrega um controle de 26px com borda cinza e um "+" em fonte
+   serifada — destoa do resto do app e, num celular, 26px fica abaixo do alvo
+   de toque confortavel (44px e' a referencia). Aqui ele ganha a mesma
+   linguagem dos outros botoes: cantos arredondados, navy da marca, sombra
+   suave, e area de toque maior no celular.
+   ========================================================================== */
+.leaflet-control-zoom {
+  border: 0 !important;
+  border-radius: 10px !important;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(10,31,92,0.18), 0 0 0 1px rgba(10,31,92,0.06) !important;
+}
+.leaflet-control-zoom a.leaflet-control-zoom-in,
+.leaflet-control-zoom a.leaflet-control-zoom-out {
+  width: 34px; height: 34px; line-height: 34px;
+  background: var(--neutral-0, #fff);
+  color: var(--brand-navy, #0A1F5C);
+  font-family: Inter, -apple-system, "Segoe UI", sans-serif;
+  font-size: 19px; font-weight: 500;
+  border: 0;
+  transition: background 120ms, color 120ms;
+}
+.leaflet-control-zoom a.leaflet-control-zoom-in { border-bottom: 1px solid var(--neutral-100, #EEF1F6) !important; }
+.leaflet-control-zoom a:hover { background: var(--neutral-50, #FAFBFD); color: var(--brand-lime, #3B6D11); }
+.leaflet-control-zoom a:active { background: var(--neutral-100, #EEF1F6); }
+/* Quando o mapa chega no limite, o botao para de responder. Sem este estilo
+   ele continua com cara de clicavel e a pessoa fica insistindo. */
+.leaflet-control-zoom a.leaflet-disabled {
+  background: var(--neutral-50, #FAFBFD) !important;
+  color: var(--neutral-300, #C5CCD9) !important;
+  cursor: default;
+}
+/* No celular o dedo precisa de mais area que o cursor. */
+@media (max-width: 1023px) {
+  .leaflet-control-zoom a.leaflet-control-zoom-in,
+  .leaflet-control-zoom a.leaflet-control-zoom-out {
+    width: 40px; height: 40px; line-height: 40px; font-size: 21px;
+  }
+}
+.leaflet-top .leaflet-control-zoom { margin: 12px 0 0 12px; }
+
 .rolax-wrap { position: relative; }
 
 .rolax-seta {
@@ -8361,7 +8404,7 @@ mark.search-hl {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.436-mapatam',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.437-zoom',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -16225,9 +16268,14 @@ async function renderDsdMapaVisitas(visitas) {
         // mas torto em posicao — os pinos apareceriam fora de vista.
         const enquadrar = () => {
           if (pontosFocus.length > 1) {
-            map.fitBounds(pontosFocus.map(p => [Number(p.latitude), Number(p.longitude)]), { padding: [40, 40], maxZoom: 14 });
+            // Sprint 9.32.437: o teto era 14, que parava longe e deixava os
+            // pinos pequenos num canto. Com 17 o mapa chega no nivel de rua e
+            // encosta de verdade no grupo. Nao tiro o teto de vez porque, com
+            // dois hospitais na mesma quadra, o fitBounds iria ao zoom maximo
+            // e a pessoa perderia toda a referencia do bairro.
+            map.fitBounds(pontosFocus.map(p => [Number(p.latitude), Number(p.longitude)]), { padding: [30, 30], maxZoom: 17 });
           } else if (pontosFocus.length === 1) {
-            map.setView([Number(pontosFocus[0].latitude), Number(pontosFocus[0].longitude)], 14);
+            map.setView([Number(pontosFocus[0].latitude), Number(pontosFocus[0].longitude)], 16);
           }
         };
         enquadrar();
