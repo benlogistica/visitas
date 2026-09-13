@@ -1,7 +1,23 @@
 @echo off
-REM commit_rapido.bat
-REM Atalho pra commit + push de mudancas que NAO mexem no JSON (so HTML/CSS/JS).
-REM Pra atualizacao de DADOS (XLSX novos), use atualizar_dashboard.bat.
+REM ===========================================================================
+REM  commit_rapido.bat  ·  Sprint 9.32.438
+REM ===========================================================================
+REM  Atalho pra commit + push de mudancas que NAO mexem no JSON (so HTML/CSS/JS).
+REM  Pra atualizacao de DADOS (XLSX novos), use atualizar_dashboard.bat.
+REM
+REM  MUDOU NESTA VERSAO
+REM  Antes o script parava tres vezes: confirmar S/N, digitar a mensagem, e um
+REM  Enter no fim. Como a resposta era sempre a mesma, as paradas so' atrasavam
+REM  - e o "Ajuste rapido" repetido deixou o historico do git ilegivel.
+REM
+REM  Agora:
+REM    · nao pergunta nada e fecha sozinho quando da' certo
+REM    · a mensagem sai da APP_VERSION do index.html, entao o historico passa
+REM      a dizer o que cada commit publicou
+REM    · SO PARA se der erro - e ai fica aberto ate voce ler
+REM
+REM  Se quiser uma mensagem propria:  commit_rapido.bat "texto da mensagem"
+REM ===========================================================================
 
 setlocal EnableDelayedExpansion
 title Commit rapido - B^&N Logistica
@@ -34,7 +50,6 @@ REM Erro classico: "Unable to create '.git/index.lock': File exists"
 REM Acontece quando uma operacao git anterior travou/morreu sem limpar.
 if exist ".git\index.lock" (
     echo [AVISO] Encontrei um .git\index.lock orfao - vou tentar remover.
-    REM Verifica se ha algum processo git.exe rodando
     tasklist /FI "IMAGENAME eq git.exe" 2>nul | find /I "git.exe" >nul
     if not errorlevel 1 (
         echo [ERRO] Tem um processo git.exe rodando ainda! Feche-o antes de continuar.
@@ -53,16 +68,14 @@ if exist ".git\index.lock" (
 )
 
 REM ---- Sprint 9.32.110: garante que index.html sempre entra ----------
-REM Mesmo que git status diga "nada mudou" no index.html, forcamos o add.
-REM (git add num arquivo sem mudanca e' no-op silencioso, sem erro.)
 if exist "index.html" (
     git add index.html >nul 2>&1
 )
 
 REM ---- Sprint 9.32.313: valida index.html ANTES de commitar -----------
 REM Detecta truncagem (final do arquivo perdido), tags desbalanceadas, etc.
-REM Mesmo que o git pre-commit hook faca a mesma checagem, rodamos aqui
-REM tambem como dupla protecao (e pra mostrar o erro ANTES de pedir mensagem).
+REM Esta e a protecao mais importante do script: sem ela, um arquivo quebrado
+REM iria pro ar sem ninguem notar - ainda mais agora que nao ha confirmacao.
 if exist "scripts\validate-index.ps1" (
     powershell -ExecutionPolicy Bypass -NoProfile -File "scripts\validate-index.ps1"
     if errorlevel 1 (
@@ -74,7 +87,7 @@ if exist "scripts\validate-index.ps1" (
     )
 )
 
-REM ---- Mostra o que mudou -------------------------------------------
+REM ---- Mostra o que vai subir ---------------------------------------
 echo Mudancas pendentes:
 echo ----------------------------------------------------------------------
 git status --short
@@ -86,46 +99,48 @@ for /f %%i in ('git status --short ^| find /c /v ""') do set MUDANCAS=%%i
 if %MUDANCAS%==0 (
     echo [OK] Nada mudou. Nenhum commit necessario.
     echo.
-    pause
+    timeout /t 4 >nul
     exit /b 0
 )
 
-REM ---- Confirma antes ------------------------------------------------
-echo.
-set /p CONF="Confirma o commit desses arquivos? (S/N): "
-if /i not "!CONF!"=="S" (
-    echo.
-    echo Cancelado.
-    pause
-    exit /b 0
+REM ---- Monta a mensagem ----------------------------------------------
+REM Prioridade: 1) o que voce passou na linha de comando
+REM             2) a APP_VERSION do index.html
+REM             3) data e hora, se as duas falharem
+set "MSG=%~1"
+
+if "!MSG!"=="" (
+    REM A linha procurada e:   APP_VERSION: '1.0.0-alpha.sprintX',
+    REM O delimitador ' separa: [1] antes  [2] a versao  [3] depois
+    for /f "tokens=2 delims='" %%v in ('findstr /C:"APP_VERSION: '" index.html 2^>nul') do (
+        if not defined VERSAO set "VERSAO=%%v"
+    )
+    if defined VERSAO set "MSG=Publica !VERSAO!"
 )
 
-REM ---- Pega mensagem do commit --------------------------------------
-echo.
-set /p MSG="Mensagem do commit (Enter pra usar 'Ajuste rapido'): "
-if "!MSG!"=="" set MSG=Ajuste rapido
+if "!MSG!"=="" (
+    REM Sem versao legivel no arquivo - nao deixa o commit sem identificacao.
+    set "MSG=Ajuste rapido %DATE% %TIME:~0,5%"
+)
 
-echo.
-echo ======================================================================
-echo   git add . ^&^& git commit -m "!MSG!" ^&^& git push
-echo ======================================================================
+echo Mensagem: !MSG!
 echo.
 
 git add .
 if errorlevel 1 (
-    echo [AVISO] git add . falhou - tentando commitar so o index.html que ja foi adicionado.
+    echo [AVISO] git add . falhou - seguindo com o index.html que ja foi adicionado.
 )
 
 git commit -m "!MSG!"
 if errorlevel 1 (
     echo.
-    echo [AVISO] Falha ao commitar. Pode ser que nao ha nada pra commitar.
+    echo [ERRO] Falha ao commitar.
     pause
     exit /b 1
 )
 
-REM Sprint 9.32.120: git pull --rebase ANTES do push pra evitar erro "rejected (fetch first)"
-REM Acontece quando algum commit foi feito no GitHub web (ex: criar CNAME) e nao foi baixado localmente.
+REM Sprint 9.32.120: git pull --rebase ANTES do push pra evitar "rejected (fetch first)"
+REM Acontece quando algum commit foi feito no GitHub web e nao foi baixado aqui.
 echo.
 echo Sincronizando com o GitHub (pull --rebase)...
 git pull --rebase origin main
@@ -162,8 +177,11 @@ echo ======================================================================
 echo   SUCESSO! Mudancas no ar.
 echo ======================================================================
 echo.
-echo   https://benlogistica.github.io/visitas
+echo   !MSG!
+echo.
+echo   https://www.benlogistica.com.br
 echo   (aguarde 1-2 min pro GitHub Pages publicar)
 echo.
-pause
+echo   Fechando...
+timeout /t 5 >nul
 exit /b 0
