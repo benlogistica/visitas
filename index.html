@@ -8410,7 +8410,7 @@ mark.search-hl {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.450-ajustes',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.451-cidades',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -22543,6 +22543,117 @@ const ConfigMeta = {
     tipo: 'boolean',
     defaultValue: true,
   },
+};
+
+/* ==========================================================================
+   SANEAMENTO DO CAMPO CIDADE — Sprint 9.32.451
+   --------------------------------------------------------------------------
+   O cadastro tinha 44 grafias para ~25 cidades reais: "Santos"/"SANTOS",
+   "Praia grande"/"Praia Grande", "Santoa", "Sants", "PG", "Sp", "Teste".
+   Isso bagunca o mapa do dashboard, o agrupamento por cidade nos relatorios e
+   o seletor de previsao do tempo.
+
+   Em vez de arrumar uma vez e o problema voltar na proxima instituicao
+   cadastrada, a ferramenta fica aqui: o admin abre, ve o que esta fora do
+   padrao e corrige. A regra de qual grafia e' a certa mora no banco
+   (cidades_para_revisar), nao aqui.
+   ========================================================================== */
+async function renderPainelCidades() {
+  const el = document.getElementById('cidadesRevisarBox');
+  if (!el) return;
+  el.innerHTML = `<div style="padding:18px;text-align:center;color:var(--neutral-500);font-size:12.5px;">Conferindo o cadastro...</div>`;
+
+  let linhas = [];
+  try {
+    const { data, error } = await db.rpc('cidades_para_revisar');
+    if (error) throw new Error(error.message);
+    linhas = data || [];
+  } catch (e) {
+    el.innerHTML = `<div style="padding:16px;color:var(--status-danger);font-size:12.5px;">Não consegui conferir: ${(e.message||'').replace(/</g,'&lt;')}</div>`;
+    return;
+  }
+
+  const problemas = linhas.filter(l => l.motivo !== 'sozinha');
+  const sozinhas  = linhas.filter(l => l.motivo === 'sozinha');
+
+  if (problemas.length === 0) {
+    el.innerHTML = `
+      <div style="padding:20px;text-align:center;">
+        <span class="material-symbols-rounded" style="font-size:34px;color:var(--brand-lime);">verified</span>
+        <div style="margin-top:7px;font-size:13.5px;font-weight:700;color:var(--brand-navy);">Cadastro de cidades está limpo</div>
+        <div style="font-size:12px;color:var(--neutral-500);margin-top:3px;">Nenhuma cidade escrita de dois jeitos diferentes.</div>
+      </div>`;
+    return;
+  }
+
+  const esc = (t) => String(t || '').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+
+  const linhaHtml = (l) => {
+    const variantes = String(l.grafias || '').split(' | ');
+    const temSugestao = !!l.sugestao;
+    const ehSuspeita = l.motivo === 'suspeita';
+    return `
+      <div style="padding:12px 15px;border-top:1px solid var(--neutral-100);display:grid;grid-template-columns:1fr 220px;gap:14px;align-items:center;">
+        <div style="min-width:0;">
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:5px;">
+            ${variantes.map(v => `<span style="font-family:'JetBrains Mono',monospace;font-size:11.5px;background:${v === l.sugestao ? '#F0F7E1' : 'var(--neutral-100)'};color:${v === l.sugestao ? '#27500A' : 'var(--neutral-600)'};padding:2px 8px;border-radius:5px;">${esc(v)}</span>`).join('')}
+          </div>
+          <div style="font-size:11.5px;color:var(--neutral-500);">
+            ${l.instituicoes} instituição${l.instituicoes === 1 ? '' : 'ões'}
+            ${ehSuspeita ? ' · <strong style="color:#B45309;">não parece nome de cidade</strong>' : ''}
+          </div>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <input type="text" value="${esc(l.sugestao || '')}" placeholder="Escreva a cidade certa"
+                 data-de="${esc(variantes[0])}"
+                 style="flex:1;min-width:0;padding:8px 10px;border:1.5px solid ${temSugestao ? 'var(--neutral-200)' : '#FCD9A0'};border-radius:8px;font-size:12.5px;font-family:inherit;color:var(--brand-navy);background:var(--neutral-0);">
+          <button type="button" onclick="window.cidadePadronizar(this)"
+                  style="height:34px;padding:0 12px;border-radius:8px;border:0;background:var(--brand-lime);color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;">Aplicar</button>
+        </div>
+      </div>`;
+  };
+
+  el.innerHTML = `
+    <div style="padding:12px 15px;background:#FFF8EE;border-bottom:1px solid #FCD9A0;font-size:12.5px;color:#854F0B;line-height:1.5;">
+      <strong>${problemas.length} ${problemas.length === 1 ? 'cidade precisa' : 'cidades precisam'} de atenção.</strong>
+      Cidade escrita de dois jeitos vira duas cidades no mapa e nos relatórios.
+    </div>
+    ${problemas.map(linhaHtml).join('')}
+    ${sozinhas.length > 0 ? `
+      <details style="border-top:1px solid var(--neutral-200);">
+        <summary style="padding:11px 15px;cursor:pointer;font-size:12.5px;color:var(--neutral-600);">
+          ${sozinhas.length} ${sozinhas.length === 1 ? 'cidade com uma instituição só' : 'cidades com uma instituição só'} · pode ser digitação errada, pode ser legítimo
+        </summary>
+        ${sozinhas.map(linhaHtml).join('')}
+      </details>` : ''}`;
+}
+
+window.cidadePadronizar = async function(btn) {
+  const campo = btn.parentElement.querySelector('input');
+  const de = campo.dataset.de;
+  const para = (campo.value || '').trim();
+  if (!para) { campo.style.borderColor = 'var(--status-danger)'; campo.focus(); return; }
+
+  const ok = await showModalConfirmacao({
+    icone: 'edit_location_alt', iconeCor: 'info',
+    titulo: `Padronizar para "${para}"?`,
+    subtitulo: 'Todas as instituições que hoje usam alguma variação desse nome passam a usar esta grafia.',
+    btnConfirmar: 'Padronizar', btnCancelar: 'Cancelar',
+  });
+  if (!ok) return;
+
+  btn.disabled = true; btn.textContent = '...';
+  try {
+    const { data, error } = await db.rpc('cidade_padronizar', { p_de: de, p_para: para });
+    if (error) throw new Error(error.message);
+    setFlash('success', `${data} instituiç${data === 1 ? 'ão atualizada' : 'ões atualizadas'}.`);
+    // A lista de cidades do cartao da home vira obsoleta depois disto.
+    window._rotCidades = null;
+    renderPainelCidades();
+  } catch (e) {
+    setFlash('error', 'Não consegui padronizar: ' + e.message);
+    btn.disabled = false; btn.textContent = 'Aplicar';
+  }
 };
 
 const ConfigCategorias = {
@@ -59845,6 +59956,7 @@ function renderAdminConfigDesktop() {
   setTimeout(() => {
     atualizarBadgesSidebarDesktop();
     carregarAdminConfigDesktop();
+    renderPainelCidades();
   }, 0);
 
   const content = `
@@ -59872,6 +59984,24 @@ function renderAdminConfigDesktop() {
         </div>
         <span class="material-symbols-rounded" style="font-size:20px;color:var(--brand-lime);">arrow_forward</span>
       </a>
+
+      <!-- Sprint 9.32.451: saneamento do campo cidade -->
+      <div style="background:#fff;border:1px solid var(--neutral-200);border-radius:12px;overflow:hidden;">
+        <div style="display:flex;align-items:center;gap:13px;padding:15px 20px;border-bottom:1px solid var(--neutral-200);">
+          <div style="width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,#38BDF8 0%,#0284C7 100%);color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <span class="material-symbols-rounded" style="font-size:21px;">location_city</span>
+          </div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-family:'Poppins',sans-serif;font-weight:700;font-size:14.5px;color:var(--brand-navy);">Padronizar cidades</div>
+            <div style="font-size:12.5px;color:var(--neutral-600);margin-top:2px;">A mesma cidade escrita de jeitos diferentes vira duas no mapa e nos relatórios.</div>
+          </div>
+          <button type="button" onclick="renderPainelCidades()" title="Conferir de novo"
+                  style="width:36px;height:36px;border-radius:9px;border:1px solid var(--neutral-200);background:#fff;color:var(--neutral-600);cursor:pointer;display:flex;align-items:center;justify-content:center;">
+            <span class="material-symbols-rounded" style="font-size:19px;">refresh</span>
+          </button>
+        </div>
+        <div id="cidadesRevisarBox"></div>
+      </div>
 
       <!-- Grid de categorias (2 colunas em telas grandes) -->
       <div id="dsdConfBody" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(420px,1fr));gap:18px;">
