@@ -8410,7 +8410,7 @@ mark.search-hl {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.448-rotativo',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.450-ajustes',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -22502,7 +22502,7 @@ const ConfigMeta = {
   tempo_cidade: {
     titulo: 'Cidade da previsão do tempo',
     descricao: 'Cidade mostrada no cartão que gira na home do profissional (celular). Pode escrever "Santos, SP" ou "Praia Grande, SP" — a sigla do estado é expandida automaticamente.<br><br>Se alguma cidade vier errada, use as coordenadas no formato <code>-23.9608,-46.3336</code>, que não têm ambiguidade.<br><br>A previsão é atualizada a cada 30 minutos.',
-    categoria: 'geral',
+    categoria: 'home',
     tipo: 'text',
     placeholder: 'Santos, SP',
   },
@@ -22552,6 +22552,7 @@ const ConfigCategorias = {
   ia:         { titulo: 'Inteligência Artificial', icone: 'smart_toy', cor: 'warning' },
   voz:        { titulo: 'Ditado por voz', icone: 'mic', cor: 'brand-lime' },
   email:      { titulo: 'E-mail (testar envio)', icone: 'mail', cor: 'navy' },
+  home:       { titulo: 'Tela inicial do profissional', icone: 'partly_cloudy_day', cor: 'info' },
 };
 
 // Carrega todas as configs (com cache)
@@ -24979,6 +24980,57 @@ async function carregarHomeHojeNutri() {
    · Se a previsao falhar, o cartao do tempo simplesmente nao entra na roda.
      Melhor girar entre dois do que mostrar "erro ao carregar" a cada 20s.
    ========================================================================== */
+/* --------------------------------------------------------------------------
+   PREFERENCIAS DO CARTAO — Sprint 9.32.450
+   Cada pessoa escolhe a propria cidade e o proprio ritmo. Fica no aparelho
+   (localStorage), nao no banco: e' gosto pessoal, muda pouco, e guardar no
+   banco significaria uma escrita por pessoa e mais uma tabela para manter.
+
+   A cidade escolhida vai como parametro para a Edge Function, que so aceita
+   cidade onde a equipe atende. Chute de cidade cai no padrao do admin.
+   -------------------------------------------------------------------------- */
+const ROT_PREF_CHAVE = 'bn_cartao_home';
+
+function rotPrefs() {
+  try {
+    const o = JSON.parse(localStorage.getItem(ROT_PREF_CHAVE) || '{}');
+    return {
+      segundos: [0, 10, 20, 40].includes(Number(o.segundos)) ? Number(o.segundos) : 20,
+      cidade: typeof o.cidade === 'string' ? o.cidade : '',
+    };
+  } catch (e) { return { segundos: 20, cidade: '' }; }
+}
+
+function rotSalvarPrefs(p) {
+  try { localStorage.setItem(ROT_PREF_CHAVE, JSON.stringify(p)); } catch (e) {}
+}
+
+// Lista limpa para o seletor. O campo `cidade` das instituicoes tem 44 valores
+// para ~25 cidades reais ("Santoa", "Sants", "PG", "Sp", "Teste"), entao aqui
+// normalizamos e descartamos o que claramente nao e' nome de cidade. Sem isso,
+// a pessoa escolheria entre "Santoa" e "Sants".
+async function rotCidadesDisponiveis() {
+  if (window._rotCidades) return window._rotCidades;
+  try {
+    const { data } = await db.from('instituicoes').select('cidade').eq('ativo', true).limit(2000);
+    const vistas = new Map();
+    (data || []).forEach(({ cidade }) => {
+      const bruto = String(cidade || '').trim();
+      if (bruto.length < 4) return;                       // "SP", "PG"
+      if (/^teste/i.test(bruto)) return;
+      const limpo = bruto.toLowerCase().split(/\s+/)
+        .map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+      const chave = limpo.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+      // Guarda a grafia mais frequente de cada cidade.
+      const atual = vistas.get(chave);
+      vistas.set(chave, atual ? { nome: atual.nome, n: atual.n + 1 } : { nome: limpo, n: 1 });
+    });
+    // Cidade com uma aparicao so' costuma ser erro de digitacao.
+    window._rotCidades = [...vistas.values()].filter(v => v.n >= 2).map(v => v.nome).sort();
+    return window._rotCidades;
+  } catch (e) { return []; }
+}
+
 const TempoCache = { dados: null, em: 0, ttl: 15 * 60 * 1000, buscando: null };
 
 async function carregarTempoAgora() {
@@ -24987,7 +25039,9 @@ async function carregarTempoAgora() {
 
   // A Edge Function guarda a chave e ja devolve com cache de 30 min do lado de
   // la. Este cache aqui e' so' para nao repetir a chamada dentro da sessao.
-  const url = CONFIG.SUPABASE_URL.replace(/\/$/, '') + '/functions/v1/tempo-agora';
+  const cid = rotPrefs().cidade;
+  const url = CONFIG.SUPABASE_URL.replace(/\/$/, '') + '/functions/v1/tempo-agora'
+            + (cid ? ('?cidade=' + encodeURIComponent(cid + ', SP')) : '');
   TempoCache.buscando = fetch(url)
     .then(r => (r.ok ? r.json() : null))
     .then(d => {
@@ -25002,7 +25056,6 @@ async function carregarTempoAgora() {
 }
 
 const RotHome = { cartoes: [], i: 0, timer: null, relogio: null, pausado: false };
-const ROT_MS = 20000;
 
 function _rotCartaoFrase(frase) {
   const autorHtml = frase.autor
@@ -25065,7 +25118,14 @@ function _rotCartaoData() {
 function _rotPintar() {
   const el = document.getElementById('fraseDoDiaCard');
   if (!el || RotHome.cartoes.length === 0) return;
-  el.innerHTML = RotHome.cartoes[RotHome.i]();
+  // A engrenagem fica no canto, discreta. Tocar no cartao inteiro seria pior:
+  // a pessoa esbarraria sem querer ao rolar a tela.
+  el.innerHTML = RotHome.cartoes[RotHome.i]() + `
+    <button type="button" onclick="window.rotAbrirAjustes()" title="Ajustar cartão"
+            aria-label="Ajustar cartão"
+            style="position:absolute;top:8px;right:8px;width:26px;height:26px;border-radius:50%;border:0;background:transparent;color:var(--neutral-300);cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;z-index:2;">
+      <span class="material-symbols-rounded" style="font-size:16px;">tune</span>
+    </button>`;
   const pts = document.getElementById('rotPontos');
   if (pts) {
     pts.innerHTML = RotHome.cartoes.length > 1
@@ -25076,15 +25136,99 @@ function _rotPintar() {
 
 function _rotReiniciar() {
   clearInterval(RotHome.timer);
-  if (RotHome.cartoes.length < 2) return;
+  const seg = rotPrefs().segundos;
+  // 0 = so' manual: a pessoa troca pelos pontinhos quando quiser.
+  if (seg === 0 || RotHome.cartoes.length < 2) return;
   RotHome.timer = setInterval(() => {
     if (RotHome.pausado) return;
     RotHome.i = (RotHome.i + 1) % RotHome.cartoes.length;
     _rotPintar();
-  }, ROT_MS);
+  }, seg * 1000);
 }
 
 window.rotIrPara = function(k) { RotHome.i = k; _rotPintar(); _rotReiniciar(); };
+
+/* A tela de ajustes do cartao. Aberta pela engrenagem, nao pelo cartao todo:
+   tocar no cartao inteiro faria a pessoa abrir sem querer ao rolar a home. */
+window.rotAbrirAjustes = async function() {
+  const p = rotPrefs();
+  const ehCelular = (typeof isDesktop === 'function') ? !isDesktop() : (window.innerWidth < 1024);
+  const cidades = ehCelular ? await rotCidadesDisponiveis() : [];
+  const padraoAdmin = (typeof getConfigSync === 'function' ? getConfigSync('tempo_cidade', 'Santos, SP') : 'Santos, SP');
+
+  const ritmos = [
+    { v: 10, r: '10s' }, { v: 20, r: '20s' }, { v: 40, r: '40s' }, { v: 0, r: 'Só no toque' },
+  ];
+
+  const back = document.createElement('div');
+  back.className = 'modal-backdrop';
+  back.innerHTML = `
+    <div class="modal-card" style="max-width:400px;">
+      <div class="modal-card__header">
+        <div class="modal-card__icon" style="background:#E4ECFD;color:var(--status-info);">
+          <span class="material-symbols-rounded">tune</span>
+        </div>
+        <div class="modal-card__title">Ajustar o cartão</div>
+      </div>
+      <div style="padding:4px 2px 2px;">
+        <div style="font-size:11px;font-weight:700;color:var(--neutral-500);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">Trocar a cada</div>
+        <div style="display:flex;gap:7px;margin-bottom:18px;flex-wrap:wrap;">
+          ${ritmos.map(t => `
+            <button type="button" data-seg="${t.v}" class="rot-opt"
+                    style="flex:1;min-width:70px;height:38px;border-radius:9px;font-size:12.5px;font-weight:700;font-family:inherit;cursor:pointer;
+                           border:1.5px solid ${p.segundos === t.v ? 'var(--brand-navy)' : 'var(--neutral-200)'};
+                           background:${p.segundos === t.v ? 'var(--brand-navy)' : 'var(--neutral-0)'};
+                           color:${p.segundos === t.v ? '#fff' : 'var(--neutral-600)'};">${t.r}</button>`).join('')}
+        </div>
+
+        ${ehCelular ? `
+          <div style="font-size:11px;font-weight:700;color:var(--neutral-500);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">Cidade da previsão</div>
+          <select id="rotCidade" style="width:100%;padding:11px 12px;border:1.5px solid var(--neutral-200);border-radius:9px;font-size:14px;font-family:inherit;background:var(--neutral-0);color:var(--brand-navy);">
+            <option value="">Padrão da empresa (${String(padraoAdmin).replace(/</g,'&lt;')})</option>
+            ${cidades.map(c => `<option value="${c.replace(/"/g,'&quot;')}"${p.cidade === c ? ' selected' : ''}>${c.replace(/</g,'&lt;')}</option>`).join('')}
+          </select>
+          <div style="font-size:11px;color:var(--neutral-500);line-height:1.5;margin-top:7px;">
+            Só as cidades onde a equipe atende. A escolha vale neste aparelho.
+          </div>
+        ` : ''}
+
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:20px;">
+          <button type="button" id="rotCancel" style="background:transparent;color:var(--neutral-600);border:1.5px solid var(--neutral-200);padding:9px 16px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">Cancelar</button>
+          <button type="button" id="rotOk" style="background:var(--brand-lime);color:#fff;border:0;padding:9px 18px;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">Salvar</button>
+        </div>
+      </div>
+    </div>`;
+  document.body.appendChild(back);
+
+  let seg = p.segundos;
+  back.querySelectorAll('.rot-opt').forEach(b => {
+    b.onclick = () => {
+      seg = Number(b.dataset.seg);
+      back.querySelectorAll('.rot-opt').forEach(o => {
+        const on = Number(o.dataset.seg) === seg;
+        o.style.borderColor = on ? 'var(--brand-navy)' : 'var(--neutral-200)';
+        o.style.background  = on ? 'var(--brand-navy)' : 'var(--neutral-0)';
+        o.style.color       = on ? '#fff' : 'var(--neutral-600)';
+      });
+    };
+  });
+
+  const fechar = () => back.remove();
+  back.querySelector('#rotCancel').onclick = fechar;
+  back.onclick = (e) => { if (e.target === back) fechar(); };
+
+  back.querySelector('#rotOk').onclick = () => {
+    const cidade = back.querySelector('#rotCidade')?.value || '';
+    const mudouCidade = cidade !== p.cidade;
+    rotSalvarPrefs({ segundos: seg, cidade });
+    fechar();
+
+    // Cidade nova exige buscar de novo: o cache em memoria e da cidade antiga.
+    if (mudouCidade) { TempoCache.dados = null; TempoCache.em = 0; }
+    if (typeof carregarFraseDoDia === 'function') carregarFraseDoDia();
+    if (typeof setFlash === 'function') setFlash('success', 'Cartão ajustado.');
+  };
+};
 
 // Popula o card de frase do dia na home
 async function carregarFraseDoDia() {
