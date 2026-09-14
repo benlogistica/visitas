@@ -1401,6 +1401,12 @@ a {
 }
 .leaflet-top .leaflet-control-zoom { margin: 12px 0 0 12px; }
 
+/* Sprint 9.32.448: entrada do cartao rotativo. Sem a transicao, a troca a cada
+   20s pareceria um defeito de renderizacao em vez de uma escolha. */
+.rot-slot { animation: rotEntra 420ms ease both; }
+@keyframes rotEntra { from { opacity: 0; transform: translateY(7px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .rot-slot { animation: none; } }
+
 .rolax-wrap { position: relative; }
 
 .rolax-seta {
@@ -8404,7 +8410,7 @@ mark.search-hl {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.443-motivo',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.448-rotativo',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -17257,7 +17263,13 @@ function renderAdminRevisaoDesktop() {
           <button style="display:inline-flex;align-items:center;gap:5px;background:transparent;border:0;color:var(--neutral-600);font-size:12.5px;font-weight:600;font-family:inherit;cursor:pointer;padding:6px 8px;" onclick="exportarRevisaoCsvDesktop()">
             <span class="material-symbols-rounded" style="font-size:15px;">download</span>Exportar
           </button>
-          <button style="display:inline-flex;align-items:center;gap:5px;background:var(--brand-navy);color:#fff;border:0;padding:7px 14px;border-radius:9999px;font-size:12.5px;font-weight:600;font-family:inherit;cursor:pointer;" onclick="aprovarLoteSemCriticasDesktop()">
+          <!-- Sprint 9.32.444: o numero vem do proprio filtro, preenchido pelo
+               renderizador da lista. Rotulo com conta fixa mentiria assim que
+               o filtro mudasse. -->
+          <button id="btnAprovarSoInfo" style="display:none;align-items:center;gap:5px;background:var(--brand-lime);color:#fff;border:0;padding:7px 14px;border-radius:9999px;font-size:12.5px;font-weight:600;font-family:inherit;cursor:pointer;" onclick="aprovarLoteSemCriticasDesktop('info')" title="Aprova só as visitas cuja pior marca é informativa: check-in manual e leitura imprecisa">
+            <span class="material-symbols-rounded" style="font-size:15px;">check_circle</span><span id="btnAprovarSoInfoTxt">Aprovar informativas</span>
+          </button>
+          <button style="display:inline-flex;align-items:center;gap:5px;background:var(--brand-navy);color:#fff;border:0;padding:7px 14px;border-radius:9999px;font-size:12.5px;font-weight:600;font-family:inherit;cursor:pointer;" onclick="aprovarLoteSemCriticasDesktop()" title="Aprova tudo que não tem flag crítica, incluindo as de atenção">
             <span class="material-symbols-rounded" style="font-size:15px;">done_all</span>Aprovar tudo sem flags críticas
           </button>
         </div>
@@ -17463,6 +17475,17 @@ async function carregarAdminRevisaoDesktop() {
 
     // Guarda lista atual pra ações em massa
     window._reviewDesktopCurrent = filtradas;
+
+    // Sprint 9.32.444: o botao "Aprovar informativas" mostra a conta exata e
+    // some quando nao ha nenhuma — botao que nao faz nada e' pior que ausente.
+    (() => {
+      const btn = document.getElementById('btnAprovarSoInfo');
+      const txt = document.getElementById('btnAprovarSoInfoTxt');
+      if (!btn || !txt) return;
+      const n = filtradas.filter(v => !v._emAndamento && (v._nivel === 'info' || v._nivel === null)).length;
+      btn.style.display = n > 0 ? 'inline-flex' : 'none';
+      txt.textContent = `Aprovar ${n} informativa${n === 1 ? '' : 's'}`;
+    })();
   } catch (err) {
     listEl.innerHTML = `<div style="padding:20px;background:var(--status-danger-bg,#FCE8E8);color:var(--status-danger);border-radius:12px;">Erro: ${err.message}</div>`;
   }
@@ -17575,7 +17598,7 @@ function renderPainelQualidade(dados, compacto) {
     const rotulo = ac.tom === 'ok' ? 'Nada a cobrar' : (ac.tom === 'olhar' ? 'Olhar, não cobrar' : 'Passar para a pessoa');
 
     return `
-      <div style="display:grid;grid-template-columns:180px 1fr 300px;gap:14px;align-items:center;padding:10px 16px;border-top:1px solid var(--neutral-100);">
+      <div style="display:grid;grid-template-columns:${compacto ? '1fr' : '180px 1fr 300px'};gap:${compacto ? '10px' : '14px'};align-items:${compacto ? 'stretch' : 'center'};padding:${compacto ? '12px 14px' : '10px 16px'};border-top:1px solid var(--neutral-100);">
         <div style="display:flex;align-items:center;gap:9px;min-width:0;">
           <div style="width:28px;height:28px;border-radius:50%;background:var(--brand-navy);color:#fff;display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:700;font-family:'Poppins',sans-serif;flex-shrink:0;">${iniciais(r.nome)}</div>
           <div style="min-width:0;">
@@ -17585,7 +17608,7 @@ function renderPainelQualidade(dados, compacto) {
         </div>
         <div style="display:flex;flex-direction:column;gap:5px;min-width:0;">
           ${ind.map(i => `
-            <div style="display:grid;grid-template-columns:118px 1fr 74px;gap:9px;align-items:center;font-size:11px;">
+            <div style="display:grid;grid-template-columns:${compacto ? '104px 1fr 70px' : '118px 1fr 74px'};gap:${compacto ? '7px' : '9px'};align-items:center;font-size:11px;">
               <span style="color:var(--neutral-500);white-space:nowrap;">${i.rot}</span>
               <div style="height:7px;background:var(--neutral-100);border-radius:4px;overflow:hidden;">
                 <div style="height:100%;width:${Math.min(100, Number(i.v || 0))}%;background:${i.c.b};border-radius:4px;"></div>
@@ -17605,8 +17628,8 @@ function renderPainelQualidade(dados, compacto) {
       <button type="button" onclick="window.qeAlternarPainel()"
               style="width:100%;display:flex;align-items:center;gap:11px;padding:11px 16px;background:${aberto ? 'var(--neutral-50,#FAFBFD)' : '#FFF8EE'};border:0;${aberto ? 'border-bottom:1px solid var(--neutral-200);' : ''}cursor:pointer;font-family:inherit;text-align:left;">
         <span class="material-symbols-rounded" style="font-size:19px;color:#B45309;flex-shrink:0;">${aberto ? 'insights' : 'error'}</span>
-        <span style="flex:1;min-width:0;font-size:12.5px;color:#854F0B;line-height:1.45;${compacto ? '' : 'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;'}">${manchete}</span>
-        <span style="font-size:11.5px;font-weight:700;color:var(--neutral-600);white-space:nowrap;">${aberto ? 'Fechar' : 'Ver ajustes'}</span>
+        <span style="flex:1;min-width:0;font-size:${compacto ? '12' : '12.5'}px;color:#854F0B;line-height:1.45;${compacto ? '' : 'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;'}">${manchete}</span>
+        <span style="font-size:11.5px;font-weight:700;color:var(--neutral-600);white-space:nowrap;${compacto ? 'display:none;' : ''}">${aberto ? 'Fechar' : 'Ver ajustes'}</span>
         <span class="material-symbols-rounded" style="font-size:19px;color:var(--neutral-400);flex-shrink:0;">${aberto ? 'expand_less' : 'expand_more'}</span>
       </button>
       ${aberto ? linhas + `
@@ -18414,12 +18437,31 @@ window.manterEmRevisaoDesktop = async function(visitaId) {
 };
 
 // Aprovar tudo que não tem flag crítica (ação em massa)
-window.aprovarLoteSemCriticasDesktop = async function() {
+/* Sprint 9.32.444: a aprovacao em lote ganha um segundo modo.
+   ---------------------------------------------------------------------------
+   O modo antigo ('naoCriticas') pergunta se ha flag CRITICA. O problema e' que
+   "critica" so' cobre sem check-in e sem check-out — e numa fila sem nenhuma
+   delas, como a de hoje, o botao libera tudo, inclusive um check-in a 35 km.
+   O rotulo esta' correto e ainda assim engana, porque ninguem le o nome
+   pensando no que ele NAO cobre.
+
+   O modo 'info' pergunta o contrario: existe QUALQUER flag acima de
+   informativa? Se existe, fica de fora. Assim o numero no botao e' sempre
+   exatamente o que vai ser aprovado, nao importa o que haja na fila.
+
+   Informativa = check-in manual e leitura imprecisa. As duas registram algo
+   sem afirmar que houve problema. */
+window.aprovarLoteSemCriticasDesktop = async function(modo) {
   if (await bloqueioSimulacao('aprovar lote')) return;
+  const soInfo = modo === 'info';
   const todas = window._reviewDesktopCurrent || [];
   // Sprint 9.32.59: pula visitas em rascunho ativo (profissional ainda pode editar)
-  const naoCriticas = todas.filter(v => v._nivel !== 'critical' && !v._emAndamento);
+  const elegivel = (v) => !v._emAndamento && (soInfo
+    ? (v._nivel === 'info' || v._nivel === null)
+    : v._nivel !== 'critical');
+  const naoCriticas = todas.filter(elegivel);
   const criticas = todas.filter(v => v._nivel === 'critical');
+  const atencao = todas.filter(v => v._nivel === 'warning' && !v._emAndamento);
   const emAndamento = todas.filter(v => v._emAndamento);
 
   if (todas.length === 0) {
@@ -18428,14 +18470,19 @@ window.aprovarLoteSemCriticasDesktop = async function() {
   }
 
   if (naoCriticas.length === 0) {
-    setFlash('warning', `Nenhuma visita pra aprovar — todas as ${todas.length} têm flag crítica e precisam revisão manual.`);
+    setFlash('warning', soInfo
+      ? `Nenhuma visita só informativa na fila. As ${todas.length} carregadas têm flag de atenção ou crítica.`
+      : `Nenhuma visita pra aprovar: todas as ${todas.length} têm flag crítica e precisam revisão manual.`);
     return;
   }
 
-  // Subtítulo mais informativo se há críticas e/ou em andamento
+  // Subtítulo lista o que fica de fora, para ninguém aprovar achando que levou tudo.
   const partes = [];
   if (criticas.length > 0) {
     partes.push(`${criticas.length} com flag crítica`);
+  }
+  if (soInfo && atencao.length > 0) {
+    partes.push(`${atencao.length} com flag de atenção`);
   }
   if (emAndamento.length > 0) {
     partes.push(`${emAndamento.length} em andamento (profissional ainda editando)`);
@@ -22452,6 +22499,13 @@ const ConfigMeta = {
       { valor: 'claude-haiku-4-5', label: 'Claude Haiku 4.5 (mais rápido)' },
     ],
   },
+  tempo_cidade: {
+    titulo: 'Cidade da previsão do tempo',
+    descricao: 'Cidade mostrada no cartão que gira na home do profissional (celular). Pode escrever "Santos, SP" ou "Praia Grande, SP" — a sigla do estado é expandida automaticamente.<br><br>Se alguma cidade vier errada, use as coordenadas no formato <code>-23.9608,-46.3336</code>, que não têm ambiguidade.<br><br>A previsão é atualizada a cada 30 minutos.',
+    categoria: 'geral',
+    tipo: 'text',
+    placeholder: 'Santos, SP',
+  },
   groq_api_key: {
     titulo: 'Chave da Groq (ditado por voz)',
     descricao: 'Necessária para o ditado por voz no relatório de visita usar Whisper Large v3. A chave começa com <code>gsk_</code> e fica salva apenas neste sistema.<br><br><strong>Atalhos úteis:</strong><br>• <a href="https://console.groq.com/keys" target="_blank" rel="noopener" style="color:var(--brand-lime);text-decoration:underline;">🔑 Criar/gerenciar chaves</a><br>• <a href="https://console.groq.com/dashboard/usage" target="_blank" rel="noopener" style="color:var(--brand-lime);text-decoration:underline;">📊 Ver consumo da API (dashboard)</a><br>• <a href="https://console.groq.com/settings/limits" target="_blank" rel="noopener" style="color:var(--brand-lime);text-decoration:underline;">⚡ Limites do free tier</a>',
@@ -24906,6 +24960,132 @@ async function carregarHomeHojeNutri() {
   });
 }
 
+/* ==========================================================================
+   CARTAO ROTATIVO DA HOME — Sprint 9.32.448
+   --------------------------------------------------------------------------
+   O cartao da frase do dia passa a alternar entre tres conteudos a cada 20
+   segundos: a frase, a previsao do tempo e a data com a hora.
+
+   DECISOES QUE PARECEM DETALHE E NAO SAO
+
+   · Comeca sorteado. Se comecasse sempre pela frase, quem abre o sistema e
+     fecha em 10 segundos nunca veria as outras duas.
+   · Pausa no hover e com a aba escondida. Sem a segunda, o sistema aberto o
+     dia inteiro giraria centenas de vezes e chamaria o tempo a toa.
+   · O relogio acerta de minuto em minuto, nao de segundo em segundo: numero
+     mudando sozinho puxa o olho de quem esta preenchendo relatorio.
+   · O tempo so entra no CELULAR. Quem esta na rua decide se leva guarda-chuva;
+     quem esta na mesa olha pela janela.
+   · Se a previsao falhar, o cartao do tempo simplesmente nao entra na roda.
+     Melhor girar entre dois do que mostrar "erro ao carregar" a cada 20s.
+   ========================================================================== */
+const TempoCache = { dados: null, em: 0, ttl: 15 * 60 * 1000, buscando: null };
+
+async function carregarTempoAgora() {
+  if (TempoCache.dados && (Date.now() - TempoCache.em) < TempoCache.ttl) return TempoCache.dados;
+  if (TempoCache.buscando) return TempoCache.buscando;
+
+  // A Edge Function guarda a chave e ja devolve com cache de 30 min do lado de
+  // la. Este cache aqui e' so' para nao repetir a chamada dentro da sessao.
+  const url = CONFIG.SUPABASE_URL.replace(/\/$/, '') + '/functions/v1/tempo-agora';
+  TempoCache.buscando = fetch(url)
+    .then(r => (r.ok ? r.json() : null))
+    .then(d => {
+      if (!d || d.erro) return null;
+      TempoCache.dados = d; TempoCache.em = Date.now();
+      return d;
+    })
+    .catch(() => null)
+    .finally(() => { TempoCache.buscando = null; });
+
+  return TempoCache.buscando;
+}
+
+const RotHome = { cartoes: [], i: 0, timer: null, relogio: null, pausado: false };
+const ROT_MS = 20000;
+
+function _rotCartaoFrase(frase) {
+  const autorHtml = frase.autor
+    ? `<div style="font-size:11.5px;color:var(--neutral-500);margin-top:8px;font-style:italic;">${frase.autor.replace(/</g,'&lt;')}</div>`
+    : '';
+  return `
+    <div style="position:absolute;top:-22px;right:-6px;font-family:'Poppins',serif;font-size:130px;line-height:1;color:rgba(139,198,63,0.18);font-weight:800;user-select:none;pointer-events:none;">"</div>
+    <div class="rot-slot" style="position:relative;display:flex;gap:13px;align-items:flex-start;">
+      <div style="width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,var(--brand-lime) 0%,#6FAD28 100%);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 4px 12px rgba(139,198,63,0.4);">
+        <span class="material-symbols-rounded" style="font-size:20px;color:#fff;">format_quote</span>
+      </div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:10px;font-weight:700;color:var(--brand-lime);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">Frase do dia</div>
+        <div style="font-size:14px;color:var(--brand-navy);font-weight:500;line-height:1.5;font-family:'Poppins',sans-serif;">${frase.texto.replace(/</g,'&lt;')}</div>
+        ${autorHtml}
+      </div>
+    </div>`;
+}
+
+function _rotCartaoTempo(t) {
+  const local = [t.cidade, t.uf].filter(Boolean).join(' · ');
+  return `
+    <div class="rot-slot" style="position:relative;display:flex;gap:13px;align-items:flex-start;">
+      <div style="width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,#38BDF8 0%,#0284C7 100%);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 4px 12px rgba(56,189,248,0.4);">
+        <span class="material-symbols-rounded" style="font-size:20px;color:#fff;">${t.icone || 'cloud'}</span>
+      </div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:10px;font-weight:700;color:#0284C7;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">Tempo em ${String(t.cidade || '').replace(/</g,'&lt;')}</div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:30px;font-weight:700;color:var(--brand-navy);line-height:1;">${t.temp}<span style="font-size:15px;font-weight:500;">°C</span>
+          <span style="font-family:'Poppins',sans-serif;font-size:13.5px;font-weight:500;color:var(--neutral-600);margin-left:7px;">${String(t.descricao || '').replace(/</g,'&lt;')}</span>
+        </div>
+        <div style="font-size:11.5px;color:var(--neutral-500);margin-top:5px;line-height:1.5;">
+          ${t.chuva}% de chance de chuva
+          <a href="https://www.weatherapi.com/" target="_blank" rel="noopener" style="font-size:9px;color:#AEB6C4;text-decoration:none;margin-left:7px;">dados por WeatherAPI.com</a>
+        </div>
+      </div>
+    </div>`;
+}
+
+const ROT_MESES = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+const ROT_DIAS  = ['domingo','segunda-feira','terça-feira','quarta-feira','quinta-feira','sexta-feira','sábado'];
+
+function _rotCartaoData() {
+  const d = new Date();
+  const hh = String(d.getHours()).padStart(2,'0');
+  const mm = String(d.getMinutes()).padStart(2,'0');
+  return `
+    <div class="rot-slot" style="position:relative;display:flex;gap:13px;align-items:flex-start;">
+      <div style="width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,#A78BFA 0%,#7C3AED 100%);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 4px 12px rgba(167,139,250,0.4);">
+        <span class="material-symbols-rounded" style="font-size:20px;color:#fff;">calendar_month</span>
+      </div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:10px;font-weight:700;color:#7C3AED;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">Agora</div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:30px;font-weight:700;color:var(--brand-navy);line-height:1;">${hh}:${mm}</div>
+        <div style="font-size:12.5px;color:var(--neutral-600);margin-top:5px;">${ROT_DIAS[d.getDay()]}, ${d.getDate()} de ${ROT_MESES[d.getMonth()]} de ${d.getFullYear()}</div>
+      </div>
+    </div>`;
+}
+
+function _rotPintar() {
+  const el = document.getElementById('fraseDoDiaCard');
+  if (!el || RotHome.cartoes.length === 0) return;
+  el.innerHTML = RotHome.cartoes[RotHome.i]();
+  const pts = document.getElementById('rotPontos');
+  if (pts) {
+    pts.innerHTML = RotHome.cartoes.length > 1
+      ? RotHome.cartoes.map((_, k) => `<button type="button" onclick="window.rotIrPara(${k})" aria-label="Cartão ${k+1}" style="width:${k===RotHome.i?'16px':'6px'};height:6px;border-radius:${k===RotHome.i?'3px':'50%'};background:${k===RotHome.i?'var(--brand-lime)':'var(--neutral-200)'};border:0;padding:0;cursor:pointer;transition:all 250ms;"></button>`).join('')
+      : '';
+  }
+}
+
+function _rotReiniciar() {
+  clearInterval(RotHome.timer);
+  if (RotHome.cartoes.length < 2) return;
+  RotHome.timer = setInterval(() => {
+    if (RotHome.pausado) return;
+    RotHome.i = (RotHome.i + 1) % RotHome.cartoes.length;
+    _rotPintar();
+  }, ROT_MS);
+}
+
+window.rotIrPara = function(k) { RotHome.i = k; _rotPintar(); _rotReiniciar(); };
+
 // Popula o card de frase do dia na home
 async function carregarFraseDoDia() {
   const el = document.getElementById('fraseDoDiaCard');
@@ -24921,30 +25101,56 @@ async function carregarFraseDoDia() {
     return;
   }
 
-  const autorHtml = frase.autor
-    ? `<div style="font-size:11.5px;color:var(--neutral-500);margin-top:8px;font-style:italic;">— ${frase.autor.replace(/</g,'&lt;')}</div>`
-    : '';
-
-  el.innerHTML = `
-    <!-- Decorativo: aspa grande ao fundo -->
-    <div style="position:absolute;top:-22px;right:-6px;font-family:'Poppins',serif;font-size:130px;line-height:1;color:rgba(139,198,63,0.18);font-weight:800;user-select:none;pointer-events:none;">"</div>
-
-    <div style="position:relative;display:flex;gap:13px;align-items:flex-start;">
-      <div style="width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,var(--brand-lime) 0%,#6FAD28 100%);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 4px 12px rgba(139,198,63,0.4);">
-        <span class="material-symbols-rounded" style="font-size:20px;color:#fff;">format_quote</span>
-      </div>
-      <div style="flex:1;min-width:0;">
-        <div style="font-size:10px;font-weight:700;color:var(--brand-lime);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">Frase do dia</div>
-        <div style="font-size:14px;color:var(--brand-navy);font-weight:500;line-height:1.5;font-family:'Poppins',sans-serif;">${frase.texto.replace(/</g,'&lt;')}</div>
-        ${autorHtml}
-      </div>
-    </div>
-  `;
+  // Sprint 9.32.448: a frase deixa de ser o unico conteudo. O cartao vira uma
+  // roda de tres: frase, tempo e data.
+  RotHome.cartoes = [() => _rotCartaoFrase(frase), _rotCartaoData];
 
   // Sprint 9.21.4: exibe o wrapper externo (com borda gradiente animada)
   const wrapper = document.getElementById('fraseDoDiaWrapper');
   if (wrapper) wrapper.style.display = 'block';
   el.style.display = 'block';
+
+  // Comeca sorteado. Se comecasse sempre pela frase, quem abre e fecha em dez
+  // segundos nunca veria as outras duas.
+  RotHome.i = Math.floor(Math.random() * RotHome.cartoes.length);
+  _rotPintar();
+  _rotReiniciar();
+
+  // Pausa enquanto a pessoa esta com o dedo ou o mouse em cima: ninguem perde
+  // a frase no meio da leitura porque o timer virou.
+  ['mouseenter', 'touchstart'].forEach(ev =>
+    el.addEventListener(ev, () => { RotHome.pausado = true; }, { passive: true }));
+  ['mouseleave', 'touchend'].forEach(ev =>
+    el.addEventListener(ev, () => { RotHome.pausado = false; }, { passive: true }));
+
+  if (!window._rotVisListener) {
+    // Aba escondida nao gira. Sem isto, o sistema aberto o dia todo giraria
+    // centenas de vezes e o relogio ficaria repintando a toa.
+    document.addEventListener('visibilitychange', () => { RotHome.pausado = document.hidden; });
+    window._rotVisListener = true;
+  }
+
+  // O relogio acerta de minuto em minuto. De segundo em segundo puxaria o olho
+  // de quem esta preenchendo relatorio.
+  clearInterval(RotHome.relogio);
+  RotHome.relogio = setInterval(() => {
+    if (!RotHome.pausado && RotHome.cartoes[RotHome.i] === _rotCartaoData) _rotPintar();
+  }, 30000);
+
+  // O tempo so entra no CELULAR, por decisao do Edu: quem esta na rua decide se
+  // leva guarda-chuva; quem esta na mesa olha pela janela.
+  const ehCelular = (typeof isDesktop === 'function') ? !isDesktop() : (window.innerWidth < 1024);
+  if (!ehCelular) return;
+
+  // Entra depois, quando chegar. Se falhar, a roda fica com dois e ninguem ve
+  // mensagem de erro: previsao e enfeite, nao pode atrapalhar.
+  carregarTempoAgora().then((t) => {
+    if (!t || typeof t.temp !== 'number') return;
+    if (!document.getElementById('fraseDoDiaCard')) return; // trocou de tela
+    RotHome.cartoes = [() => _rotCartaoFrase(frase), () => _rotCartaoTempo(t), _rotCartaoData];
+    _rotPintar();
+    _rotReiniciar();
+  });
 }
 
 /* Sprint 9.32.414 — LEMBRETE DE REVISITA
@@ -25153,8 +25359,10 @@ function renderInicio() {
           <!-- Camada 1: gradient girando (atrás) -->
           <div class="frase-aura" style="position:absolute;inset:-50%;background:conic-gradient(from 0deg, #8BC63F, #22D3EE, #A78BFA, #F472B6, #FCD34D, #8BC63F);animation:fraseAuraSpin 6s linear infinite;"></div>
           <!-- Camada 2: card interno (fundo clarinho quase branco) -->
-          <div id="fraseDoDiaCard" style="position:relative;background:linear-gradient(135deg,#FFFFFF 0%,#F8FAFC 100%);border-radius:16px;padding:18px 18px 18px 20px;box-shadow:0 4px 14px rgba(10,31,92,0.08);overflow:hidden;z-index:1;"></div>
+          <div id="fraseDoDiaCard" style="position:relative;background:linear-gradient(135deg,#FFFFFF 0%,#F8FAFC 100%);border-radius:16px;padding:18px 18px 18px 20px;box-shadow:0 4px 14px rgba(10,31,92,0.08);overflow:hidden;z-index:1;min-height:104px;"></div>
         </div>
+        <!-- Sprint 9.32.448: pontinhos da roda. Ficam vazios se so houver um cartao. -->
+        <div id="rotPontos" style="display:flex;gap:5px;justify-content:center;margin:-8px 0 12px;"></div>
         <style>
           @keyframes fraseAuraSpin {
             from { transform: rotate(0deg); }
@@ -25387,8 +25595,10 @@ function renderInicioNutriDesktop() {
       <!-- Sprint 9.32.232: Frase motivacional do dia (mesmo componente do mobile, largura total entre saudação e KPIs) -->
       <div id="fraseDoDiaWrapper" style="display:none;position:relative;margin:0 0 18px;border-radius:18px;padding:2px;overflow:hidden;">
         <div class="frase-aura" style="position:absolute;inset:-50%;background:conic-gradient(from 0deg, #8BC63F, #22D3EE, #A78BFA, #F472B6, #FCD34D, #8BC63F);animation:fraseAuraSpin 6s linear infinite;"></div>
-        <div id="fraseDoDiaCard" style="position:relative;background:linear-gradient(135deg,#FFFFFF 0%,#F8FAFC 100%);border-radius:16px;padding:18px 18px 18px 20px;box-shadow:0 4px 14px rgba(10,31,92,0.08);overflow:hidden;z-index:1;"></div>
+        <div id="fraseDoDiaCard" style="position:relative;background:linear-gradient(135deg,#FFFFFF 0%,#F8FAFC 100%);border-radius:16px;padding:18px 18px 18px 20px;box-shadow:0 4px 14px rgba(10,31,92,0.08);overflow:hidden;z-index:1;min-height:104px;"></div>
       </div>
+      <!-- Sprint 9.32.448: pontinhos da roda. -->
+      <div id="rotPontos" style="display:flex;gap:5px;justify-content:center;margin:-10px 0 14px;"></div>
       <style>
         @keyframes fraseAuraSpin {
           from { transform: rotate(0deg); }
