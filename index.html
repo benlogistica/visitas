@@ -8404,7 +8404,7 @@ mark.search-hl {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.439-painel',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.443-motivo',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -12729,7 +12729,7 @@ function ordenarPorProximidade(instituicoes, userLat, userLng, raio = 500) {
 }
 
 // CRUD de visitas
-async function criarCheckin({ institucaoId, userPos, objetivoId, observacoes, checkinManual }) {
+async function criarCheckin({ institucaoId, userPos, objetivoId, observacoes, checkinManual, checkinManualMotivo }) {
   console.log('[criarCheckin] INICIO - versão com flags, institucao:', institucaoId, 'manual:', checkinManual, 'temGPS:', !!userPos);
   if (!db) throw new Error('Banco não conectado');
   const user = getCurrentUser();
@@ -12771,6 +12771,7 @@ async function criarCheckin({ institucaoId, userPos, objetivoId, observacoes, ch
     checkin_longitude: userPos ? userPos.lng : null,
     checkin_precisao_metros: userPos ? Math.round(userPos.accuracy) : null,
     checkin_manual: Boolean(checkinManual),
+    checkin_manual_motivo: checkinManual ? (checkinManualMotivo || null) : null,
     flag_gps_divergente: Boolean(flagGpsDivergente),
     flag_horario_fora_margem: false,
     flag_sem_checkin: false,
@@ -12810,6 +12811,7 @@ async function criarCheckin({ institucaoId, userPos, objetivoId, observacoes, ch
       checkin_longitude: userPos ? userPos.lng : null,
       checkin_precisao_metros: userPos ? Math.round(userPos.accuracy) : null,
       checkin_manual: Boolean(checkinManual),
+      checkin_manual_motivo: checkinManual ? (checkinManualMotivo || null) : null,
       flag_gps_divergente: Boolean(flagGpsDivergente),
       flag_horario_fora_margem: false,
       flag_sem_checkin: false,
@@ -17518,9 +17520,9 @@ function _qeAcao(r) {
   const raio        = parseInt(getConfigSync('raio_gps_metros', CONFIG.GPS_RADIUS_METERS || 500), 10);
 
   const itens = [];
-  if (ruins >= 10) itens.push('ligar a <b>localização precisa</b> no celular — ' + ruins + ' leituras vieram com margem alta, valor de quando está desligada');
-  if (semCheckout >= 20) itens.push('<b>fazer o check-out ao sair</b> — ' + Math.round(semCheckout) + '% das visitas ficam abertas');
-  if (manual >= 40) itens.push('usar o <b>check-in por GPS</b> no lugar do manual — ' + Math.round(manual) + '% são manuais, e cada uma vira pendência');
+  if (ruins >= 10) itens.push('ligar a <b>localização precisa</b> no celular. ' + ruins + ' leituras vieram com margem alta, valor de quando está desligada');
+  if (semCheckout >= 20) itens.push('<b>fazer o check-out ao sair</b>: ' + Math.round(semCheckout) + '% das visitas ficam abertas');
+  if (manual >= 40) itens.push('usar o <b>check-in por GPS</b> no lugar do manual: ' + Math.round(manual) + '% são manuais, e cada uma vira pendência');
   if (Number(r.fora_horario || 0) >= 10) itens.push('conferir o <b>horário combinado</b> antes de chegar');
 
   if (itens.length > 0) return { tom: 'ajuste', texto: itens.join('. ') + '.' };
@@ -17530,11 +17532,11 @@ function _qeAcao(r) {
   if (gps > 0 && dist != null && dist < raio * 2) {
     return { tom: 'ok', texto: 'Nada a cobrar. As divergências são de ' + _revFmtDist(dist).v + ' ' + _revFmtDist(dist).u +
             ' em média, com raio de ' + _revFmtDist(raio).v + ' ' + _revFmtDist(raio).u +
-            ' — é estacionamento e entrada lateral. <b>O raio do local é que está apertado.</b>' };
+            '. É estacionamento e entrada lateral. <b>O raio do local é que está apertado.</b>' };
   }
   if (gps > 0 && dist != null && dist >= raio * 2) {
     return { tom: 'olhar', texto: 'Disciplina boa, mas quando diverge, diverge a ' + _revFmtDist(dist).v + ' ' + _revFmtDist(dist).u +
-            ' — vale olhar esses ' + r.divergentes + ' casos um a um, porque não é margem de erro.' };
+            '. Vale olhar esses ' + r.divergentes + ' casos um a um, porque não é margem de erro.' };
   }
   return { tom: 'ok', texto: 'Nada a cobrar.' };
 }
@@ -17556,7 +17558,7 @@ function renderPainelQualidade(dados, compacto) {
   const aberto = !!window._qePainelAberto;
 
   const manchete = semCheckoutTotal >= 30
-    ? `<b>${semCheckoutTotal} visitas sem check-out</b> — maior que qualquer problema de GPS.` +
+    ? `<b>${semCheckoutTotal} visitas sem check-out</b>, maior que qualquer problema de GPS.` +
       (piores.length ? ` ${piores.join(' e ')} ${piores.length > 1 ? 'esquecem' : 'esquece'} em boa parte das visitas.` : '')
     : `<b>${dados.length} profissionais</b> com visitas suficientes para comparar.`;
 
@@ -17610,7 +17612,7 @@ function renderPainelQualidade(dados, compacto) {
       ${aberto ? linhas + `
         <div style="display:flex;align-items:center;gap:8px;padding:9px 16px;background:var(--neutral-50,#FAFBFD);border-top:1px solid var(--neutral-200);font-size:11px;color:var(--neutral-500);line-height:1.5;">
           <span class="material-symbols-rounded" style="font-size:15px;flex-shrink:0;">lightbulb</span>
-          A taxa de GPS conta só check-ins feitos por GPS — manual não tem GPS e nunca pode divergir.
+          A taxa de GPS conta só check-ins feitos por GPS: manual não tem GPS e nunca pode divergir.
           Quem saiu da equipe não aparece.
         </div>` : ''}
     </div>`;
@@ -17707,17 +17709,12 @@ function _revReguaHtml(dist, raio, margem) {
         <div style="position:absolute;top:10px;left:0;width:${zRaio}%;height:11px;background:#BFE08B;border-radius:3px;"></div>
         ${zMarg > 0.5 ? `<div style="position:absolute;top:10px;left:${zRaio}%;width:${zMarg}%;height:11px;background:#FCD9A0;border-radius:3px;"></div>` : ''}
         <div style="position:absolute;top:2px;left:${pos}%;width:2px;height:28px;background:${cor};"></div>
-        <div style="position:absolute;top:-5px;left:${pos}%;transform:translateX(-50%);background:${cor};color:#fff;border-radius:9999px;padding:2px 9px;font-size:11px;font-weight:800;font-family:'JetBrains Mono',monospace;white-space:nowrap;">${d.v} ${d.u}</div>
+        <div style="position:absolute;top:-5px;left:${Math.min(93, Math.max(7, pos))}%;transform:translateX(-50%);background:${cor};color:#fff;border-radius:9999px;padding:2px 9px;font-size:11px;font-weight:800;font-family:'JetBrains Mono',monospace;white-space:nowrap;">${d.v} ${d.u}</div>
       </div>
-      <div style="position:relative;height:26px;font-size:10px;color:var(--neutral-500);line-height:1.35;">
-        <span style="position:absolute;left:${zRaio / 2}%;transform:translateX(-50%);text-align:center;white-space:nowrap;">raio<br>${_revFmtDist(raio).v} ${_revFmtDist(raio).u}</span>
-        ${zMarg > 4 ? `<span style="position:absolute;left:${zRaio + zMarg / 2}%;transform:translateX(-50%);text-align:center;white-space:nowrap;">margem GPS<br>${_revFmtDist(m).v} ${_revFmtDist(m).u}</span>` : ''}
-        <span style="position:absolute;left:${Math.min(pos, 92)}%;transform:translateX(-50%);text-align:center;white-space:nowrap;">check-in<br>${d.v} ${d.u}</span>
-      </div>
-      <div style="display:flex;gap:13px;margin-top:2px;font-size:10px;color:var(--neutral-600);flex-wrap:wrap;">
-        <span><i style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#BFE08B;margin-right:4px;"></i>dentro do raio</span>
-        ${m > raio ? `<span><i style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#FCD9A0;margin-right:4px;"></i>margem de erro — inconclusivo</span>` : ''}
-        <span><i style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#B45309;margin-right:4px;"></i>além — distância real</span>
+      <div style="display:flex;gap:13px;margin-top:4px;font-size:10px;color:var(--neutral-600);flex-wrap:wrap;">
+        <span><i style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#BFE08B;margin-right:4px;"></i>dentro do raio (${_revFmtDist(raio).v} ${_revFmtDist(raio).u})</span>
+        ${zMarg > 0.5 ? `<span><i style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#FCD9A0;margin-right:4px;"></i>margem do GPS (${_revFmtDist(m).v} ${_revFmtDist(m).u}): inconclusivo</span>` : ''}
+        <span><i style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${dentro ? 'var(--neutral-300)' : '#B45309'};margin-right:4px;"></i>além do raio e da margem</span>
       </div>
     </div>`;
 }
@@ -17924,20 +17921,37 @@ function renderVisitCardDesktop(v) {
 
         // Sem distancia nao ha regua — nesse caso volta a frase da flag,
         // que continua sendo a melhor explicacao disponivel.
+        // Sprint 9.32.443: no manual, o motivo escrito pelo profissional vale
+        // mais que a frase generica da flag. E o que permite decidir sem abrir
+        // a visita. Nas visitas antigas ele nao existe, e dizer isso e' melhor
+        // que fingir que existe.
+        const motivoManual = (v.checkin_manual_motivo || '').trim();
+        const blocoManual = v.checkin_manual ? `
+          <div style="margin:10px 0 2px;display:flex;gap:8px;align-items:flex-start;background:${motivoManual ? '#FFF8EE' : 'var(--neutral-50,#FAFBFD)'};border:1px solid ${motivoManual ? '#FCD9A0' : 'var(--neutral-200)'};border-radius:9px;padding:9px 11px;">
+            <span class="material-symbols-rounded" style="font-size:16px;color:${motivoManual ? '#B45309' : 'var(--neutral-400)'};flex-shrink:0;margin-top:1px;">edit_location_alt</span>
+            <div style="font-size:12.5px;line-height:1.5;color:${motivoManual ? '#854F0B' : 'var(--neutral-500)'};min-width:0;">
+              ${motivoManual
+                ? `<strong>Sem GPS:</strong> ${motivoManual.replace(/</g,'&lt;')}`
+                : (v.checkin_retroativo
+                    ? `<strong>Check-in retroativo:</strong> registrado ${v.checkin_dias_atraso || 0} dia${(v.checkin_dias_atraso || 0) === 1 ? '' : 's'} depois da visita, por isso sem GPS.`
+                    : 'Check-in sem GPS. Motivo não informado (visita anterior à exigência).')}
+            </div>
+          </div>` : '';
+
         const explicacao = dist != null
           ? _revReguaHtml(dist, raio, margem)
-          : (v._flags.length > 0 ? `<div style="margin:10px 0 2px;font-size:12.5px;color:var(--neutral-600);line-height:1.55;">${v._flags[0].descricao}</div>` : '');
+          : (blocoManual || (v._flags.length > 0 ? `<div style="margin:10px 0 2px;font-size:12.5px;color:var(--neutral-600);line-height:1.55;">${v._flags[0].descricao}</div>` : ''));
 
         const durMin = calcularDuracaoMin(v.checkin_timestamp, v.checkout_timestamp);
         const linha = (rot, val) => `
-          <div style="display:flex;justify-content:space-between;gap:12px;font-size:12.5px;padding:6px 0;border-top:1px solid var(--neutral-100);">
-            <span style="color:var(--neutral-500);white-space:nowrap;">${rot}</span>
-            <span style="color:var(--brand-navy);font-weight:600;text-align:right;min-width:0;">${val}</span>
+          <div style="display:grid;grid-template-columns:102px 1fr;gap:14px;align-items:baseline;font-size:12.5px;padding:6px 0;border-top:1px solid var(--neutral-100);">
+            <span style="color:var(--neutral-500);">${rot}</span>
+            <span style="color:var(--brand-navy);font-weight:600;min-width:0;">${val}</span>
           </div>`;
 
         const resumoTxt = _stripHtmlPreview(v.resumo || '').trim();
         const resumoCurto = resumoTxt
-          ? (resumoTxt.length > 120 ? resumoTxt.slice(0, 120).replace(/</g,'&lt;') + '…' : resumoTxt.replace(/</g,'&lt;'))
+          ? `<span style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-weight:500;line-height:1.5;">${resumoTxt.replace(/</g,'&lt;')}</span>`
           : `<span style="color:var(--neutral-500);font-weight:500;">em branco</span>`;
 
         return `
@@ -22176,7 +22190,7 @@ function _pend72FmtAtraso(dt) {
 }
 
 // Transforma um agendamento em visita ativa (check-in). Pega GPS, valida raio, e atualiza status.
-async function iniciarVisitaAgendada(id, userPos /* { lat, lng, accuracy } | null */) {
+async function iniciarVisitaAgendada(id, userPos /* { lat, lng, accuracy } | null */, manualMotivo /* Sprint 9.32.443 */) {
   if (!db) throw new Error('Banco não conectado');
   // Busca o agendamento + coords da instituição pra validar GPS
   const { data: ag, error: errAg } = await db
@@ -22210,6 +22224,7 @@ async function iniciarVisitaAgendada(id, userPos /* { lat, lng, accuracy } | nul
     checkin_longitude: userPos ? userPos.lng : null,
     checkin_precisao_metros: userPos ? Math.round(userPos.accuracy) : null,
     checkin_manual: !userPos,
+    checkin_manual_motivo: !userPos ? (manualMotivo || null) : null,
     flag_gps_divergente: flagGpsDivergente,
   };
 
@@ -28649,6 +28664,33 @@ function renderCheckinConfirmar() {
           <textarea id="obsArea" placeholder="Observações iniciais (opcional)..." style="margin-top:10px;"></textarea>
         </div>
 
+        ${CheckinFlow.manual ? `
+          <!-- Sprint 9.32.443: check-in manual passa a exigir motivo.
+               E o unico check-in sem prova de localizacao, e por isso vai
+               para a fila de revisao. Com o motivo escrito, quem revisa le
+               uma frase e decide; sem ele, tinha que investigar cada caso. -->
+          <div style="background:#FFF8EE;border:1.5px solid #FCD9A0;border-radius:12px;padding:14px;margin-top:14px;">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+              <span class="material-symbols-rounded" style="font-size:19px;color:#B45309;">edit_location_alt</span>
+              <strong style="font-size:13.5px;color:#854F0B;">Por que sem GPS?</strong>
+              <span style="font-size:11px;font-weight:700;color:#fff;background:#B45309;padding:2px 7px;border-radius:9999px;">obrigatório</span>
+            </div>
+            <div style="font-size:12px;color:#854F0B;line-height:1.5;margin-bottom:10px;">
+              Este check-in não registra sua localização, então vai para a fila de revisão.
+              Escrever o motivo faz a conferência ser rápida.
+            </div>
+            <select id="chkManualMotivo" onchange="window.chkManualTrocaMotivo()" style="width:100%;padding:11px 12px;border:1.5px solid var(--neutral-200);border-radius:9px;font-size:14px;font-family:inherit;background:var(--neutral-0);color:var(--brand-navy);">
+              <option value="">Escolha o motivo...</option>
+              <option value="Sem sinal de GPS no local">Sem sinal de GPS no local</option>
+              <option value="Local sem cobertura (subsolo, prédio fechado)">Local sem cobertura (subsolo, prédio fechado)</option>
+              <option value="GPS do aparelho não funcionou">GPS do aparelho não funcionou</option>
+              <option value="Instituição ainda sem coordenadas cadastradas">Instituição ainda sem coordenadas cadastradas</option>
+              <option value="__outro">Outro (escrever)</option>
+            </select>
+            <textarea id="chkManualMotivoOutro" placeholder="Descreva o motivo..." style="margin-top:9px;display:none;width:100%;"></textarea>
+          </div>
+        ` : ''}
+
         ${!instTemCoords ? `
           <div class="flash flash--info" style="background:#FEF4E1;color:#92400E;border-color:rgba(245,158,11,0.25);">
             <span class="material-symbols-rounded" style="font-size:18px">info</span>
@@ -28672,12 +28714,55 @@ function renderCheckinConfirmar() {
   `;
 }
 
+window.chkManualTrocaMotivo = function() {
+  const sel = document.getElementById('chkManualMotivo');
+  const txt = document.getElementById('chkManualMotivoOutro');
+  if (!sel || !txt) return;
+  const outro = sel.value === '__outro';
+  txt.style.display = outro ? 'block' : 'none';
+  if (outro) txt.focus();
+};
+
+// Le o motivo escolhido. Devolve null se ainda nao ha um valido — o chamador
+// e' quem decide o que fazer com isso.
+function _chkMotivoManual() {
+  const sel = document.getElementById('chkManualMotivo');
+  if (!sel) return null;
+  if (sel.value === '__outro') {
+    const t = (document.getElementById('chkManualMotivoOutro')?.value || '').trim();
+    return t.length >= 5 ? t : null;
+  }
+  return sel.value || null;
+}
+
 window.handleConfirmCheckin = async function() {
   if (await bloqueioSimulacao('fazer check-in')) return;
   const btn = document.getElementById('btnConfirmCheckin');
   const objId = document.getElementById('objSelect')?.value || null;
   const obs = document.getElementById('obsArea')?.value?.trim() || null;
   const institucaoId = CheckinFlow.instituicaoSelecionada.id;
+
+  // Sprint 9.32.443: sem motivo, o check-in manual nao passa. Bloquear aqui e'
+  // melhor que aceitar e cobrar depois — depois a pessoa ja' saiu do local e
+  // nao lembra mais por que o GPS falhou.
+  let motivoManual = null;
+  if (CheckinFlow.manual) {
+    motivoManual = _chkMotivoManual();
+    if (!motivoManual) {
+      const sel = document.getElementById('chkManualMotivo');
+      const txt = document.getElementById('chkManualMotivoOutro');
+      const alvo = (sel && sel.value === '__outro') ? txt : sel;
+      if (alvo) {
+        alvo.style.borderColor = 'var(--status-danger)';
+        alvo.focus();
+        setTimeout(() => { alvo.style.borderColor = 'var(--neutral-200)'; }, 2500);
+      }
+      setFlash('warning', sel && sel.value === '__outro'
+        ? 'Descreva o motivo com pelo menos 5 letras.'
+        : 'Escolha por que o check-in está sendo feito sem GPS.');
+      return;
+    }
+  }
 
   btn.disabled = true;
   btn.innerHTML = '<span class="material-symbols-rounded" style="font-size:24px">hourglass_empty</span> Registrando...';
@@ -28711,7 +28796,7 @@ window.handleConfirmCheckin = async function() {
     let visita;
     if (agendIdParaIniciar) {
       // Promove agendamento existente a rascunho com check-in
-      await iniciarVisitaAgendada(agendIdParaIniciar, CheckinFlow.userPos);
+      await iniciarVisitaAgendada(agendIdParaIniciar, CheckinFlow.userPos, motivoManual);
       visita = { id: agendIdParaIniciar };
     } else {
       visita = await criarCheckin({
@@ -28720,6 +28805,7 @@ window.handleConfirmCheckin = async function() {
         objetivoId: objId || null,
         observacoes: obs,
         checkinManual: CheckinFlow.manual,
+        checkinManualMotivo: motivoManual,
       });
     }
 
@@ -34731,8 +34817,23 @@ window.handleIniciarAgendamento = async function(id) {
     });
   } catch { userPos = null; }
 
+  // Sprint 9.32.443: sem GPS isto vira check-in manual. Pedimos o motivo
+  // agora, com a pessoa ainda no local — depois ela nao lembra por que falhou.
+  let motivoManual = null;
+  if (!userPos) {
+    motivoManual = await showModalCancelarComMotivo({
+      titulo: 'Iniciar sem GPS?',
+      contexto: '',
+      aviso: 'Sua localização não foi capturada, então esta visita vai para a fila de revisão. Escreva o motivo para a conferência ser rápida.',
+      botaoConfirmar: 'Iniciar assim mesmo',
+      labelMotivo: 'Por que sem GPS?',
+      placeholderMotivo: 'Ex: sem sinal no local, subsolo, GPS do aparelho falhou...',
+    });
+    if (!motivoManual) return; // desistiu, ou fechou o modal
+  }
+
   try {
-    await iniciarVisitaAgendada(id, userPos);
+    await iniciarVisitaAgendada(id, userPos, motivoManual);
     setFlash('success', 'Visita iniciada!');
     window.location.hash = '#/checkin/ativo';
   } catch (err) {
@@ -38418,7 +38519,19 @@ async function carregarFilaRevisao() {
             // Sprint 9.32.438: a distancia medida, que no mobile nao aparecia
             // em lugar nenhum — nem no cartao, nem nos chips. Nao cabe a regua
             // aqui, mas cabe o numero com o contexto que o torna interpretavel.
-            if (v.distancia_checkin_metros == null) return '';
+            if (v.distancia_checkin_metros == null) {
+              // Sprint 9.32.443: sem medicao, o que explica e' o motivo escrito.
+              if (!v.checkin_manual) return '';
+              const mm = (v.checkin_manual_motivo || '').trim();
+              return `
+                <div style="display:flex;gap:7px;align-items:flex-start;margin-top:8px;padding:7px 10px;background:${mm ? '#FFF8EE' : 'var(--neutral-50,#FAFBFD)'};border:1px solid ${mm ? '#FCD9A0' : 'var(--neutral-200)'};border-radius:8px;">
+                  <span class="material-symbols-rounded" style="font-size:15px;color:${mm ? '#B45309' : 'var(--neutral-400)'};flex-shrink:0;margin-top:1px;">edit_location_alt</span>
+                  <span style="font-size:11.5px;line-height:1.45;color:${mm ? '#854F0B' : 'var(--neutral-500)'};min-width:0;">
+                    ${mm ? `<strong>Sem GPS:</strong> ${mm.replace(/</g,'&lt;')}`
+                        : (v.checkin_retroativo ? `<strong>Retroativo:</strong> registrado ${v.checkin_dias_atraso || 0}d depois.` : 'Check-in sem GPS. Motivo não informado.')}
+                  </span>
+                </div>`;
+            }
             const raio   = _revRaioDoLocal(v);
             const dist   = Number(v.distancia_checkin_metros);
             const margem = v.checkin_precisao_metros != null ? Number(v.checkin_precisao_metros) : null;
