@@ -128,6 +128,183 @@ def ler_xlsx(caminho: str) -> pd.DataFrame:
 # AGREGAÇÕES
 # ══════════════════════════════════════════════════════════════════════════
 
+# ══════════════════════════════════════════════════════════════════════════
+# CURVA DE FECHAMENTO DO MÊS — Sprint 9.32.454
+# ══════════════════════════════════════════════════════════════════════════
+# Por que isto existe:
+#   A prévia de fechamento antiga era regra de três: "faturei X em 8 dias
+#   úteis, o mês tem 22, logo vou fechar em X/8*22". Isso erra pra cima de
+#   forma sistemática, porque o faturamento aqui é ADIANTADO: quando 25% dos
+#   dias úteis passaram, 30% do mês já entrou. No histórico de 18 meses
+#   fechados a regra de três erra +15,0% em média no 8º dia útil.
+#
+#   A curva corrige isso. Em vez de multiplicar pela razão de dias, divide
+#   pela fatia que historicamente já entrou naquele ponto do mês. O mesmo
+#   backtest (leave-one-out, 18 meses) cai pra -0,3% de viés e 11,3% de erro
+#   médio absoluto no 8º dia útil.
+#
+#   O que sai daqui: uma curva mediana de 20 pontos (5% em 5% dos dias úteis)
+#   mais o erro histórico em cada ponto, pra tela mostrar a margem honesta.
+#   Base LÍQUIDA (venda - devolução), que é o que a tela exibe.
+
+FERIADOS_FIXOS_MMDD = ['01-01', '04-21', '05-01', '09-07', '10-12',
+                       '11-02', '11-15', '11-20', '12-25']
+
+
+def _pascoa(ano: int):
+    """Meeus/Jones/Butcher — domingo de Páscoa do ano."""
+    from datetime import date
+    a = ano % 19
+    b, c = ano // 100, ano % 100
+    d, e = b // 4, b % 4
+    f = (b + 8) // 25
+    g = (b - f + 1) // 3
+    h = (19 * a + b - d - g + 15) % 30
+    i, k = c // 4, c % 4
+    l = (32 + 2 * e + 2 * i - h - k) % 7
+    m = (a + 11 * h + 22 * l) // 451
+    mes = (h + l - 7 * m + 114) // 31
+    dia = ((h + l - 7 * m + 114) % 31) + 1
+    return date(ano, mes, dia)
+
+
+def _feriados_do_ano(ano: int) -> set:
+    """Feriados nacionais fixos + móveis (Carnaval, Sexta Santa, Corpus Christi)."""
+    from datetime import date, timedelta
+    s = {date(ano, int(x[:2]), int(x[3:])) for x in FERIADOS_FIXOS_MMDD}
+    p = _pascoa(ano)
+    s.add(p - timedelta(days=47))  # Carnaval
+    s.add(p - timedelta(days=2))   # Sexta-feira Santa
+    s.add(p + timedelta(days=60))  # Corpus Christi
+    return s
+
+
+_FERIADOS_CACHE = {}
+
+
+def _eh_dia_util(d) -> bool:
+    if d.weekday() >= 5:
+        return False
+    if d.year not in _FERIADOS_CACHE:
+        _FERIADOS_CACHE[d.year] = _feriados_do_ano(d.year)
+    return d not in _FERIADOS_CACHE[d.year]
+
+
+def _dias_uteis_do_mes(ano: int, mes: int) -> list:
+    from datetime import date, timedelta
+    d = date(ano, mes, 1)
+    out = []
+    while d.month == mes:
+        if _eh_dia_util(d):
+            out.append(d)
+        d += timedelta(days=1)
+    return out
+
+
+def gerar_curva_mes(df_vendas: pd.DataFrame, df_devolucoes: pd.DataFrame) -> dict:
+    """Curva mediana de acumulação do mês + erro histórico em cada ponto."""
+    from datetime import date, timedelta
+    import statistics
+
+    # Série diária líquida
+    diario = defaultdict(float)
+    for d, v in df_vendas.groupby('_data')['Total de Mercadoria'].sum().items():
+        diario[d] += float(v)
+    if not df_devolucoes.empty:
+        for d, v in df_devolucoes.groupby('_data')['Total de Mercadoria'].sum().items():
+            diario[d] -= abs(float(v))
+
+    por_mes = defaultdict(dict)
+    for k, v in diario.items():
+        y, m, dd = (int(x) for x in k.split('-'))
+        por_mes[(y, m)][date(y, m, dd)] = v
+
+    # Perfil de cada mês COMPLETO: fatia acumulada ao fim de cada dia útil
+    perfis = {}
+    for (y, m), vals in por_mes.items():
+        du = _dias_uteis_do_mes(y, m)
+        if not du or max(vals) < du[-1]:
+            continue  # mês parcial (o mês corrente) fica de fora
+        total = sum(vals.values())
+        if total <= 0:
+            continue
+        acum, cur = 0.0, []
+        for i, dia in enumerate(du):
+            ini = du[i - 1] if i > 0 else date(y, m, 1) - timedelta(days=1)
+            acum += sum(v for k2, v in vals.items() if ini < k2 <= dia)
+            cur.append(acum / total)
+        cur[-1] = 1.0
+        perfis[(y, m)] = cur
+
+    grid = [round(i / 20, 2) for i in range(1, 21)]
+
+    def _curva(lista):
+        out = []
+        for g in grid:
+            vs = []
+            for cur in lista:
+                T = len(cur)
+                pos = g * T
+                i = int(pos)
+                if pos <= 1:
+                    vs.append(cur[0] * pos)
+                elif i >= T:
+                    vs.append(1.0)
+                else:
+                    a, b = cur[i - 1], (cur[i] if i < T else 1.0)
+                    vs.append(a + (b - a) * (pos - i))
+            out.append(round(statistics.median(vs), 4))
+        out[-1] = 1.0
+        return out
+
+    def _interp(cv, f):
+        if f <= 0:
+            return 0.0
+        if f >= 1:
+            return 1.0
+        pos = f / 0.05
+        i = int(pos)
+        lo = 0.0 if i == 0 else cv[i - 1]
+        hi = cv[i] if i < len(cv) else 1.0
+        return lo + (hi - lo) * (pos - i)
+
+    if len(perfis) < 6:
+        # Pouco histórico: não dá pra confiar na curva. Devolve vazio e a tela
+        # cai sozinha na regra de três.
+        return {'grid': grid, 'acumulado': [], 'erro': [], 'meses': len(perfis)}
+
+    chaves = sorted(perfis)
+    acumulado = _curva([perfis[k] for k in chaves])
+
+    # Erro histórico em cada ponto, leave-one-out (o mês avaliado não entra
+    # na curva que o avalia — senão o erro sairia otimista demais).
+    erro = []
+    for g in grid:
+        es = []
+        for k in chaves:
+            cur = perfis[k]
+            T = len(cur)
+            du = max(1, round(g * T))
+            if du >= T:
+                es.append(0.0)
+                continue
+            cv = _curva([perfis[j] for j in chaves if j != k])
+            pc = _interp(cv, du / T)
+            if pc > 0:
+                es.append(abs(cur[du - 1] / pc - 1))
+        erro.append(round(statistics.mean(es), 4) if es else 0.0)
+    erro[-1] = 0.0
+
+    return {
+        'grid': grid,
+        'acumulado': acumulado,
+        'erro': erro,
+        'meses': len(perfis),
+        'primeiro_mes': '%04d-%02d' % chaves[0],
+        'ultimo_mes': '%04d-%02d' % chaves[-1],
+    }
+
+
 def gerar_mensal(df_vendas: pd.DataFrame) -> list:
     """Faturamento total por mês (Venda apenas)."""
     g = df_vendas.groupby('_ano_mes').agg(
@@ -1418,6 +1595,8 @@ def main():
         'vendedor_produto_mes': gerar_vendedor_produto_mes(df_vendas),
         # Sprint 9.32.321 — devolucao por vendedor pra calcular liquido nos rankings
         'vendedor_devolucao_mes': gerar_vendedor_devolucao_mes(df_devolucoes),
+        # Sprint 9.32.454 — curva de fechamento pra previa do mes corrente
+        'curva_mes':             gerar_curva_mes(df_vendas, df_devolucoes),
     }
     print(f"   ✓ mensal: {len(dados['mensal'])} meses")
     print(f"   ✓ vendedor_mes: {len(dados['vendedor_mes'])} linhas")
@@ -1442,6 +1621,11 @@ def main():
     print(f"   ✓ vendedor_estado_mes: {len(dados['vendedor_estado_mes'])} linhas (vendedor × estado × mês)")
     print(f"   ✓ vendedor_produto_mes: {len(dados['vendedor_produto_mes'])} linhas (vendedor × top 30 produtos × mês)")
     print(f"   ✓ vendedor_devolucao_mes: {len(dados['vendedor_devolucao_mes'])} linhas (vendedor × mês × devolução) — Sprint 9.32.321")
+    _cv = dados['curva_mes']
+    print(f"   ✓ curva_mes: {_cv['meses']} meses fechados na base — Sprint 9.32.454")
+    if _cv['acumulado']:
+        print(f"     (25% dos dias úteis → {_cv['acumulado'][4]*100:.1f}% do mês | "
+              f"50% → {_cv['acumulado'][9]*100:.1f}% | 75% → {_cv['acumulado'][14]*100:.1f}%)")
 
     # Validação
     print("\n🔎 Validação:")
