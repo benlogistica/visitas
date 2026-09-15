@@ -8241,6 +8241,12 @@ mark.search-hl {
 
 /* Chart cards (dashboard desktop) */
 .ds-chart-card {
+  /* Sprint 9.32.452: conteudo largo demais (um SVG com min-width, uma tabela
+     de colunas fixas) escapava do cartao e ia parar embaixo do widget lateral
+     "Acoes pendentes". min-width:0 permite o cartao encolher; overflow:hidden
+     garante que, se algo ainda passar, o estrago fica dentro dele. */
+  min-width: 0;
+  overflow: hidden;
   background: #fff;
   border-radius: 12px;
   padding: 20px;
@@ -8410,7 +8416,7 @@ mark.search-hl {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.451-cidades',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.452-grade',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -14298,13 +14304,13 @@ function renderAdminDashboardDesktop() {
         </div>
 
         <!-- 6 KPIs em linha (grid responsivo) -->
-        <div data-dash-section="kpis" style="display:grid;grid-template-columns:repeat(6,1fr);gap:12px;" id="dsdKpiRow">
+        <div data-dash-section="kpis" style="display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px;" id="dsdKpiRow">
           <div style="background:#fff;border-radius:12px;padding:40px 16px;border:1px solid var(--neutral-200);text-align:center;color:var(--neutral-400);font-size:12px;">Carregando KPIs...</div>
           ${Array.from({length:5}).map(() => '<div style="background:#fff;border-radius:12px;padding:40px 16px;border:1px solid var(--neutral-200);text-align:center;color:var(--neutral-400);font-size:12px;">&nbsp;</div>').join('')}
         </div>
 
         <!-- Rankings (Nutris + Instituições) -->
-        <div data-dash-section="rankings" style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+        <div data-dash-section="rankings" style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px;">
           <!-- Visitas por nutricionista -->
           <div class="ds-chart-card">
             <div class="ds-chart-card__header">
@@ -14329,7 +14335,7 @@ function renderAdminDashboardDesktop() {
         </div>
 
         <!-- Visitas por semana + Distribuição por objetivo (lado a lado) -->
-        <div data-dash-section="semana-objetivo" style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+        <div data-dash-section="semana-objetivo" style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px;">
           <!-- Visitas por período (dia/semana/mês - Sprint 9.20.6) -->
           <div class="ds-chart-card">
             <div class="ds-chart-card__header">
@@ -15976,7 +15982,7 @@ async function renderDsdDonutObjetivos(dataInicio) {
           const diffStr = semDiff ? '' : (it.diff > 0 ? `↑ +${it.diff}` : (it.diff < 0 ? `↓ ${it.diff}` : '— 0'));
           const diffCor = it.diff > 0 ? 'var(--status-success)' : (it.diff < 0 ? 'var(--status-danger)' : 'var(--neutral-400)');
           return `
-            <div style="display:grid;grid-template-columns:36px 1fr 60px 70px 60px;align-items:center;padding:9px 12px;${isLider ? 'background:#F0F7E1;border-radius:6px;border-left:3px solid var(--brand-lime);margin-bottom:4px;' : 'border-bottom:1px solid var(--neutral-100);'}">
+            <div style="display:grid;grid-template-columns:30px minmax(0,1fr) 52px 56px 52px;align-items:center;padding:9px 12px;${isLider ? 'background:#F0F7E1;border-radius:6px;border-left:3px solid var(--brand-lime);margin-bottom:4px;' : 'border-bottom:1px solid var(--neutral-100);'}">
               <span style="font-family:var(--font-display);font-size:${isLider ? 18 : 16}px;font-weight:700;color:${isLider ? '#3B6D11' : 'var(--brand-navy)'};text-align:center;">${it.pos}</span>
               <span style="font-size:${isLider ? 14 : 13.5}px;color:var(--brand-navy);font-weight:${isLider ? 700 : 600};padding-left:8px;line-height:1.3;" title="${it.label.replace(/"/g,'&quot;')}">${it.label}</span>
               <span style="font-family:var(--font-mono);font-size:${isLider ? 18 : 16}px;font-weight:700;color:${isLider ? '#3B6D11' : 'var(--brand-navy)'};text-align:right;">${it.value}</span>
