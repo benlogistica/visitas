@@ -271,7 +271,8 @@ def gerar_curva_mes(df_vendas: pd.DataFrame, df_devolucoes: pd.DataFrame) -> dic
     if len(perfis) < 6:
         # Pouco histórico: não dá pra confiar na curva. Devolve vazio e a tela
         # cai sozinha na regra de três.
-        return {'grid': grid, 'acumulado': [], 'erro': [], 'meses': len(perfis)}
+        return {'grid': grid, 'acumulado': [], 'erro': [],
+                'erro_regra3': [], 'vies_regra3': [], 'meses': len(perfis)}
 
     chaves = sorted(perfis)
     acumulado = _curva([perfis[k] for k in chaves])
@@ -279,26 +280,41 @@ def gerar_curva_mes(df_vendas: pd.DataFrame, df_devolucoes: pd.DataFrame) -> dic
     # Erro histórico em cada ponto, leave-one-out (o mês avaliado não entra
     # na curva que o avalia — senão o erro sairia otimista demais).
     erro = []
+    erro_regra3 = []
+    vies_regra3 = []
     for g in grid:
-        es = []
+        es, e3, v3 = [], [], []
         for k in chaves:
             cur = perfis[k]
             T = len(cur)
             du = max(1, round(g * T))
             if du >= T:
                 es.append(0.0)
+                e3.append(0.0)
+                v3.append(0.0)
                 continue
             cv = _curva([perfis[j] for j in chaves if j != k])
             pc = _interp(cv, du / T)
             if pc > 0:
                 es.append(abs(cur[du - 1] / pc - 1))
+            # Regra de tres no mesmo ponto, pra tela poder mostrar a margem
+            # das duas visoes sem inventar numero.
+            r3 = cur[du - 1] * T / du - 1
+            e3.append(abs(r3))
+            v3.append(r3)
         erro.append(round(statistics.mean(es), 4) if es else 0.0)
+        erro_regra3.append(round(statistics.mean(e3), 4) if e3 else 0.0)
+        vies_regra3.append(round(statistics.mean(v3), 4) if v3 else 0.0)
     erro[-1] = 0.0
+    erro_regra3[-1] = 0.0
+    vies_regra3[-1] = 0.0
 
     return {
         'grid': grid,
         'acumulado': acumulado,
         'erro': erro,
+        'erro_regra3': erro_regra3,
+        'vies_regra3': vies_regra3,
         'meses': len(perfis),
         'primeiro_mes': '%04d-%02d' % chaves[0],
         'ultimo_mes': '%04d-%02d' % chaves[-1],
