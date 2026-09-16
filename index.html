@@ -8416,7 +8416,7 @@ mark.search-hl {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.456-mobile',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.457-cabecalho',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -43862,7 +43862,7 @@ window.rejeitarObjetivoPendente = async function(id) {
 let FAT_DATA = null;
 let _fatDataPromise = null;
 // __FAT_VERSION_START__ — substituído pelo atualizar_index.py com hash do JSON
-const FAT_DATA_VERSION = '8caeafe11646';
+const FAT_DATA_VERSION = 'da0b9b818ba0';
 // __FAT_VERSION_END__
 // Sprint 9.32.426: o arquivo passou a ser versionado COMPRIMIDO (.json.gz).
 // PORQUE: ele tem 20,5 MB e entra no git 2x por dia. O git guarda cada versao
@@ -44239,6 +44239,16 @@ function _fatRenderInner() {
           #fatKpis { grid-template-columns: 1fr 1fr !important; }
           #fatKpiBruto, #fatKpiDevs, #fatPreviaCard { grid-column: 1 / -1; }
           #fatKpiNotas .fat-kpi__val, #fatKpiTicket .fat-kpi__val { font-size: 21px !important; }
+
+          /* Sprint 9.32.457: o cabecalho do grafico de evolucao nao tinha flex-wrap,
+             entao no celular o titulo era espremido em duas linhas e o bloco de
+             media/pico se enfiava ao lado dele. Vira coluna: titulo, controles,
+             e a estatistica por ultimo ocupando a linha inteira. */
+          .fat-evol-cab { flex-direction: column; align-items: stretch; gap: 10px !important; }
+          .fat-evol-cab__acoes { justify-content: flex-start !important; gap: 8px !important; }
+          .fat-evol-cab__acoes > #fatEvolAno { order: 1; flex: 1 1 140px; min-width: 0; }
+          .fat-evol-cab__acoes > button { order: 2; flex: 0 0 auto; }
+          .fat-evol-cab__acoes > #fatEvolStats { order: 3; flex: 1 0 100%; line-height: 1.6; }
           .fat-wrapper h1 { font-size: 20px !important; }
 
           /* Sprint 9.32.36: filtros em grid 2x2 no mobile, todos com mesma altura/largura */
@@ -44394,12 +44404,12 @@ function _fatRenderInner() {
       <!-- Linha 1: Evolução mensal (chart grande) + Top vendedores -->
       <div style="display:grid;grid-template-columns:1fr;gap:14px;margin-bottom:14px;" id="fatRow1">
         <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:14px;padding:16px;">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
-            <div style="display:flex;align-items:center;gap:8px;">
-              <span class="material-symbols-rounded" style="font-size:20px;color:var(--brand-lime);">timeline</span>
+          <div class="fat-evol-cab" style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;">
+            <div class="fat-evol-cab__tit" style="display:flex;align-items:center;gap:8px;min-width:0;">
+              <span class="material-symbols-rounded" style="font-size:20px;color:var(--brand-lime);flex:0 0 auto;">timeline</span>
               <div style="font-family:var(--font-display);font-size:14px;font-weight:700;color:var(--brand-navy);">Evolução do faturamento</div>
             </div>
-            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end;">
+            <div class="fat-evol-cab__acoes" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end;">
               <div id="fatEvolStats" style="font-size:11.5px;color:var(--neutral-500);"></div>
               <!-- Sprint 9.32.380: recorte do gráfico (12 meses por padrão ou um ano) -->
               <select id="fatEvolAno" onchange="_fatTrocarAnoEvol(this.value)" title="Recorte do gráfico" style="padding:5px 9px;border:1.5px solid var(--neutral-200);border-radius:7px;font-size:11.5px;font-family:inherit;background:var(--neutral-0);color:var(--brand-navy);font-weight:600;cursor:pointer;">
@@ -50925,7 +50935,9 @@ function _fatRender() {
     // Sprint 9.32.313: indica recorte de ano vigente (mobile)
     const recorteLabel = _fatRecortadoLabel ? `<span style="display:inline-flex;align-items:center;gap:4px;background:var(--brand-lime-bg,#E9F4D9);color:var(--brand-lime-dark,#6FA62E);padding:2px 7px;border-radius:9999px;font-size:10.5px;font-weight:700;margin-right:6px;"><span class="material-symbols-rounded" style="font-size:11px;">filter_alt</span>${_fatRecortadoLabel}</span>` : '';
     document.getElementById('fatEvolStats').innerHTML =
-      `${recorteLabel}${ctxLabel}Média: <strong style="color:var(--brand-navy);">${_fmtMoeda(media)}</strong>/mês · Pico: <strong style="color:var(--brand-lime-dark,#6FA62E);">${_fmtMoeda(max.faturamento)}</strong> em ${max.ano_mes ? _mesLabel(max.ano_mes) : '—'}`;
+      // Sprint 9.32.457: no celular os valores vao abreviados (R$ 2,01M). Por extenso
+      // essa linha sozinha ocupava tres linhas de tela.
+      `${recorteLabel}${ctxLabel}Média: <strong style="color:var(--brand-navy);">${_fmtMoeda(media, _evolDeitado)}</strong>/mês · Pico: <strong style="color:var(--brand-lime-dark,#6FA62E);">${_fmtMoeda(max.faturamento, _evolDeitado)}</strong> em ${max.ano_mes ? _mesLabel(max.ano_mes) : '—'}`;
   }
 
   // Top Vendedores ====
