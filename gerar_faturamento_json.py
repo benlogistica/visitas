@@ -321,6 +321,73 @@ def gerar_curva_mes(df_vendas: pd.DataFrame, df_devolucoes: pd.DataFrame) -> dic
     }
 
 
+# ══════════════════════════════════════════════════════════════════════════
+# NOMES DE MARCA — Sprint 9.32.459
+# ══════════════════════════════════════════════════════════════════════════
+# O Omie exporta a mesma marca escrita de jeitos diferentes conforme o mes:
+# "NESTLE NHSC" ate marco/26, "Nestle NHSC" em abril, junho, julho e agosto.
+# O painel contava como duas marcas, cada uma "sumindo" em meses alternados.
+# Resultado: a dependencia da Nestle NHSC aparecia como 53% quando e' 71%, e
+# todo card de marca em alta ou em queda saia distorcido.
+#
+# Duas camadas:
+#   1. AUTOMATICA: nomes que so diferem em maiuscula/minuscula, acento ou espaco
+#      viram um so. Fica a grafia com mais faturamento.
+#   2. MANUAL (MARCA_APELIDOS): pares que diferem de verdade no texto e que
+#      alguem do negocio confirmou que sao a mesma marca. Vazio de proposito:
+#      so entra o que a gerencia aprovar.
+
+MARCA_APELIDOS = {
+    # 'grafia no Omie': 'nome que deve aparecer no painel',
+    # Aprovado pela gerencia em 23/09/2026:
+    # Nestle Nutricao Infantil: o nome novo surgiu em jul/26 enquanto o antigo caia
+    'NESTLE (NUTR.INF.)':                  'Nestle (Nut. Inf.)',
+    'NESTLE (NUTR.INF.) BROOKER':          'Nestle (Nut. Inf.) BROOKER',
+    # Danone: as duas Nutriport param em mai/26 e "DANONE" assume em jun/26
+    'DANONE (NUTRIPORT)':                  'DANONE',
+    'DANONE (NUTRIPORT) - estoque padrão': 'DANONE',
+}
+# Decidido como SEGMENTOS DIFERENTES (nao juntar), 23/09/2026:
+#   LM FARMA x LM FARMA - ESTOQUE PADRÃO
+#   PRODIET x PRODIET - estoque padrão
+#   Fresenius Kabi x Fresenius - PARENTERAL
+# Ficam no radar: os Insights avisam sozinhos se um nome sumir e outro
+# parecido aparecer com o mesmo volume (deteccao de migracao).
+
+
+def _chave_marca(nome: str) -> str:
+    import unicodedata
+    s = unicodedata.normalize('NFKD', str(nome)).encode('ascii', 'ignore').decode()
+    return ' '.join(s.upper().split())
+
+
+def unificar_marcas(df: pd.DataFrame) -> pd.DataFrame:
+    """Normaliza a coluna Marca de TODAS as linhas (venda, devolucao, consignado)."""
+    if 'Marca' not in df.columns:
+        return df
+    df = df.copy()
+    df['Marca'] = df['Marca'].replace(MARCA_APELIDOS)
+
+    fat = df.groupby('Marca')['Total de Mercadoria'].apply(lambda x: x.abs().sum())
+    grupos = defaultdict(list)
+    for nome, valor in fat.items():
+        grupos[_chave_marca(nome)].append((valor, nome))
+    mapa = {}
+    for variantes in grupos.values():
+        if len(variantes) < 2:
+            continue
+        canonica = sorted(variantes, key=lambda t: -t[0])[0][1]
+        for _, nome in variantes:
+            if nome != canonica:
+                mapa[nome] = canonica
+    if mapa:
+        print(f"\n🏷️  Marcas unificadas ({len(mapa)} grafias):")
+        for de, para in sorted(mapa.items()):
+            print(f"   {de!r} → {para!r}")
+        df['Marca'] = df['Marca'].replace(mapa)
+    return df
+
+
 def gerar_mensal(df_vendas: pd.DataFrame) -> list:
     """Faturamento total por mês (Venda apenas)."""
     g = df_vendas.groupby('_ano_mes').agg(
@@ -1532,6 +1599,9 @@ def main():
                 if comum:
                     print(f"⚠️  AVISO: '{nomes[i]}' e '{nomes[j]}' têm meses em comum: {sorted(comum)}")
                     print(f"   Pode haver duplicação. Confirme manualmente ou remova um dos arquivos.")
+
+    # Sprint 9.32.459: mesma marca com grafias diferentes vira uma so
+    df = unificar_marcas(df)
 
     # Filtra por categoria
     df_vendas     = df[df['_categoria'] == 'Venda'].copy()

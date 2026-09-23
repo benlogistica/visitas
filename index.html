@@ -8416,7 +8416,7 @@ mark.search-hl {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.457-cabecalho',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.459-insights',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -43862,7 +43862,7 @@ window.rejeitarObjetivoPendente = async function(id) {
 let FAT_DATA = null;
 let _fatDataPromise = null;
 // __FAT_VERSION_START__ — substituído pelo atualizar_index.py com hash do JSON
-const FAT_DATA_VERSION = '15c26f3c2b5e';
+const FAT_DATA_VERSION = 'c3b3db8264c2';
 // __FAT_VERSION_END__
 // Sprint 9.32.426: o arquivo passou a ser versionado COMPRIMIDO (.json.gz).
 // PORQUE: ele tem 20,5 MB e entra no git 2x por dia. O git guarda cada versao
@@ -44249,6 +44249,16 @@ function _fatRenderInner() {
           .fat-evol-cab__acoes > #fatEvolAno { order: 1; flex: 1 1 140px; min-width: 0; }
           .fat-evol-cab__acoes > button { order: 2; flex: 0 0 auto; }
           .fat-evol-cab__acoes > #fatEvolStats { order: 3; flex: 1 0 100%; line-height: 1.6; }
+
+          /* Sprint 9.32.458: KPIs de devolucao no celular. O total vai na linha inteira
+             (R$ 324.998,67 nao cabe em meia coluna); o resto fica 2 a 2. */
+          #fatDevKpis { grid-template-columns: 1fr 1fr !important; }
+          #fatDevKpis > div:first-child { grid-column: 1 / -1; }
+          #fatDevKpis > div > div:nth-child(2) { font-size: 19px !important; }
+
+          /* Sprint 9.32.458: comparacao de periodos 2 a 2 no celular */
+          #fatComparacao { grid-template-columns: 1fr 1fr !important; }
+          #fatComparacao > .fat-cmp-leitura { grid-column: 1 / -1; }
           .fat-wrapper h1 { font-size: 20px !important; }
 
           /* Sprint 9.32.36: filtros em grid 2x2 no mobile, todos com mesma altura/largura */
@@ -44511,12 +44521,16 @@ function _fatRenderInner() {
 
         <!-- Seção 1: Comparação de períodos (KPIs com delta) -->
         <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:14px;padding:16px;margin-bottom:14px;">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
             <span class="material-symbols-rounded" style="font-size:20px;color:var(--brand-lime);">compare_arrows</span>
             <div style="font-family:var(--font-display);font-size:14px;font-weight:700;color:var(--brand-navy);">Comparação de períodos</div>
-            <div style="font-size:11px;color:var(--neutral-500);margin-left:auto;">Últimos 3 meses vs 3 meses anteriores</div>
+            <select id="fatCmpModo" onchange="_fatCmpTrocarModo(this.value)" title="O que comparar" style="margin-left:auto;height:32px;padding:0 9px;border:1.5px solid var(--neutral-200);border-radius:8px;font-size:12px;font-family:inherit;background:var(--neutral-0);color:var(--brand-navy);font-weight:700;cursor:pointer;max-width:100%;">
+              <option value="tri">3 meses fechados vs 3 anteriores</option>
+              <option value="mes">Último mês fechado vs ano anterior</option>
+              <option value="ano">Ano até agora vs ano anterior</option>
+            </select>
           </div>
-          <div id="fatComparacao" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;"></div>
+          <div id="fatComparacao" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:10px;"></div>
         </div>
 
         <!-- Seção 2: Curva ABC de clientes (Pareto) -->
@@ -44571,7 +44585,7 @@ function _fatRenderInner() {
         </div>
         <!-- Sprint 9.32.382: leitura do analista (IA) — gerada 1x por sincronização e cacheada -->
         <div id="fatInsightsIA" style="margin-bottom:14px;"></div>
-        <div id="fatInsights" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;"></div>
+        <div id="fatInsights"></div>
       </div>
 
       <!-- PÁGINA 4: Devoluções (Sprint 9.30) -->
@@ -44588,6 +44602,15 @@ function _fatRenderInner() {
           </div>
         </div>
 
+        <!-- Sprint 9.32.458: recorte da aba (manda em KPIs, grafico e rankings) -->
+        <div class="fat-dev-rec" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px;">
+          <span style="font-size:11.5px;color:var(--neutral-600);font-weight:600;">Período da análise</span>
+          <select id="fatDevRecorte" onchange="_fatDevTrocarRecorte(this.value)" style="height:32px;padding:0 9px;border:1.5px solid var(--neutral-200);border-radius:8px;font-size:12px;font-family:inherit;background:var(--neutral-0);color:var(--brand-navy);font-weight:700;cursor:pointer;">
+            <option value="ano">Ano vigente</option>
+          </select>
+          <span id="fatDevRecorteRot" style="font-size:11px;color:var(--neutral-500);"></span>
+        </div>
+
         <!-- KPIs de devoluções -->
         <div id="fatDevKpis" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-bottom:18px;"></div>
 
@@ -44596,10 +44619,18 @@ function _fatRenderInner() {
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
             <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:14px;display:flex;align-items:center;gap:8px;">
               <span class="material-symbols-rounded" style="font-size:18px;color:#E24B4A;">show_chart</span>
-              Evolução mensal — Devoluções e % do faturamento
+              Devoluções por mês
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-size:10.5px;color:var(--neutral-600);">
+              <span style="display:inline-flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:3px;background:rgba(240,128,128,.9);"></span>até 1% do faturamento</span>
+              <span style="display:inline-flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:3px;background:rgba(245,158,11,.9);"></span>1 a 3%</span>
+              <span style="display:inline-flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:3px;background:rgba(220,38,38,.9);"></span>acima de 3%</span>
             </div>
           </div>
-          <canvas id="fatDevChartMensal" style="max-height:280px;"></canvas>
+          <div id="fatDevChartBox" style="height:290px;position:relative;"><canvas id="fatDevChartMensal"></canvas></div>
+          <!-- Sprint 9.32.458: no celular o grafico vira barras deitadas -->
+          <div id="fatDevBarras" style="display:none;"></div>
+          <div style="font-size:10.5px;color:var(--neutral-500);margin-top:8px;">Toque numa barra para ver só aquele mês. * mês em curso, ainda recebendo notas.</div>
         </div>
 
         <!-- Grid 2 colunas: Empresas + Hospitais -->
@@ -47533,58 +47564,146 @@ function _fatRenderPagina2() {
   _fatRenderEvolSeg();
 }
 
-// === Seção 1: Comparação últ. 3 meses vs 3 meses anteriores ===
-// Sprint 9.32.88: respeita filtro de período
+// === Seção 1: Comparação de períodos ===
+// Sprint 9.32.458: refeita. A versao antiga comparava os 3 ultimos meses DO RECORTE
+// com os 3 anteriores, e o ultimo quase sempre era o mes em curso (set/26 com 22 dias
+// contra jun/26 inteiro). Todo o "trimestre caiu" vinha dai. Agora:
+//   - so entram meses FECHADOS;
+//   - tres leituras: trimestre, mes contra o mesmo mes do ano anterior, e ano ate agora;
+//   - faturamento liquido e por dia util (meses tem tamanhos diferentes);
+//   - instituicoes (PJ) ativas, novas e que pararam: e' onde o negocio B2B mexe;
+//   - uma frase no topo que le os numeros, pra ninguem precisar interpretar seis setas.
+if (typeof window._fatCmpModo === 'undefined') window._fatCmpModo = 'tri';
+window._fatCmpTrocarModo = function(v) {
+  window._fatCmpModo = v || 'tri';
+  _fatRenderComparacao();
+};
+
+function _fatCmpPeriodos(modo) {
+  const parc = _fatMesParcial();
+  const todos = (FAT_DATA.mensal || []).map(m => m.ano_mes).filter(ym => !parc || ym !== parc.ym).sort();
+  const noRecorte = new Set(_fatDevMesesFiltrados({ ignorarMes: true }));
+  const fechRec = todos.filter(ym => noRecorte.has(ym));
+  if (!fechRec.length) return null;
+  const ult = fechRec[fechRec.length - 1];
+  const anoAnt = ym => `${Number(ym.slice(0, 4)) - 1}${ym.slice(4)}`;
+  const existe = new Set(todos);
+  let atual, base, rotBase;
+  if (modo === 'mes') {
+    atual = [ult]; base = [anoAnt(ult)]; rotBase = 'ao mesmo mês do ano anterior';
+  } else if (modo === 'ano') {
+    const ano = ult.slice(0, 4);
+    atual = todos.filter(ym => ym.startsWith(ano + '-') && ym <= ult);
+    base = atual.map(anoAnt); rotBase = 'ao mesmo período do ano anterior';
+  } else {
+    const i = todos.indexOf(ult);
+    atual = todos.slice(Math.max(0, i - 2), i + 1);
+    base = todos.slice(Math.max(0, i - 5), Math.max(0, i - 2)); rotBase = 'aos 3 meses anteriores';
+  }
+  base = base.filter(ym => existe.has(ym));
+  if (!atual.length || base.length !== atual.length) return { atual, base, rotBase, incompleto: true };
+  return { atual, base, rotBase, incompleto: false };
+}
+
+function _fatCmpMedir(meses) {
+  const set = new Set(meses);
+  const M = {}; (FAT_DATA.mensal || []).forEach(m => { M[m.ano_mes] = m; });
+  const D = {}; (FAT_DATA.devolucoes_mensal || []).forEach(d => { D[d.ano_mes] = d.valor_devolucao; });
+  let vendas = 0, dev = 0, notas = 0, du = 0;
+  meses.forEach(ym => {
+    const m = M[ym] || {};
+    vendas += m.faturamento || 0; notas += m.qtd_notas || 0; dev += D[ym] || 0;
+    const [a, mm] = ym.split('-').map(Number);
+    du += _diasUteis(new Date(a, mm - 1, 1), new Date(a, mm, 0));
+  });
+  // Pessoa juridica = CNPJ (14 digitos). E' a carteira de instituicoes; pessoa fisica
+  // aqui e' quase toda e-commerce e gira clientes demais pra servir de sinal.
+  const pj = {}; let fatPF = 0;
+  (FAT_DATA.clientes_mes || []).forEach(r => {
+    if (!set.has(r.ano_mes) || !(r.faturamento > 0)) return;
+    const dig = String(r['CNPJ/CPF'] || '').replace(/\D/g, '');
+    if (dig.length === 14) pj[r['CNPJ/CPF']] = (pj[r['CNPJ/CPF']] || 0) + r.faturamento;
+    else fatPF += r.faturamento;
+  });
+  const fatPJ = Object.values(pj).reduce((s, v) => s + v, 0);
+  return { vendas, dev, liq: vendas - dev, notas, du, ticket: notas > 0 ? vendas / notas : 0,
+           porDia: du > 0 ? (vendas - dev) / du : 0, pj, fatPJ, fatPF };
+}
+
 function _fatRenderComparacao() {
   const el = document.getElementById('fatComparacao');
   if (!el || !FAT_DATA?.mensal) return;
+  const modo = window._fatCmpModo || 'tri';
+  const sel = document.getElementById('fatCmpModo');
+  if (sel) sel.value = modo;
 
-  const mesesSet = _fatDevMesesFiltrados();
-  const mensal = (FAT_DATA.mensal || []).filter(m => mesesSet.has(m.ano_mes)).slice();
-  if (mensal.length < 6) {
-    el.innerHTML = `<div style="grid-column:1/-1;padding:20px;text-align:center;color:var(--neutral-500);font-size:12px;">Dados insuficientes para comparação (mínimo 6 meses no recorte atual). ${mensal.length === 0 ? 'Nenhum mês selecionado.' : `Apenas ${mensal.length} meses disponíveis.`}</div>`;
+  const per = _fatCmpPeriodos(modo);
+  if (!per || per.incompleto) {
+    el.innerHTML = `<div style="grid-column:1/-1;padding:20px;text-align:center;color:var(--neutral-500);font-size:12px;">Não há histórico suficiente para essa comparação no recorte atual.</div>`;
     return;
   }
+  const A = _fatCmpMedir(per.atual), B = _fatCmpMedir(per.base);
+  const d = (a, b) => b > 0 ? (a / b - 1) * 100 : null;
+  const sinal = v => v == null ? '' : `${v >= 0 ? '+' : '−'}${_fatPctBR(Math.abs(v), 1)}`;
+  const rotP = ms => ms.length === 1 ? _mesLabel(ms[0]) : `${_mesLabel(ms[0])} a ${_mesLabel(ms[ms.length - 1])}`;
 
-  const u3 = mensal.slice(-3);
-  const a3 = mensal.slice(-6, -3);
+  const novos = Object.keys(A.pj).filter(k => !(k in B.pj));
+  const pararam = Object.keys(B.pj).filter(k => !(k in A.pj));
+  const fatNovos = novos.reduce((s, k) => s + A.pj[k], 0);
+  const fatPararam = pararam.reduce((s, k) => s + B.pj[k], 0);
+  const nA = Object.keys(A.pj).length, nB = Object.keys(B.pj).length;
 
-  const calcTotal = arr => ({
-    faturamento: arr.reduce((s, m) => s + m.faturamento, 0),
-    notas: arr.reduce((s, m) => s + m.qtd_notas, 0),
-    itens: arr.reduce((s, m) => s + m.qtd_itens, 0),
-  });
-  const tU = calcTotal(u3);
-  const tA = calcTotal(a3);
-  const tkU = tU.notas > 0 ? tU.faturamento / tU.notas : 0;
-  const tkA = tA.notas > 0 ? tA.faturamento / tA.notas : 0;
-
-  const deltaPct = (novo, velho) => velho > 0 ? ((novo / velho) - 1) * 100 : 0;
-  const card = (titulo, valor, delta, unidade = '') => {
-    const cor = delta >= 0 ? 'var(--status-success)' : 'var(--status-danger)';
-    const seta = delta >= 0 ? '↑' : '↓';
-    const bg = delta >= 0 ? 'rgba(34,160,107,0.06)' : 'rgba(211,51,51,0.05)';
-    const bord = delta >= 0 ? 'rgba(34,160,107,0.25)' : 'rgba(211,51,51,0.22)';
-    return `
-      <div style="border:1px solid ${bord};background:${bg};border-radius:12px;padding:14px 16px;">
-        <div style="font-size:10.5px;color:var(--neutral-500);font-weight:700;letter-spacing:0.06em;text-transform:uppercase;">${titulo}</div>
-        <div style="font-family:var(--font-display);font-size:20px;font-weight:700;color:var(--brand-navy);margin-top:3px;">${valor}${unidade ? ' ' + unidade : ''}</div>
-        <div style="font-size:11.5px;color:${cor};font-weight:700;margin-top:3px;">${seta} ${Math.abs(delta).toFixed(1)}% vs trimestre anterior</div>
-      </div>
-    `;
+  // chip: verde = bom, vermelho = ruim, cinza = praticamente igual
+  const chip = (v, invertido = false) => {
+    if (v == null) return '';
+    const bom = invertido ? v < 0 : v > 0;
+    const neutro = Math.abs(v) < 1;
+    const cor = neutro ? '#6B7280' : (bom ? '#0F7334' : '#A32D2D');
+    const bg = neutro ? '#F3F4F6' : (bom ? '#DCFCE7' : '#FEE2E2');
+    return `<span style="display:inline-block;font-size:11px;font-weight:700;color:${cor};background:${bg};padding:1px 7px;border-radius:9999px;">${sinal(v)}</span>`;
   };
+  const card = (titulo, valor, delta, sub, invertido = false, dica = '') => `
+    <div style="border:1px solid var(--neutral-200);background:var(--neutral-0);border-radius:12px;padding:13px 15px;min-width:0;"${dica ? ` title="${dica}"` : ''}>
+      <div style="font-size:10.5px;color:var(--neutral-500);font-weight:700;letter-spacing:0.06em;text-transform:uppercase;">${titulo}</div>
+      <div style="display:flex;align-items:baseline;gap:7px;flex-wrap:wrap;margin-top:4px;">
+        <span style="font-family:var(--font-display);font-size:20px;font-weight:700;color:var(--brand-navy);line-height:1.1;">${valor}</span>
+        ${chip(delta, invertido)}
+      </div>
+      <div style="font-size:10.5px;color:var(--neutral-500);margin-top:5px;line-height:1.4;">${sub}</div>
+    </div>`;
 
-  const periodoU = `${_mesLabel(u3[0].ano_mes)}—${_mesLabel(u3[u3.length-1].ano_mes)}`;
-  const periodoA = `${_mesLabel(a3[0].ano_mes)}—${_mesLabel(a3[a3.length-1].ano_mes)}`;
+  // ─── Leitura em frase ───────────────────────────────────────────
+  const dLiq = d(A.liq, B.liq), dNotas = d(A.notas, B.notas), dTk = d(A.ticket, B.ticket);
+  const dPJ = d(A.fatPJ, B.fatPJ), dPF = d(A.fatPF, B.fatPF);
+  const fr = [];
+  if (dLiq != null) {
+    fr.push(Math.abs(dLiq) < 3
+      ? `Faturamento líquido estável (${sinal(dLiq)}) em relação ${per.rotBase}.`
+      : `Faturamento líquido ${dLiq > 0 ? 'subiu' : 'caiu'} ${_fatPctBR(Math.abs(dLiq), 1)} em relação ${per.rotBase}.`);
+  }
+  if (dNotas != null && dTk != null && Math.abs(dNotas) >= 10 && Math.abs(dTk) >= 10 && Math.sign(dNotas) !== Math.sign(dTk)) {
+    fr.push(dNotas > 0
+      ? `Mais pedidos (${sinal(dNotas)}) com ticket menor (${sinal(dTk)}): o volume veio de compras menores.`
+      : `Menos pedidos (${sinal(dNotas)}) com ticket maior (${sinal(dTk)}): menos compras, porém maiores.`);
+  }
+  if (dPJ != null && dPF != null && Math.abs(dPJ - dPF) >= 10) {
+    fr.push(`O faturamento com instituições ${dPJ >= 0 ? 'cresceu' : 'recuou'} ${_fatPctBR(Math.abs(dPJ), 0)}; com pessoa física, ${dPF >= 0 ? 'cresceu' : 'recuou'} ${_fatPctBR(Math.abs(dPF), 0)}.`);
+  }
+  if (nA > 0) fr.push(`${nA.toLocaleString('pt-BR')} instituições compraram: ${novos.length} entraram e ${pararam.length} pararam.`);
 
   el.innerHTML = `
-    <div style="grid-column:1/-1;font-size:11px;color:var(--neutral-500);margin-bottom:-4px;">
-      <strong>Atual:</strong> ${periodoU} · <strong>Anterior:</strong> ${periodoA}
+    <div class="fat-cmp-leitura" style="grid-column:1/-1;background:#F6F8FB;border:1px solid #E3E8F0;border-radius:10px;padding:10px 13px;">
+      <div style="font-size:11px;color:var(--neutral-500);margin-bottom:4px;">
+        <strong style="color:var(--brand-navy);">${rotP(per.atual)}</strong> contra <strong style="color:var(--brand-navy);">${rotP(per.base)}</strong> · só meses fechados
+      </div>
+      <div style="font-size:12.5px;color:var(--brand-navy);line-height:1.55;">${fr.join(' ')}</div>
     </div>
-    ${card('Faturamento', _fmtMoeda(tU.faturamento), deltaPct(tU.faturamento, tA.faturamento))}
-    ${card('Notas emitidas', _fmtNum(tU.notas), deltaPct(tU.notas, tA.notas))}
-    ${card('Ticket médio', _fmtMoeda(tkU), deltaPct(tkU, tkA))}
-    ${card('Itens vendidos', _fmtNum(tU.itens), deltaPct(tU.itens, tA.itens))}
+    ${card('Faturamento líquido', _fmtMoeda(A.liq, true), dLiq, `antes ${_fmtMoeda(B.liq, true)} · vendas menos devoluções`, false, _fmtMoeda(A.liq))}
+    ${card('Por dia útil', _fmtMoeda(A.porDia, true), d(A.porDia, B.porDia), `${A.du} dias úteis contra ${B.du}`, false, 'Tira o efeito de meses com mais ou menos dias úteis')}
+    ${card('Instituições compradoras', nA.toLocaleString('pt-BR'), d(nA, nB), `${novos.length} novas (${_fmtMoeda(fatNovos, true)}) · ${pararam.length} pararam (${_fmtMoeda(fatPararam, true)})`, false, 'Clientes com CNPJ que compraram no período')}
+    ${card('Notas emitidas', A.notas.toLocaleString('pt-BR'), dNotas, `antes ${B.notas.toLocaleString('pt-BR')}`)}
+    ${card('Ticket médio', 'R$ ' + Math.round(A.ticket).toLocaleString('pt-BR'), dTk, `antes R$ ${Math.round(B.ticket).toLocaleString('pt-BR')} · por nota`)}
+    ${card('Devoluções', _fmtMoeda(A.dev, true), d(A.dev, B.dev), `${_fatPctBR(A.vendas > 0 ? A.dev / A.vendas * 100 : 0, 2)} das vendas · antes ${_fatPctBR(B.vendas > 0 ? B.dev / B.vendas * 100 : 0, 2)}`, true)}
   `;
 }
 
@@ -48242,9 +48361,10 @@ function _fatRenderInsights() {
   if (universoEl) {
     const _nTop = (FAT_DATA?.clientes_top || []).length;
     const _nBase = FAT_DATA?.meta?.qtd_clientes_unicos || 0;
-    universoEl.textContent = _nBase
-      ? `Top ${_nTop} clientes · base de ${_nBase.toLocaleString('pt-BR')}`
-      : `${_nTop} clientes analisados`;
+    const _fimIns = FAT_DATA?.meta?.periodo_fim ? FAT_DATA.meta.periodo_fim.split('-').reverse().slice(0, 2).join('/') : '';
+    universoEl.textContent = (_nBase
+      ? `${_nTop} maiores clientes de ${_nBase.toLocaleString('pt-BR')}`
+      : `${_nTop} clientes analisados`) + (_fimIns ? ` · dados até ${_fimIns}` : '');
   }
   // Atualiza resumo das regras na toolbar
   const resumoEl = document.getElementById('fatInsightsRegrasResumo');
@@ -48979,21 +49099,9 @@ function _fatRenderInsights() {
     return '';
   }
 
-  el.innerHTML = `
-    <!-- Header explicativo -->
-    <div style="grid-column:1/-1;background:linear-gradient(135deg,#0A1F5C 0%,#1D4ED8 100%);border-radius:14px;padding:16px 20px;margin-bottom:4px;color:#fff;">
-      <div style="display:flex;align-items:center;gap:12px;">
-        <div style="width:44px;height:44px;border-radius:10px;background:rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-          <span class="material-symbols-rounded" style="font-size:24px;">auto_awesome</span>
-        </div>
-        <div>
-          <div style="font-family:var(--font-display);font-weight:700;font-size:16px;">Insights automáticos</div>
-          <div style="font-size:12px;color:rgba(255,255,255,0.85);margin-top:2px;">Análise de comportamento comercial derivada dos dados atuais. Cards vermelhos = agir, verdes = oportunidades, amarelos = atenção.</div>
-        </div>
-      </div>
-    </div>
-    ${cards.join('')}
-  `;
+  // Sprint 9.32.459: o grid de cards deu lugar a placar + ações + sinais (_fatInsRender).
+  // Os cards continuam sendo montados acima porque registram os dados dos modais.
+  void cards;
 
   // Sprint 9.32.382: resumo compacto enviado à IA — os MESMOS números dos cards,
   // já calculados aqui. A IA não calcula nada: só lê, prioriza e escreve.
@@ -49062,7 +49170,431 @@ function _fatRenderInsights() {
     } : null,
   };
   window._fatResumoIA = resumoIA;
-  _fatRenderLeitura(_fatGerarLeitura(resumoIA));
+  _fatInsRender(_fatInsMontar({
+    R, dormentes, quebra: _iaQuebra, cruzada: _iaCruzada,
+    topMarca, pctTopMarca, topCliente, pctTopCliente, pctSP, marcasRelevantes,
+  }));
+}
+
+// ============================================================================
+// Sprint 9.32.459 — Insights reorganizados: placar, ações da semana e sinais
+// ----------------------------------------------------------------------------
+// Antes: vinte cards com o mesmo peso, dois blocos azuis enormes e a mesma
+// informação repetida na "Leitura" e nos cards. Agora três camadas:
+//   1. Placar: ano, último mês fechado e prévia (a MESMA da Visão geral).
+//   2. Fazer esta semana: até 3 ações, ordenadas pelo dinheiro em jogo.
+//   3. Sinais: Atenção, Oportunidades e Retrato da carteira (o estrutural sai
+//      do alarme: SP 94% não muda de um mês para o outro).
+// E quatro leituras corrigidas:
+//   - canais e marcas medidos em R$/mês (3 meses fechados contra os 3
+//     anteriores), não em "tendência linear" de −99%;
+//   - queda que tem um "irmão" subindo o mesmo valor vira "verificar migração"
+//     (Devi PDV_02 caiu R$ 34 mil/mês e Devi PDV_01 subiu R$ 34 mil/mês);
+//   - venda cruzada só sugere marca que está crescendo;
+//   - pico de devolução só aparece se for recente.
+// ============================================================================
+
+const _INS_CSS = `
+.ins-placar{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));background:#fff;border:1px solid #E3E8F0;border-radius:14px;overflow:hidden;margin-bottom:16px}
+.ins-placar>div{padding:15px 17px;min-width:0}
+.ins-placar>div+div{border-left:1px solid #E3E8F0}
+.ins-rot{font-size:10.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#6B7280}
+.ins-val{font-family:var(--font-display);font-size:24px;font-weight:700;color:var(--brand-navy);margin-top:4px;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;line-height:1.15}
+.ins-val>span:first-child{white-space:nowrap}
+.ins-sub{font-size:11.5px;color:#6B7280;margin-top:4px;line-height:1.45}
+.ins-chip{font-family:Inter,system-ui,sans-serif;font-size:11.5px;font-weight:700;padding:2px 8px;border-radius:999px;white-space:nowrap}
+.ins-up{background:#ECFDF3;color:#067647}.ins-dn{background:#FEF3F2;color:#B42318}.ins-nt{background:#EEF1F6;color:#4B5563}
+.ins-prev{background:linear-gradient(135deg,#0F766E,#115E59);color:#fff}
+.ins-prev .ins-rot,.ins-prev .ins-sub{color:rgba(255,255,255,.82)}.ins-prev .ins-val{color:#fff}
+.ins-regua{height:6px;border-radius:99px;background:rgba(255,255,255,.2);margin-top:9px;position:relative}
+.ins-regua i{position:absolute;top:0;bottom:0;border-radius:99px;background:rgba(255,255,255,.55)}
+.ins-regua b{position:absolute;top:-3px;width:3px;height:12px;border-radius:2px;background:#fff}
+.ins-cab{display:flex;align-items:baseline;gap:10px;margin:0 0 9px;flex-wrap:wrap}
+.ins-cab h3{font-family:var(--font-display);font-size:15px;font-weight:700;color:var(--brand-navy);margin:0}
+.ins-cab span{font-size:11.5px;color:#6B7280}
+.ins-acoes{background:#fff;border:1px solid #E3E8F0;border-radius:14px;margin-bottom:16px}
+.ins-acao{display:grid;grid-template-columns:32px minmax(0,1fr) auto;gap:14px;padding:14px 17px;align-items:start}
+.ins-acao+.ins-acao{border-top:1px solid #E3E8F0}
+.ins-num{width:30px;height:30px;border-radius:9px;background:var(--brand-navy);color:#fff;font-family:var(--font-display);font-weight:700;font-size:14px;display:flex;align-items:center;justify-content:center}
+.ins-acao-tit{font-weight:700;font-size:14px;color:var(--brand-navy);line-height:1.3}
+.ins-acao-porque{font-size:12.5px;color:#4B5563;margin-top:3px;line-height:1.5}
+.ins-acao-faz{font-size:12.5px;color:var(--brand-navy);margin-top:8px;display:flex;gap:6px;align-items:flex-start;line-height:1.45}
+.ins-acao-faz .material-symbols-rounded{font-size:16px;color:#6FA62E;margin-top:1px}
+.ins-acao-dir{text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+.ins-acao-val{font-family:var(--font-display);font-size:18px;font-weight:700;white-space:nowrap;line-height:1.1}
+.ins-acao-valrot{font-size:10.5px;color:#6B7280}
+.ins-lnk{font-size:12px;font-weight:600;color:var(--brand-navy);background:#fff;border:1px solid #E3E8F0;border-radius:8px;padding:5px 10px;white-space:nowrap;display:inline-flex;gap:3px;align-items:center;cursor:pointer;font-family:inherit}
+.ins-sinais{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;align-items:start}
+.ins-col{background:#fff;border:1px solid #E3E8F0;border-radius:14px;padding:13px 15px;min-width:0}
+.ins-col-cab{display:flex;align-items:center;gap:7px;font-weight:700;font-size:13px;color:var(--brand-navy);margin-bottom:4px;list-style:none;cursor:default}
+.ins-col-cab::-webkit-details-marker{display:none}
+.ins-col-cab .ins-qt{margin-left:auto;font-weight:600;font-size:11.5px;color:#6B7280}
+.ins-dot{width:9px;height:9px;border-radius:50%;flex:0 0 9px}
+.ins-item{padding:10px 0;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:start}
+.ins-item+.ins-item{border-top:1px dashed #E3E8F0}
+.ins-item[onclick]{cursor:pointer}
+.ins-item-tit{font-weight:600;font-size:12.5px;color:var(--brand-navy);line-height:1.35}
+.ins-item-sub{font-size:11.5px;color:#6B7280;margin-top:2px;line-height:1.45}
+.ins-item-val{font-weight:700;font-size:13px;white-space:nowrap;text-align:right}
+.ins-vazio{font-size:12px;color:#6B7280;padding:10px 0}
+.ins-rodape{font-size:11px;color:#6B7280;margin-top:12px}
+@media (max-width:900px){.ins-sinais{grid-template-columns:1fr}}
+@media (max-width:640px){
+  .ins-placar{grid-template-columns:1fr}
+  .ins-placar>div+div{border-left:0;border-top:1px solid #E3E8F0}
+  .ins-placar>div{padding:12px 14px}
+  .ins-val{font-size:21px}
+  .ins-acao{grid-template-columns:26px minmax(0,1fr);gap:10px;padding:13px}
+  .ins-num{width:26px;height:26px;font-size:12.5px;border-radius:8px}
+  .ins-acao-dir{grid-column:2;flex-direction:row;align-items:center;justify-content:space-between;text-align:left}
+  .ins-col-cab{cursor:pointer;margin:0}
+  details.ins-col[open] .ins-col-cab{margin-bottom:4px}
+}
+`;
+
+function _insM(v) {
+  const a = Math.abs(v || 0), s = v < 0 ? '−' : '';
+  if (a >= 1e6) return `${s}R$ ${(a / 1e6).toFixed(2).replace('.', ',')} mi`;
+  if (a >= 1e3) return `${s}R$ ${Math.round(a / 1e3).toLocaleString('pt-BR')} mil`;
+  return `${s}R$ ${Math.round(a).toLocaleString('pt-BR')}`;
+}
+function _insMesExt(ym) {
+  const n = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+  return n[Number(String(ym).slice(5, 7)) - 1] || ym;
+}
+const _insEsc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+function _insVezes(x) { return x.toFixed(1).replace('.', ','); }
+
+// Série mensal em R$/mês: últimos 3 meses FECHADOS contra os 3 anteriores.
+// Retorna [{nome, antes, agora, dif, pct}] para os itens com volume relevante.
+function _insTendencia3x3(linhas, campoNome, u3, a3, minMes) {
+  const u = new Set(u3), a = new Set(a3), acc = {};
+  (linhas || []).forEach(r => {
+    const k = r[campoNome];
+    if (!k || k === 'N/D') return;
+    if (!acc[k]) acc[k] = { nome: k, antes: 0, agora: 0 };
+    if (u.has(r.ano_mes)) acc[k].agora += r.faturamento || 0;
+    else if (a.has(r.ano_mes)) acc[k].antes += r.faturamento || 0;
+  });
+  return Object.values(acc).map(x => {
+    x.antes /= Math.max(1, a3.length); x.agora /= Math.max(1, u3.length);
+    x.dif = x.agora - x.antes;
+    x.pct = x.antes > 0 ? (x.agora / x.antes - 1) * 100 : null;
+    return x;
+  }).filter(x => Math.max(x.antes, x.agora) >= minMes);
+}
+
+// "Família" pelo primeiro nome: Devi PDV_01/02/03 → DEVI; DANONE (NUTRIPORT) → DANONE.
+function _insFamilia(nome) {
+  const s = String(nome).normalize('NFKD').replace(/[̀-ͯ]/g, '').toUpperCase();
+  return (s.match(/[A-Z0-9]+/) || [s])[0];
+}
+// Migração: numa mesma família, o que caiu forte (30% ou mais) foi compensado
+// pelo que subiu (entre metade e o dobro do valor). Aí não é perda, é troca de
+// ponto de venda ou de nome no Omie. Um aviso por família, não por item.
+function _insMarcarMigracao(lista) {
+  const fam = {};
+  lista.forEach(x => { const k = _insFamilia(x.nome); (fam[k] = fam[k] || []).push(x); });
+  const grupos = [];
+  Object.values(fam).forEach(g => {
+    const caem = g.filter(x => x.dif < 0 && x.pct !== null && x.pct <= -30);
+    const sobem = g.filter(x => x.dif > 0);
+    if (!caem.length || !sobem.length) return;
+    const F = caem.reduce((s, x) => s + Math.abs(x.dif), 0);
+    const G = sobem.reduce((s, x) => s + x.dif, 0);
+    if (G / F < 0.5 || G / F > 2) return;
+    const principal = sobem.slice().sort((a, b) => b.dif - a.dif)[0];
+    caem.forEach(x => { x.migracao = principal; });
+    sobem.forEach(x => { x.recebeu = true; });
+    grupos.push({ caem, sobem, principal, F, G });
+  });
+  lista._grupos = grupos;
+  return lista;
+}
+const _insJuntar = arr => arr.length <= 1 ? (arr[0] || '') : arr.slice(0, -1).join(', ') + ' e ' + arr[arr.length - 1];
+
+function _fatInsMontar(c) {
+  const parc = _fatMesParcial();
+  const existe = new Set((FAT_DATA.mensal || []).map(m => m.ano_mes));
+  const fech = [...existe].filter(ym => !parc || ym !== parc.ym).sort();
+  const ult = fech[fech.length - 1];
+  if (!ult) return null;
+  const anoAnt = ym => `${Number(ym.slice(0, 4)) - 1}${ym.slice(4)}`;
+  const u3 = fech.slice(-3), a3 = fech.slice(-6, -3);
+  const reg = (id, dados) => { if (!window._fatInsightModalData) window._fatInsightModalData = {}; window._fatInsightModalData[id] = dados; return id; };
+
+  // ─── 1. Placar ───────────────────────────────────────────────────
+  const ano = ult.slice(0, 4);
+  const ytd = fech.filter(ym => ym.startsWith(ano + '-'));
+  const ytdB = ytd.map(anoAnt);
+  const placar = {};
+  if (ytd.length && ytdB.every(ym => existe.has(ym))) {
+    const A = _fatCmpMedir(ytd), B = _fatCmpMedir(ytdB);
+    placar.ano = { rot: `Ano até ${_insMesExt(ult)}`, val: A.liq, pct: B.liq > 0 ? (A.liq / B.liq - 1) * 100 : null,
+      sub: `contra ${_insM(B.liq)} de ${_mesLabel(ytdB[0]).toLowerCase()} a ${_mesLabel(ytdB[ytdB.length - 1]).toLowerCase()} · líquido` };
+  }
+  {
+    const A = _fatCmpMedir([ult]);
+    const temB = existe.has(anoAnt(ult));
+    const B = temB ? _fatCmpMedir([anoAnt(ult)]) : null;
+    placar.mes = { rot: `${_insMesExt(ult)} · último mês fechado`, val: A.liq,
+      pct: B && B.liq > 0 ? (A.liq / B.liq - 1) * 100 : null,
+      sub: B ? `contra ${_insMesExt(ult)} de ${Number(ano) - 1} · mesmo mês, sem sazonalidade` : 'sem o mesmo mês no ano anterior' };
+    placar.mesLiq = A.liq;
+  }
+  const pv = (typeof _fatPreviaFechamento === 'function')
+    ? _fatPreviaFechamento(FAT_DATA.mensal, FAT_DATA.devolucoes_mensal, 'curva') : null;
+  if (pv) {
+    placar.prev = { rot: `${_insMesExt(pv.ymCorte)} · prévia de fechamento`, val: pv.previa,
+      pct: placar.mesLiq > 0 ? (pv.previa / placar.mesLiq - 1) * 100 : null,
+      sub: `${pv.passados} de ${pv.total} dias úteis${pv.faixaMin ? ` · margem de ${_insM(pv.faixaMin)} a ${_insM(pv.faixaMax)}` : ''}`,
+      faixa: pv.faixaMin ? [pv.faixaMin, pv.faixaMax] : null };
+  } else if (parc) {
+    placar.prev = { rot: `${_insMesExt(parc.ym)} · em curso`, val: null, sub: 'prévia aparece a partir do 5º dia útil' };
+  }
+
+  // ─── 2. Candidatas a ação (competem pelo R$ em jogo) ─────────────
+  const cand = [];
+  const q = c.quebra || [];
+  if (q.length) {
+    const tot = q.reduce((s, x) => s + x.faturamento, 0);
+    const t1 = q[0], t2 = q[1];
+    cand.push({
+      impacto: tot, tom: 'red', icone: 'call',
+      titulo: q.length === 1 ? `1 cliente fiel parou de comprar em ${_insMesExt(ult)}` : `${q.length} clientes fiéis pararam de comprar em ${_insMesExt(ult)}`,
+      porque: 'Compravam em 4 ou mais dos 6 meses anteriores. É o grupo mais barato de recuperar: ainda não viraram dormentes.',
+      faz: `Ligar para <b>${_insEsc(t1.nome)}</b> (${_insM(t1.faturamento)}, comprava ${t1.mesesAtivos} de 6 meses)` +
+           (t2 ? ` e <b>${_insEsc(t2.nome)}</b> (${_insM(t2.faturamento)}, ${t2.mesesAtivos} de 6)` : '') + '.',
+      val: _insM(tot), valRot: 'em jogo',
+      link: { rot: `Ver os ${q.length}`, modal: reg('ins_quebra', { tipo: 'lista', tom: 'danger', tituloModal: 'Clientes fiéis que pararam',
+        items: q.map(x => ({ nome: x.nome, sub: `comprava ${x.mesesAtivos} de 6 meses`, valor: _fmtMoeda(x.faturamento) })) }) },
+    });
+  }
+
+  // Devolução por unidade no ano (taxa na base certa: devolução e faturamento do mesmo recorte)
+  {
+    const mesesAno = new Set([...existe].filter(ym => ym.startsWith(ano + '-')));
+    const dev = {}, fat = {}, picoMes = {};
+    (FAT_DATA.devolucoes_empresa_mes || []).forEach(r => {
+      if (!mesesAno.has(r.ano_mes)) return;
+      dev[r.Empresa] = (dev[r.Empresa] || 0) + r.valor_devolucao;
+      if (!picoMes[r.Empresa] || r.valor_devolucao > picoMes[r.Empresa].v) picoMes[r.Empresa] = { ym: r.ano_mes, v: r.valor_devolucao };
+    });
+    (FAT_DATA.empresa_mes || []).forEach(r => { if (mesesAno.has(r.ano_mes)) fat[r.Empresa] = (fat[r.Empresa] || 0) + r.faturamento; });
+    const emps = Object.keys(fat).filter(e => fat[e] > 0).map(e => ({ e, dev: dev[e] || 0, fat: fat[e], taxa: (dev[e] || 0) / fat[e] * 100 }));
+    if (emps.length >= 2) {
+      const pior = emps.slice().sort((a, b) => b.taxa - a.taxa)[0];
+      const out = emps.filter(x => x !== pior);
+      const tOut = out.reduce((s, x) => s + x.dev, 0) / Math.max(1, out.reduce((s, x) => s + x.fat, 0)) * 100;
+      const excesso = pior.dev - pior.fat * tOut / 100;
+      if (tOut > 0 && pior.taxa >= tOut * 1.5 && excesso >= 20000) {
+        const pm = picoMes[pior.e];
+        cand.push({
+          impacto: excesso, tom: 'red', icone: 'local_shipping',
+          titulo: `${pior.e} devolve ${_insVezes(pior.taxa / tOut)} vezes mais que as outras unidades`,
+          porque: `${_fatPctBR(pior.taxa, 2)} do faturamento em ${ano}, contra ${_fatPctBR(tOut, 2)} das outras unidades. Na mesma taxa das outras, seriam ${_insM(excesso)} a menos no ano.`,
+          faz: `Revisar separação e expedição da unidade.${pm ? ` ${_insMesExt(pm.ym).replace(/^./, x => x.toUpperCase())} sozinho teve ${_insM(pm.v)} devolvidos.` : ''}`,
+          val: _insM(excesso), valRot: 'acima do normal',
+          link: { rot: 'Ver devoluções', acao: `_fatTrocarAba('devolucoes')` },
+        });
+      }
+    }
+  }
+
+  const d = c.dormentes || [];
+  if (d.length) {
+    const tot = d.reduce((s, x) => s + x.faturamento, 0);
+    cand.push({
+      impacto: tot * 0.5, tom: 'amb', icone: 'event',
+      titulo: `${d.length} cliente${d.length !== 1 ? 's' : ''} do top 50 parado${d.length !== 1 ? 's' : ''} há mais de ${c.R.dormenteDias} dias`,
+      porque: d.slice(0, 2).map(x => `${_insEsc(x.nome)}: ${x.diasSemComprar} dias sem comprar.`).join(' '),
+      faz: 'Agendar visita de retomada com a nutricionista da região.',
+      val: _insM(tot), valRot: 'de histórico',
+      link: { rot: `Ver ${d.length === 1 ? 'o cliente' : 'os ' + d.length}`, modal: reg('ins_dormentes', { tipo: 'dormentes', tom: 'warning', items: d, tituloModal: `Parados há ${c.R.dormenteDias}+ dias` }) },
+    });
+  }
+
+  // Canais (vendedor_mes): R$/mês, com detecção de migração entre irmãos
+  const canais = _insMarcarMigracao(_insTendencia3x3(FAT_DATA.vendedor_mes, 'Vendedor', u3, a3, 5000));
+  const quedaReal = canais.filter(x => x.pct !== null && x.pct <= -(c.R.trendQuedaPct || 25) && !x.migracao).sort((a, b) => a.dif - b.dif);
+  if (quedaReal.length) {
+    const x = quedaReal[0];
+    cand.push({
+      impacto: Math.abs(x.dif) * 3, tom: 'red', icone: 'search',
+      titulo: `${x.nome} caiu ${_fatPctBR(Math.abs(x.pct), 0)}`,
+      porque: `De ${_insM(x.antes)} para ${_insM(x.agora)} por mês, nos últimos 3 meses fechados contra os 3 anteriores.`,
+      faz: 'Investigar a causa: ruptura de estoque, preço ou concorrência.',
+      val: `${_insM(x.dif)}/mês`, valRot: 'de perda',
+    });
+  }
+
+  // Pico de devolução só se for recente (nos 3 últimos meses fechados)
+  {
+    const dv = (FAT_DATA.devolucoes_mensal || []).filter(x => fech.includes(x.ano_mes));
+    if (dv.length >= 4) {
+      const media = dv.reduce((s, x) => s + x.valor_devolucao, 0) / dv.length;
+      const pico = dv.slice().sort((a, b) => b.valor_devolucao - a.valor_devolucao)[0];
+      if (u3.includes(pico.ano_mes) && pico.valor_devolucao >= media * 2) {
+        cand.push({
+          impacto: pico.valor_devolucao - media, tom: 'red', icone: 'assignment_return',
+          titulo: `Pico de devoluções em ${_insMesExt(pico.ano_mes)}`,
+          porque: `${_insM(pico.valor_devolucao)} devolvidos, ${_insVezes(pico.valor_devolucao / media)} vezes a média mensal (${_insM(media)}).`,
+          faz: 'Levantar a causa. Devolução que se repete vira margem perdida todo mês.',
+          val: _insM(pico.valor_devolucao), valRot: 'no mês',
+          link: { rot: 'Ver devoluções', acao: `_fatTrocarAba('devolucoes')` },
+        });
+      }
+    }
+  }
+  const acoes = cand.sort((a, b) => b.impacto - a.impacto).slice(0, 3);
+
+  // ─── 3. Sinais ───────────────────────────────────────────────────
+  const atencao = [], oport = [], retrato = [];
+  const cor = { red: '#B42318', grn: '#067647', amb: '#B45309', nt: '#4B5563' };
+
+  if (c.topMarca && c.pctTopMarca >= c.R.concMarcaMedio) {
+    const alto = c.pctTopMarca >= c.R.concMarcaAlto;
+    const fr = c.pctTopMarca >= 70 ? 'quase três quartos' : (c.pctTopMarca >= 50 ? 'mais da metade' : 'boa parte');
+    atencao.push({ tit: `${c.topMarca.Marca} é ${_fatPctBR(c.pctTopMarca, 0)} da receita`,
+      sub: `Uma mudança de política do fornecedor atinge ${fr} do faturamento.`, val: _fatPctBR(c.pctTopMarca, 1), cor: alto ? cor.red : cor.amb });
+  }
+  if (c.topCliente && c.pctTopCliente > c.R.concClienteMedio) {
+    atencao.push({ tit: `${c.topCliente['Cliente (Nome Fantasia)']} concentra ${_fatPctBR(c.pctTopCliente, 1)} do top 50`,
+      sub: 'Perder essa conta abre um buraco difícil de repor.', val: _fatPctBR(c.pctTopCliente, 1), cor: c.pctTopCliente > c.R.concClienteAlto ? cor.red : cor.amb });
+  }
+  (canais._grupos || []).forEach(g => {
+    const nc = g.caem.map(x => x.nome), ns = g.sobem.map(x => x.nome);
+    atencao.push({ tit: `${_insJuntar(nc)} ${nc.length > 1 ? 'caíram' : 'caiu'}, mas ${g.principal.nome} subiu ${Math.abs(1 - g.G / g.F) <= 0.2 ? 'o mesmo' : 'para compensar'}`,
+      sub: `−${_insM(g.F)}/mês em ${_insJuntar(nc)}, +${_insM(g.G)}/mês em ${_insJuntar(ns)}. Parece migração entre pontos, não perda. Vale confirmar.`, val: 'verificar', cor: cor.amb });
+  });
+  quedaReal.slice(acoes.some(a => a.icone === 'search') ? 1 : 0, 3).forEach(x => {
+    atencao.push({ tit: `${x.nome} em queda`, sub: `De ${_insM(x.antes)} para ${_insM(x.agora)} por mês nos últimos 3 meses.`, val: `−${_fatPctBR(Math.abs(x.pct), 0)}`, cor: cor.red });
+  });
+
+  const marcasT = _insMarcarMigracao(_insTendencia3x3(FAT_DATA.marca_mes, 'Marca', u3, a3, 10000));
+  (marcasT._grupos || []).forEach(g => {
+    const sumiu = g.caem.every(x => x.agora < x.antes * 0.05);
+    const nova = g.principal.antes < g.principal.agora * 0.1;
+    const nc = g.caem.map(x => x.nome);
+    atencao.push({ tit: `${_insJuntar(nc)} ${sumiu ? (nc.length > 1 ? 'sumiram' : 'sumiu') : (nc.length > 1 ? 'caíram' : 'caiu')} e ${g.principal.nome} ${nova ? 'apareceu' : 'subiu'}`,
+      sub: `−${_insM(g.F)}/mês de um lado, +${_insM(g.G)}/mês do outro. Parece a mesma marca com outro nome no Omie. Unificar deixa as análises de marca certas.`, val: 'verificar', cor: cor.amb });
+  });
+  marcasT.filter(x => !x.migracao && x.pct !== null && x.pct <= -30).sort((a, b) => a.dif - b.dif).slice(0, 2).forEach(x => {
+    atencao.push({ tit: `${x.nome} em queda`, sub: `De ${_insM(x.antes)} para ${_insM(x.agora)} por mês nos últimos 3 meses.`, val: `−${_fatPctBR(Math.abs(x.pct), 0)}`, cor: cor.red });
+  });
+
+  canais.filter(x => x.pct !== null && x.pct >= (c.R.trendAltaPct || 20) && x.dif >= 3000 && !x.recebeu).sort((a, b) => b.dif - a.dif).slice(0, 2).forEach(x => {
+    oport.push({ tit: `${x.nome} acelerando`, sub: `${_insM(x.agora)} por mês nos últimos 3 meses, eram ${_insM(x.antes)}.`, val: `+${_insM(x.dif)}/mês`, cor: cor.grn });
+  });
+  if (u3.length === 3 && a3.length === 3) {
+    const A = _fatCmpMedir(u3), B = _fatCmpMedir(a3);
+    const novos = Object.keys(A.pj).filter(k => !(k in B.pj));
+    if (novos.length) {
+      const nomes = {}; (FAT_DATA.clientes_lista || []).forEach(x => { nomes[x.cnpj] = x.nome_fantasia; });
+      const tot = novos.reduce((s, k) => s + A.pj[k], 0);
+      oport.push({ tit: `${novos.length} instituições novas no trimestre`, sub: `Já somam ${_insM(tot)}. Primeira compra é a hora de fidelizar.`,
+        val: _insM(tot), cor: cor.grn,
+        modal: reg('ins_novas', { tipo: 'lista', tom: 'success', tituloModal: `Instituições novas (${_mesLabel(u3[0])} a ${_mesLabel(u3[2])})`,
+          items: novos.sort((a, b) => A.pj[b] - A.pj[a]).map(k => ({ nome: nomes[k] || k, sub: k, valor: _fmtMoeda(A.pj[k]) })) }) });
+    }
+  }
+  marcasT.filter(x => !x.recebeu && x.pct !== null && x.pct >= (c.R.trendMarcaAltaPct || 25) && x.dif >= 5000).sort((a, b) => b.dif - a.dif).slice(0, 2).forEach(x => {
+    oport.push({ tit: `${x.nome} em alta`, sub: `${_insM(x.agora)} por mês nos últimos 3 meses, eram ${_insM(x.antes)}.`, val: `+${_fatPctBR(x.pct, 0)}`, cor: cor.grn });
+  });
+  if (c.cruzada && c.cruzada.clientes && c.cruzada.clientes.length) {
+    const mk = marcasT.find(x => x.nome === c.cruzada.marca);
+    if (mk && mk.dif > 0) {
+      oport.push({ tit: `${c.cruzada.clientes.length} clientes do top 50 nunca compraram ${c.cruzada.marca}`,
+        sub: `Eles já movimentam ${_insM(c.cruzada.potencial)} com você, e a marca está crescendo.`, val: String(c.cruzada.clientes.length), cor: cor.grn,
+        modal: reg('ins_cruzada', { tipo: 'lista', tom: 'success', tituloModal: `Top 50 sem ${c.cruzada.marca}`,
+          items: c.cruzada.clientes.map(x => ({ nome: x['Cliente (Nome Fantasia)'], sub: x.Cidade || '', valor: _fmtMoeda(x.faturamento) })) }) });
+    }
+  }
+
+  if (c.pctSP > 0) retrato.push({ tit: 'São Paulo', sub: 'Estrutural: é onde a operação está. Não muda de um mês para o outro.', val: _fatPctBR(c.pctSP, 1), cor: cor.nt });
+  if (c.topCliente && c.pctTopCliente <= c.R.concClienteMedio) {
+    retrato.push({ tit: 'Maior cliente do top 50', sub: `${c.topCliente['Cliente (Nome Fantasia)']}. Carteira bem distribuída.`, val: _fatPctBR(c.pctTopCliente, 1), cor: cor.nt });
+  }
+  if (c.topMarca && c.pctTopMarca < c.R.concMarcaMedio) {
+    retrato.push({ tit: `Maior marca: ${c.topMarca.Marca}`, sub: 'Dependência de fornecedor sob controle.', val: _fatPctBR(c.pctTopMarca, 1), cor: cor.nt });
+  }
+  retrato.push({ tit: 'Marcas relevantes', sub: `Com pelo menos 1% do faturamento, de ${(FAT_DATA.marcas || []).length} marcas.`, val: String(c.marcasRelevantes), cor: cor.nt });
+
+  // Cada coluna mostra no máximo 5 sinais: é uma leitura, não um relatório
+  return { placar, acoes, atencao: atencao.slice(0, 5), oport: oport.slice(0, 5), retrato: retrato.slice(0, 5) };
+}
+
+function _fatInsRender(p) {
+  if (!document.getElementById('insCss')) {
+    const st = document.createElement('style'); st.id = 'insCss'; st.textContent = _INS_CSS; document.head.appendChild(st);
+  }
+  const topo = document.getElementById('fatInsightsIA');
+  const corpo = document.getElementById('fatInsights');
+  if (!topo || !corpo) return;
+  if (!p) { topo.innerHTML = ''; corpo.innerHTML = '<div class="ins-vazio">Sem dados suficientes.</div>'; return; }
+  const mob = !(typeof isDesktop === 'function' && isDesktop());
+  const chip = v => v == null ? ''
+    : `<span class="ins-chip ${Math.abs(v) < 1 ? 'ins-nt' : (v > 0 ? 'ins-up' : 'ins-dn')}">${v >= 0 ? '+' : '−'}${_fatPctBR(Math.abs(v), 1)}</span>`;
+  const cap = s => String(s).replace(/^./, x => x.toUpperCase());
+
+  const tile = (t, prev) => {
+    if (!t) return '';
+    if (prev) {
+      let regua = '';
+      if (t.faixa && t.val) {
+        const lo = t.faixa[0] * 0.9, hi = t.faixa[1] * 1.1, pos = x => ((x - lo) / (hi - lo) * 100).toFixed(1);
+        regua = `<div class="ins-regua"><i style="left:${pos(t.faixa[0])}%;right:${(100 - pos(t.faixa[1])).toFixed(1)}%"></i><b style="left:${pos(t.val)}%"></b></div>`;
+      }
+      const vsMes = t.pct == null ? '' : `<span class="ins-chip" style="background:rgba(255,255,255,.18);color:#fff;">${t.pct >= 0 ? '+' : '−'}${_fatPctBR(Math.abs(t.pct), 0)} vs mês anterior</span>`;
+      return `<div class="ins-prev"><div class="ins-rot">${cap(t.rot)}</div><div class="ins-val"><span>${t.val ? _insM(t.val) : '—'}</span>${vsMes}</div><div class="ins-sub">${t.sub}</div>${regua}</div>`;
+    }
+    return `<div><div class="ins-rot">${cap(t.rot)}</div><div class="ins-val"><span>${_insM(t.val)}</span>${chip(t.pct)}</div><div class="ins-sub">${t.sub}</div></div>`;
+  };
+  const pl = p.placar;
+  const placarHtml = mob
+    ? `<div class="ins-placar">${tile(pl.prev, true)}${tile(pl.mes)}${tile(pl.ano)}</div>`
+    : `<div class="ins-placar">${tile(pl.ano)}${tile(pl.mes)}${tile(pl.prev, true)}</div>`;
+
+  const corAcao = { red: '#B42318', amb: '#B45309' };
+  const linkHtml = l => !l ? '' : l.modal
+    ? `<button type="button" class="ins-lnk" onclick="_fatAbrirModalInsight('${l.modal}')">${l.rot}<span class="material-symbols-rounded" style="font-size:15px;">chevron_right</span></button>`
+    : `<button type="button" class="ins-lnk" onclick="${l.acao}">${l.rot}<span class="material-symbols-rounded" style="font-size:15px;">chevron_right</span></button>`;
+  const acoesHtml = p.acoes.length === 0
+    ? '<div class="ins-acao" style="grid-template-columns:1fr;"><div class="ins-vazio">Nada urgente esta semana. Os sinais abaixo seguem valendo.</div></div>'
+    : p.acoes.map((a, i) => `
+      <div class="ins-acao">
+        <div class="ins-num">${i + 1}</div>
+        <div style="min-width:0;">
+          <div class="ins-acao-tit">${_insEsc(a.titulo)}</div>
+          ${mob ? '' : `<div class="ins-acao-porque">${a.porque}</div>`}
+          <div class="ins-acao-faz"><span class="material-symbols-rounded">${a.icone}</span><span>${a.faz}</span></div>
+        </div>
+        <div class="ins-acao-dir">
+          <div><div class="ins-acao-val" style="color:${corAcao[a.tom] || '#0A1F5C'};">${a.val}</div><div class="ins-acao-valrot">${a.valRot}</div></div>
+          ${linkHtml(a.link)}
+        </div>
+      </div>`).join('');
+
+  topo.innerHTML = placarHtml +
+    `<div class="ins-cab"><h3>Fazer esta semana</h3>${mob ? '' : '<span>ordenado pelo dinheiro em jogo</span>'}</div>` +
+    `<div class="ins-acoes">${acoesHtml}</div>`;
+
+  const item = x => `<div class="ins-item"${x.modal ? ` onclick="_fatAbrirModalInsight('${x.modal}')"` : ''}>
+      <div style="min-width:0;"><div class="ins-item-tit">${_insEsc(x.tit)}</div>${x.sub ? `<div class="ins-item-sub">${_insEsc(x.sub)}</div>` : ''}</div>
+      <div class="ins-item-val" style="color:${x.cor};">${_insEsc(x.val)}</div></div>`;
+  const col = (titulo, corDot, itens, aberto) => {
+    const lista = itens.length ? itens.map(item).join('') : '<div class="ins-vazio">Nada por aqui agora.</div>';
+    const cab = `<span class="ins-dot" style="background:${corDot};"></span>${titulo}${mob ? `<span class="ins-qt">${itens.length}</span><span class="material-symbols-rounded" style="font-size:18px;color:#6B7280;">expand_more</span>` : ''}`;
+    return mob
+      ? `<details class="ins-col"${aberto ? ' open' : ''}><summary class="ins-col-cab">${cab}</summary>${lista}</details>`
+      : `<div class="ins-col"><div class="ins-col-cab">${cab}</div>${lista}</div>`;
+  };
+  corpo.innerHTML = `<div class="ins-sinais">
+      ${col('Atenção', '#B42318', p.atencao, true)}
+      ${col('Oportunidades', '#067647', p.oport, false)}
+      ${col('Retrato da carteira', '#9CA3AF', p.retrato, false)}
+    </div>
+    <div class="ins-rodape">Calculado no próprio app, sem IA e sem custo. Canais e marcas: últimos 3 meses fechados contra os 3 anteriores, em reais por mês. Toque num item com lista para ver os detalhes.</div>`;
 }
 
 // ============================================================================
@@ -49252,7 +49784,7 @@ function _fatRenderLeitura(dados) {
 // ============================================================================
 
 // Retorna o conjunto de meses que passam no filtro atual de período + mês isolado
-function _fatDevMesesFiltrados() {
+function _fatDevMesesFiltrados(opts = {}) {
   const f = window._fatFiltro || {};
   const todosMeses = (FAT_DATA?.mensal || []).map(m => m.ano_mes);
   if (todosMeses.length === 0) return new Set();
@@ -49269,11 +49801,48 @@ function _fatDevMesesFiltrados() {
   else if (f.periodo === 'mes_atual') meses = meses.filter(m => m === mesAtual);
 
   // Mês isolado (chip de mês clicado)
-  if (f.mes && f.mes !== 'todos') {
+  if (!opts.ignorarMes && f.mes && f.mes !== 'todos') {
     meses = meses.filter(m => m === f.mes);
   }
 
   return new Set(meses);
+}
+
+/* Sprint 9.32.458: helpers da aba Devoluções.
+   A aba ganhou um recorte proprio (padrao: ano vigente) que manda em TUDO nela:
+   KPIs, grafico e rankings. Antes o grafico mostrava 21 meses enquanto os KPIs
+   seguiam o filtro global, e os dois contavam historias diferentes na mesma tela. */
+if (typeof window._fatDevRecorte === 'undefined') window._fatDevRecorte = 'ano';
+window._fatDevTrocarRecorte = function(v) {
+  window._fatDevRecorte = v || 'ano';
+  if (typeof _fatRenderDevolucoes === 'function') _fatRenderDevolucoes();
+};
+
+// Mes em curso (dados ainda chegando), a partir da data de corte do JSON
+function _fatMesParcial() {
+  const fim = FAT_DATA?.meta?.periodo_fim;
+  if (!fim) return null;
+  const [a, m, d] = fim.split('-').map(Number);
+  const ultimoDia = new Date(a, m, 0).getDate();
+  if (d >= ultimoDia) return null;
+  return { ym: `${a}-${String(m).padStart(2, '0')}`, dia: d, diasNoMes: ultimoDia };
+}
+
+// Meses do recorte da aba (sem o mes isolado), em ordem
+function _fatDevMesesRecorte() {
+  const base = [..._fatDevMesesFiltrados({ ignorarMes: true })].sort();
+  if (!base.length) return [];
+  const r = window._fatDevRecorte || 'ano';
+  if (r === 'todos') return base;
+  if (r === 'ult12') return base.slice(-12);
+  const ano = r === 'ano' ? base[base.length - 1].slice(0, 4) : String(r);
+  const doAno = base.filter(m => m.startsWith(ano + '-'));
+  return doAno.length ? doAno : base;
+}
+
+function _fatPctBR(v, casas = 1) {
+  if (v == null || !isFinite(v)) return '—';
+  return v.toLocaleString('pt-BR', { minimumFractionDigits: casas, maximumFractionDigits: casas }) + '%';
 }
 
 // Retorna dados de devolução aplicando o filtro de período atual.
@@ -49284,9 +49853,15 @@ function _fatDevMesesFiltrados() {
 // cruzamentos cliente_devolucao_* quando há cliente filtrado.
 function _fatDevObterDados() {
   const f = window._fatFiltro || {};
-  const mesesSet = _fatDevMesesFiltrados();
+  // Sprint 9.32.458: intersecao do filtro global com o recorte proprio da aba
+  const _setGlobal = _fatDevMesesFiltrados();
+  const _setPeriodo = _fatDevMesesFiltrados({ ignorarMes: true });
+  const _recorte = new Set(_fatDevMesesRecorte());
+  let mesesSet = new Set([..._setGlobal].filter(m => _recorte.has(m)));
+  if (mesesSet.size === 0) mesesSet = _setGlobal;
+  const _recortou = _recorte.size > 0 && _recorte.size < _setPeriodo.size;
   const temFiltroPeriodo = (f.periodo && f.periodo !== 'todos') ||
-                           (f.mes && f.mes !== 'todos');
+                           (f.mes && f.mes !== 'todos') || _recortou;
   const temFiltroCliente = (f.cliente && f.cliente !== 'todos');
 
   // ──────────────────────────────────────────────────────────
@@ -49504,9 +50079,29 @@ function _fatDevObterDados() {
     .sort((a, b) => b.valor_devolucao - a.valor_devolucao)
     .slice(0, 30);
 
-  // Clientes top: não temos _mes pra clientes (ficaria grande demais);
-  // quando há filtro, esconde esse dado.
-  const devClientes = null;
+  // Sprint 9.32.458: clientes que mais devolvem no recorte, a partir de
+  // cliente_devolucao_mes (antes ficava null e o insight de concentracao sumia)
+  let devClientes = null;
+  if (FAT_DATA.cliente_devolucao_mes) {
+    const nomes = {};
+    (FAT_DATA.clientes_lista || []).forEach(c => { nomes[c.cnpj] = c; });
+    const cm = {};
+    FAT_DATA.cliente_devolucao_mes.forEach(r => {
+      if (!mesesSet.has(r.ano_mes)) return;
+      const k = r['CNPJ/CPF'];
+      if (!cm[k]) {
+        const n = nomes[k] || {};
+        cm[k] = { 'Cliente (Nome Fantasia)': n.nome_fantasia || k, 'CNPJ/CPF': k,
+                  Estado: n.estado || '—', Cidade: n.cidade || '—', valor_devolucao: 0, qtd: 0 };
+      }
+      cm[k].valor_devolucao += r.valor_devolucao;
+      cm[k].qtd += r.qtd || 0;
+    });
+    devClientes = Object.values(cm)
+      .filter(c => c.valor_devolucao > 0)
+      .sort((a, b) => b.valor_devolucao - a.valor_devolucao)
+      .slice(0, 30);
+  }
 
   return {
     devMensal, mensal, totalDev, totalFat, temFiltroPeriodo,
@@ -49528,232 +50123,217 @@ function _fatRenderDevolucoes() {
   // Cache pro _fatDevRenderProdutos e _fatDevRenderCidades acessarem
   window._fatDevDadosCache = dados;
   const { devMensal, mensal, totalDev, totalFat, temFiltroPeriodo } = dados;
-  const empresaTotal = FAT_DATA.empresa_total || [];
-  const marcasTotal = FAT_DATA.marcas || [];
+  // Sprint 9.32.458: faturamento de empresa e marca NO MESMO RECORTE da devolucao.
+  // Antes a taxa dividia a devolucao do periodo pelo faturamento de TODO o historico,
+  // e com o recorte do ano vigente isso subestimaria a taxa em mais da metade.
+  const _mesesDados = new Set((mensal || []).map(m => m.ano_mes));
+  const _somaPor = (lista, chave) => {
+    if (!Array.isArray(lista) || !lista.length) return null;
+    const acc = {};
+    lista.forEach(r => { if (_mesesDados.has(r.ano_mes)) acc[r[chave]] = (acc[r[chave]] || 0) + (r.faturamento || 0); });
+    return Object.entries(acc).map(([k, v]) => ({ [chave]: k, faturamento: v }));
+  };
+  const empresaTotal = _somaPor(FAT_DATA.empresa_mes, 'Empresa') || FAT_DATA.empresa_total || [];
+  const marcasTotal = _somaPor(FAT_DATA.marca_mes, 'Marca') || FAT_DATA.marcas || [];
   const clientesTotal = FAT_DATA.clientes_top || [];
 
-  // Recalcula metaDev/metaFat baseado no filtro (afeta KPI "total devoluções")
   const metaDev = totalDev;
   const metaFat = totalFat;
+
+  // ========= Serie do recorte (base do grafico E dos KPIs) =========
+  const _parc = _fatMesParcial();
+  const mesIsolado = (window._fatFiltro.mes && window._fatFiltro.mes !== 'todos') ? window._fatFiltro.mes : null;
+  const devPorMes = {};
+  const _fCliDev = window._fatFiltro.cliente;
+  if (_fCliDev && _fCliDev !== 'todos' && FAT_DATA.cliente_devolucao_mes) {
+    FAT_DATA.cliente_devolucao_mes
+      .filter(d => d['CNPJ/CPF'] === _fCliDev)
+      .forEach(d => { devPorMes[d.ano_mes] = (devPorMes[d.ano_mes] || 0) + d.valor_devolucao; });
+  } else {
+    (FAT_DATA.devolucoes_mensal || []).forEach(d => { devPorMes[d.ano_mes] = d.valor_devolucao; });
+  }
+  const _recSet = new Set(_fatDevMesesRecorte());
+  const serie = _fatFiltrarMensal({ ignorarMes: true })
+    .filter(m => _recSet.size === 0 || _recSet.has(m.ano_mes))
+    .map(m => {
+      const fat = m.faturamento || 0, dev = devPorMes[m.ano_mes] || 0;
+      return { ym: m.ano_mes, fat, dev, taxa: fat > 0 ? dev / fat * 100 : 0, parcial: !!(_parc && m.ano_mes === _parc.ym) };
+    });
+  const fech = serie.filter(x => !x.parcial);
+  const _sDev = fech.reduce((s, x) => s + x.dev, 0), _sFat = fech.reduce((s, x) => s + x.fat, 0);
+  const taxaMediaFech = _sFat > 0 ? _sDev / _sFat * 100 : 0;
+
+  // Rotulo do recorte, usado no seletor e nos textos
+  const _r = window._fatDevRecorte || 'ano';
+  const _anoRec = serie.length ? serie[serie.length - 1].ym.slice(0, 4) : '';
+  const rotRecorte = _r === 'todos' ? 'todo o período' : _r === 'ult12' ? 'últimos 12 meses' : (_r === 'ano' ? _anoRec : String(_r));
+
+  // Seletor do recorte (vale pra aba inteira)
+  const _selRec = document.getElementById('fatDevRecorte');
+  if (_selRec) {
+    const anos = [...new Set([..._fatDevMesesFiltrados({ ignorarMes: true })].map(m => m.slice(0, 4)))].sort().reverse();
+    const opts = [`<option value="ano">${anos[0] || ''} (ano vigente)</option>`, '<option value="ult12">Últimos 12 meses</option>']
+      .concat(anos.slice(1).map(a => `<option value="${a}">${a}</option>`))
+      .concat(['<option value="todos">Todo o período</option>']).join('');
+    if (_selRec.innerHTML !== opts) _selRec.innerHTML = opts;
+    _selRec.value = _r;
+  }
+  const _rotEl = document.getElementById('fatDevRecorteRot');
+  if (_rotEl) {
+    _rotEl.textContent = serie.length
+      ? `${_mesLabel(serie[0].ym)} a ${_mesLabel(serie[serie.length - 1].ym)}${_parc && serie.some(x => x.parcial) ? ` · ${_mesLabel(_parc.ym)} parcial, dados até ${String(_parc.dia).padStart(2, '0')}/${_parc.ym.slice(5)}` : ''}`
+      : '';
+  }
 
   // ========= KPIs =========
   const kpisEl = document.getElementById('fatDevKpis');
   if (kpisEl) {
-    const taxaMedia = metaFat > 0 ? (metaDev / metaFat * 100) : 0;
-
-    // Último mês
-    const ultimo = devMensal[devMensal.length - 1];
-    const penult = devMensal[devMensal.length - 2];
-    const ultimoFat = mensal[mensal.length - 1];
-    const ultimoVal = ultimo?.valor_devolucao || 0;
-    const ultimoFatVal = ultimoFat?.faturamento || 0;
-    const taxaUltimo = ultimoFatVal > 0 ? (ultimoVal / ultimoFatVal * 100) : 0;
-    const diffVsMedia = taxaMedia > 0 ? ((taxaUltimo - taxaMedia) / taxaMedia * 100) : 0;
-
-    // Mês com pior taxa
-    let piorMes = null;
-    let piorTaxa = 0;
-    devMensal.forEach(d => {
-      const m = mensal.find(x => x.ano_mes === d.ano_mes);
-      if (m && m.faturamento > 0) {
-        const taxa = d.valor_devolucao / m.faturamento * 100;
-        if (taxa > piorTaxa) { piorTaxa = taxa; piorMes = d.ano_mes; }
-      }
-    });
-
-    // Tendência últimos 3 meses
-    let tendencia = null;
-    if (devMensal.length >= 6) {
-      const ult3 = devMensal.slice(-3).reduce((s, d) => s + d.valor_devolucao, 0);
-      const ant3 = devMensal.slice(-6, -3).reduce((s, d) => s + d.valor_devolucao, 0);
-      tendencia = ant3 > 0 ? ((ult3 - ant3) / ant3 * 100) : 0;
-    }
-
-    const kpiCard = (label, valor, ref, corValor = 'var(--brand-navy)', bgCor = 'var(--neutral-0)') => `
-      <div style="background:${bgCor};border:1px solid var(--neutral-200);border-radius:12px;padding:14px 16px;">
+    const kpiCard = (label, valor, ref, corValor = 'var(--brand-navy)') => `
+      <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:12px;padding:14px 16px;min-width:0;">
         <div style="font-size:10.5px;color:var(--neutral-500);font-weight:700;letter-spacing:0.06em;text-transform:uppercase;">${label}</div>
-        <div style="font-family:var(--font-display);font-size:22px;font-weight:700;color:${corValor};line-height:1.15;margin-top:3px;">${valor}</div>
-        <div style="font-size:10.5px;color:var(--neutral-500);margin-top:3px;">${ref}</div>
-      </div>
-    `;
+        <div style="font-family:var(--font-display);font-size:22px;font-weight:700;color:${corValor};line-height:1.15;margin-top:3px;overflow-wrap:break-word;">${valor}</div>
+        <div style="font-size:10.5px;color:var(--neutral-500);margin-top:3px;line-height:1.4;">${ref}</div>
+      </div>`;
+    const corTaxa = t => t > 3 ? '#A32D2D' : (t > 1 ? '#B45309' : '#0F7334');
+    const qtdNotas = devMensal.reduce((s, d) => s + (d.qtd || 0), 0);
 
-    kpisEl.innerHTML = [
-      kpiCard(
-        'Total devoluções',
-        _fmtMoeda(metaDev),
-        `${taxaMedia.toFixed(2)}% do faturamento`,
-        '#A32D2D',
-      ),
-      kpiCard(
-        'Último mês',
-        _fmtMoeda(ultimoVal),
-        taxaUltimo > 0
-          ? `${taxaUltimo.toFixed(2)}% · ${diffVsMedia >= 0 ? '↑' : '↓'} ${Math.abs(diffVsMedia).toFixed(0)}% vs média`
-          : 'sem dados',
-        diffVsMedia > 15 ? '#A32D2D' : (diffVsMedia < -15 ? '#0F7334' : 'var(--brand-navy)'),
-      ),
-      kpiCard(
-        'Qtd notas devol.',
-        (devMensal.reduce((s, d) => s + d.qtd, 0)).toLocaleString('pt-BR'),
-        `média ${(devMensal.reduce((s, d) => s + d.qtd, 0) / Math.max(1, devMensal.length)).toFixed(0)}/mês`,
-      ),
-      kpiCard(
-        'Mês pior taxa',
-        piorMes ? _mesLabel(piorMes) : '—',
-        piorTaxa > 0 ? `${piorTaxa.toFixed(2)}% devolveu` : '',
-        piorTaxa > 3 ? '#A32D2D' : 'var(--brand-navy)',
-      ),
-      tendencia !== null
-        ? kpiCard(
-            'Tendência 3m',
-            `${tendencia >= 0 ? '↑' : '↓'} ${Math.abs(tendencia).toFixed(0)}%`,
-            'últ. 3 meses vs 3 anteriores',
-            tendencia > 20 ? '#A32D2D' : (tendencia < -20 ? '#0F7334' : 'var(--brand-navy)'),
-          )
-        : '',
-    ].join('');
+    if (mesIsolado) {
+      // Um mes so: "pior mes" e "tendencia" nao fazem sentido. Compara o mes com o recorte.
+      const x = serie.find(s => s.ym === mesIsolado) || { dev: metaDev, fat: metaFat, taxa: metaFat > 0 ? metaDev / metaFat * 100 : 0 };
+      const ranking = fech.slice().sort((a, b) => b.taxa - a.taxa);
+      const pos = ranking.findIndex(s => s.ym === mesIsolado);
+      kpisEl.innerHTML = [
+        kpiCard(`Devolvido em ${_mesLabel(mesIsolado)}`, _fmtMoeda(x.dev),
+          `${_fatPctBR(x.taxa, 2)} do faturamento do mês${x.parcial ? ` · parcial, dados até ${String(_parc.dia).padStart(2, '0')}/${_parc.ym.slice(5)}` : ''}`, '#A32D2D'),
+        kpiCard('Taxa do mês', _fatPctBR(x.taxa, 2),
+          `média de ${rotRecorte}: ${_fatPctBR(taxaMediaFech, 2)}`, corTaxa(x.taxa)),
+        kpiCard('Notas devolvidas', qtdNotas.toLocaleString('pt-BR'), 'no mês selecionado'),
+        pos >= 0
+          ? kpiCard('Posição no recorte', `${pos + 1}º de ${ranking.length}`, 'meses fechados, da maior taxa para a menor')
+          : kpiCard('Posição no recorte', '—', 'mês em curso fica fora do ranking'),
+      ].join('');
+    } else {
+      const ultF = fech[fech.length - 1];
+      const pior = fech.slice().sort((a, b) => b.taxa - a.taxa)[0];
+      let tend = null;
+      if (fech.length >= 6) {
+        const u3 = fech.slice(-3).reduce((s, x) => s + x.dev, 0);
+        const a3 = fech.slice(-6, -3).reduce((s, x) => s + x.dev, 0);
+        tend = a3 > 0 ? (u3 - a3) / a3 * 100 : null;
+      }
+      const taxaTotal = metaFat > 0 ? metaDev / metaFat * 100 : 0;
+      const diffUlt = (ultF && taxaMediaFech > 0) ? (ultF.taxa - taxaMediaFech) / taxaMediaFech * 100 : 0;
+      kpisEl.innerHTML = [
+        kpiCard(`Devolvido em ${rotRecorte}`, _fmtMoeda(metaDev), `${_fatPctBR(taxaTotal, 2)} do faturamento`, '#A32D2D'),
+        ultF ? kpiCard(`Último mês fechado · ${_mesLabel(ultF.ym)}`, _fmtMoeda(ultF.dev),
+          `${_fatPctBR(ultF.taxa, 2)} · ${diffUlt >= 0 ? '↑' : '↓'} ${Math.abs(diffUlt).toFixed(0)}% vs média`,
+          diffUlt > 15 ? '#A32D2D' : (diffUlt < -15 ? '#0F7334' : 'var(--brand-navy)')) : '',
+        pior ? kpiCard('Pior mês', _mesLabel(pior.ym), `${_fatPctBR(pior.taxa, 2)} devolveu · ${_fmtMoeda(pior.dev, true)}`, corTaxa(pior.taxa)) : '',
+        tend !== null ? kpiCard('Tendência 3 meses', `${tend >= 0 ? '↑' : '↓'} ${Math.abs(tend).toFixed(0)}%`,
+          'meses fechados, últimos 3 vs 3 anteriores', tend > 20 ? '#A32D2D' : (tend < -20 ? '#0F7334' : 'var(--brand-navy)')) : '',
+        kpiCard('Notas devolvidas', qtdNotas.toLocaleString('pt-BR'), `média ${(qtdNotas / Math.max(1, serie.length)).toFixed(0)} por mês`),
+      ].join('');
+    }
   }
 
-  // ========= Gráfico mensal (bar + linha %) — INTERATIVO =========
-  // Sprint 9.30.4: sempre mostra TODOS os meses (do período filtrado,
-  // mas ignorando filtro de mês isolado). Click numa barra filtra/toggle
-  // o mês. Mês selecionado aparece em cor forte, outros esmaecidos.
+  // ========= Grafico mensal =========
+  // Sprint 9.32.458: sem a linha de %, que cruzava os rotulos. A taxa vai no rotulo de
+  // cada barra e na COR da barra (calma ate 1%, atencao ate 3%, critica acima).
+  // Desktop: barras com rotulo de dados. Celular: barras deitadas, como no faturamento.
+  const _corTaxaBarra = (t, a = 1) => t > 3 ? `rgba(220,38,38,${a})` : (t > 1 ? `rgba(245,158,11,${a})` : `rgba(240,128,128,${a})`);
   const chartCtx = document.getElementById('fatDevChartMensal');
-  if (chartCtx && typeof Chart !== 'undefined') {
-    if (window._fatDevChartInst) window._fatDevChartInst.destroy();
+  const barrasEl = document.getElementById('fatDevBarras');
+  const devDeitado = !(typeof isDesktop === 'function' && isDesktop());
+  if (window._fatDevChartInst) { window._fatDevChartInst.destroy(); window._fatDevChartInst = null; }
 
-    // Pega TODOS os meses do período (ignorando filtro de mês isolado)
-    const mensalChart = _fatFiltrarMensal({ ignorarMes: true });
-    const mesIsolado = (window._fatFiltro.mes && window._fatFiltro.mes !== 'todos') ? window._fatFiltro.mes : null;
+  const chartBox = document.getElementById('fatDevChartBox');
+  if (devDeitado && barrasEl) {
+    if (chartBox) chartBox.style.display = 'none';
+    barrasEl.style.display = 'block';
+    const max = serie.reduce((m, x) => Math.max(m, x.dev), 0) || 1;
+    barrasEl.innerHTML = serie.length === 0
+      ? '<div style="padding:18px;text-align:center;color:var(--neutral-500);font-size:12px;">Sem dados no recorte.</div>'
+      : '<div class="fat-bh">' + serie.slice().reverse().map(x => {
+          const dest = mesIsolado === x.ym, apag = !!(mesIsolado && !dest);
+          const alvo = dest ? 'todos' : x.ym;
+          return `<button type="button" class="fat-bh__linha${dest ? ' fat-bh__linha--on' : ''}" onclick="window._fatTrocarFiltro('mes','${alvo}')" title="${_mesLabel(x.ym)} · ${_fmtMoeda(x.dev)} · ${_fatPctBR(x.taxa, 2)} do faturamento">
+            <span class="fat-bh__mes"${apag ? ' style="opacity:.45;"' : ''}>${_mesLabel(x.ym)}${x.parcial ? '*' : ''}</span>
+            <span class="fat-bh__trilho"><span class="fat-bh__preench" style="width:${Math.max(1.5, x.dev / max * 100).toFixed(1)}%;background:${_corTaxaBarra(x.taxa, apag ? 0.3 : 0.9)};"></span></span>
+            <span class="fat-bh__val" style="min-width:92px;${apag ? 'opacity:.45;' : ''}">${_fmtMoeda(x.dev, true)} <span style="color:${x.taxa > 3 ? '#A32D2D' : 'var(--neutral-500)'};font-weight:600;">· ${_fatPctBR(x.taxa, 1)}</span></span>
+          </button>`;
+        }).join('') + '</div>';
+  } else if (chartCtx && typeof Chart !== 'undefined') {
+    if (barrasEl) { barrasEl.style.display = 'none'; barrasEl.innerHTML = ''; }
+    if (chartBox) chartBox.style.display = '';
 
-    // Recalcula devoluções pra cada mês do chart (não usa devMensal filtrado,
-    // pois precisa mostrar todos os meses do período pra permitir navegação)
-    // Sprint 9.32.33: respeita filtro de cliente
-    const devPorMes = {};
-    const _fCliDev = window._fatFiltro.cliente;
-    if (_fCliDev && _fCliDev !== 'todos' && FAT_DATA.cliente_devolucao_mes) {
-      FAT_DATA.cliente_devolucao_mes
-        .filter(d => d['CNPJ/CPF'] === _fCliDev)
-        .forEach(d => { devPorMes[d.ano_mes] = (devPorMes[d.ano_mes] || 0) + d.valor_devolucao; });
-    } else {
-      (FAT_DATA.devolucoes_mensal || []).forEach(d => {
-        devPorMes[d.ano_mes] = d.valor_devolucao;
-      });
-    }
-
-    const labels = mensalChart.map(m => _mesLabel(m.ano_mes));
-    const valores = mensalChart.map(m => devPorMes[m.ano_mes] || 0);
-    const pcts = mensalChart.map(m => {
-      const devVal = devPorMes[m.ano_mes] || 0;
-      return m.faturamento > 0 ? (devVal / m.faturamento * 100) : 0;
-    });
-
-    // Cores: destaque vermelho forte no mês selecionado, esmaecidas nas outras
-    const corBarraNormal = 'rgba(226, 75, 74, 0.78)';
-    const corBarraDestaque = 'rgba(163, 45, 45, 1)';        // vermelho escuro forte
-    const corBarraEsmaecida = 'rgba(226, 75, 74, 0.20)';
-    const corLinhaNormal = 'rgba(29, 78, 216, 1)';
-    const corLinhaEsmaecida = 'rgba(29, 78, 216, 0.25)';
-
-    const corBarras = mensalChart.map(m =>
-      mesIsolado
-        ? (m.ano_mes === mesIsolado ? corBarraDestaque : corBarraEsmaecida)
-        : corBarraNormal
-    );
-    const corBordas = mensalChart.map(m =>
-      mesIsolado && m.ano_mes === mesIsolado ? '#7F1D1D' : 'rgba(163, 45, 45, 0.3)'
-    );
-    const larguraBordas = mensalChart.map(m =>
-      mesIsolado && m.ano_mes === mesIsolado ? 2.5 : 1
-    );
+    const _rotulosDev = {
+      id: 'rotulosDev',
+      afterDatasetsDraw(chart) {
+        const g = chart.ctx, meta = chart.getDatasetMeta(0);
+        if (!meta || meta.hidden) return;
+        g.save();
+        g.textAlign = 'center';
+        g.textBaseline = 'bottom';
+        meta.data.forEach((barra, i) => {
+          const x = serie[i];
+          if (!x) return;
+          const apag = !!(mesIsolado && x.ym !== mesIsolado);
+          g.globalAlpha = apag ? 0.35 : 1;
+          g.font = '600 9.5px Inter, system-ui, sans-serif';
+          g.fillStyle = x.taxa > 3 ? '#A32D2D' : (x.taxa > 1 ? '#B45309' : '#6B7280');
+          g.fillText(_fatPctBR(x.taxa, 1), barra.x, barra.y - 3);
+          g.font = '700 10px Inter, system-ui, sans-serif';
+          g.fillStyle = '#0A1F5C';
+          g.fillText(_fmtMoeda(x.dev, true), barra.x, barra.y - 15);
+        });
+        g.restore();
+      }
+    };
 
     window._fatDevChartInst = new Chart(chartCtx, {
       type: 'bar',
+      plugins: [_rotulosDev],
       data: {
-        labels,
-        datasets: [
-          {
-            type: 'bar',
-            label: 'Devoluções (R$)',
-            data: valores,
-            backgroundColor: corBarras,
-            borderColor: corBordas,
-            borderWidth: larguraBordas,
-            borderRadius: 6,
-            barPercentage: 0.7,
-            yAxisID: 'y',
-            order: 2,
-          },
-          {
-            type: 'line',
-            label: '% devolução',
-            data: pcts,
-            borderColor: mesIsolado ? corLinhaEsmaecida : corLinhaNormal,
-            backgroundColor: 'rgba(29, 78, 216, 0.1)',
-            borderWidth: 2.5,
-            fill: false,
-            tension: 0.35,
-            pointRadius: mensalChart.map(m =>
-              mesIsolado && m.ano_mes === mesIsolado ? 6 : 3
-            ),
-            pointBackgroundColor: mensalChart.map(m =>
-              mesIsolado && m.ano_mes === mesIsolado ? corLinhaNormal : (mesIsolado ? 'rgba(29, 78, 216, 0.4)' : corLinhaNormal)
-            ),
-            yAxisID: 'y1',
-            order: 1,
-          },
-        ],
+        labels: serie.map(x => _mesLabel(x.ym) + (x.parcial ? '*' : '')),
+        datasets: [{
+          label: 'Devoluções (R$)',
+          data: serie.map(x => x.dev),
+          backgroundColor: serie.map(x => _corTaxaBarra(x.taxa, mesIsolado && x.ym !== mesIsolado ? 0.22 : (x.parcial ? 0.5 : 0.85))),
+          borderColor: serie.map(x => mesIsolado && x.ym === mesIsolado ? '#7F1D1D' : 'rgba(0,0,0,0)'),
+          borderWidth: serie.map(x => mesIsolado && x.ym === mesIsolado ? 2.5 : 0),
+          borderRadius: 6,
+          barPercentage: 0.7,
+        }],
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        interaction: { intersect: false, mode: 'index' },
-        onHover: (evt, elements) => {
-          evt.native.target.style.cursor = elements.length > 0 ? 'pointer' : 'default';
-        },
-        onClick: (evt, elements) => {
-          if (elements.length > 0) {
-            const idx = elements[0].index;
-            const ymClicado = mensalChart[idx]?.ano_mes;
-            if (ymClicado) {
-              // Toggle: se já está selecionado, desmarca; senão seleciona
-              const novoFiltro = (window._fatFiltro.mes === ymClicado) ? 'todos' : ymClicado;
-              window._fatTrocarFiltro('mes', novoFiltro);
-            }
+        layout: { padding: { top: 34 } },
+        onHover: (evt, els) => { evt.native.target.style.cursor = els.length > 0 ? 'pointer' : 'default'; },
+        onClick: (evt, els) => {
+          if (els.length > 0) {
+            const ym = serie[els[0].index]?.ym;
+            if (ym) window._fatTrocarFiltro('mes', window._fatFiltro.mes === ym ? 'todos' : ym);
           }
         },
         plugins: {
-          legend: { display: true, position: 'top', labels: { font: { size: 11, family: 'inherit' } } },
+          legend: { display: false },
           tooltip: {
             callbacks: {
-              label: (ctx) => {
-                if (ctx.datasetIndex === 0) return ` Devolução: ${_fmtMoeda(ctx.parsed.y)}`;
-                return ` Taxa: ${ctx.parsed.y.toFixed(2)}%`;
+              label: (c) => {
+                const x = serie[c.dataIndex];
+                return [` Devolução: ${_fmtMoeda(x.dev)}`, ` Taxa: ${_fatPctBR(x.taxa, 2)} do faturamento`];
               },
               footer: (items) => {
-                if (!items || items.length === 0) return '';
-                const idx = items[0].dataIndex;
-                const ym = mensalChart[idx]?.ano_mes;
-                if (ym === mesIsolado) return 'Clique pra desmarcar';
-                return 'Clique pra ver só este mês';
+                const x = items && items[0] ? serie[items[0].dataIndex] : null;
+                if (!x) return '';
+                return (x.parcial ? 'Mês em curso · ' : '') + (x.ym === mesIsolado ? 'Clique pra desmarcar' : 'Clique pra ver só este mês');
               },
             },
           },
         },
         scales: {
-          y: {
-            type: 'linear',
-            position: 'left',
-            ticks: { callback: v => _fmtMoeda(v, true), font: { size: 10 } },
-            grid: { color: 'rgba(0,0,0,0.05)' },
-          },
-          y1: {
-            type: 'linear',
-            position: 'right',
-            ticks: { callback: v => v.toFixed(1) + '%', font: { size: 10 } },
-            grid: { display: false },
-            min: 0,
-          },
+          y: { beginAtZero: true, ticks: { callback: v => _fmtMoeda(v, true), font: { size: 10 } }, grid: { color: 'rgba(0,0,0,0.05)' } },
           x: { ticks: { font: { size: 10 } }, grid: { display: false } },
         },
       },
@@ -49765,7 +50345,7 @@ function _fatRenderDevolucoes() {
   if (empresaEl) {
     const devEmpresa = dados.devEmpresa;
     if (devEmpresa === null) {
-      empresaEl.innerHTML = '<div style="color:var(--neutral-500);font-size:11.5px;padding:14px;text-align:center;line-height:1.5;"><span class="material-symbols-rounded" style="font-size:16px;vertical-align:middle;opacity:0.6;">info</span> Ranking sem filtro — aplicável ao período total.</div>';
+      empresaEl.innerHTML = '<div style="color:var(--neutral-500);font-size:11.5px;padding:14px;text-align:center;line-height:1.5;"><span class="material-symbols-rounded" style="font-size:16px;vertical-align:middle;opacity:0.6;">info</span> Ranking disponível só para o período total.</div>';
     } else if (devEmpresa.length === 0) {
       empresaEl.innerHTML = '<div style="color:var(--neutral-500);font-size:12px;padding:16px;text-align:center;">Sem devoluções no período.</div>';
     } else {
@@ -49781,7 +50361,7 @@ function _fatRenderDevolucoes() {
               <div style="font-weight:600;font-size:12.5px;color:var(--brand-navy);">${esc(e.Empresa)}</div>
               <div style="font-size:11px;color:var(--neutral-600);">
                 <strong style="color:#A32D2D;">${_fmtMoeda(e.valor_devolucao)}</strong>
-                <span style="margin-left:6px;color:${taxa > 2 ? '#A32D2D' : 'var(--neutral-500)'};font-weight:600;">${taxa.toFixed(2)}%</span>
+                <span style="margin-left:6px;color:${taxa > 2 ? '#A32D2D' : 'var(--neutral-500)'};font-weight:600;">${_fatPctBR(taxa, 2)}</span>
               </div>
             </div>
             <div style="height:6px;background:var(--neutral-100);border-radius:3px;overflow:hidden;">
@@ -49799,7 +50379,7 @@ function _fatRenderDevolucoes() {
   if (marcaEl) {
     const devMarca = dados.devMarca;
     if (devMarca === null) {
-      marcaEl.innerHTML = '<div style="color:var(--neutral-500);font-size:11.5px;padding:14px;text-align:center;line-height:1.5;"><span class="material-symbols-rounded" style="font-size:16px;vertical-align:middle;opacity:0.6;">info</span> Ranking sem filtro — aplicável ao período total.</div>';
+      marcaEl.innerHTML = '<div style="color:var(--neutral-500);font-size:11.5px;padding:14px;text-align:center;line-height:1.5;"><span class="material-symbols-rounded" style="font-size:16px;vertical-align:middle;opacity:0.6;">info</span> Ranking disponível só para o período total.</div>';
     } else {
       const top10 = devMarca.slice(0, 10);
     if (top10.length === 0) {
@@ -49818,7 +50398,7 @@ function _fatRenderDevolucoes() {
             </div>
             <div style="flex:0 0 100px;text-align:right;">
               <strong style="color:#A32D2D;">${_fmtMoeda(m.valor_devolucao)}</strong>
-              <span style="color:${taxa > 5 ? '#A32D2D' : 'var(--neutral-500)'};margin-left:4px;font-size:10px;">${taxa > 0 ? taxa.toFixed(1) + '%' : ''}</span>
+              <span style="color:${taxa > 5 ? '#A32D2D' : 'var(--neutral-500)'};margin-left:4px;font-size:10px;">${taxa > 0 ? _fatPctBR(taxa, 1) : ''}</span>
             </div>
           </div>
         `;
@@ -49869,7 +50449,7 @@ function _fatDevRenderProdutos() {
 
   // Se for null (não temos dados granulares pro filtro), mostra aviso
   if (fonte === null) {
-    el.innerHTML = '<div style="color:var(--neutral-500);font-size:11.5px;padding:14px;text-align:center;line-height:1.5;"><span class="material-symbols-rounded" style="font-size:16px;vertical-align:middle;opacity:0.6;">info</span> Ranking sem filtro — aplicável ao período total.</div>';
+    el.innerHTML = '<div style="color:var(--neutral-500);font-size:11.5px;padding:14px;text-align:center;line-height:1.5;"><span class="material-symbols-rounded" style="font-size:16px;vertical-align:middle;opacity:0.6;">info</span> Ranking disponível só para o período total.</div>';
     return;
   }
 
@@ -49918,7 +50498,7 @@ function _fatDevRenderCidades() {
   const fonte = cache.devCidades;
 
   if (fonte === null) {
-    el.innerHTML = '<div style="color:var(--neutral-500);font-size:11.5px;padding:14px;text-align:center;line-height:1.5;"><span class="material-symbols-rounded" style="font-size:16px;vertical-align:middle;opacity:0.6;">info</span> Ranking sem filtro — aplicável ao período total.</div>';
+    el.innerHTML = '<div style="color:var(--neutral-500);font-size:11.5px;padding:14px;text-align:center;line-height:1.5;"><span class="material-symbols-rounded" style="font-size:16px;vertical-align:middle;opacity:0.6;">info</span> Ranking disponível só para o período total.</div>';
     return;
   }
 
@@ -49986,27 +50566,31 @@ function _fatGerarInsightsDevolucoes(d) {
   const taxaGeral = metaFat > 0 ? (metaDev / metaFat * 100) : 0;
   if (taxaGeral > 2) {
     insights.push({
-      titulo: `Taxa ${temFiltroPeriodo ? 'no período filtrado' : 'geral'} de devolução elevada (${taxaGeral.toFixed(2)}%)`,
-      descricao: `Acima da média de mercado (geralmente 1-2%). Investigar causas raiz pode reduzir perda significativa.`,
+      titulo: `Taxa de devolução elevada ${temFiltroPeriodo ? 'no período' : 'no geral'} (${_fatPctBR(taxaGeral, 2)})`,
+      descricao: `Acima da média de mercado (geralmente de 1 a 2%). Investigar causas raiz pode reduzir perda significativa.`,
       cor: '#A32D2D', icone: 'warning',
     });
   } else if (taxaGeral > 0) {
     insights.push({
-      titulo: `Taxa de devolução saudável (${taxaGeral.toFixed(2)}%)`,
+      titulo: `Taxa de devolução saudável (${_fatPctBR(taxaGeral, 2)})`,
       descricao: `Dentro da normalidade. Continue monitorando pra identificar anomalias pontuais.`,
       cor: '#0F7334', icone: 'check_circle',
     });
   }
 
   // 2. Tendência dos últimos 3 meses
-  if (devMensal.length >= 6) {
-    const ult3 = devMensal.slice(-3).reduce((s, x) => s + x.valor_devolucao, 0);
-    const ant3 = devMensal.slice(-6, -3).reduce((s, x) => s + x.valor_devolucao, 0);
+  // Sprint 9.32.458: so meses fechados. O mes em curso ainda esta recebendo notas
+  // e sempre parece "queda", o que gerava tendencia positiva falsa todo inicio de mes.
+  const _pDev = _fatMesParcial();
+  const dmF = devMensal.filter(x => !_pDev || x.ano_mes !== _pDev.ym);
+  if (dmF.length >= 6) {
+    const ult3 = dmF.slice(-3).reduce((s, x) => s + x.valor_devolucao, 0);
+    const ant3 = dmF.slice(-6, -3).reduce((s, x) => s + x.valor_devolucao, 0);
     if (ant3 > 0) {
       const diff = ((ult3 - ant3) / ant3 * 100);
       if (diff > 25) {
         insights.push({
-          titulo: `Devoluções cresceram ${diff.toFixed(0)}% nos últimos 3 meses`,
+          titulo: `Devoluções cresceram ${_fatPctBR(diff, 0)} nos últimos 3 meses`,
           descricao: `Tendência de alerta: ${_fmtMoeda(ant3)} → ${_fmtMoeda(ult3)}. Investigar se há causa específica (produto novo, cliente novo, processo logístico).`,
           cor: '#A32D2D', icone: 'trending_up',
         });
@@ -50033,8 +50617,8 @@ function _fatGerarInsightsDevolucoes(d) {
       const media = comTaxa.reduce((s, x) => s + x.taxa, 0) / comTaxa.length;
       if (pior.taxa > media * 1.5 && comTaxa.length > 1) {
         insights.push({
-          titulo: `${pior.empresa} tem taxa ${(pior.taxa / media).toFixed(1)}x acima das outras filiais`,
-          descricao: `Taxa de ${pior.taxa.toFixed(2)}% vs ${media.toFixed(2)}% média. Investigar processo operacional dessa unidade.`,
+          titulo: `${pior.empresa} tem taxa ${(pior.taxa / media).toFixed(1).replace('.', ',')}x acima das outras filiais`,
+          descricao: `Taxa de ${_fatPctBR(pior.taxa, 2)} vs ${_fatPctBR(media, 2)} média. Investigar processo operacional dessa unidade.`,
           cor: '#A32D2D', icone: 'apartment',
         });
       }
@@ -50048,7 +50632,7 @@ function _fatGerarInsightsDevolucoes(d) {
     if (pct >= 50) {
       const topList = devClientes.slice(0, 3).map(c => c['Cliente (Nome Fantasia)']).join(', ');
       insights.push({
-        titulo: `Top 5 clientes concentram ${pct.toFixed(0)}% das devoluções`,
+        titulo: `Top 5 clientes concentram ${_fatPctBR(pct, 0)} das devoluções`,
         descricao: `Foco comercial nesses contratos pode reduzir muito o total. Top 3: ${esc(topList)}.`,
         cor: '#CF8500', icone: 'group',
       });
@@ -50066,7 +50650,7 @@ function _fatGerarInsightsDevolucoes(d) {
     if (marcasComTaxa.length > 0 && marcasComTaxa[0].taxa > 5) {
       const pior = marcasComTaxa[0];
       insights.push({
-        titulo: `${pior.marca}: taxa de devolução ${pior.taxa.toFixed(1)}%`,
+        titulo: `${pior.marca}: taxa de devolução ${_fatPctBR(pior.taxa, 1)}`,
         descricao: `Acima do aceitável. Pode indicar problema de qualidade, prazo de entrega ou acordo comercial específico.`,
         cor: '#A32D2D', icone: 'label_off',
       });
@@ -50079,21 +50663,21 @@ function _fatGerarInsightsDevolucoes(d) {
     if (top.qtd <= 3 && top.valor_devolucao > (metaDev * 0.15)) {
       const pct = (top.valor_devolucao / metaDev * 100);
       insights.push({
-        titulo: `1 cliente concentra ${pct.toFixed(0)}% das devoluções`,
-        descricao: `${esc(top['Cliente (Nome Fantasia)'])} devolveu ${_fmtMoeda(top.valor_devolucao)} em apenas ${top.qtd} nota${top.qtd > 1 ? 's' : ''}. Provavelmente licitação/acordo pontual — vale validar contrato.`,
+        titulo: `1 cliente concentra ${_fatPctBR(pct, 0)} das devoluções`,
+        descricao: `${esc(top['Cliente (Nome Fantasia)'])} devolveu ${_fmtMoeda(top.valor_devolucao)} em apenas ${top.qtd} nota${top.qtd > 1 ? 's' : ''}. Provavelmente licitação ou acordo pontual. Vale validar o contrato.`,
         cor: '#CF8500', icone: 'person',
       });
     }
   }
 
-  // 7. Pico mensal atípico
-  if (devMensal.length >= 4) {
-    const media = devMensal.reduce((s, d) => s + d.valor_devolucao, 0) / devMensal.length;
-    const pico = devMensal.slice().sort((a, b) => b.valor_devolucao - a.valor_devolucao)[0];
+  // 7. Pico mensal atípico (meses fechados)
+  if (dmF.length >= 4) {
+    const media = dmF.reduce((s, d) => s + d.valor_devolucao, 0) / dmF.length;
+    const pico = dmF.slice().sort((a, b) => b.valor_devolucao - a.valor_devolucao)[0];
     if (pico.valor_devolucao > media * 2.5) {
       insights.push({
         titulo: `Pico atípico em ${_mesLabel(pico.ano_mes)}`,
-        descricao: `Devolveu ${_fmtMoeda(pico.valor_devolucao)} — ${(pico.valor_devolucao/media).toFixed(1)}x a média (${_fmtMoeda(media)}). Investigar causa raiz nesse mês.`,
+        descricao: `Devolveu ${_fmtMoeda(pico.valor_devolucao)}, ${(pico.valor_devolucao/media).toFixed(1).replace('.', ',')}x a média (${_fmtMoeda(media)}). Investigar causa raiz nesse mês.`,
         cor: '#CF8500', icone: 'priority_high',
       });
     }
@@ -50351,6 +50935,17 @@ window._fatAbrirModalInsight = function(id) {
         </div>
       `;
     }).join('');
+  } else if (data.tipo === 'lista') {
+    // Sprint 9.32.459: lista genérica (nome, detalhe, valor) usada pelos Insights novos
+    linhasHtml = data.items.map((x, i) => `
+      <div style="display:grid;grid-template-columns:30px minmax(0,1fr) auto;gap:10px;padding:10px 14px;align-items:center;border-bottom:1px solid var(--neutral-100);">
+        <div style="font-family:var(--font-mono);font-size:11px;color:var(--neutral-500);font-weight:700;">${i + 1}</div>
+        <div style="min-width:0;">
+          <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(x.nome)}</div>
+          ${x.sub ? `<div style="font-size:10.5px;color:var(--neutral-500);margin-top:2px;">${esc(x.sub)}</div>` : ''}
+        </div>
+        <div style="text-align:right;font-family:var(--font-mono);font-size:12px;font-weight:700;color:var(--brand-navy);white-space:nowrap;">${esc(x.valor)}</div>
+      </div>`).join('');
   } else if (data.tipo === 'marcasAlta' || data.tipo === 'marcasBaixa') {
     linhasHtml = data.items.map((m, i) => {
       const sinal = m.trendPct > 0 ? '+' : '';
@@ -50474,8 +51069,13 @@ window._fatExportarInsightsPdf = function() {
     }
   `;
 
-  // Clona o conteúdo dos insights
-  const clone = el.cloneNode(true);
+  // Sprint 9.32.459: exporta placar + ações (fatInsightsIA) e sinais (fatInsights)
+  const clone = document.createElement('div');
+  const topoIns = document.getElementById('fatInsightsIA');
+  if (topoIns) clone.appendChild(topoIns.cloneNode(true));
+  clone.appendChild(el.cloneNode(true));
+  clone.querySelectorAll('details').forEach(dt => dt.setAttribute('open', ''));
+  clone.querySelectorAll('.ins-lnk').forEach(b => b.remove());
   // Remove interações (hover, onclick...)
   clone.querySelectorAll('[onclick]').forEach(e => {
     e.removeAttribute('onclick');
@@ -50483,13 +51083,7 @@ window._fatExportarInsightsPdf = function() {
     e.removeAttribute('onmouseout');
     e.style.cursor = '';
   });
-  // Adiciona classe "card-ins" em cada card direto (exceto header azul)
-  const filhos = Array.from(clone.children);
-  filhos.forEach((c, i) => {
-    if (i === 0) return; // o header "Insights automáticos"
-    c.classList.add('card-ins');
-    c.style.marginBottom = '12px';
-  });
+  clone.querySelectorAll('.ins-acao, .ins-col, .ins-placar').forEach(c => c.classList.add('card-ins'));
 
   w.document.write(`<!DOCTYPE html>
 <html lang="pt-BR">
@@ -50497,7 +51091,9 @@ window._fatExportarInsightsPdf = function() {
   <meta charset="UTF-8">
   <title>Insights de Faturamento — ${hoje}</title>
   ${fontLinks}
-  <style>${css}</style>
+  <style>${css}${typeof _INS_CSS === 'string' ? _INS_CSS : ''}
+    .ins-sinais{grid-template-columns:1fr 1fr 1fr !important}.ins-placar{grid-template-columns:repeat(3,1fr) !important}
+  </style>
 </head>
 <body>
   <div class="pdf-header">
@@ -50511,11 +51107,9 @@ window._fatExportarInsightsPdf = function() {
   </div>
   <div class="pdf-intro">
     <strong>Como ler este relatório:</strong><br>
-    Cards <strong>vermelhos</strong> indicam problemas que demandam ação (churn, queda, risco). <strong>Verdes</strong> = oportunidades a capturar. <strong>Amarelos</strong> = pontos de atenção. Os números vêm direto do sistema de faturamento — nenhum dado é simulado.
+    No topo, o placar do ano, do último mês fechado e a prévia do mês em curso. Depois, as ações da semana, ordenadas pelo dinheiro em jogo. Por fim, os sinais: atenção, oportunidades e o retrato da carteira. Os números vêm direto do sistema de faturamento, nenhum dado é simulado.
   </div>
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-    ${Array.from(clone.children).slice(1).map(c => c.outerHTML).join('')}
-  </div>
+  <div>${clone.innerHTML}</div>
 </body>
 </html>`);
   w.document.close();
