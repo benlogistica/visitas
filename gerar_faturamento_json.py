@@ -1159,6 +1159,27 @@ def gerar_devolucoes_cidades_mes(df_devolucoes: pd.DataFrame) -> list:
     ]
 
 
+def gerar_diario(df_vendas: pd.DataFrame, df_devolucoes: pd.DataFrame, df_consignado: pd.DataFrame) -> list:
+    """Sprint 9.32.460: serie DIARIA global (vendas, consignado, devolucao).
+
+    Existe para uma coisa: comparar o mes em curso com o MESMO PERIODO DE DIAS
+    do ano anterior. Sem isso o YoY do card punha 22 dias de setembro/26 contra
+    setembro/25 inteiro e mostrava queda que nao existe. Sao ~600 linhas: pesa
+    poucos KB no JSON.
+    """
+    acc = defaultdict(lambda: [0.0, 0.0, 0.0])
+    for d, v in df_vendas.groupby('_data')['Total de Mercadoria'].sum().items():
+        acc[d][0] += float(v)
+    if not df_consignado.empty:
+        for d, v in df_consignado.groupby('_data')['Total de Mercadoria'].sum().items():
+            acc[d][1] += float(v)
+    if not df_devolucoes.empty:
+        for d, v in df_devolucoes.groupby('_data')['Total de Mercadoria'].sum().items():
+            acc[d][2] += abs(float(v))
+    return [{'d': d, 'v': round(x[0], 2), 'c': round(x[1], 2), 'dev': round(x[2], 2)}
+            for d, x in sorted(acc.items())]
+
+
 def gerar_consignado_mensal(df_consignado: pd.DataFrame) -> list:
     """Consignado por mês."""
     g = df_consignado.groupby('_ano_mes').agg(
@@ -1683,6 +1704,8 @@ def main():
         'vendedor_devolucao_mes': gerar_vendedor_devolucao_mes(df_devolucoes),
         # Sprint 9.32.454 — curva de fechamento pra previa do mes corrente
         'curva_mes':             gerar_curva_mes(df_vendas, df_devolucoes),
+        # Sprint 9.32.460 — serie diaria pro YoY do mes em curso (mesmo periodo de dias)
+        'diario':                gerar_diario(df_vendas, df_devolucoes, df_consignado),
     }
     print(f"   ✓ mensal: {len(dados['mensal'])} meses")
     print(f"   ✓ vendedor_mes: {len(dados['vendedor_mes'])} linhas")

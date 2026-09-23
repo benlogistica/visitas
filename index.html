@@ -8416,7 +8416,7 @@ mark.search-hl {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.459-insights',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.460-yoy',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -43862,7 +43862,7 @@ window.rejeitarObjetivoPendente = async function(id) {
 let FAT_DATA = null;
 let _fatDataPromise = null;
 // __FAT_VERSION_START__ — substituído pelo atualizar_index.py com hash do JSON
-const FAT_DATA_VERSION = 'c3b3db8264c2';
+const FAT_DATA_VERSION = '9dba21a780ea';
 // __FAT_VERSION_END__
 // Sprint 9.32.426: o arquivo passou a ser versionado COMPRIMIDO (.json.gz).
 // PORQUE: ele tem 20,5 MB e entra no git 2x por dia. O git guarda cada versao
@@ -44228,6 +44228,9 @@ function _fatRenderInner() {
            145px nunca teve como caber. Menos colunas e mais largas. */
         #fatKpis > * { min-width: 0; }
         #fatKpis .fat-kpi__val { overflow-wrap: break-word; }
+        /* Sprint 9.32.460: com auto-fit a frase de leitura (grid-column 1/-1) segurava uma
+           7a coluna vazia e sobrava um buraco a direita dos 6 cards. Colunas fixas. */
+        @media (max-width: 1100px) { #fatComparacao { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; } }
 
         @media (max-width: 640px) {
           .fat-wrapper { padding: 12px 10px 60px !important; }
@@ -44530,7 +44533,7 @@ function _fatRenderInner() {
               <option value="ano">Ano até agora vs ano anterior</option>
             </select>
           </div>
-          <div id="fatComparacao" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:10px;"></div>
+          <div id="fatComparacao" style="display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;"></div>
         </div>
 
         <!-- Seção 2: Curva ABC de clientes (Pareto) -->
@@ -51205,18 +51208,61 @@ function _fatRender() {
   // Mantém alias antigo pra não quebrar refs eventuais
   const fatTotal = fatLiquido;
 
-  // YoY (compara primeiro mês do filtro vs mesmo mês ano anterior)
+  // YoY do último mês do recorte contra o mesmo mês do ano anterior.
+  // Sprint 9.32.460: dois erros corrigidos.
+  //  1. Mês em curso contra mês INTEIRO: set/26 com 22 dias contra set/25 com 30
+  //     dava −6,7% quando, no mesmo período de dias, era +24,4%. Agora, se o mês
+  //     está em curso, compara 1 a N do mês com 1 a N do ano anterior (FAT_DATA.diario).
+  //  2. Com filtro de cliente/vendedor/empresa, o mês atual era do filtro e o do
+  //     ano anterior era da empresa inteira. Agora os dois lados vêm da mesma série.
   let yoyHtml = '';
   if (mensal.length > 0) {
-    const ult = mensal[mensal.length - 1];
-    const [a, m] = ult.ano_mes.split('-');
-    const prevYm = `${Number(a)-1}-${m}`;
-    const prev = FAT_DATA.mensal.find(x => x.ano_mes === prevYm);
-    if (prev) {
-      const delta = ((ult.faturamento / prev.faturamento) - 1) * 100;
+    const f = window._fatFiltro || {};
+    const temDim = ['cliente', 'vendedor', 'empresa'].some(k => f[k] && f[k] !== 'todos');
+    const parcYoY = _fatMesParcial();
+    let ult = mensal[mensal.length - 1];
+    const anoAntYm = ym => `${Number(ym.slice(0, 4)) - 1}${ym.slice(4)}`;
+    let atual = null, base = null, rot = '';
+
+    if (!temDim && parcYoY && ult.ano_mes === parcYoY.ym && Array.isArray(FAT_DATA.diario)) {
+      // Mês em curso, sem filtro de dimensão: mesmo período de dias, base líquida
+      const ymB = anoAntYm(ult.ano_mes), dia = parcYoY.dia;
+      const soma = ym => FAT_DATA.diario
+        .filter(x => x.d.slice(0, 7) === ym && Number(x.d.slice(8, 10)) <= dia)
+        .reduce((t, x) => t + (x.v || 0) + (x.c || 0) - (x.dev || 0), 0);
+      const temBase = FAT_DATA.diario.some(x => x.d.slice(0, 7) === ymB);
+      if (temBase) {
+        atual = soma(ult.ano_mes); base = soma(ymB);
+        rot = `1 a ${dia}/${ult.ano_mes.slice(5)}: ${ult.ano_mes.slice(0, 4)} vs ${ymB.slice(0, 4)}`;
+      }
+    } else {
+      // Mês fechado (ou filtro de dimensão): mês inteiro contra mês inteiro, mesma série
+      if (temDim && parcYoY && ult.ano_mes === parcYoY.ym && mensal.length > 1) ult = mensal[mensal.length - 2];
+      const pAntes = f.periodo;
+      let serie;
+      try { f.periodo = 'todos'; serie = _fatFiltrarMensal({ ignorarMes: true }); } finally { f.periodo = pAntes; }
+      const prev = serie.find(x => x.ano_mes === anoAntYm(ult.ano_mes));
+      const atu = serie.find(x => x.ano_mes === ult.ano_mes) || ult;
+      if (prev && !(temDim && parcYoY && atu.ano_mes === parcYoY.ym)) {
+        atual = atu.faturamento; base = prev.faturamento;
+        if (!temDim) {
+          // Sem filtro de dimensão: mesma base do card (vendas + remessa − devoluções)
+          const liq = ym => {
+            const v = (FAT_DATA.mensal.find(x => x.ano_mes === ym) || {}).faturamento || 0;
+            const c = ((FAT_DATA.consignado_mensal || []).find(x => x.ano_mes === ym) || {}).valor_consignado || 0;
+            const d = ((FAT_DATA.devolucoes_mensal || []).find(x => x.ano_mes === ym) || {}).valor_devolucao || 0;
+            return v + c - d;
+          };
+          atual = liq(atu.ano_mes); base = liq(prev.ano_mes);
+        }
+        rot = `${_mesLabel(atu.ano_mes)} vs ${_mesLabel(prev.ano_mes)}${temDim ? ' · vendas' : ''}`;
+      }
+    }
+    if (atual != null && base > 0) {
+      const delta = ((atual / base) - 1) * 100;
       const cor = delta >= 0 ? 'var(--status-success)' : 'var(--status-danger)';
       const seta = delta >= 0 ? '↑' : '↓';
-      yoyHtml = `<div style="font-size:10.5px;color:${cor};font-weight:600;margin-top:3px;">${seta} ${Math.abs(delta).toFixed(1)}% YoY (${_mesLabel(ult.ano_mes)} vs ${_mesLabel(prev.ano_mes)})</div>`;
+      yoyHtml = `<div style="font-size:10.5px;color:${cor};font-weight:600;margin-top:3px;" title="Comparação com o mesmo período do ano anterior">${seta} ${_fatPctBR(Math.abs(delta), 1)} YoY (${rot})</div>`;
     }
   }
 
