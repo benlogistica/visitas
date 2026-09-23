@@ -8416,7 +8416,7 @@ mark.search-hl {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.460-yoy',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.461-cliente',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -46585,6 +46585,11 @@ window._fatAbrirCliente = function(nomeFantasia) {
   if (!FAT_DATA?.clientes_top) return;
   const cliente = FAT_DATA.clientes_top.find(c => c['Cliente (Nome Fantasia)'] === nomeFantasia);
   if (!cliente) return;
+  // Sprint 9.32.461: o detalhe novo (gráfico mensal, marcas, visitas) substitui este
+  if (cliente['CNPJ/CPF'] && typeof window._fatAbrirClienteDetalhe === 'function') {
+    window._fatAbrirClienteDetalhe(cliente['CNPJ/CPF']);
+    return;
+  }
 
   // Posição no ranking
   const ranking = FAT_DATA.clientes_top
@@ -48453,6 +48458,7 @@ function _fatRenderInsights() {
     .filter(c => c.ultima_compra && (hoje - new Date(c.ultima_compra).getTime()) / msDia >= R.dormenteDias)
     .map(c => ({
       nome: c['Cliente (Nome Fantasia)'],
+      cnpj: c['CNPJ/CPF'],
       faturamento: c.faturamento,
       diasSemComprar: Math.floor((hoje - new Date(c.ultima_compra).getTime()) / msDia),
       cidade: c.Cidade,
@@ -48473,6 +48479,7 @@ function _fatRenderInsights() {
     })
     .map(c => ({
       nome: c['Cliente (Nome Fantasia)'],
+      cnpj: c['CNPJ/CPF'],
       faturamento: c.faturamento,
       primeira_compra: c.primeira_compra,
       cidade: c.Cidade,
@@ -48489,6 +48496,7 @@ function _fatRenderInsights() {
     })
     .map(c => ({
       nome: c['Cliente (Nome Fantasia)'],
+      cnpj: c['CNPJ/CPF'],
       faturamento: c.faturamento,
       diasDesdeEntrada: Math.floor((hoje - new Date(c.primeira_compra).getTime()) / msDia),
       cidade: c.Cidade,
@@ -48933,7 +48941,7 @@ function _fatRenderInsights() {
       });
       const quebra = Object.entries(porCliente)
         .filter(([, v]) => v.meses.size >= 4 && !v.comprouUltimo && v.fat > 0)
-        .map(([cn, v]) => ({ nome: nomePorCnpj[cn] || cn, mesesAtivos: v.meses.size, faturamento: v.fat }))
+        .map(([cn, v]) => ({ nome: nomePorCnpj[cn] || cn, cnpj: cn, mesesAtivos: v.meses.size, faturamento: v.fat }))
         .sort((a, b) => b.faturamento - a.faturamento);
       _iaQuebra = quebra;
       if (quebra.length > 0) {
@@ -49240,6 +49248,8 @@ const _INS_CSS = `
 .ins-item-sub{font-size:11.5px;color:#6B7280;margin-top:2px;line-height:1.45}
 .ins-item-val{font-weight:700;font-size:13px;white-space:nowrap;text-align:right}
 .ins-vazio{font-size:12px;color:#6B7280;padding:10px 0}
+.ins-cli-row{cursor:pointer;transition:background 120ms}
+.ins-cli-row:hover{background:#F6F8FB}
 .ins-rodape{font-size:11px;color:#6B7280;margin-top:12px}
 @media (max-width:900px){.ins-sinais{grid-template-columns:1fr}}
 @media (max-width:640px){
@@ -49370,7 +49380,7 @@ function _fatInsMontar(c) {
            (t2 ? ` e <b>${_insEsc(t2.nome)}</b> (${_insM(t2.faturamento)}, ${t2.mesesAtivos} de 6)` : '') + '.',
       val: _insM(tot), valRot: 'em jogo',
       link: { rot: `Ver os ${q.length}`, modal: reg('ins_quebra', { tipo: 'lista', tom: 'danger', tituloModal: 'Clientes fiéis que pararam',
-        items: q.map(x => ({ nome: x.nome, sub: `comprava ${x.mesesAtivos} de 6 meses`, valor: _fmtMoeda(x.faturamento) })) }) },
+        items: q.map(x => ({ nome: x.nome, cnpj: x.cnpj, sub: `comprava ${x.mesesAtivos} de 6 meses`, valor: _fmtMoeda(x.faturamento) })) }) },
     });
   }
 
@@ -49498,7 +49508,7 @@ function _fatInsMontar(c) {
       oport.push({ tit: `${novos.length} instituições novas no trimestre`, sub: `Já somam ${_insM(tot)}. Primeira compra é a hora de fidelizar.`,
         val: _insM(tot), cor: cor.grn,
         modal: reg('ins_novas', { tipo: 'lista', tom: 'success', tituloModal: `Instituições novas (${_mesLabel(u3[0])} a ${_mesLabel(u3[2])})`,
-          items: novos.sort((a, b) => A.pj[b] - A.pj[a]).map(k => ({ nome: nomes[k] || k, sub: k, valor: _fmtMoeda(A.pj[k]) })) }) });
+          items: novos.sort((a, b) => A.pj[b] - A.pj[a]).map(k => ({ nome: nomes[k] || k, cnpj: k, sub: k, valor: _fmtMoeda(A.pj[k]) })) }) });
     }
   }
   marcasT.filter(x => !x.recebeu && x.pct !== null && x.pct >= (c.R.trendMarcaAltaPct || 25) && x.dif >= 5000).sort((a, b) => b.dif - a.dif).slice(0, 2).forEach(x => {
@@ -49510,7 +49520,7 @@ function _fatInsMontar(c) {
       oport.push({ tit: `${c.cruzada.clientes.length} clientes do top 50 nunca compraram ${c.cruzada.marca}`,
         sub: `Eles já movimentam ${_insM(c.cruzada.potencial)} com você, e a marca está crescendo.`, val: String(c.cruzada.clientes.length), cor: cor.grn,
         modal: reg('ins_cruzada', { tipo: 'lista', tom: 'success', tituloModal: `Top 50 sem ${c.cruzada.marca}`,
-          items: c.cruzada.clientes.map(x => ({ nome: x['Cliente (Nome Fantasia)'], sub: x.Cidade || '', valor: _fmtMoeda(x.faturamento) })) }) });
+          items: c.cruzada.clientes.map(x => ({ nome: x['Cliente (Nome Fantasia)'], cnpj: x['CNPJ/CPF'], sub: x.Cidade || '', valor: _fmtMoeda(x.faturamento) })) }) });
     }
   }
 
@@ -49599,6 +49609,194 @@ function _fatInsRender(p) {
     </div>
     <div class="ins-rodape">Calculado no próprio app, sem IA e sem custo. Canais e marcas: últimos 3 meses fechados contra os 3 anteriores, em reais por mês. Toque num item com lista para ver os detalhes.</div>`;
 }
+
+// ============================================================================
+// Sprint 9.32.461 — Detalhe do cliente (vendas mês a mês + marcas + visitas)
+// ----------------------------------------------------------------------------
+// Abre a partir de qualquer lista dos Insights e do ranking de clientes.
+// Tudo vem do JSON do faturamento, menos o bloco de visitas, que cruza o CNPJ
+// com instituicoes/visitas no banco: é o que liga "parou de comprar" a "quando
+// a equipe esteve lá pela última vez".
+// ============================================================================
+window._fatAbrirClienteDetalhe = function(cnpj) {
+  if (!FAT_DATA || !cnpj) return;
+  const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+  const lista = (FAT_DATA.clientes_lista || []).find(c => c.cnpj === cnpj) || {};
+  const top = (FAT_DATA.clientes_top || []).find(c => c['CNPJ/CPF'] === cnpj) || {};
+  const nome = lista.nome_fantasia || top['Cliente (Nome Fantasia)'] || cnpj;
+  const razao = lista.razao_social || top['Cliente (Razão Social)'] || '';
+  const cidade = lista.cidade || top.Cidade || '';
+  const uf = lista.estado || top.Estado || '';
+  const pj = String(cnpj).replace(/\D/g, '').length === 14;
+
+  const parc = _fatMesParcial();
+  const meses = [...new Set((FAT_DATA.mensal || []).map(m => m.ano_mes))].sort();
+  const fech = meses.filter(ym => !parc || ym !== parc.ym);
+  const porMes = {}, notasMes = {};
+  (FAT_DATA.clientes_mes || []).forEach(r => {
+    if (r['CNPJ/CPF'] !== cnpj) return;
+    porMes[r.ano_mes] = (porMes[r.ano_mes] || 0) + (r.faturamento || 0);
+    notasMes[r.ano_mes] = (notasMes[r.ano_mes] || 0) + (r.qtd_notas || 0);
+  });
+  const devMes = {};
+  (FAT_DATA.cliente_devolucao_mes || []).forEach(r => { if (r['CNPJ/CPF'] === cnpj) devMes[r.ano_mes] = (devMes[r.ano_mes] || 0) + r.valor_devolucao; });
+
+  const u12 = fech.slice(-12), s12 = new Set(u12);
+  const tot12 = u12.reduce((s, ym) => s + (porMes[ym] || 0), 0);
+  const ativos12 = u12.filter(ym => (porMes[ym] || 0) > 0).length;
+  const notas12 = u12.reduce((s, ym) => s + (notasMes[ym] || 0), 0);
+  const dev12 = u12.reduce((s, ym) => s + (devMes[ym] || 0), 0);
+  const totHist = meses.reduce((s, ym) => s + (porMes[ym] || 0), 0);
+  const comCompra = meses.filter(ym => (porMes[ym] || 0) > 0);
+  const ultCompra = comCompra[comCompra.length - 1];
+
+  // Status do cliente, pela mesma régua dos Insights
+  let status = { txt: 'Comprando', cor: '#067647', bg: '#ECFDF3' };
+  const ultF = fech[fech.length - 1];
+  const janela = fech.slice(-7, -1);
+  const ativosJanela = janela.filter(ym => (porMes[ym] || 0) > 0).length;
+  if (!ultCompra) status = { txt: 'Sem compras no período', cor: '#4B5563', bg: '#EEF1F6' };
+  else if (!(porMes[ultF] > 0) && ativosJanela >= 4) status = { txt: `Parou em ${_insMesExt(ultF)}: comprava ${ativosJanela} de 6 meses`, cor: '#B42318', bg: '#FEF3F2' };
+  else if (!(porMes[ultF] > 0)) status = { txt: `Última compra em ${_mesLabel(ultCompra).toLowerCase()}`, cor: '#B45309', bg: '#FFFBEB' };
+  if (parc && porMes[parc.ym] > 0 && status.cor !== '#067647') status.txt += ` · voltou a comprar em ${_insMesExt(parc.ym)}`;
+
+  // ─── Gráfico mensal (SVG, sem Chart.js: abre instantâneo e cabe no celular) ───
+  const mob = !(typeof isDesktop === 'function' && isDesktop());
+  const W = 620, H = 170, padB = 22, padT = 18, n = meses.length;
+  const max = Math.max(1, ...meses.map(ym => porMes[ym] || 0));
+  const bw = W / n;
+  const kf = v => v >= 1e6 ? (v / 1e6).toFixed(1).replace('.', ',') + 'mi' : v >= 1e3 ? Math.round(v / 1e3) + 'k' : Math.round(v);
+  const barras = meses.map((ym, i) => {
+    const v = porMes[ym] || 0, x = i * bw + bw * 0.16, w = bw * 0.68;
+    const h = v > 0 ? Math.max(2, (v / max) * (H - padB - padT)) : 0;
+    const y = H - padB - h;
+    const ehParc = parc && ym === parc.ym;
+    const cor = v === 0 ? '#E3E8F0' : (ehParc ? 'rgba(139,198,63,.45)' : '#8BC63F');
+    const rot = (i % (mob ? 3 : 2) === 0 || i === n - 1) ? `<text x="${(x + w / 2).toFixed(1)}" y="${H - 6}" font-size="9" fill="#6B7280" text-anchor="middle">${_mesLabel(ym).replace('/', '/')}${ehParc ? '*' : ''}</text>` : '';
+    const val = (!mob && v > 0) ? `<text x="${(x + w / 2).toFixed(1)}" y="${(y - 3).toFixed(1)}" font-size="8.5" font-weight="700" fill="#0A1F5C" text-anchor="middle">${kf(v)}</text>` : '';
+    const zero = v === 0 ? `<rect x="${x.toFixed(1)}" y="${H - padB - 2}" width="${w.toFixed(1)}" height="2" rx="1" fill="#D0D6E0"/>` : '';
+    return `<g><title>${_mesLabel(ym)}: ${_fmtMoeda(v)}${notasMes[ym] ? ` · ${notasMes[ym]} nota${notasMes[ym] > 1 ? 's' : ''}` : ''}${ehParc ? ' (mês em curso)' : ''}</title>${v > 0 ? `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" rx="3" fill="${cor}"/>` : zero}${val}${rot}</g>`;
+  }).join('');
+  const grafico = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block;" role="img" aria-label="Compras por mês">
+      <line x1="0" y1="${H - padB}" x2="${W}" y2="${H - padB}" stroke="#E3E8F0"/>${barras}</svg>`;
+
+  // ─── Marcas, produtos e canais nos últimos 12 meses ───
+  const agrupa = (fonte, campo) => {
+    const acc = {};
+    (fonte || []).forEach(r => { if (r['CNPJ/CPF'] === cnpj && s12.has(r.ano_mes)) acc[r[campo]] = (acc[r[campo]] || 0) + (r.faturamento || 0); });
+    return Object.entries(acc).map(([k, v]) => ({ k, v })).filter(x => x.v > 0).sort((a, b) => b.v - a.v);
+  };
+  const marcas = agrupa(FAT_DATA.cliente_marca_mes, 'Marca');
+  const produtos = agrupa(FAT_DATA.cliente_produto_mes, 'Descrição do Produto');
+  const canais = agrupa(FAT_DATA.cliente_vendedor_mes, 'Vendedor');
+  const ranking = (arr, cor) => {
+    if (!arr.length) return '<div style="font-size:12px;color:#6B7280;padding:6px 0;">Sem compras nos últimos 12 meses.</div>';
+    const t = arr.reduce((s, x) => s + x.v, 0);
+    return arr.slice(0, 5).map(x => `
+      <div style="padding:6px 0;">
+        <div style="display:flex;justify-content:space-between;gap:8px;font-size:12px;">
+          <span style="color:var(--brand-navy);font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(x.k)}">${esc(x.k)}</span>
+          <span style="color:#4B5563;font-weight:700;white-space:nowrap;">${_insM(x.v)}</span>
+        </div>
+        <div style="height:5px;background:#EEF1F6;border-radius:3px;margin-top:4px;overflow:hidden;"><div style="height:100%;width:${(x.v / t * 100).toFixed(1)}%;background:${cor};border-radius:3px;"></div></div>
+      </div>`).join('');
+  };
+  const canaisTxt = canais.length
+    ? canais.slice(0, 3).map(x => `${esc(x.k === 'N/D' ? 'venda direta' : x.k)} ${_fatPctBR(x.v / canais.reduce((s, y) => s + y.v, 0) * 100, 0)}`).join(' · ')
+    : '';
+
+  const kpi = (rot, val, sub) => `<div style="min-width:0;"><div style="font-size:10px;color:#6B7280;font-weight:700;letter-spacing:.05em;text-transform:uppercase;">${rot}</div>
+      <div style="font-family:var(--font-display);font-size:18px;font-weight:700;color:var(--brand-navy);margin-top:2px;white-space:nowrap;">${val}</div>
+      ${sub ? `<div style="font-size:10.5px;color:#6B7280;margin-top:1px;">${sub}</div>` : ''}</div>`;
+
+  const bd = document.createElement('div');
+  bd.className = 'modal-backdrop';
+  bd.id = 'fatCliDetModal';
+  bd.style.zIndex = '10050';
+  bd.onclick = e => { if (e.target === bd) bd.remove(); };
+  bd.innerHTML = `
+    <style>
+      .cli-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+      .cli-2col{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+      @media (max-width:640px){.cli-kpis{grid-template-columns:1fr 1fr}.cli-2col{grid-template-columns:1fr;gap:6px}}
+    </style>
+    <div class="modal-card" style="max-width:720px;width:100%;max-height:90vh;display:flex;flex-direction:column;">
+      <div style="padding:16px 20px 12px;border-bottom:1px solid #E3E8F0;display:flex;gap:12px;align-items:flex-start;">
+        <div style="flex:1;min-width:0;">
+          <div style="font-family:var(--font-display);font-size:17px;font-weight:700;color:var(--brand-navy);line-height:1.25;">${esc(nome)}</div>
+          <div style="font-size:11.5px;color:#6B7280;margin-top:3px;line-height:1.45;">${razao && razao !== nome ? esc(razao) + '<br>' : ''}${esc(cidade)}${uf ? '/' + esc(uf) : ''} · ${pj ? 'CNPJ' : 'CPF'} ${esc(cnpj)}</div>
+          <span style="display:inline-block;margin-top:7px;font-size:11px;font-weight:700;color:${status.cor};background:${status.bg};padding:3px 9px;border-radius:999px;">${esc(status.txt)}</span>
+        </div>
+        <button onclick="document.getElementById('fatCliDetModal').remove()" aria-label="Fechar" style="background:transparent;border:0;width:34px;height:34px;border-radius:8px;cursor:pointer;color:var(--brand-navy);display:flex;align-items:center;justify-content:center;"><span class="material-symbols-rounded">close</span></button>
+      </div>
+      <div style="flex:1;overflow-y:auto;padding:14px 20px 18px;">
+        <div class="cli-kpis">
+          ${kpi('Últimos 12 meses', _insM(tot12), dev12 > 0 ? `${_insM(dev12)} devolvidos` : 'vendas')}
+          ${kpi('Média por mês', _insM(ativos12 ? tot12 / ativos12 : 0), 'nos meses com compra')}
+          ${kpi('Meses com compra', `${ativos12} de ${u12.length}`, 'últimos 12 fechados')}
+          ${kpi('Ticket médio', notas12 ? 'R$ ' + Math.round(tot12 / notas12).toLocaleString('pt-BR') : '—', `${notas12} nota${notas12 !== 1 ? 's' : ''}`)}
+        </div>
+
+        <div style="margin-top:16px;">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:6px;">
+            <div style="font-weight:700;font-size:13px;color:var(--brand-navy);">Compras por mês</div>
+            <div style="font-size:10.5px;color:#6B7280;">${_insM(totHist)} desde ${_mesLabel(meses[0]).toLowerCase()}${parc ? ' · * mês em curso' : ''}</div>
+          </div>
+          ${grafico}
+        </div>
+
+        <div id="fatCliDetVisitas" style="margin-top:14px;background:#F6F8FB;border:1px solid #E3E8F0;border-radius:10px;padding:10px 12px;font-size:12px;color:#4B5563;display:flex;gap:8px;align-items:flex-start;">
+          <span class="material-symbols-rounded" style="font-size:18px;color:#6FA62E;">location_on</span><span>Buscando visitas da equipe…</span>
+        </div>
+
+        <div class="cli-2col" style="margin-top:16px;">
+          <div><div style="font-weight:700;font-size:13px;color:var(--brand-navy);margin-bottom:2px;">Marcas · 12 meses</div>${ranking(marcas, '#8BC63F')}</div>
+          <div><div style="font-weight:700;font-size:13px;color:var(--brand-navy);margin-bottom:2px;">Produtos · 12 meses</div>${ranking(produtos, '#0A1F5C')}</div>
+        </div>
+        ${canaisTxt ? `<div style="font-size:11.5px;color:#6B7280;margin-top:10px;"><strong style="color:var(--brand-navy);">Por onde compra:</strong> ${canaisTxt}</div>` : ''}
+      </div>
+      <div style="padding:12px 20px;border-top:1px solid #E3E8F0;display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;">
+        <button class="modal-btn modal-btn--secondary" onclick="document.getElementById('fatCliDetModal').remove()">Fechar</button>
+        <button class="modal-btn modal-btn--primary" onclick="document.querySelectorAll('.modal-backdrop').forEach(m => m.remove()); if (window._fatSelecionarCliente) window._fatSelecionarCliente('${esc(cnpj)}');">Filtrar o painel por este cliente</button>
+      </div>
+    </div>`;
+  document.body.appendChild(bd);
+
+  // ─── Visitas da equipe (assíncrono; o resto do modal já está na tela) ───
+  (async () => {
+    const alvo = document.getElementById('fatCliDetVisitas');
+    const pinta = html => { if (alvo && alvo.isConnected) alvo.lastElementChild.innerHTML = html; };
+    try {
+      if (!pj) { pinta('Pessoa física: não há instituição para cruzar com as visitas.'); return; }
+      if (typeof _buscarInstituicoesPorCnpj !== 'function' || typeof db === 'undefined' || !db) { pinta('Visitas indisponíveis agora.'); return; }
+      const insts = await _buscarInstituicoesPorCnpj(cnpj);
+      if (!insts.length) { pinta('Esta instituição <strong>não está cadastrada</strong> no sistema de visitas. Nenhuma nutricionista tem como registrar ida lá.'); return; }
+      const ids = insts.map(i => i.id);
+      const { data, error } = await db.from('visitas')
+        .select('id, data_visita, checkin_timestamp, visita_realizada, cancelado_em, usuarios:nutricionista_id(nome)')
+        .in('instituicao_id', ids)
+        .not('checkin_timestamp', 'is', null)
+        .order('checkin_timestamp', { ascending: false })
+        .limit(200);
+      if (error) throw error;
+      const vs = (data || []).filter(v => !v.cancelado_em);
+      if (!vs.length) { pinta(`Cadastrada como <strong>${esc(insts[0].nome)}</strong>, mas <strong>nenhuma visita registrada</strong> até hoje.`); return; }
+      const dataDe = v => (v.data_visita || v.checkin_timestamp || '').slice(0, 10);
+      const ult = vs[0];
+      const [a, m, d] = dataDe(ult).split('-');
+      const dias = Math.floor((Date.now() - new Date(dataDe(ult) + 'T12:00:00').getTime()) / 86400000);
+      const seisM = new Date(); seisM.setMonth(seisM.getMonth() - 6);
+      const em6 = vs.filter(v => new Date(dataDe(v) + 'T12:00:00') >= seisM).length;
+      const quem = [...new Set(vs.slice(0, 20).map(v => v.usuarios?.nome).filter(Boolean))].slice(0, 3);
+      pinta(`Última visita em <strong>${d}/${m}/${a}</strong> (${dias} dia${dias !== 1 ? 's' : ''} atrás)${ult.usuarios?.nome ? ` por <strong>${esc(ult.usuarios.nome)}</strong>` : ''}. ` +
+            `${em6} visita${em6 !== 1 ? 's' : ''} nos últimos 6 meses${quem.length ? ` · quem vai: ${quem.map(esc).join(', ')}` : ''}.` +
+            (dias > 60 ? ' <strong style="color:#B42318;">Mais de 2 meses sem visita.</strong>' : ''));
+    } catch (e) {
+      console.warn('[cliente detalhe] visitas', e);
+      pinta('Não foi possível buscar as visitas agora.');
+    }
+  })();
+};
 
 // ============================================================================
 // Sprint 9.32.383 — Leitura do painel (motor de regras, sem IA e sem custo)
@@ -50899,10 +51097,12 @@ window._fatAbrirModalInsight = function(id) {
   const esc = s => String(s || '').replace(/</g, '&lt;');
 
   // Formata linhas baseado no tipo
+  // Sprint 9.32.461: linha com CNPJ abre o detalhe do cliente
+  const cli = x => x && x.cnpj ? ` class="ins-cli-row" onclick="_fatAbrirClienteDetalhe('${String(x.cnpj).replace(/'/g, '')}')" title="Ver detalhe do cliente"` : '';
   let linhasHtml = '';
   if (['dormentes', 'prioritarias'].includes(data.tipo)) {
     linhasHtml = data.items.map((d, i) => `
-      <div style="display:grid;grid-template-columns:30px 1fr 80px 110px;gap:10px;padding:10px 14px;align-items:center;border-bottom:1px solid var(--neutral-100);">
+      <div${cli(d)} style="display:grid;grid-template-columns:30px 1fr 80px 110px;gap:10px;padding:10px 14px;align-items:center;border-bottom:1px solid var(--neutral-100);">
         <div style="font-family:var(--font-mono);font-size:11px;color:var(--neutral-500);font-weight:700;">${i + 1}</div>
         <div style="min-width:0;">
           <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(d.nome)}</div>
@@ -50916,7 +51116,7 @@ window._fatAbrirModalInsight = function(id) {
     linhasHtml = data.items.map((c, i) => {
       const sub = data.tipo === 'novos' ? `${c.diasDesdeEntrada}d atrás` : (c.primeira_compra ? 'desde ' + new Date(c.primeira_compra).toLocaleDateString('pt-BR') : '');
       return `
-        <div style="display:grid;grid-template-columns:30px 1fr 110px;gap:10px;padding:10px 14px;align-items:center;border-bottom:1px solid var(--neutral-100);">
+        <div${cli(c)} style="display:grid;grid-template-columns:30px 1fr 110px;gap:10px;padding:10px 14px;align-items:center;border-bottom:1px solid var(--neutral-100);">
           <div style="font-family:var(--font-mono);font-size:11px;color:var(--neutral-500);font-weight:700;">${i + 1}</div>
           <div style="min-width:0;">
             <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(c.nome)}</div>
@@ -50941,7 +51141,7 @@ window._fatAbrirModalInsight = function(id) {
   } else if (data.tipo === 'lista') {
     // Sprint 9.32.459: lista genérica (nome, detalhe, valor) usada pelos Insights novos
     linhasHtml = data.items.map((x, i) => `
-      <div style="display:grid;grid-template-columns:30px minmax(0,1fr) auto;gap:10px;padding:10px 14px;align-items:center;border-bottom:1px solid var(--neutral-100);">
+      <div${cli(x)} style="display:grid;grid-template-columns:30px minmax(0,1fr) auto;gap:10px;padding:10px 14px;align-items:center;border-bottom:1px solid var(--neutral-100);">
         <div style="font-family:var(--font-mono);font-size:11px;color:var(--neutral-500);font-weight:700;">${i + 1}</div>
         <div style="min-width:0;">
           <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(x.nome)}</div>
