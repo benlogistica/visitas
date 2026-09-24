@@ -3389,8 +3389,10 @@ a {
   color: var(--neutral-500);
   font-family: var(--font-body);
   font-weight: 500;
-  text-transform: capitalize;
 }
+/* 9.32.469: só a primeira letra maiúscula ("Quinta-feira, 24 setembro 2026").
+   capitalize deixava "Quinta-Feira, 24 Setembro". */
+.home__greeting-date::first-letter { text-transform: uppercase; }
 
 /* Next visit card */
 .next-visit {
@@ -8416,7 +8418,7 @@ mark.search-hl {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.468-fatias',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.469-auditoria',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -13180,21 +13182,25 @@ async function carregarKpisHomeNutri() {
 
   try {
     // Queries em paralelo
+    // 9.32.469: conta pela data REAL da visita (data_visita), igual ao card
+    // "Mês atual". Antes usava checkin_timestamp, que no check-in retroativo é
+    // a hora do registro, e a visita caía na semana/ano errado.
+    const _d = _dataArquivo;
     const [semanaRes, anoRes, anteriorRes, hospRes] = await Promise.all([
       db.from('visitas').select('id', { count: 'exact', head: true })
         .eq('nutricionista_id', user.id)
-        .gte('checkin_timestamp', inicioSemana.toISOString()),
+        .gte('data_visita', _d(inicioSemana)),
       db.from('visitas').select('id', { count: 'exact', head: true })
         .eq('nutricionista_id', user.id)
-        .gte('checkin_timestamp', inicioAno.toISOString()),
+        .gte('data_visita', _d(inicioAno)),
       db.from('visitas').select('id', { count: 'exact', head: true })
         .eq('nutricionista_id', user.id)
-        .gte('checkin_timestamp', inicioMesAnterior.toISOString())
-        .lte('checkin_timestamp', fimMesAnterior.toISOString()),
+        .gte('data_visita', _d(inicioMesAnterior))
+        .lte('data_visita', _d(fimMesAnterior)),
       // Hospitais únicos no ano: select sem head pra conseguir o Set
       db.from('visitas').select('instituicao_id')
         .eq('nutricionista_id', user.id)
-        .gte('checkin_timestamp', inicioAno.toISOString()),
+        .gte('data_visita', _d(inicioAno)),
     ]);
 
     const kpiSemana    = semanaRes.count || 0;
@@ -13203,14 +13209,16 @@ async function carregarKpisHomeNutri() {
     const kpiHospitais = new Set((hospRes.data || []).map(v => v.instituicao_id).filter(Boolean)).size;
 
     // Atualiza DOM
-    const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = String(v); };
+    // 9.32.469: o desktop usa os mesmos cards com sufixo "D". Antes só o celular
+    // era preenchido e no computador Semana/Ano/Hospitais ficavam em "—".
+    const set = (id, v) => [id, id + 'D'].forEach(i => { const el = document.getElementById(i); if (el) el.textContent = String(v); });
     set('kpiSemana', kpiSemana);
     set('kpiAno', kpiAno);
     set('kpiHospitais', kpiHospitais);
 
     // Diff do mês atual vs anterior (precisa esperar o kpiMes estar populado)
-    const kpiMesEl = document.getElementById('kpiMes');
-    const kpiMesDiffEl = document.getElementById('kpiMesDiff');
+    const kpiMesEl = document.getElementById('kpiMes') || document.getElementById('kpiMesD');
+    const kpiMesDiffEl = document.getElementById('kpiMesDiff') || document.getElementById('kpiMesDiffD');
     if (kpiMesEl && kpiMesDiffEl) {
       const kpiMesAtual = parseInt(kpiMesEl.textContent) || 0;
       const diffVal = kpiMesAtual - kpiMesAnt;
@@ -18788,6 +18796,16 @@ async function carregarAdminInstituicoesDesktop() {
             <span class="material-symbols-rounded" style="font-size:16px;">restart_alt</span>Reativar
           </button>
         `;
+      }
+
+      // 9.32.469: aprovar, rejeitar, desativar e reativar são do admin. A tela da
+      // nutricionista reaproveita esta lista, então para ela fica só o Editar.
+      // (O banco também recusa: gatilho instituicoes_proteger_decisao.)
+      if (getCurrentUserReal()?.perfil !== 'admin') {
+        acoes = inst.ativo ? `
+          <button onclick="event.stopPropagation();editarInstituicaoAdmin('${inst.id}');" title="Editar" style="height:30px;width:30px;border:0;background:var(--neutral-100);color:var(--brand-navy);border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;" class="ds-table__btn">
+            <span class="material-symbols-rounded" style="font-size:17px;">edit</span>
+          </button>` : '';
       }
 
       const rowOpacity = !inst.ativo ? 'opacity:0.65;' : '';
