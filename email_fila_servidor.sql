@@ -212,3 +212,18 @@ create policy notif_criar on public.notificacoes for insert with check (
 
 -- APLICADO em 24/09/2026 (SQL Editor). recuperacao_solicitar recriada a partir
 -- de recuperacao_senha_servidor.sql (agora usa _email_enfileirar).
+
+-- 9) Sprint 9.32.465: nada com < ou > entra pelo cadastro público ----------------
+alter table public.usuarios drop constraint if exists usuarios_sem_html;
+alter table public.usuarios add constraint usuarios_sem_html
+  check (coalesce(nome,'') !~ '[<>]' and coalesce(email,'') !~ '[<>]' and coalesce(telefone,'') !~ '[<>]');
+alter table public.categorias_profissionais drop constraint if exists categorias_sem_html;
+alter table public.categorias_profissionais add constraint categorias_sem_html
+  check (coalesce(nome,'') !~ '[<>]');
+drop policy if exists notif_criar on public.notificacoes;
+create policy notif_criar on public.notificacoes for insert with check (
+  coalesce(public.app_identificado(), false)
+  or (tipo = 'categoria_sugerida' and public.app_usuario_eh_admin_ativo(user_id)
+      and coalesce(titulo,'') !~ '[<>]' and coalesce(mensagem,'') !~ '[<>]' and coalesce(link,'') !~ '[<>:]')
+);
+-- APLICADO em 24/09/2026 e testado (update com '<b>' e insert com '<script>' bloqueados).
