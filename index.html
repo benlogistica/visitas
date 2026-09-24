@@ -8416,7 +8416,7 @@ mark.search-hl {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.461-cliente',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.463-senha',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -9899,10 +9899,14 @@ window.handleTrocarSenha = async function(ev) {
 
     // 2. Atualiza com a nova senha
     const hashNova = await hashSenha(nova);
-    const { error: errUpd } = await db.from('usuarios')
+    const { data: salvou, error: errUpd } = await db.from('usuarios')
       .update({ senha_hash: hashNova })
-      .eq('id', user.id);
+      .eq('id', user.id)
+      .select('id');
     if (errUpd) throw new Error('Erro ao salvar nova senha: ' + errUpd.message);
+    // Sprint 9.32.463: sem crachá válido o banco não grava e não reclama.
+    // Sem esta checagem a tela diria "senha trocada" com a senha antiga valendo.
+    if (!salvou || !salvou.length) throw new Error('Não consegui salvar a nova senha. Saia, entre de novo e tente outra vez.');
 
     // Sucesso
     fecharTrocarSenhaModal();
@@ -24327,60 +24331,33 @@ window.handleRecuperarEmail = async function(ev) {
 
   try {
     const cpfFmt = maskCPF(cpf);
-    // Sprint 9.32.424: tambem roda antes do login — vai pela funcao do banco.
-    const { data: user, error } = await db.rpc('dados_recuperacao', { p_cpf: cpfFmt });
 
-    if (error) throw new Error(error.message);
-    if (!user) throw new Error('Não encontramos conta com esse CPF');
-    if (!user.email) throw new Error('Sua conta não tem e-mail cadastrado. Entre em contato com o admin.');
-
-    // 9.32.209: respeita toggle do admin. Recuperação por e-mail é crítica —
-    // se desativada, mostra mensagem clara em vez de gerar OTP que ninguém recebe.
+    // 9.32.209: respeita toggle do admin. Recuperação por e-mail é crítica:
+    // se desativada, mostra mensagem clara em vez de prometer um código que não chega.
     const ativo = await getEmailEventoAtivo('email_recuperacao_senha_ativo');
     if (!ativo) {
       throw new Error('A recuperação de senha por e-mail está temporariamente indisponível. Entre em contato com o administrador para redefinir sua senha.');
     }
 
-    // Gera código OTP de 6 dígitos
-    const code = String(Math.floor(100000 + Math.random() * 900000));
-    const validade = '15 minutos';
-
-    ForgotState.step = 'otp';
-    ForgotState.email = user.email;
-    ForgotState.cpf = cpfFmt;
-    ForgotState.userId = user.id;
-    ForgotState.expectedCode = code;
-    ForgotState.codeGeneratedAt = Date.now();
-
-    // 9.32.203: envia código real via Edge Function send-email
-    const primeiroNome = (user.nome || '').split(' ')[0] || 'Usuário';
-    const html = _emailTemplateBN({
-      titulo: 'Código de recuperação de senha',
-      corpoHtml: `
-        <p>Olá, <strong>${primeiroNome}</strong>!</p>
-        <p>Recebemos uma solicitação para redefinir a senha da sua conta. Use o código abaixo para continuar:</p>
-        <div style="margin:24px 0;text-align:center;">
-          <div style="display:inline-block;background:#f3f4f6;border:2px solid #8BC63F;border-radius:12px;padding:18px 36px;font-family:'JetBrains Mono','Courier New',monospace;font-size:32px;font-weight:700;letter-spacing:0.4em;color:#0A1F5C;">${code}</div>
-        </div>
-        <p style="font-size:13px;color:#6b7280;text-align:center;">Este código expira em <strong>${validade}</strong>.</p>
-        <p>Se você não solicitou a redefinição da senha, ignore este e-mail e sua senha continuará a mesma.</p>
-      `,
-      rodape: 'Por segurança, nunca compartilhe esse código com ninguém. A B&N Logística nunca pedirá seu código por telefone, WhatsApp ou outro canal.',
-    });
-
-    const result = await sendEmailViaEdge(
-      user.email,
-      `[B&N Logística] Código de recuperação: ${code}`,
-      html,
-      `Olá, ${primeiroNome}!\n\nSeu código de recuperação de senha é: ${code}\n\nEle expira em ${validade}.\n\nSe você não solicitou, ignore este email.`
-    );
-
-    if (!result.ok) {
-      console.error('[recuperar] erro ao enviar email:', result.error);
-      throw new Error('Não conseguimos enviar o e-mail agora. Tente novamente em alguns minutos.');
+    // Sprint 9.32.463: o código é gerado, guardado (só o hash) e enviado pelo SERVIDOR.
+    // Antes ele nascia aqui no navegador e a senha era gravada direto na tabela. Com a
+    // trava do banco essa gravação não pegava e a tela dizia "senha atualizada" sem
+    // ter trocado nada: ninguém conseguia recuperar a senha sozinho.
+    const { data: r, error } = await db.rpc('recuperacao_solicitar', { p_cpf: cpfFmt });
+    if (error) throw new Error('Não conseguimos enviar o código agora. Tente novamente em alguns minutos.');
+    if (!r || !r.ok) {
+      if (r && r.motivo === 'sem_email') throw new Error('Sua conta não tem e-mail cadastrado. Entre em contato com o admin.');
+      throw new Error('Não encontramos conta com esse CPF');
     }
 
-    console.log('[recuperar] email enviado pra', maskEmail(user.email));
+    ForgotState.step = 'otp';
+    ForgotState.email = r.email || '';
+    ForgotState.cpf = cpfFmt;
+    ForgotState.userId = null;
+    ForgotState.expectedCode = '';
+    ForgotState.codigo = '';
+    ForgotState.limitado = !!r.limitado;
+    ForgotState.codeGeneratedAt = Date.now();
     router();
   } catch (err) {
     flashEl.innerHTML = `<div class="flash flash--error"><span class="material-symbols-rounded" style="font-size:18px">error</span>${err.message}</div>`;
@@ -24418,7 +24395,7 @@ function renderRecuperarOtp() {
           <strong>${maskEmail(ForgotState.email)}</strong>
         </div>
 
-        <div id="fOtpFlash"></div>
+        <div id="fOtpFlash">${ForgotState.limitado ? `<div class="flash flash--info"><span class="material-symbols-rounded" style="font-size:18px">schedule</span>Já enviamos códigos há pouco. Use o último que chegou no seu e-mail.</div>` : ''}</div>
 
         <div class="otp" id="otpInputs">
           ${[0,1,2,3,4,5].map(i => `
@@ -24496,22 +24473,46 @@ function getOtpValue() {
   return [0,1,2,3,4,5].map(i => document.querySelector(`[data-otp-index="${i}"]`)?.value || '').join('');
 }
 
-window.handleOtpVerify = function() {
+// Sprint 9.32.463: mensagens das respostas do servidor na recuperação
+function _msgRecuperacao(r) {
+  const m = r && r.motivo;
+  if (m === 'codigo_invalido') {
+    return r.restantes > 0
+      ? `Código incorreto. Você ainda tem ${r.restantes} tentativa${r.restantes > 1 ? 's' : ''}.`
+      : 'Código incorreto. Peça um novo código.';
+  }
+  if (m === 'bloqueado') return 'Muitas tentativas erradas. Peça um novo código.';
+  if (m === 'expirado') return 'Este código expirou ou já foi usado. Peça um novo código.';
+  if (m === 'senha_invalida') return 'Senha inválida. Tente de novo.';
+  return 'Não foi possível concluir. Peça um novo código.';
+}
+
+window.handleOtpVerify = async function() {
   const code = getOtpValue();
   const flashEl = document.getElementById('fOtpFlash');
-
-  if (code !== ForgotState.expectedCode) {
-    flashEl.innerHTML = `<div class="flash flash--error"><span class="material-symbols-rounded" style="font-size:18px">error</span>Código incorreto</div>`;
-    return;
+  const btn = document.getElementById('fOtpBtn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Verificando...'; }
+  try {
+    // Só confere (sem senha nova): o servidor conta a tentativa e não consome o código
+    const { data: r, error } = await db.rpc('recuperacao_confirmar', {
+      p_cpf: ForgotState.cpf, p_codigo: code, p_senha_hash: null,
+    });
+    if (error) throw new Error('Não consegui verificar agora. Tente de novo.');
+    if (!r || !r.ok) throw new Error(_msgRecuperacao(r));
+    ForgotState.codigo = code;
+    ForgotState.step = 'novaSenha';
+    router();
+  } catch (err) {
+    flashEl.innerHTML = `<div class="flash flash--error"><span class="material-symbols-rounded" style="font-size:18px">error</span>${err.message}</div>`;
+    if (btn) { btn.disabled = false; btn.textContent = 'Verificar código'; }
   }
-
-  ForgotState.step = 'novaSenha';
-  router();
 };
 
 window.forgotBack = function() {
   ForgotState.step = 'email';
   ForgotState.expectedCode = '';
+  ForgotState.codigo = '';
+  ForgotState.limitado = false;
   router();
 };
 
@@ -24573,14 +24574,15 @@ window.handleNovaSenha = async function(ev) {
 
   try {
     const senhaHash = await hashSenha(pwd);
-    const { error } = await db.from('usuarios')
-      .update({ senha_hash: senhaHash })
-      .eq('id', ForgotState.userId);
-
-    if (error) throw new Error(error.message);
+    const { data: r, error } = await db.rpc('recuperacao_confirmar', {
+      p_cpf: ForgotState.cpf, p_codigo: ForgotState.codigo, p_senha_hash: senhaHash,
+    });
+    if (error) throw new Error('Não consegui salvar agora. Tente de novo.');
+    if (!r || !r.ok || r.etapa !== 'senha_trocada') throw new Error(_msgRecuperacao(r));
 
     ForgotState.step = 'email'; // reset
     ForgotState.expectedCode = '';
+    ForgotState.codigo = '';
     setFlash('success', 'Senha atualizada com sucesso! Faça login.');
     window.location.hash = '#/login';
   } catch (err) {
