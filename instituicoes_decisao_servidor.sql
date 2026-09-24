@@ -17,3 +17,14 @@ drop trigger if exists instituicoes_proteger_decisao on public.instituicoes;
 create trigger instituicoes_proteger_decisao before update on public.instituicoes
   for each row execute function public.instituicoes_proteger_decisao();
 -- APLICADO em 24/09/2026.
+
+-- Sprint 9.32.470: instituição sem CNPJ pode ser conferida pela equipe como
+-- pessoa física ou "não possui" (tela Mapear CNPJs, aba "Conferidas sem CNPJ").
+alter table public.instituicoes add column if not exists cnpj_situacao text;
+alter table public.instituicoes drop constraint if exists instituicoes_cnpj_situacao_chk;
+alter table public.instituicoes add constraint instituicoes_cnpj_situacao_chk
+  check (cnpj_situacao is null or cnpj_situacao in ('pessoa_fisica', 'nao_possui'));
+alter table public.instituicoes add column if not exists cnpj_situacao_por uuid;
+alter table public.instituicoes add column if not exists cnpj_situacao_em timestamptz;
+-- "Hospital kennedy" (endereço/bairro/cidade = "Teste", 0 visitas) desativado a pedido.
+-- APLICADO em 24/09/2026.

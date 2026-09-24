@@ -8418,7 +8418,7 @@ mark.search-hl {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.469-auditoria',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.470-cnpjs',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -44535,7 +44535,8 @@ function _fatRenderInner() {
               </button>
             </div>
           </div>
-          <canvas id="fatChartEvol" style="max-height:320px;"></canvas>
+          <!-- 9.32.470: caixa com altura fixa. Com maintainAspectRatio:false o Chart.js usa a altura da caixa; sem ela o grafico encolhia para ~120px e os rotulos se amontoavam. -->
+          <div id="fatChartEvolBox" style="position:relative;height:300px;"><canvas id="fatChartEvol"></canvas></div>
           <!-- Sprint 9.32.456: no celular o grafico vira barras deitadas (o canvas fica escondido) -->
           <div id="fatEvolBarras" style="display:none;"></div>
         </div>
@@ -44578,7 +44579,7 @@ function _fatRenderInner() {
             <span class="material-symbols-rounded" style="font-size:20px;color:var(--brand-lime);">donut_large</span>
             <div style="font-family:var(--font-display);font-size:14px;font-weight:700;color:var(--brand-navy);">Marcas (mix de receita)</div>
           </div>
-          <canvas id="fatChartMarcas" style="max-height:220px;"></canvas>
+          <div style="position:relative;height:220px;"><canvas id="fatChartMarcas"></canvas></div>
           <div id="fatMarcasLista" style="margin-top:10px;font-size:12px;"></div>
         </div>
       </div>
@@ -44646,7 +44647,7 @@ function _fatRenderInner() {
           <div id="fatAbcResumo" style="font-size:12px;color:var(--neutral-600);margin-bottom:14px;line-height:1.6;"></div>
           <div style="display:grid;grid-template-columns:1fr;gap:14px;" id="fatAbcGrid">
             <div>
-              <canvas id="fatChartAbc" style="max-height:280px;"></canvas>
+              <div style="position:relative;height:280px;"><canvas id="fatChartAbc"></canvas></div>
             </div>
             <div id="fatAbcCards" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;"></div>
           </div>
@@ -44662,7 +44663,7 @@ function _fatRenderInner() {
           <div style="font-size:11.5px;color:var(--neutral-600);margin-bottom:10px;line-height:1.5;">
             💡 Ao aplicar filtros (vendedor, marca, estado) na barra superior, o gráfico abaixo recompõe a evolução temporal do segmento selecionado, ou compara <strong>Top 5 vendedores ao longo do tempo</strong> quando sem filtro.
           </div>
-          <canvas id="fatChartEvolSeg" style="max-height:320px;"></canvas>
+          <div style="position:relative;height:300px;"><canvas id="fatChartEvolSeg"></canvas></div>
         </div>
 
         <!-- Seção 4 foi movida para aba Insights (página 3) -->
@@ -44831,7 +44832,7 @@ function _fatRenderInner() {
             <span class="material-symbols-rounded" style="font-size:18px;color:#F59E0B;">show_chart</span>
             <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:14px;">Evolução mensal, valor consignado</div>
           </div>
-          <canvas id="fatConsChartMensal" style="max-height:280px;"></canvas>
+          <div style="position:relative;height:280px;"><canvas id="fatConsChartMensal"></canvas></div>
         </div>
 
         <!-- Top clientes + Top produtos lado a lado em desktop -->
@@ -45975,47 +45976,78 @@ async function _mapCarregar() {
   }
   const { data: insts, error } = await db
     .from('instituicoes')
-    .select('id, nome, cnpj, cidade, estado, ativo, pendente_aprovacao')
+    .select('id, nome, cnpj, cidade, estado, ativo, pendente_aprovacao, cnpj_situacao')
     .eq('ativo', true)
     .order('nome');
   if (error) return { erro: error.message };
 
-  const clientes = FAT_DATA.clientes_top || [];
   const cnpjsJaMapeados = new Set(
     (insts || []).map(i => _perfNormalizaCnpj(i.cnpj)).filter(Boolean)
   );
 
-  // Pra cada instituição SEM cnpj, calcula top-3 sugestões por nome
+  // 9.32.470: as sugestões vinham só dos 50 maiores clientes. Agora vêm de
+  // TODOS os clientes do faturamento (clientes_lista, com pessoa física/CPF),
+  // com o faturamento somado de clientes_mes. Nome normalizado 1 vez só.
+  const fatPorCnpj = {};
+  (FAT_DATA.clientes_mes || []).forEach(cm => {
+    const k = _perfNormalizaCnpj(cm['CNPJ/CPF']);
+    if (k) fatPorCnpj[k] = (fatPorCnpj[k] || 0) + (cm.faturamento || 0);
+  });
+  const _tok = (n) => new Set(n.split(' ').filter(w => w.length > 2));
+  const candidatos = (FAT_DATA.clientes_lista || []).map(c => {
+    const k = _perfNormalizaCnpj(c.cnpj);
+    const nomes = [c.nome_fantasia, c.razao_social].filter(Boolean).map(_mapNorm).filter(Boolean);
+    return { cnpj: c.cnpj, k, nome: c.nome_fantasia || c.razao_social, cidade: c.cidade, estado: c.estado,
+             faturamento: fatPorCnpj[k] || 0, nomes: nomes.map(n => ({ n, t: _tok(n) })),
+             cidadeN: _mapNorm(c.cidade) };
+  }).filter(c => c.k && !cnpjsJaMapeados.has(c.k) && c.nomes.length);
+  const _score = (na, ta, cand) => {
+    let melhor = 0;
+    cand.nomes.forEach(({ n, t }) => {
+      if (na === n) { melhor = 1; return; }
+      if (!ta.size || !t.size) return;
+      let inter = 0; ta.forEach(w => { if (t.has(w)) inter++; });
+      // uma palavra só em comum ("ana", "casa") não basta, salvo nomes de uma palavra
+      if (!inter || (inter < 2 && !(ta.size === 1 && t.size === 1))) return;
+      const jac = inter / (ta.size + t.size - inter);
+      const curto = n.length < na.length ? n : na;
+      const bonus = (curto.length >= 8 && (na.includes(n) || n.includes(na))) ? 0.2 : 0;
+      melhor = Math.max(melhor, Math.min(1, jac + bonus));
+    });
+    return melhor;
+  };
+
+  // Pra cada instituição SEM cnpj (e ainda não confirmada), top-3 sugestões por nome
   const rows = (insts || []).map(inst => {
     const temCnpj = !!_perfNormalizaCnpj(inst.cnpj);
+    const validada = !temCnpj && !!inst.cnpj_situacao;
     let sugestoes = [];
-    if (!temCnpj) {
-      sugestoes = clientes.map(c => ({
-        cnpj: c['CNPJ/CPF'],
-        nome: c['Cliente (Nome Fantasia)'],
-        cidade: c.Cidade,
-        estado: c.Estado,
-        faturamento: c.faturamento || 0,
-        score: _mapScore(inst.nome, c['Cliente (Nome Fantasia)']),
-        jaUsado: cnpjsJaMapeados.has(_perfNormalizaCnpj(c['CNPJ/CPF'])),
-      }))
-      .filter(s => s.score >= 0.25 && !s.jaUsado)
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 3);
+    if (!temCnpj && !validada) {
+      const na = _mapNorm(inst.nome), ta = _tok(na), cid = _mapNorm(inst.cidade);
+      sugestoes = candidatos.map(c => {
+        let sc = _score(na, ta, c);
+        if (sc > 0 && cid && c.cidadeN === cid) sc = Math.min(1, sc + 0.1);   // mesma cidade pesa a favor
+        return sc >= 0.25 ? { cnpj: c.cnpj, nome: c.nome, cidade: c.cidade, estado: c.estado,
+                              faturamento: c.faturamento, score: sc, pf: c.k.length === 11 } : null;
+      }).filter(Boolean)
+        .sort((a, b) => b.score - a.score || b.faturamento - a.faturamento)
+        .slice(0, 3);
     }
-    return { ...inst, sugestoes, temCnpj };
+    return { ...inst, sugestoes, temCnpj, validada };
   });
 
-  // Separa: sem CNPJ (prioridade) vs com CNPJ
-  const semCnpj = rows.filter(r => !r.temCnpj);
+  // Separa: sem CNPJ pendente (prioridade), confirmadas sem CNPJ, com CNPJ
+  const semCnpj = rows.filter(r => !r.temCnpj && !r.validada);
+  const validadas = rows.filter(r => r.validada);
   const comCnpj = rows.filter(r => r.temCnpj);
 
   return {
     totalInst: rows.length,
     semCnpj: semCnpj.length,
+    validadas: validadas.length,
     comCnpj: comCnpj.length,
     comMatchSugerido: semCnpj.filter(r => r.sugestoes.length > 0).length,
-    rows: [...semCnpj, ...comCnpj],
+    rows: [...semCnpj, ...validadas, ...comCnpj],
   };
 }
 
@@ -46048,15 +46080,16 @@ function _mapRender() {
     return;
   }
 
-  const { totalInst, semCnpj, comCnpj, comMatchSugerido, rows } = state;
+  const { totalInst, semCnpj, validadas, comCnpj, comMatchSugerido, rows } = state;
   const filtro = window._mapFiltro || 'sem_cnpj';
   const busca = (window._mapBusca || '').toLowerCase();
 
   // Filtra linhas
   let filtRows = rows;
-  if (filtro === 'sem_cnpj')         filtRows = rows.filter(r => !r.temCnpj);
+  if (filtro === 'sem_cnpj')         filtRows = rows.filter(r => !r.temCnpj && !r.validada);
   else if (filtro === 'com_cnpj')    filtRows = rows.filter(r => r.temCnpj);
-  else if (filtro === 'com_match')   filtRows = rows.filter(r => !r.temCnpj && r.sugestoes.length > 0);
+  else if (filtro === 'com_match')   filtRows = rows.filter(r => !r.temCnpj && !r.validada && r.sugestoes.length > 0);
+  else if (filtro === 'validadas')   filtRows = rows.filter(r => r.validada);
   if (busca) filtRows = filtRows.filter(r => (r.nome || '').toLowerCase().includes(busca) || (r.cidade || '').toLowerCase().includes(busca));
 
   // KPIs (responsivo: 4 colunas desktop, 2x2 em mobile)
@@ -46071,7 +46104,7 @@ function _mapRender() {
         <span style="font-family:var(--font-display);font-weight:700;font-size:28px;color:var(--brand-navy);">${comCnpj}</span>
       </div>
       <div style="background:linear-gradient(135deg,#FFF8E5 0%,#FFF2CC 100%);border:1px solid rgba(245,158,11,0.3);border-radius:14px;padding:16px 18px;">
-        <div style="font-size:11px;color:var(--neutral-600);text-transform:uppercase;letter-spacing:0.5px;font-weight:600;margin-bottom:6px;">Sem CNPJ</div>
+        <div style="font-size:11px;color:var(--neutral-600);text-transform:uppercase;letter-spacing:0.5px;font-weight:600;margin-bottom:6px;">Sem CNPJ a conferir</div>
         <span style="font-family:var(--font-display);font-weight:700;font-size:28px;color:var(--brand-navy);">${semCnpj}</span>
       </div>
       <div style="background:linear-gradient(135deg,#F5F0F8 0%,#EFE4F5 100%);border:1px solid rgba(167,139,250,0.3);border-radius:14px;padding:16px 18px;">
@@ -46090,6 +46123,7 @@ function _mapRender() {
       <div class="review-tabs" style="margin:0;">
         <button class="review-tab ${filtro === 'sem_cnpj' ? 'is-active' : ''}" onclick="_mapTrocarFiltro('sem_cnpj')">Sem CNPJ <span class="review-tab__count">${semCnpj}</span></button>
         <button class="review-tab ${filtro === 'com_match' ? 'is-active' : ''}" onclick="_mapTrocarFiltro('com_match')">Com sugestão <span class="review-tab__count">${comMatchSugerido}</span></button>
+        <button class="review-tab ${filtro === 'validadas' ? 'is-active' : ''}" onclick="_mapTrocarFiltro('validadas')" title="Conferidas pela equipe: pessoa física ou não possui CNPJ">Conferidas sem CNPJ <span class="review-tab__count">${validadas}</span></button>
         <button class="review-tab ${filtro === 'com_cnpj' ? 'is-active' : ''}" onclick="_mapTrocarFiltro('com_cnpj')">Com CNPJ <span class="review-tab__count">${comCnpj}</span></button>
         <button class="review-tab ${filtro === 'todas' ? 'is-active' : ''}" onclick="_mapTrocarFiltro('todas')">Todas <span class="review-tab__count">${totalInst}</span></button>
       </div>
@@ -46113,7 +46147,9 @@ function _mapRender() {
           <div style="min-width:0;">
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
               <span style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:13.5px;">${(r.nome || '').replace(/</g,'&lt;')}</span>
-              ${r.temCnpj ? '<span style="font-size:10px;background:#E7F5E7;color:#2E7D32;padding:2px 8px;border-radius:9999px;font-weight:700;">mapeada</span>' : '<span style="font-size:10px;background:#FFF4E5;color:#C77700;padding:2px 8px;border-radius:9999px;font-weight:700;">sem CNPJ</span>'}
+              ${r.temCnpj ? '<span style="font-size:10px;background:#E7F5E7;color:#2E7D32;padding:2px 8px;border-radius:9999px;font-weight:700;">mapeada</span>'
+                : r.validada ? `<span style="font-size:10px;background:#EEF2FF;color:#3730A3;padding:2px 8px;border-radius:9999px;font-weight:700;">${r.cnpj_situacao === 'pessoa_fisica' ? 'pessoa física' : 'não possui CNPJ'}</span>`
+                : '<span style="font-size:10px;background:#FFF4E5;color:#C77700;padding:2px 8px;border-radius:9999px;font-weight:700;">sem CNPJ</span>'}
             </div>
             <div style="font-size:11.5px;color:var(--neutral-600);margin-bottom:8px;">${(r.cidade || '—').replace(/</g,'&lt;')}${r.estado ? ' · ' + r.estado : ''}</div>
 
@@ -46121,6 +46157,10 @@ function _mapRender() {
               <input type="text" id="mapCnpjInput-${r.id}" value="${cnpjExibido.replace(/"/g,'&quot;')}" placeholder="00.000.000/0000-00" style="font-family:var(--font-mono);width:200px;padding:6px 10px;border:1.5px solid var(--neutral-200);border-radius:8px;font-size:12.5px;" />
               <button onclick="_mapSalvarCnpj('${r.id}')" style="background:var(--brand-lime);color:#fff;border:0;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">Salvar</button>
               ${r.temCnpj ? `<button onclick="_mapLimparCnpj('${r.id}')" style="background:transparent;border:1px solid var(--neutral-300);color:var(--neutral-600);padding:6px 12px;border-radius:8px;font-size:11.5px;cursor:pointer;font-family:inherit;">Limpar</button>` : ''}
+              ${!r.temCnpj && !r.validada ? `
+                <button onclick="_mapMarcarSituacao('${r.id}', 'pessoa_fisica')" title="É paciente/pessoa física: compra no CPF. Se souber o CPF, digite no campo e clique em Salvar." style="background:transparent;border:1px solid #C7D2FE;color:#3730A3;padding:6px 10px;border-radius:8px;font-size:11.5px;cursor:pointer;font-family:inherit;">É pessoa física</button>
+                <button onclick="_mapMarcarSituacao('${r.id}', 'nao_possui')" title="Conferido: não tem CNPJ (ou não é cliente)" style="background:transparent;border:1px solid var(--neutral-300);color:var(--neutral-600);padding:6px 10px;border-radius:8px;font-size:11.5px;cursor:pointer;font-family:inherit;">Não possui CNPJ</button>` : ''}
+              ${r.validada ? `<button onclick="_mapMarcarSituacao('${r.id}', null)" style="background:transparent;border:1px solid var(--neutral-300);color:var(--neutral-600);padding:6px 10px;border-radius:8px;font-size:11.5px;cursor:pointer;font-family:inherit;">Desfazer</button>` : ''}
               <span id="mapStatus-${r.id}" style="font-size:11px;color:var(--neutral-500);"></span>
             </div>
           </div>
@@ -46142,7 +46182,7 @@ function _mapRender() {
                       <span style="font-size:10px;font-weight:700;color:${corBorda};flex-shrink:0;margin-top:1px;">${scorePct}%</span>
                     </div>
                     <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;">
-                      <span style="font-family:var(--font-mono);font-size:10.5px;color:var(--neutral-600);">${s.cnpj}</span>
+                      <span style="font-family:var(--font-mono);font-size:10.5px;color:var(--neutral-600);">${s.pf ? 'CPF ' : ''}${s.cnpj}</span>
                       <span style="font-size:10px;color:var(--brand-lime);font-weight:700;">${_perfFmtMoeda(s.faturamento)}</span>
                     </div>
                   </button>
@@ -46201,9 +46241,14 @@ window._mapSalvarCnpj = async function(instId) {
       ? digits.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, '$1.$2.$3-$4')
       : null;
   try {
+    // 9.32.470: CPF (11 dígitos) já marca a instituição como pessoa física
+    const _eu = getCurrentUserReal();
+    const upd = { cnpj: cnpjFmt };
+    if (digits.length === 11) Object.assign(upd, { cnpj_situacao: 'pessoa_fisica', cnpj_situacao_por: _eu?.id || null, cnpj_situacao_em: new Date().toISOString() });
+    else if (digits.length === 14) Object.assign(upd, { cnpj_situacao: null });
     const { error } = await db
       .from('instituicoes')
-      .update({ cnpj: cnpjFmt })
+      .update(upd)
       .eq('id', instId);
     if (error) throw new Error(error.message);
     if (stEl) stEl.innerHTML = '<span style="color:var(--status-success,#2E7D32);font-weight:700;">✓ Salvo</span>';
@@ -46220,6 +46265,30 @@ window._mapSalvarCnpj = async function(instId) {
   } catch (e) {
     if (stEl) stEl.innerHTML = `<span style="color:var(--status-danger,#D33);">Erro: ${e.message}</span>`;
   }
+};
+
+// 9.32.470: a equipe confere as instituições sem CNPJ: pessoa física, "não
+// possui" ou desfazer (null). Confirmadas saem da lista de pendentes.
+window._mapMarcarSituacao = async function(instId, situacao) {
+  const stEl = document.getElementById('mapStatus-' + instId);
+  if (stEl) stEl.innerHTML = '<span style="color:var(--neutral-500);">Salvando...</span>';
+  const _eu = getCurrentUserReal();
+  const { error } = await db.from('instituicoes').update({
+    cnpj_situacao: situacao,
+    cnpj_situacao_por: situacao ? (_eu?.id || null) : null,
+    cnpj_situacao_em: situacao ? new Date().toISOString() : null,
+  }).eq('id', instId);
+  if (error) { if (stEl) stEl.innerHTML = `<span style="color:var(--status-danger,#D33);">Erro: ${error.message}</span>`; return; }
+  const st = window._mapState;
+  const row = st?.rows?.find(r => r.id === instId);
+  if (row) {
+    row.cnpj_situacao = situacao;
+    row.validada = !row.temCnpj && !!situacao;
+    st.semCnpj = st.rows.filter(r => !r.temCnpj && !r.validada).length;
+    st.validadas = st.rows.filter(r => r.validada).length;
+    st.comMatchSugerido = st.rows.filter(r => !r.temCnpj && !r.validada && r.sugestoes.length > 0).length;
+  }
+  _mapRender();
 };
 
 window._mapLimparCnpj = async function(instId) {
@@ -51430,12 +51499,13 @@ function _fatRender() {
 
   if (_evolDeitado && _evolBarrasEl) {
     if (_fatChartEvolInst) { _fatChartEvolInst.destroy(); _fatChartEvolInst = null; }
-    if (ctx) ctx.style.display = 'none';
+    if (ctx) { ctx.style.display = 'none'; if (ctx.parentElement.id === 'fatChartEvolBox') ctx.parentElement.style.display = 'none'; }
     _evolBarrasEl.style.display = 'block';
     _evolBarrasEl.innerHTML = _fatEvolBarrasHtml(mensalChart, mesIsolado);
   } else if (ctx && typeof Chart !== 'undefined') {
     if (_evolBarrasEl) { _evolBarrasEl.style.display = 'none'; _evolBarrasEl.innerHTML = ''; }
     ctx.style.display = '';
+    if (ctx.parentElement.id === 'fatChartEvolBox') ctx.parentElement.style.display = '';
     if (_fatChartEvolInst) _fatChartEvolInst.destroy();
 
     // Cores das barras: quando há mês selecionado, esmaece todas exceto a do mês
