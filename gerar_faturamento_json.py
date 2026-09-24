@@ -388,6 +388,43 @@ def unificar_marcas(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+# ══════════════════════════════════════════════════════════════════════════
+# NOME DE CLIENTE POR CNPJ — Sprint 9.32.462
+# ══════════════════════════════════════════════════════════════════════════
+# O Omie guarda o nome fantasia de cada NOTA. Quando o cadastro do cliente e'
+# renomeado, as notas antigas ficam com o nome antigo. Os rankings agrupavam
+# por nome, entao o mesmo CNPJ virava dois clientes: a Prefeitura de Santos
+# (58.200.015/0001-83) aparecia tambem como "Municipio De Santos", parado ha
+# 593 dias, com o cliente comprando todo mes. Eram 58 CNPJs assim.
+# E o contrario tambem: nomes iguais com CNPJs diferentes eram somados.
+# Agora cada CNPJ tem um nome so (o da nota mais recente) e os rankings de
+# cliente agrupam pela chave _cli_key (o CNPJ; sem CNPJ, o proprio nome).
+
+def unificar_nomes_clientes(df: pd.DataFrame) -> pd.DataFrame:
+    df = df.copy()
+    cn = df['CNPJ/CPF'].fillna('').astype(str).str.strip()
+    df['_cli_key'] = cn.where(cn != '', 'SEM-CNPJ:' + df['Cliente (Nome Fantasia)'].astype(str))
+    tem = cn != ''
+    ult = df[tem].sort_values('Data de Emissão (completa)').groupby('_cli_key').tail(1)
+    trocados = 0
+    for col in ['Cliente (Nome Fantasia)', 'Cliente (Razão Social)']:
+        if col not in df.columns:
+            continue
+        mapa = dict(zip(ult['_cli_key'], ult[col]))
+        novo = df.loc[tem, '_cli_key'].map(mapa)
+        if col == 'Cliente (Nome Fantasia)':
+            trocados = int((novo != df.loc[tem, col]).sum())
+        df.loc[tem, col] = novo
+    n_multi = int(df[tem].groupby('_cli_key')['Cliente (Nome Fantasia)'].nunique().gt(1).sum())
+    print(f"\n🪪  Nome de cliente unificado por CNPJ: {trocados:,} linhas renomeadas "
+          f"(sobraram {n_multi} CNPJs com 2+ nomes: deve ser 0)")
+    return df
+
+
+def _nomes_por_chave(df: pd.DataFrame) -> dict:
+    return df.groupby('_cli_key')['Cliente (Nome Fantasia)'].first().to_dict()
+
+
 def gerar_mensal(df_vendas: pd.DataFrame) -> list:
     """Faturamento total por mês (Venda apenas)."""
     g = df_vendas.groupby('_ano_mes').agg(
@@ -510,7 +547,8 @@ def gerar_clientes_top(df_vendas: pd.DataFrame, n: int = TOP_CLIENTES) -> list:
     if tem_razao:
         agg['razao_social'] = ('Cliente (Razão Social)', 'first')
 
-    g = df_vendas.groupby(['Cliente (Nome Fantasia)']).agg(**agg).reset_index()
+    g = df_vendas.groupby(['_cli_key']).agg(**agg).reset_index()
+    g['Cliente (Nome Fantasia)'] = g['_cli_key'].map(_nomes_por_chave(df_vendas))
     g = g.sort_values('faturamento', ascending=False).head(n)
     return [
         {
@@ -879,13 +917,14 @@ def gerar_devolucoes_clientes_top(df_devolucoes: pd.DataFrame, top_n: int = 30) 
     """Top N clientes/hospitais que mais devolvem."""
     if df_devolucoes.empty:
         return []
-    g = df_devolucoes.groupby('Cliente (Nome Fantasia)').agg(
+    g = df_devolucoes.groupby('_cli_key').agg(
         valor_devolucao=('Total de Mercadoria', lambda x: abs(x.sum())),
         qtd=('Nota Fiscal', 'nunique'),
         cnpj=('CNPJ/CPF', 'first'),
         estado=('Estado', 'first'),
         cidade=('Cidade', 'first'),
     ).reset_index()
+    g['Cliente (Nome Fantasia)'] = g['_cli_key'].map(_nomes_por_chave(df_devolucoes))
     g = g.sort_values('valor_devolucao', ascending=False).head(top_n)
     return [
         {
@@ -1201,7 +1240,7 @@ def gerar_consignado_clientes_top(df_consignado: pd.DataFrame, n: int = 30) -> l
     """Sprint 9.32.83: Top N clientes em consignação (remessas)."""
     if len(df_consignado) == 0:
         return []
-    g = df_consignado.groupby(['Cliente (Nome Fantasia)']).agg(
+    g = df_consignado.groupby(['_cli_key']).agg(
         valor_consignado=('Total de Mercadoria', 'sum'),
         qtd_notas=('Nota Fiscal', 'nunique'),
         ultima_remessa=('Data de Emissão (completa)', 'max'),
@@ -1209,6 +1248,7 @@ def gerar_consignado_clientes_top(df_consignado: pd.DataFrame, n: int = 30) -> l
         cidade=('Cidade', 'first'),
         estado=('Estado', 'first'),
     ).reset_index()
+    g['Cliente (Nome Fantasia)'] = g['_cli_key'].map(_nomes_por_chave(df_consignado))
     g = g.sort_values('valor_consignado', ascending=False).head(n)
     return [
         {
@@ -1472,7 +1512,8 @@ def gerar_empresa_clientes_top(df_vendas: pd.DataFrame, n: int = TOP_CLIENTES) -
     if tem_razao:
         agg['razao_social'] = ('Cliente (Razão Social)', 'first')
 
-    g = df_vendas.groupby(['Minha Empresa (Nome Fantasia)', 'Cliente (Nome Fantasia)']).agg(**agg).reset_index()
+    g = df_vendas.groupby(['Minha Empresa (Nome Fantasia)', '_cli_key']).agg(**agg).reset_index()
+    g['Cliente (Nome Fantasia)'] = g['_cli_key'].map(_nomes_por_chave(df_vendas))
     g = g.rename(columns={'Minha Empresa (Nome Fantasia)': 'Empresa'})
 
     # Pra cada empresa, pega top N
@@ -1623,6 +1664,8 @@ def main():
 
     # Sprint 9.32.459: mesma marca com grafias diferentes vira uma so
     df = unificar_marcas(df)
+    # Sprint 9.32.462: um nome por CNPJ (o mais recente)
+    df = unificar_nomes_clientes(df)
 
     # Filtra por categoria
     df_vendas     = df[df['_categoria'] == 'Venda'].copy()
