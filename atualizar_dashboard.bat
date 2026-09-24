@@ -154,6 +154,8 @@ REM Sprint 9.32.464: publica CIFRADO (faturamento_data.enc). O .gz aberto
 REM deixava qualquer um baixar nomes, CPF/CNPJ e compras dos clientes.
 git rm --cached --ignore-unmatch -q faturamento_data_inline.json.gz >nul 2>&1
 git add index.html faturamento_data.enc
+REM Sprint 9.32.468: fatias por hospital (nutricionista so recebe as dela)
+git add -A fat_cli
 git commit -m "Sync faturamento: %PERIODO%"
 if errorlevel 1 (
     echo.

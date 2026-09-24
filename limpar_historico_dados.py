@@ -111,6 +111,9 @@ def main():
     print('\n[3/5] Reescrevendo o histórico (pode levar alguns minutos)...')
     troca = Path(tempfile.gettempdir()) / 'bn_troca_texto.txt'
     troca.write_bytes(TROCA_TEXTO)
+    # Uma limpeza anterior deixa esta marca e o filter-repo pergunta Y/N.
+    # Cada rodada aqui é completa, então começa do zero.
+    Path('.git/filter-repo/already_ran').unlink(missing_ok=True)
     cmd = [sys.executable, '-m', 'git_filter_repo', '--force', '--invert-paths']
     for c in CAMINHOS:
         cmd += ['--path', c]

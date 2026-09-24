@@ -138,6 +138,58 @@ def ler_chave_faturamento() -> bytes:
     return chave
 
 
+# ---- Sprint 9.32.468: fatias por hospital (para a nutricionista) --------------
+# A nutricionista precisava do arquivo INTEIRO para ver a própria performance —
+# e com ele, o faturamento de todos os clientes. Agora cada cliente PJ vira um
+# arquivo cifrado com chave própria em fat_cli/. O banco entrega a cada
+# nutricionista só as chaves dos hospitais que ela visita (faturamento_chaves_perf).
+# Nome do arquivo e chave saem de HMAC da chave mestra: sem a mestra, não dá
+# para saber de qual CNPJ é cada arquivo nem abrir nenhum.
+FATIA_CAMPOS = {
+    'clientes_top': 'CNPJ/CPF', 'clientes_lista': 'cnpj',
+    'devolucoes_clientes_top': 'CNPJ/CPF', 'cliente_devolucao_mes': 'CNPJ/CPF',
+    'produtos_por_cliente': 'CNPJ/CPF', 'cliente_produto_mes': 'CNPJ/CPF',
+    'clientes_mes': 'CNPJ/CPF',
+}
+
+
+def gerar_fatias(dados: dict, mestra: bytes) -> int:
+    import hmac
+    from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+    pasta = Path('fat_cli')
+    pasta.mkdir(exist_ok=True)
+    so_digitos = lambda v: re.sub(r'\D', '', str(v or ''))
+    por_cli = {}
+    for campo, chave_cnpj in FATIA_CAMPOS.items():
+        for linha in dados.get(campo) or []:
+            c = so_digitos(linha.get(chave_cnpj))
+            if len(c) != 14:          # só PJ: hospital/clínica. Pessoa física fica fora.
+                continue
+            por_cli.setdefault(c, {}).setdefault(campo, []).append(linha)
+    comum = {'meta': dados.get('meta'),
+             'mensal': [{'ano_mes': m.get('ano_mes')} for m in dados.get('mensal') or []]}
+    fatias = {'comum': comum, **por_cli}
+
+    magic = b'BNC1'
+    feitos = set()
+    for nome, conteudo in fatias.items():
+        ident = hmac.new(mestra, b'id:' + nome.encode(), hashlib.sha256).hexdigest()[:24]
+        chave = hmac.new(mestra, b'k:' + nome.encode(), hashlib.sha256).digest()
+        corpo = gzip.compress(json.dumps(conteudo, ensure_ascii=False, separators=(',', ':')).encode('utf-8'),
+                              compresslevel=9, mtime=0)
+        iv = hmac.new(chave, corpo, hashlib.sha256).digest()[:12]
+        blob = magic + iv + AESGCM(chave).encrypt(iv, corpo, magic)
+        destino = pasta / f'{ident}.bin'
+        if not destino.exists() or destino.read_bytes() != blob:
+            destino.write_bytes(blob)
+        feitos.add(destino.name)
+    # cliente que saiu do faturamento: a fatia antiga não pode ficar publicada
+    for velho in pasta.glob('*.bin'):
+        if velho.name not in feitos:
+            velho.unlink()
+    return len(por_cli)
+
+
 def main():
     json_path = Path('faturamento_data_inline.json')
     html_path = Path('index.html')
@@ -206,6 +258,8 @@ def main():
         print("   ✓ faturamento_data_inline.json.gz (aberto) removido")
 
     dados = json.loads(json_bytes.decode('utf-8'))
+    n_fatias = gerar_fatias(dados, chave)
+    print(f"   ✓ Fatias por hospital em fat_cli/: {n_fatias} clientes PJ + resumo comum")
     periodo = f"{dados['meta']['periodo_inicio']} → {dados['meta']['periodo_fim']}"
 
     # 2) Lê o HTML e VALIDA ANTES DE ENCOSTAR NELE ---------------------------

@@ -10,17 +10,34 @@
   "theme_color": "#0A1F5C",
   "lang": "pt-BR",
   "dir": "ltr",
-  "categories": ["business", "productivity", "medical", "health"],
+  "categories": [
+    "business",
+    "productivity",
+    "medical",
+    "health"
+  ],
   "icons": [
     {
-      "src": "icons/icon-pwa.png?v=20260427",
-      "sizes": "192x192 512x512",
+      "src": "icons/icon-pwa-192.png?v=20260924",
+      "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "icons/icon-pwa.png?v=20260427",
-      "sizes": "192x192 512x512",
+      "src": "icons/icon-pwa-512.png?v=20260924",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-pwa-maskable-192.png?v=20260924",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "icons/icon-pwa-maskable-512.png?v=20260924",
+      "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
     }

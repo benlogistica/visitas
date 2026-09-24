@@ -1,5 +1,5 @@
 /**
- * Service Worker do Nutricionais Visitas — versão 9.32.420
+ * Service Worker do Nutricionais Visitas — versão 9.32.467
  *
  * Duas funções:
  *   1. Tornar o app instalável (critério de PWA do Chrome).
@@ -8,7 +8,7 @@
  *      check-out esquecido: hoje o aviso existe, mas só aparece
  *      para quem abre o app — e quem esqueceu, por definição, não abriu.
  *
- * Sem cache offline ainda. O fetch passa direto.
+ * Sem cache offline ainda (e sem listener de fetch).
  */
 
 const CACHE_VERSION = 'v2';
@@ -30,9 +30,9 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-self.addEventListener('fetch', () => {
-  // Pass-through — não intercepta nada.
-});
+// 9.32.467: o listener de fetch vazio saiu. Ele não fazia nada, mas obrigava
+// o navegador a acordar o service worker em TODA requisição antes de seguir,
+// o que só atrasava. O Chrome não exige mais fetch para o app ser instalável.
 
 /* ==========================================================================
    PUSH — chega mesmo com o app fechado
@@ -50,8 +50,8 @@ self.addEventListener('push', (event) => {
   const titulo = dados.titulo || 'B&N Logística';
   const opcoes = {
     body: dados.corpo || '',
-    icon: 'icons/icon-pwa.png?v=20260427',
-    badge: 'icons/icon-pwa.png?v=20260427',
+    icon: 'icons/icon-pwa-192.png?v=20260924',
+    badge: 'icons/icon-pwa-192.png?v=20260924',
     lang: 'pt-BR',
     // tag agrupa: um novo aviso da MESMA visita substitui o anterior
     // em vez de empilhar três notificações sobre a mesma coisa.
