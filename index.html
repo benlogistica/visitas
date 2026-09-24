@@ -8416,7 +8416,7 @@ mark.search-hl {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.463-senha',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.464-seguranca',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -9289,28 +9289,11 @@ async function cadastrar(dados) {
       console.log('[cadastrar] e-mail "Cadastro recebido" desativado pelo admin — pulando envio');
       return true;
     }
-    const primeiroNome = (nome || '').trim().split(' ')[0] || 'Profissional';
-    const htmlEmail = _emailTemplateBN({
-      titulo: 'Cadastro recebido',
-      corpoHtml: `
-        <p>Olá, <strong>${primeiroNome}</strong>!</p>
-        <p>Recebemos seu cadastro na plataforma <strong>B&amp;N Logística</strong>. Sua conta está aguardando aprovação do administrador.</p>
-        <p>Você receberá um novo e-mail assim que for aprovado e poderá começar a usar o sistema.</p>
-        <p style="font-size:13px;color:#6b7280;margin-top:24px;">Se você não fez esse cadastro, ignore este e-mail.</p>
-      `,
-      rodape: 'Você está recebendo este e-mail porque alguém usou este endereço para se cadastrar no sistema B&N Logística.',
-    });
-    // 9.32.208: Subject curto e sem em-dash. Em-dash + Subject longo + acentos
-    // fazem o denomailer quebrar o encoded-word RFC 2047 errado, e o Gmail rejeita
-    // com 550-5.7.1 'From' header is missing.
-    sendEmailViaEdge(
-      email.trim().toLowerCase(),
-      '[B&N Logistica] Cadastro recebido',
-      htmlEmail,
-      `Olá, ${primeiroNome}!\n\nRecebemos seu cadastro na B&N Logística. Sua conta está aguardando aprovação do administrador.\n\nVocê receberá outro e-mail assim que for aprovado.`
-    ).then(r => {
-      if (r?.ok) console.log('[cadastrar] e-mail "Cadastro recebido" enviado para', email);
-      else console.error('[cadastrar] falha ao enviar e-mail "Cadastro recebido":', r?.error);
+    // 9.32.464: o texto do e-mail mora no banco (email_cadastro_recebido).
+    // Ele só manda para conta PENDENTE, uma vez, para o e-mail da própria conta.
+    db.rpc('email_cadastro_recebido', { p_cpf: cpfFmt }).then(({ data, error }) => {
+      if (!error && data?.ok) console.log('[cadastrar] e-mail "Cadastro recebido" enfileirado para', email);
+      else console.error('[cadastrar] falha ao enfileirar "Cadastro recebido":', error?.message || data);
     }).catch(err => console.error('[cadastrar] erro inesperado no e-mail:', err));
   } catch (err) {
     console.error('[cadastrar] erro ao montar e-mail:', err);
@@ -24267,22 +24250,27 @@ async function getEmailEventoAtivo(chaveEvento) {
   }
 }
 
+// 9.32.464: a Edge Function send-email foi fechada — não aceita mais
+// {to, subject, html} de fora (era um relay aberto: qualquer um com a chave
+// pública mandava e-mail pelo SMTP da B&N). Agora o app pede ao BANCO, que
+// confere se é admin, põe na fila (email_fila) e acorda a send-email.
+// Espera até ~12s pelo resultado real do SMTP, para o teste do admin mostrar
+// se chegou ou deu erro.
 async function sendEmailViaEdge(to, subject, html, text) {
   try {
-    const url = CONFIG.SUPABASE_URL.replace(/\/$/, '') + '/functions/v1/send-email';
-    const resp = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + CONFIG.SUPABASE_ANON_KEY,
-      },
-      body: JSON.stringify({ to, subject, html, text }),
+    const { data, error } = await db.rpc('email_enviar_admin', {
+      p_para: to, p_assunto: subject, p_html: html, p_texto: text || null,
     });
-    const json = await resp.json().catch(() => ({}));
-    if (!resp.ok || !json.ok) {
-      return { ok: false, error: json.error || ('HTTP ' + resp.status) };
+    if (error) return { ok: false, error: error.message };
+    if (!data?.ok) return { ok: false, error: data?.error === 'sem_permissao' ? 'Só administradores podem enviar e-mail pelo sistema.' : (data?.error || 'Falha ao enfileirar') };
+    for (let i = 0; i < 12; i++) {
+      await new Promise(r => setTimeout(r, 1000));
+      const st = await db.rpc('email_status', { p_id: data.id });
+      const s = st?.data;
+      if (s?.status === 'enviado') return { ok: true };
+      if (s?.status === 'erro') return { ok: false, error: s.erro || 'Falha no SMTP' };
     }
-    return { ok: true };
+    return { ok: true, pendente: true };
   } catch (e) {
     return { ok: false, error: String(e?.message || e) };
   }
@@ -43872,7 +43860,27 @@ const FAT_DATA_VERSION = 'a5ee83292763';
 // GitHub Pages PARA de publicar (ja aconteceu em 06/09).
 // Comprimido cai para 1,9 MB — 91% menor. O crescimento vai de 41 MB/dia para
 // menos de 4, e o prazo ate o limite passa de duas semanas para meses.
-const FAT_DATA_URL = 'faturamento_data_inline.json.gz?v=' + FAT_DATA_VERSION;
+// 9.32.464: o arquivo publicado é CIFRADO (AES-256-GCM). Antes o .gz ficava
+// aberto em benlogistica.com.br — qualquer um baixava nomes, CPF/CNPJ e compras
+// de todos os clientes. A chave só sai do banco (faturamento_chave) para quem
+// está logado com conta ativa. Formato: 'BNF1' + IV(12) + cifrado(gzip do JSON).
+const FAT_DATA_URL = 'faturamento_data.enc?v=' + FAT_DATA_VERSION;
+
+async function _fatDecifrar(buf) {
+  const bytes = new Uint8Array(buf);
+  const magic = new TextDecoder().decode(bytes.slice(0, 4));
+  if (magic !== 'BNF1') throw new Error('Arquivo de faturamento em formato desconhecido.');
+  const { data: chaveB64, error } = await db.rpc('faturamento_chave');
+  if (error) throw new Error('Não foi possível obter a chave do faturamento: ' + error.message);
+  if (!chaveB64) throw new Error('Seu acesso não libera os dados de faturamento. Entre de novo no sistema.');
+  if (!(window.crypto && crypto.subtle)) throw new Error('Navegador antigo demais para abrir os dados de faturamento. Atualize o navegador.');
+  const raw = Uint8Array.from(atob(chaveB64), c => c.charCodeAt(0));
+  const chave = await crypto.subtle.importKey('raw', raw, 'AES-GCM', false, ['decrypt']);
+  const gz = await crypto.subtle.decrypt(
+    { name: 'AES-GCM', iv: bytes.slice(4, 16), additionalData: bytes.slice(0, 4) },
+    chave, bytes.slice(16));
+  return new Blob([gz]).stream();
+}
 
 // Memoizado: a primeira chamada dispara o fetch; chamadas paralelas compartilham a mesma Promise.
 function _fatCarregarDados() {
@@ -43888,7 +43896,7 @@ function _fatCarregarDados() {
       if (typeof DecompressionStream === 'undefined') {
         throw new Error('Navegador antigo demais para abrir os dados de faturamento. Atualize o navegador.');
       }
-      const fluxo = r.body.pipeThrough(new DecompressionStream('gzip'));
+      const fluxo = (await _fatDecifrar(await r.arrayBuffer())).pipeThrough(new DecompressionStream('gzip'));
       const texto = await new Response(fluxo).text();
       return JSON.parse(texto);
     })
@@ -44207,7 +44215,7 @@ function _fatRenderInner() {
       }
       _fatRender();
     } catch (e) {
-      console.error('Erro ao carregar faturamento_data_inline.json:', e);
+      console.error('Erro ao carregar faturamento_data.enc:', e);
       const wrapper = document.querySelector('.fat-wrapper');
       if (wrapper) {
         wrapper.innerHTML = `<div style="padding:40px;text-align:center;color:var(--status-danger);">

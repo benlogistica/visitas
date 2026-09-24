@@ -44,17 +44,17 @@ echo.
 
 REM ---- [3/6] Checa dependencias Python -----------------------------------
 echo [3/6] Verificando dependencias Python...
-python -c "import pandas, openpyxl" >nul 2>&1
+python -c "import pandas, openpyxl, cryptography" >nul 2>&1
 if errorlevel 1 (
     echo   Instalando dependencias ^(pode levar 1-2 minutos^)...
-    python -m pip install --quiet pandas openpyxl
+    python -m pip install --quiet pandas openpyxl cryptography
     if errorlevel 1 (
         echo [ERRO] Falha ao instalar dependencias
         pause
         exit /b 1
     )
 )
-echo   OK pandas + openpyxl
+echo   OK pandas + openpyxl + cryptography
 echo.
 
 REM ---- [4/6] Checa repositorio Git ---------------------------------------
@@ -144,13 +144,16 @@ REM Pega periodo do JSON gerado pra usar na mensagem de commit
 for /f "usebackq delims=" %%p in (`python -c "import json; d=json.load(open('faturamento_data_inline.json',encoding='utf-8')); print(d['meta']['periodo_inicio']+' a '+d['meta']['periodo_fim'])"`) do set PERIODO=%%p
 
 echo   Arquivos modificados:
-git status --short index.html faturamento_data_inline.json
+git status --short index.html faturamento_data.enc
 echo.
 
 REM Sprint 9.32.426: versiona o COMPRIMIDO (1,9 MB) e nao o cru (20,5 MB).
 REM O git guarda cada versao para sempre; com o arquivo cru o repositorio
 REM crescia ~41 MB/dia e o GitHub Pages parava de publicar perto de 1 GB.
-git add index.html faturamento_data_inline.json.gz
+REM Sprint 9.32.464: publica CIFRADO (faturamento_data.enc). O .gz aberto
+REM deixava qualquer um baixar nomes, CPF/CNPJ e compras dos clientes.
+git rm --cached --ignore-unmatch -q faturamento_data_inline.json.gz >nul 2>&1
+git add index.html faturamento_data.enc
 git commit -m "Sync faturamento: %PERIODO%"
 if errorlevel 1 (
     echo.

@@ -1,5 +1,5 @@
 // =============================================================================
-// Edge Function: notif-to-email   |   versão 9.32.276
+// Edge Function: notif-to-email   |   versão 9.32.464
 // =============================================================================
 // Source-of-truth do código que está deployado no Supabase
 //   (Edge Functions → notif-to-email → Via Editor).
@@ -151,9 +151,9 @@ Deno.serve(async (req) => {
 
   try {
     const payload = await req.json();
-    const record = payload?.record;
-    if (!record || !record.user_id || !record.tipo) {
-      return new Response(JSON.stringify({ ok: true, skipped: "sem record/user_id/tipo" }), {
+    const recId = payload?.record?.id;
+    if (!recId) {
+      return new Response(JSON.stringify({ ok: true, skipped: "sem record.id" }), {
         status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -164,6 +164,24 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
       { auth: { autoRefreshToken: false, persistSession: false } }
     );
+
+    // 9.32.464: NÃO confia no corpo da chamada. A função é pública (a chave anon
+    // está no index.html), então qualquer um podia mandar um "record" inventado
+    // — com texto e link à escolha — e o e-mail sairia pelo SMTP da B&N para
+    // qualquer usuário. Agora relê a notificação no banco pelo id, e só manda
+    // se ela for recente (evita reenvio de notificação antiga).
+    const { data: record, error: errNotif } = await supabase
+      .from("notificacoes")
+      .select("id, user_id, tipo, titulo, mensagem, link, criado_em")
+      .eq("id", recId)
+      .maybeSingle();
+    if (errNotif) throw new Error("Erro ao buscar notificação: " + errNotif.message);
+    const idadeMs = record?.criado_em ? Date.now() - Date.parse(record.criado_em) : Infinity;
+    if (!record || !record.user_id || !record.tipo || !(idadeMs < 15 * 60 * 1000)) {
+      return new Response(JSON.stringify({ ok: true, skipped: "notificação inexistente ou antiga" }), {
+        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
     // Sprint 9.32.276: traz tb email_prefs pra respeitar opt-out individual
     const { data: user, error: errUser } = await supabase
       .from("usuarios")
@@ -221,8 +239,9 @@ ${record.mensagem || ""}`.trim();
       ${record.mensagem ? `<p style="background:#f9fafb;border-left:3px solid #8BC63F;padding:12px 16px;border-radius:0 8px 8px 0;color:#374151;">${record.mensagem.replace(/</g, "&lt;")}</p>` : ""}
       <p style="font-size:13px;color:#6b7280;margin-top:18px;">Acesse a plataforma para ver mais detalhes.</p>
     `;
-    const ctaUrl = record.link
-      ? (record.link.startsWith("http") ? record.link : `${SITE_URL}/${record.link.replace(/^\//, "")}`)
+    // 9.32.464: só link interno do sistema — nunca um endereço de fora.
+    const ctaUrl = (record.link && !/^[a-z][a-z0-9+.-]*:|^\/\//i.test(record.link))
+      ? `${SITE_URL}/${record.link.replace(/^\//, "")}`
       : SITE_URL;
 
     const html = templateBN({
@@ -234,7 +253,7 @@ ${record.mensagem || ""}`.trim();
 
     await dispararEmail(user.email, tituloEmail, html, `Olá ${primeiroNome}!\n\n${corpoTxt}\n\nAcesse: ${SITE_URL}`);
 
-    return new Response(JSON.stringify({ ok: true, sent_to: user.email, tipo: record.tipo }), {
+    return new Response(JSON.stringify({ ok: true, tipo: record.tipo }), {
       status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {

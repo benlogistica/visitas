@@ -1,43 +1,28 @@
 // =============================================================================
-// Edge Function: send-email   |   versão 9.32.204
+// Edge Function: send-email   |   versão 9.32.464
 // =============================================================================
 // Source-of-truth do código que está deployado no Supabase
-//   (Edge Functions → send-email → Via Editor).
+//   (Edge Functions → send-email → Code).
 //
-// Sprint 9.32.204 (fix do "=20"):
-//   - O denomailer envia HTML em quoted-printable. Quando o HTML que chega aqui
-//     tem trailing whitespace ou indentação de template literal (ex.: `\n        <p>`),
-//     esses espaços em fim de linha são codificados como "=20" + soft line break.
-//     Em alguns gateways SMTP do provedor emailemnuvem.com.br (LDVnet), o soft
-//     line break é removido mas o "=20" sobrevive literal — vazando no corpo do
-//     e-mail renderizado.
+// Sprint 9.32.464 — FECHADA:
+//   Antes aceitava {to, subject, html} de qualquer um que tivesse a chave
+//   pública (que está no index.html) — dava pra usar o SMTP da B&N para mandar
+//   qualquer e-mail para qualquer endereço.
+//   Agora só aceita {id}. A mensagem mora na tabela public.email_fila, que só
+//   o banco escreve (funções _email_enfileirar, email_enviar_admin,
+//   email_cadastro_recebido, recuperacao_solicitar — ver email_fila_servidor.sql).
+//   Um id inventado não acha nada; um id real já enviado não reenvia.
 //
-//   - Solução: minificar o HTML server-side antes de passar para o denomailer.
-//     Remove \n + indentação após e espaços entre tags. HTML é resiliente a
-//     remoção de whitespace fora de <pre>/<textarea>, então é seguro.
+// Sprint 9.32.204 (fix do "=20"): o HTML é minificado antes de ir ao denomailer.
 //
-// Secrets esperados (configurados em Edge Functions → Manage secrets):
-//   SMTP_HOST=smtp.emailemnuvem.com.br
-//   SMTP_PORT=465
-//   SMTP_USER=atendimento@benlogistica.com.br
-//   SMTP_PASS=<senha>
-//   SMTP_FROM_NAME=B&N Logística
+// Secrets (Edge Functions → Secrets):
+//   SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM_NAME
+//   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY  (já vêm por padrão)
 // =============================================================================
 
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
 
-/**
- * Minifica HTML para evitar que trailing whitespace e indentação virem "=20"
- * literais no e-mail renderizado (problema do quoted-printable + gateway SMTP).
- *
- * - Remove CRs.
- * - Remove \n seguido de indentação.
- * - Colapsa runs de espaços em um único espaço.
- * - Remove espaços entre tags (>< sem nada no meio).
- * - Faz trim das pontas.
- *
- * NÃO usar dentro de <pre> ou <textarea> — mas e-mails B&N não usam essas tags.
- */
 function minifyEmailHtml(html: string): string {
   return (html || "")
     .replace(/\r/g, "")
@@ -47,32 +32,50 @@ function minifyEmailHtml(html: string): string {
     .trim();
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function resposta(obj: unknown, status = 200) {
+  return new Response(JSON.stringify(obj), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
 Deno.serve(async (req) => {
-  const corsHeaders = {
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Headers":
-      "authorization, x-client-info, apikey, content-type",
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
-  };
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+  if (req.method !== "POST") return resposta({ error: "method" }, 405);
+
+  let id = "";
+  try {
+    const body = await req.json();
+    id = String(body?.id || "");
+  } catch (_) { /* corpo inválido */ }
+  if (!UUID_RE.test(id)) return resposta({ error: "id" }, 400);
+
+  const db = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    { auth: { persistSession: false } },
+  );
+
+  // Reserva a mensagem: só pega se ainda estiver pendente e for recente.
+  // Duas chamadas com o mesmo id não mandam o e-mail duas vezes.
+  const umaHoraAtras = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+  const { data: msg, error: errClaim } = await db
+    .from("email_fila")
+    .update({ status: "enviando" })
+    .eq("id", id)
+    .eq("status", "pendente")
+    .gt("criado_em", umaHoraAtras)
+    .select("id, para, assunto, html, texto, origem")
+    .maybeSingle();
+
+  if (errClaim) {
+    console.error("send-email: erro ao ler a fila:", errClaim.message);
+    return resposta({ error: "fila" }, 500);
   }
+  if (!msg) return resposta({ ok: true, skipped: true });
 
   try {
-    const { to, subject, html, text } = await req.json();
-    if (!to || !subject || (!html && !text)) {
-      return new Response(
-        JSON.stringify({ error: "Faltam: to, subject, html|text" }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        },
-      );
-    }
-
-    // 9.32.204: minifica o HTML antes de enviar (fix do =20)
-    const htmlClean = html ? minifyEmailHtml(html) : undefined;
-
     const client = new SMTPClient({
       connection: {
         hostname: Deno.env.get("SMTP_HOST")!,
@@ -84,31 +87,31 @@ Deno.serve(async (req) => {
         },
       },
     });
-
     await client.send({
       from: `${Deno.env.get("SMTP_FROM_NAME") || "B&N Logística"} <${
         Deno.env.get("SMTP_FROM") || Deno.env.get("SMTP_USER")
       }>`,
-      to,
-      subject,
-      content: text || "Veja em HTML.",
-      html: htmlClean || undefined,
+      to: msg.para,
+      subject: msg.assunto,
+      content: msg.texto || "Veja em HTML.",
+      html: msg.html ? minifyEmailHtml(msg.html) : undefined,
     });
-
     await client.close();
 
-    return new Response(JSON.stringify({ ok: true }), {
-      status: 200,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    // Enviado: apaga o conteúdo (o de recuperação tem o código de 6 dígitos).
+    await db.from("email_fila").update({
+      status: "enviado",
+      enviado_em: new Date().toISOString(),
+      html: null,
+      texto: null,
+      assunto: String(msg.origem || "").startsWith("recuperacao:") ? "[recuperação de senha]" : msg.assunto,
+    }).eq("id", msg.id);
+
+    return resposta({ ok: true });
   } catch (e) {
-    console.error("send-email error:", e);
-    return new Response(
-      JSON.stringify({ error: String((e as Error)?.message || e) }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      },
-    );
+    const erro = String((e as Error)?.message || e).slice(0, 500);
+    console.error("send-email: falha no SMTP:", erro);
+    await db.from("email_fila").update({ status: "erro", erro }).eq("id", msg.id);
+    return resposta({ error: "smtp" }, 500);
   }
 });

@@ -121,6 +121,23 @@ def gravar_atomico(html_path: Path, conteudo: str):
     os.replace(tmp_path, html_path)  # atômico
 
 
+def ler_chave_faturamento() -> bytes:
+    """Le a chave AES de 32 bytes (base64) do arquivo local faturamento.key."""
+    import base64
+    p = Path('faturamento.key')
+    if not p.exists():
+        print("❌ faturamento.key nao encontrado nesta pasta.")
+        print("   E a chave que cifra o faturamento publicado. Ela nao vai para o git.")
+        print("   Se perdeu, gere outra e grave a mesma no banco (tabela app_segredos,")
+        print("   nome 'faturamento_chave') — veja email_fila_servidor.sql, item 7.")
+        sys.exit(1)
+    chave = base64.b64decode(p.read_text(encoding='utf-8').strip())
+    if len(chave) != 32:
+        print("❌ faturamento.key invalido (esperado 32 bytes em base64).")
+        sys.exit(1)
+    return chave
+
+
 def main():
     json_path = Path('faturamento_data_inline.json')
     html_path = Path('index.html')
@@ -144,24 +161,49 @@ def main():
     # Comprimido cai ~91%. So o .gz e versionado; o .json fica local.
     # mtime=0 deixa a saida deterministica: mesmo conteudo, mesmo arquivo,
     # entao rodar o script duas vezes nao gera commit a toa.
-    gz_path = Path('faturamento_data_inline.json.gz')
-    tmp_gz = gz_path.with_suffix('.gz.tmp')
-    with gzip.GzipFile(filename='', mode='wb', fileobj=open(tmp_gz, 'wb'),
-                       compresslevel=9, mtime=0) as f:
-        f.write(json_bytes)
-    os.replace(tmp_gz, gz_path)
+    gz_bytes = gzip.compress(json_bytes, compresslevel=9, mtime=0)
+    if gzip.decompress(gz_bytes) != json_bytes:
+        print("❌ O arquivo comprimido nao confere com o original. Abortado.")
+        sys.exit(1)
+    print(f"   ✓ Comprimido: {len(gz_bytes)/1024/1024:.2f} MB "
+          f"({100 - 100 * len(gz_bytes) / len(json_bytes):.0f}% menor) — descompressao conferida")
 
-    gz_mb = gz_path.stat().st_size / 1024 / 1024
-    print(f"   ✓ Comprimido: {gz_mb:.2f} MB "
-          f"({100 - 100 * gz_path.stat().st_size / len(json_bytes):.0f}% menor)")
+    # ---- Sprint 9.32.464: publica CIFRADO -----------------------------------
+    # O .gz aberto em benlogistica.com.br deixava qualquer um baixar nomes,
+    # CPF/CNPJ e compras de todos os clientes. Agora vai cifrado (AES-256-GCM)
+    # em faturamento_data.enc. A chave fica no arquivo local faturamento.key
+    # (fora do git) e no banco (app_segredos), que so a entrega a quem esta
+    # logado com conta ativa (funcao faturamento_chave).
+    # O IV sai de um HMAC do conteudo: mesmo dado => mesmo arquivo (sem commit
+    # a toa), dado diferente => IV diferente.
+    enc_path = Path('faturamento_data.enc')
+    chave = ler_chave_faturamento()
+    try:
+        from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+    except ImportError:
+        print("❌ Falta o pacote 'cryptography'. Rode:  python -m pip install cryptography")
+        sys.exit(1)
+    import hmac
+    magic = b'BNF1'
+    iv = hmac.new(chave, gz_bytes, hashlib.sha256).digest()[:12]
+    blob = magic + iv + AESGCM(chave).encrypt(iv, gz_bytes, magic)
+    tmp_enc = enc_path.with_suffix('.enc.tmp')
+    tmp_enc.write_bytes(blob)
+    os.replace(tmp_enc, enc_path)
 
-    # Confere que da pra descomprimir de volta. Publicar um .gz corrompido
-    # deixaria a tela de faturamento morta sem aviso nenhum.
-    with gzip.open(gz_path, 'rb') as f:
-        if f.read() != json_bytes:
-            print("❌ O arquivo comprimido nao confere com o original. Abortado.")
-            sys.exit(1)
-    print("   ✓ Descompressao conferida")
+    # Confere que decifra de volta — publicar um arquivo ilegivel deixaria a
+    # tela de faturamento morta.
+    lido = enc_path.read_bytes()
+    if gzip.decompress(AESGCM(chave).decrypt(lido[4:16], lido[16:], magic)) != json_bytes:
+        print("❌ O arquivo cifrado nao confere com o original. Abortado.")
+        sys.exit(1)
+    print(f"   ✓ Cifrado em {enc_path} ({len(lido)/1024/1024:.2f} MB) — decifragem conferida")
+
+    # O .gz aberto nao deve mais existir (nem ser publicado).
+    antigo = Path('faturamento_data_inline.json.gz')
+    if antigo.exists():
+        antigo.unlink()
+        print("   ✓ faturamento_data_inline.json.gz (aberto) removido")
 
     dados = json.loads(json_bytes.decode('utf-8'))
     periodo = f"{dados['meta']['periodo_inicio']} → {dados['meta']['periodo_fim']}"

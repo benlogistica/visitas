@@ -64,15 +64,13 @@ begin
     || '<tr><td style="padding:20px 32px;background:#f9fafb;border-top:1px solid #e5e7eb;font-size:12px;color:#6b7280;">Por segurança, nunca compartilhe esse código. A B&amp;N Logística nunca pede seu código por telefone ou WhatsApp.<br><br>Dúvidas: atendimento@benlogistica.com.br</td></tr>'
     || '</table></td></tr></table></body></html>';
 
-  perform net.http_post(
-    url     := 'https://qrlnbtxscjrmnpfjbtvv.supabase.co/functions/v1/send-email',
-    headers := jsonb_build_object('Content-Type', 'application/json', 'Authorization', 'Bearer __ANON__'),
-    body    := jsonb_build_object(
-      'to', u.email,
-      'subject', '[B&N Logística] Código de recuperação: ' || v_codigo,
-      'html', v_html,
-      'text', 'Olá, ' || v_nome || E'!\n\nSeu código de recuperação de senha é: ' || v_codigo || E'\n\nEle expira em 15 minutos.\n\nSe você não pediu, ignore este e-mail.')
-  );
+  -- 9.32.464: vai pela fila (a send-email não aceita mais to/subject/html de fora)
+  perform _email_enfileirar(
+    u.email,
+    '[B&N Logística] Código de recuperação: ' || v_codigo,
+    v_html,
+    'Olá, ' || v_nome || E'!\n\nSeu código de recuperação de senha é: ' || v_codigo || E'\n\nEle expira em 15 minutos.\n\nSe você não pediu, ignore este e-mail.',
+    'recuperacao:' || u.id::text);
   return json_build_object('ok', true, 'email', v_mask);
 end $fn$;
 
