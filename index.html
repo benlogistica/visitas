@@ -8418,7 +8418,7 @@ mark.search-hl {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.476-nc-pdf',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.477-nc-excluidos',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -46647,13 +46647,36 @@ window.alternarPermissaoNC = async function(userId) {
   try { if (typeof carregarAdminEquipeDesktop === 'function') await carregarAdminEquipeDesktop(); } catch (e) {}
 };
 
-const NC = { periodo: '90d', dados: null, carregando: false, todos: [] };
-// 9.32.476: quem fica FORA do relatório (conta de teste, quem saiu). Fica salvo no navegador.
-function _ncExcluidos() { try { return new Set(JSON.parse(localStorage.getItem('bnNcExcluidos') || '[]')); } catch (e) { return new Set(); } }
-window._ncAlternarPessoa = function(id) {
-  const s = _ncExcluidos();
+const NC = { periodo: '90d', dados: null, carregando: false, todos: [], excl: null };
+// 9.32.477: contas que NUNCA entram no relatório (não são visitadoras):
+//   Paula Lopes (gerente, só faz testes) e Eduardo Marques (conta de teste do Edu).
+const _NC_FORA_FIXO = ['paula lopes', 'eduardo marques'];
+function _ncNorm(t) { return String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim(); }
+function _ncForaFixo(nome) { const n = _ncNorm(nome); return _NC_FORA_FIXO.some(f => n === f || n.startsWith(f + ' ')); }
+// Quem mais fica fora (quem saiu da equipe etc.): salvo no banco (config nc_excluidos),
+// vale para todos os admins que veem o relatório.
+function _ncExcluidos() {
+  if (NC.excl) return NC.excl;
+  try { return new Set(JSON.parse(localStorage.getItem('bnNcExcluidos') || '[]')); } catch (e) { return new Set(); }
+}
+async function _ncCarregarExcluidos() {
+  let lista = [];
+  try {
+    const raw = await getConfig('nc_excluidos', '[]');
+    lista = typeof raw === 'string' ? JSON.parse(raw || '[]') : (raw || []);
+  } catch (e) { lista = []; }
+  let local = [];
+  try { local = JSON.parse(localStorage.getItem('bnNcExcluidos') || '[]'); } catch (e) {}
+  NC.excl = new Set([...(Array.isArray(lista) ? lista : []), ...(Array.isArray(local) ? local : [])]);
+  if (local.length) {           // migra o que estava só neste navegador para o banco
+    try { await salvarMetaConfig('nc_excluidos', [...NC.excl]); localStorage.removeItem('bnNcExcluidos'); } catch (e) {}
+  }
+}
+window._ncAlternarPessoa = async function(id) {
+  const s = new Set(_ncExcluidos());
   if (s.has(id)) s.delete(id); else s.add(id);
-  try { localStorage.setItem('bnNcExcluidos', JSON.stringify([...s])); } catch (e) {}
+  try { await salvarMetaConfig('nc_excluidos', [...s]); NC.excl = s; }
+  catch (e) { setFlash('error', 'Não foi possível salvar: ' + (e.message || e)); return; }
   _ncAtualizar();
 };
 const _ncEsc = (t) => String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -46766,7 +46789,9 @@ async function _ncCarregar() {
     if (nc) p.comNC++;
   });
 
+  await _ncCarregarExcluidos();
   const excl = _ncExcluidos();
+  Object.keys(por).forEach(id => { if (!nomes[id] || _ncForaFixo(nomes[id].nome)) delete por[id]; });
   NC.todos = Object.values(por).filter(p => p.registros > 0 && nomes[p.id]).map(p => ({ id: p.id, nome: p.nome, registros: p.registros }))
     .sort((a, b) => a.nome.localeCompare(b.nome));
   const lista = Object.values(por).filter(p => p.registros > 0 && nomes[p.id] && !excl.has(p.id)).map(p => {
@@ -46981,7 +47006,7 @@ function _ncRender() {
   el.innerHTML = `
     <div style="background:#fff;border:1px solid var(--neutral-200);border-radius:12px;padding:10px 14px;margin-bottom:14px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
       <span style="font-size:11.5px;font-weight:700;color:var(--neutral-600);margin-right:4px;">Quem entra no relatório:</span>${chips}
-      <span style="font-size:11px;color:var(--neutral-500);">Clique para tirar conta de teste ou quem saiu da equipe.</span>
+      <span style="font-size:11px;color:var(--neutral-500);">Clique para tirar quem saiu da equipe (vale para todos). Paula Lopes e Eduardo Marques nunca entram.</span>
     </div>` + _ncCorpoHtml(NC.dados);
 }
 
