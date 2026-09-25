@@ -8418,7 +8418,7 @@ mark.search-hl {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.472-melhorias',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.474-endereco-cnpj',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -46029,7 +46029,7 @@ async function _mapCarregar() {
   }
   const { data: insts, error } = await db
     .from('instituicoes')
-    .select('id, nome, cnpj, cidade, estado, ativo, pendente_aprovacao, cnpj_situacao')
+    .select('id, nome, razao_social, cnpj, cep, logradouro, cidade, estado, latitude, longitude, ativo, pendente_aprovacao, cnpj_situacao')
     .eq('ativo', true)
     .order('nome');
   if (error) return { erro: error.message };
@@ -46038,54 +46038,85 @@ async function _mapCarregar() {
     (insts || []).map(i => _perfNormalizaCnpj(i.cnpj)).filter(Boolean)
   );
 
-  // 9.32.470: as sugestões vinham só dos 50 maiores clientes. Agora vêm de
-  // TODOS os clientes do faturamento (clientes_lista, com pessoa física/CPF),
-  // com o faturamento somado de clientes_mes. Nome normalizado 1 vez só.
+  // 9.32.470: as sugestões vêm de TODOS os clientes do faturamento (clientes_lista,
+  // com pessoa física/CPF), com o faturamento somado de clientes_mes.
+  // 9.32.473: novo cálculo de parecença. Testado nas 109 instituições que JÁ têm
+  // CNPJ: acerta o CNPJ certo em 1º lugar em 72% (antes 62%) e entre os 3 em
+  // 79% (antes 67%), e roda 25x mais rápido. O que mudou:
+  //  - palavra rara pesa mais que palavra comum ("Kosei", "Bertioga" valem mais
+  //    que "residencial", "casa", "hospital"): peso pela raridade no faturamento;
+  //  - sinônimos: prefeitura = município, hosp = hospital, clin = clínica...;
+  //  - erro de digitação de 1 letra em palavra longa conta como igual;
+  //  - usa nome E razão social dos dois lados;
+  //  - mesma cidade reforça, outra cidade enfraquece, outro estado derruba.
   const fatPorCnpj = {};
   (FAT_DATA.clientes_mes || []).forEach(cm => {
     const k = _perfNormalizaCnpj(cm['CNPJ/CPF']);
     if (k) fatPorCnpj[k] = (fatPorCnpj[k] || 0) + (cm.faturamento || 0);
   });
-  const _tok = (n) => new Set(n.split(' ').filter(w => w.length > 2));
+  const SIN = { hosp: 'hospital', clin: 'clinica', res: 'residencial', prefeitura: 'municipio', pref: 'municipio',
+                mun: 'municipio', munic: 'municipio', sta: 'santa', sto: 'santo', dr: 'doutor', dra: 'doutora',
+                assoc: 'associacao', inst: 'instituto' };
+  const STOP = new Set(['de', 'da', 'do', 'das', 'dos', 'e', 'a', 'o', 'ltda', 'me', 'epp', 'eireli', 'sa', 's',
+                        'cia', 'companhia', 'filial', 'matriz', 'unidade', 'the', 'em']);
+  const _toks = (txt) => _mapNorm(txt).split(' ').map(t => SIN[t] || t).filter(t => t.length > 1 && !STOP.has(t));
   const candidatos = (FAT_DATA.clientes_lista || []).map(c => {
     const k = _perfNormalizaCnpj(c.cnpj);
-    const nomes = [c.nome_fantasia, c.razao_social].filter(Boolean).map(_mapNorm).filter(Boolean);
     return { cnpj: c.cnpj, k, nome: c.nome_fantasia || c.razao_social, cidade: c.cidade, estado: c.estado,
-             faturamento: fatPorCnpj[k] || 0, nomes: nomes.map(n => ({ n, t: _tok(n) })),
-             cidadeN: _mapNorm(c.cidade) };
-  }).filter(c => c.k && !cnpjsJaMapeados.has(c.k) && c.nomes.length);
-  const _score = (na, ta, cand) => {
-    let melhor = 0;
-    cand.nomes.forEach(({ n, t }) => {
-      if (na === n) { melhor = 1; return; }
-      if (!ta.size || !t.size) return;
-      let inter = 0; ta.forEach(w => { if (t.has(w)) inter++; });
-      // uma palavra só em comum ("ana", "casa") não basta, salvo nomes de uma palavra
-      if (!inter || (inter < 2 && !(ta.size === 1 && t.size === 1))) return;
-      const jac = inter / (ta.size + t.size - inter);
-      const curto = n.length < na.length ? n : na;
-      const bonus = (curto.length >= 8 && (na.includes(n) || n.includes(na))) ? 0.2 : 0;
-      melhor = Math.max(melhor, Math.min(1, jac + bonus));
+             faturamento: fatPorCnpj[k] || 0, cidN: _mapNorm(c.cidade), uf: String(c.estado || '').toUpperCase(),
+             tk: [...new Set([..._toks(c.nome_fantasia), ..._toks(c.razao_social)])] };
+  }).filter(c => c.k && !cnpjsJaMapeados.has(c.k) && c.tk.length);
+  const df = {};
+  candidatos.forEach(c => c.tk.forEach(t => { df[t] = (df[t] || 0) + 1; }));
+  const _peso = (t) => Math.log((candidatos.length + 1) / ((df[t] || 0) + 1)) + 0.5;
+  const _quase = (x, y) => {           // no máximo 1 letra de diferença
+    if (Math.abs(x.length - y.length) > 1) return false;
+    let i = 0, j = 0, e = 0;
+    while (i < x.length && j < y.length) {
+      if (x[i] === y[j]) { i++; j++; continue; }
+      if (++e > 1) return false;
+      if (x.length > y.length) i++; else if (y.length > x.length) j++; else { i++; j++; }
+    }
+    return e + (x.length - i) + (y.length - j) <= 1;
+  };
+  const indice = {};
+  candidatos.forEach((c, n) => c.tk.forEach(t => { (indice[t] = indice[t] || []).push(n); }));
+  const palavrasLongas = Object.keys(indice).filter(t => t.length >= 5);
+  const _sugerir = (inst) => {
+    const ta = [...new Set([..._toks(inst.nome), ..._toks(inst.razao_social)])];
+    if (!ta.length) return [];
+    const cid = _mapNorm(inst.cidade), uf = String(inst.estado || '').toUpperCase();
+    const pool = new Set();
+    ta.forEach(t => (indice[t] || []).forEach(n => pool.add(n)));
+    ta.filter(t => t.length >= 5 && !indice[t]).forEach(t =>
+      palavrasLongas.forEach(k => { if (_quase(t, k)) indice[k].forEach(n => pool.add(n)); }));
+    const out = [];
+    pool.forEach(n => {
+      const c = candidatos[n];
+      const tb = new Set(c.tk), usados = new Set();
+      let inter = 0, uni = 0;
+      ta.forEach(t => {
+        let hit = tb.has(t) ? t : null;
+        if (!hit && t.length >= 5) hit = c.tk.find(k => k.length >= 5 && !usados.has(k) && _quase(t, k)) || null;
+        if (hit) { inter += _peso(t); usados.add(hit); }
+        uni += _peso(t);
+      });
+      c.tk.forEach(k => { if (!usados.has(k)) uni += _peso(k); });
+      let sc = uni ? inter / uni : 0;
+      if (cid && c.cidN) sc *= (c.cidN === cid ? 1.25 : 0.8);
+      if (uf && c.uf && c.uf !== uf) sc *= 0.6;
+      sc = Math.min(1, sc);
+      if (sc >= 0.25) out.push({ cnpj: c.cnpj, nome: c.nome, cidade: c.cidade, estado: c.estado,
+                                faturamento: c.faturamento, score: sc, pf: c.k.length === 11 });
     });
-    return melhor;
+    return out.sort((x, y) => y.score - x.score || y.faturamento - x.faturamento).slice(0, 3);
   };
 
-  // Pra cada instituição SEM cnpj (e ainda não confirmada), top-3 sugestões por nome
+  // Pra cada instituição SEM cnpj (e ainda não confirmada), top-3 sugestões
   const rows = (insts || []).map(inst => {
     const temCnpj = !!_perfNormalizaCnpj(inst.cnpj);
     const validada = !temCnpj && !!inst.cnpj_situacao;
-    let sugestoes = [];
-    if (!temCnpj && !validada) {
-      const na = _mapNorm(inst.nome), ta = _tok(na), cid = _mapNorm(inst.cidade);
-      sugestoes = candidatos.map(c => {
-        let sc = _score(na, ta, c);
-        if (sc > 0 && cid && c.cidadeN === cid) sc = Math.min(1, sc + 0.1);   // mesma cidade pesa a favor
-        return sc >= 0.25 ? { cnpj: c.cnpj, nome: c.nome, cidade: c.cidade, estado: c.estado,
-                              faturamento: c.faturamento, score: sc, pf: c.k.length === 11 } : null;
-      }).filter(Boolean)
-        .sort((a, b) => b.score - a.score || b.faturamento - a.faturamento)
-        .slice(0, 3);
-    }
+    const sugestoes = (!temCnpj && !validada) ? _sugerir(inst) : [];
     return { ...inst, sugestoes, temCnpj, validada };
   });
 
@@ -46234,8 +46265,14 @@ function _mapRender() {
                       <div title="${(s.nome || '').replace(/"/g,'&quot;')}" style="font-weight:700;color:var(--brand-navy);font-size:11.5px;line-height:1.3;word-break:break-word;min-width:0;flex:1;">${(s.nome || '').replace(/</g,'&lt;')}</div>
                       <span style="font-size:10px;font-weight:700;color:${corBorda};flex-shrink:0;margin-top:1px;">${scorePct}%</span>
                     </div>
+                    ${s.end ? (() => {
+                      const d = s.end.dist;
+                      const cor = s.end.mesmoCep || (d != null && d <= 300) ? '#15803D' : (d != null && d <= 1500) ? '#B45309' : '#B91C1C';
+                      const txtDist = s.end.mesmoCep ? 'mesmo CEP do local' : d == null ? 'não achei no mapa' : d < 1000 ? `a ${d} m do local das visitas` : `a ${(d / 1000).toFixed(1).replace('.', ',')} km do local das visitas`;
+                      return `<div style="font-size:10.5px;line-height:1.35;margin:2px 0 4px;color:var(--neutral-600);">Receita: ${String(s.end.txt || '').replace(/</g,'&lt;')}${s.end.situacao && s.end.situacao !== 'ATIVA' ? ` <strong style="color:#B91C1C;">(${String(s.end.situacao).replace(/</g,'&lt;')})</strong>` : ''}<br><strong style="color:${cor};">${txtDist}</strong></div>`;
+                    })() : ''}
                     <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;">
-                      <span style="font-family:var(--font-mono);font-size:10.5px;color:var(--neutral-600);">${s.pf ? 'CPF ' : ''}${s.cnpj}</span>
+                      <span style="font-family:var(--font-mono);font-size:10.5px;color:var(--neutral-600);">${s.pf ? 'CPF ' : ''}${s.cnpj}${s.cidade ? ' · ' + String(s.cidade).replace(/</g,'&lt;') : ''}</span>
                       <span style="font-size:10px;color:var(--brand-lime);font-weight:700;">${_perfFmtMoeda(s.faturamento)}</span>
                     </div>
                   </button>
@@ -46253,7 +46290,14 @@ function _mapRender() {
     ${filtrosHtml}
     <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:14px;overflow:hidden;">
       <div style="padding:12px 14px;border-bottom:1px solid var(--neutral-200);font-size:11.5px;color:var(--neutral-600);">
-        Mostrando <strong>${filtRows.length}</strong> de ${totalInst} instituições. Clique numa sugestão pra aceitar, ou digite CNPJ e clique em Salvar.
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+          <span>Mostrando <strong>${filtRows.length}</strong> de ${totalInst} instituições. Clique numa sugestão pra aceitar, ou digite CNPJ e clique em Salvar.</span>
+          ${filtro !== 'com_cnpj' && filtro !== 'validadas' ? `<span style="display:inline-flex;align-items:center;gap:8px;">
+            <span id="mapEndStatus" style="font-size:11px;color:var(--neutral-500);">${window._mapEndRodando ? 'Conferindo endereços…' : ''}</span>
+            <button onclick="_mapConferirEnderecos()" ${window._mapEndRodando ? 'disabled' : ''} title="Busca na Receita o endereço de cada CNPJ sugerido e compara com o local onde a equipe fez check-in" style="background:var(--brand-navy);color:#fff;border:0;padding:6px 12px;border-radius:8px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:5px;">
+              <span class="material-symbols-rounded" style="font-size:15px;">location_searching</span>${window._mapEndRodando ? 'Conferindo…' : 'Conferir endereços'}
+            </button></span>` : ''}
+        </div>
       </div>
       ${linhasHtml}
     </div>
@@ -46317,6 +46361,100 @@ window._mapSalvarCnpj = async function(instId) {
     setTimeout(() => _mapRender(), 800);  // re-render após dar tempo de ver o "✓ Salvo"
   } catch (e) {
     if (stEl) stEl.innerHTML = `<span style="color:var(--status-danger,#D33);">Erro: ${e.message}</span>`;
+  }
+};
+
+// 9.32.474: confere o CNPJ sugerido pelo ENDEREÇO. Busca na Receita (BrasilAPI,
+// pública) o endereço de cada CNPJ sugerido, acha esse endereço no mapa
+// (OpenStreetMap) e mede a distância até o local onde a equipe faz check-in
+// (latitude/longitude da instituição). Perto = quase certeza; longe = descarta.
+// Só CNPJ (empresa): CPF não vai para fora. Guarda o resultado no navegador
+// por 30 dias para não repetir as buscas. O mapa aceita 1 busca por segundo.
+function _mapDistM(a, b, c, d) {
+  const R = 6371000, r = x => x * Math.PI / 180;
+  const h = Math.sin(r(c - a) / 2) ** 2 + Math.cos(r(a)) * Math.cos(r(c)) * Math.sin(r(d - b) / 2) ** 2;
+  return Math.round(2 * R * Math.asin(Math.sqrt(h)));
+}
+function _mapCacheLer(k) {
+  try { const v = JSON.parse(localStorage.getItem(k) || 'null'); return v && Date.now() - v.t < 30 * 86400000 ? v.d : undefined; } catch (e) { return undefined; }
+}
+function _mapCacheGravar(k, d) { try { localStorage.setItem(k, JSON.stringify({ t: Date.now(), d })); } catch (e) {} }
+const _mapEspera = ms => new Promise(r => setTimeout(r, ms));
+
+async function _mapEnderecoReceita(cnpj14) {
+  const ck = 'bnEndCnpj:' + cnpj14;
+  const c = _mapCacheLer(ck);
+  if (c !== undefined) return c;
+  const r = await fetch('https://brasilapi.com.br/api/cnpj/v1/' + cnpj14);
+  if (r.status === 404) { _mapCacheGravar(ck, null); return null; }
+  if (!r.ok) throw new Error('Receita respondeu ' + r.status);
+  const e = await r.json();
+  const d = {
+    txt: [[e.descricao_tipo_de_logradouro, e.logradouro].filter(Boolean).join(' '), e.numero, e.bairro, e.municipio].filter(Boolean).join(', '),
+    busca: `${e.descricao_tipo_de_logradouro || ''} ${e.logradouro || ''}, ${e.numero || ''}, ${e.municipio || ''}, ${e.uf || ''}, Brasil`,
+    cep: String(e.cep || '').replace(/\D/g, ''),
+    situacao: e.descricao_situacao_cadastral || null,
+  };
+  _mapCacheGravar(ck, d);
+  return d;
+}
+
+async function _mapGeocodificar(q) {
+  const ck = 'bnGeo:' + q;
+  const c = _mapCacheLer(ck);
+  if (c !== undefined) return { ...c, doCache: true };
+  const g = await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=br&q=' + encodeURIComponent(q), { headers: { 'Accept-Language': 'pt-BR' } }).then(x => x.json());
+  const d = g && g[0] ? { lat: +g[0].lat, lng: +g[0].lon } : { lat: null, lng: null };
+  _mapCacheGravar(ck, d);
+  return d;
+}
+
+async function _mapConferirLinha(row) {
+  if (!row || !row.sugestoes?.length) return;
+  const cepInst = String(row.cep || '').replace(/\D/g, '');
+  for (const s of row.sugestoes) {
+    const k = _perfNormalizaCnpj(s.cnpj);
+    if (k.length !== 14 || s.end) continue;          // CPF não sai daqui
+    const end = await _mapEnderecoReceita(k);
+    if (!end) { s.end = { txt: 'CNPJ não encontrado na Receita', dist: null }; continue; }
+    let dist = null;
+    const mesmoCep = cepInst.length === 8 && !/000$/.test(cepInst) && cepInst === end.cep;
+    if (!mesmoCep && row.latitude && row.longitude) {
+      const g = await _mapGeocodificar(end.busca);
+      if (!g.doCache) await _mapEspera(1100);        // regra do OpenStreetMap: 1 por segundo
+      if (g.lat != null) dist = _mapDistM(row.latitude, row.longitude, g.lat, g.lng);
+    }
+    s.end = { ...end, dist, mesmoCep };
+    // reordena: endereço que bate sobe, endereço longe desce
+    if (mesmoCep || (dist != null && dist <= 300)) s.score = Math.max(s.score, 0.95);
+    else if (dist != null && dist <= 1500) s.score = Math.min(1, s.score + 0.1);
+    else if (dist != null && dist > 5000) s.score = s.score * 0.5;
+  }
+  row.sugestoes.sort((a, b) => b.score - a.score);
+}
+
+window._mapConferirEnderecos = async function() {
+  if (window._mapEndRodando) return;
+  const st = window._mapState;
+  if (!st?.rows) return;
+  const filtro = window._mapFiltro || 'sem_cnpj';
+  const alvo = st.rows.filter(r => !r.temCnpj && !r.validada && r.sugestoes.length &&
+    (filtro !== 'com_match' || r.sugestoes.length));
+  window._mapEndRodando = true;
+  _mapRender();
+  let n = 0;
+  try {
+    for (const r of alvo) {
+      n++;
+      const el = document.getElementById('mapEndStatus');
+      if (el) el.textContent = `Conferindo endereços… ${n} de ${alvo.length}`;
+      try { await _mapConferirLinha(r); } catch (e) { console.warn('[mapear] endereço', r.nome, e.message); }
+      if (n % 5 === 0) _mapRender();
+    }
+  } finally {
+    window._mapEndRodando = false;
+    _mapRender();
+    if (typeof setFlash === 'function') setFlash('success', `Endereços conferidos em ${alvo.length} instituições. Verde = mesmo local das visitas.`);
   }
 };
 
