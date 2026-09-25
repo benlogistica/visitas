@@ -8418,7 +8418,7 @@ mark.search-hl {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.474-endereco-cnpj',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.475-nao-conformidades',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -13919,6 +13919,7 @@ function sidebarActiveFromHash(hash) {
   if (hash.startsWith('#/admin/itinerario')) return 'itinerario';
   if (hash.startsWith('#/admin/roi-equipe')) return 'roi_equipe';
   if (hash.startsWith('#/admin/mapear-cnpjs')) return 'mapear_cnpjs';
+  if (hash.startsWith('#/admin/nao-conformidades')) return 'nao_conformidades';
   if (hash.startsWith('#/admin/pendentes')) return 'pendentes';
   if (hash.startsWith('#/admin/configuracoes')) return 'settings';
   return '';
@@ -13948,6 +13949,11 @@ function desktopSidebar(activeId, itemsCustom = null) {
     { id: 'mapear_cnpjs', href: '#/admin/mapear-cnpjs',   icon: 'link',            label: 'Mapear CNPJs' },
     { id: 'settings',     href: '#/admin/configuracoes',  icon: 'settings',        label: 'Configurações' },
   ];
+  // 9.32.475: Não conformidades só aparece para quem recebeu o acesso
+  if (!itemsCustom && typeof podeVerNC === 'function' && podeVerNC()) {
+    const iCfg = items.findIndex(i => i.id === 'settings');
+    items.splice(iCfg < 0 ? items.length : iCfg, 0, { id: 'nao_conformidades', href: '#/admin/nao-conformidades', icon: 'report', label: 'Não conformidades' });
+  }
   const userInitials = user ? iniciais(user.nome || 'A') : 'A';
   const userName = user?.nome || 'Admin';
   const userEmail = user?.email || '';
@@ -19234,6 +19240,14 @@ async function carregarAdminEquipeDesktop() {
              </button>`
           : '';
 
+        // 9.32.475: super admin libera Não conformidades para admins específicos
+        const _temNC = !!(u.permissoes && u.permissoes.nao_conformidades === true);
+        const btnPermNC = (_euSuper && ehAdmin && !ehSuperAdmin)
+          ? `<button onclick="event.stopPropagation();alternarPermissaoNC('${u.id}');" title="${_temNC ? 'Tirar acesso a Não conformidades' : 'Dar acesso a Não conformidades'}" style="height:30px;width:30px;border:0;background:${_temNC ? '#B91C1C' : 'var(--neutral-100)'};color:${_temNC ? '#fff' : 'var(--neutral-500)'};border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;" class="ds-table__btn">
+               <span class="material-symbols-rounded" style="font-size:17px;">report</span>
+             </button>`
+          : '';
+
         // "Ver como" — quem tem permissão de simular, e nunca na própria conta
         const btnSimular = (typeof podeSimular === 'function' && podeSimular() && !souEu)
           ? `<button onclick="event.stopPropagation();entrarModoSimulacaoUsuario('${u.id}');" title="Ver o app como esta pessoa (somente leitura)" style="height:30px;width:30px;border:0;background:var(--status-warning-bg,#FEF4E1);color:var(--status-warning-dark,#B45309);border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;" class="ds-table__btn">
@@ -19243,6 +19257,7 @@ async function carregarAdminEquipeDesktop() {
 
         acoes = `
           ${btnPermSim}
+          ${btnPermNC}
           ${btnSimular}
           ${acoesAdmin}
           <button onclick="event.stopPropagation();editarCategoriaProfissional('${u.id}');" title="Trocar categoria" style="height:30px;width:30px;border:0;background:var(--neutral-100);color:var(--brand-navy);border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;" class="ds-table__btn">
@@ -23365,6 +23380,7 @@ const routes = {
   '#/admin/itinerario': { title: 'Itinerário', icon: 'explore', render: renderAdminItinerario },   // Sprint 9.32.404
   '#/admin/roi-equipe':{ title: 'ROI da Equipe', icon: 'insights', render: renderAdminRoiEquipe },
   '#/admin/mapear-cnpjs':{ title: 'Mapear CNPJs', icon: 'link', render: renderAdminMapearCnpjs },
+  '#/admin/nao-conformidades':{ title: 'Não conformidades', icon: 'report', render: renderAdminNaoConformidades },   // Sprint 9.32.475
   '#/admin/agenda':   { title: 'Agenda da equipe', icon: 'event_note', render: renderAdminAgenda },
   // Sprint 9.10: rotas nutri (acessadas via hambúrguer no topo)
   '#/nutri/instituicoes':   { title: 'Instituições',  icon: 'local_hospital', render: renderNutriInstituicoes },
@@ -23396,6 +23412,7 @@ const DESKTOP_RENDERERS = {
   '#/admin/faturamento': renderFaturamentoDesktop,
   '#/admin/roi-equipe': renderAdminRoiEquipeDesktop,
   '#/admin/mapear-cnpjs': renderAdminMapearCnpjsDesktop,
+  '#/admin/nao-conformidades': renderAdminNaoConformidadesDesktop,
   '#/notificacoes': renderNotificacoesDesktop,
   '#/visitas/relatorio': renderRelatorioDesktop,
   // 🎉 Desktop completo!
@@ -38073,6 +38090,7 @@ function renderAdminDrawer() {
     { href: '#/admin/faturamento',        icon: 'paid',           titulo: 'Faturamento',        desc: 'Painel financeiro completo da empresa' },
     { href: '#/admin/roi-equipe',         icon: 'insights',       titulo: 'ROI da Equipe',      desc: 'Ranking de nutris pelo faturamento dos hospitais' },
     { href: '#/admin/mapear-cnpjs',       icon: 'link',           titulo: 'Mapear CNPJs',       desc: 'Vincular hospitais cadastrados ao faturamento' },
+    ...((typeof podeVerNC === 'function' && podeVerNC()) ? [{ href: '#/admin/nao-conformidades', icon: 'report', titulo: 'Não conformidades', desc: 'Relatório da disciplina da equipe para a diretoria' }] : []),
     { href: '#/admin/configuracoes',      icon: 'settings',       titulo: 'Configurações',      desc: 'Parâmetros globais do sistema' },
     { href: '#/logout',                   icon: 'logout',         titulo: 'Sair',               desc: 'Encerrar sessão' },
   ];
@@ -46579,6 +46597,610 @@ function renderAdminMapearCnpjsDesktop() {
     activeId: 'mapear_cnpjs',
   });
 }
+
+/* ==========================================================================
+   NÃO CONFORMIDADES: Sprint 9.32.475
+   --------------------------------------------------------------------------
+   Relatório da disciplina da equipe de campo para a diretoria: GPS que
+   diverge e não melhora, check-out esquecido, check-in manual, volume abaixo
+   da meta, relatório fraco, rascunho parado, cancelamento. Com leitura
+   automática (quem, quanto, se está piorando) e PDF com a marca da empresa,
+   que pode ir por e-mail para quem for escolhido.
+
+   ACESSO: só admin que for super admin ou tiver recebido a permissão
+   "nao_conformidades" (o super admin concede na Equipe). O banco confere o
+   mesmo para enviar o e-mail (email_enviar_nc).
+   ========================================================================== */
+function podeVerNC(u = getCurrentUserReal()) {
+  if (!u || u.perfil !== 'admin') return false;
+  if (u.super_admin === true) return true;
+  return !!(u.permissoes && u.permissoes.nao_conformidades === true);
+}
+window.podeVerNC = podeVerNC;
+
+window.alternarPermissaoNC = async function(userId) {
+  const real = getCurrentUserReal();
+  if (!isSuperAdmin(real)) { setFlash('error', 'Só o super administrador pode conceder essa permissão.'); return; }
+  const { data: u, error } = await db.from('usuarios').select('id, nome, perfil, super_admin, permissoes').eq('id', userId).maybeSingle();
+  if (error || !u) { setFlash('error', 'Usuário não encontrado.'); return; }
+  if (u.perfil !== 'admin') { setFlash('warning', 'Só administradores podem receber acesso a Não conformidades.'); return; }
+  const perms = (u.permissoes && typeof u.permissoes === 'object') ? { ...u.permissoes } : {};
+  const tinha = perms.nao_conformidades === true;
+  const ok = await showModalConfirmacao({
+    icone: tinha ? 'lock' : 'report',
+    iconeCor: tinha ? 'warning' : 'success',
+    titulo: tinha ? `Tirar o acesso de ${u.nome} a Não conformidades?` : `Dar a ${u.nome} acesso a Não conformidades?`,
+    subtitulo: tinha
+      ? 'O menu some para ela e ela deixa de conseguir gerar e enviar o relatório.'
+      : 'Ela passa a ver o menu Não conformidades, gerar o PDF e enviar o relatório por e-mail.',
+    btnConfirmar: tinha ? 'Tirar acesso' : 'Dar acesso',
+    btnCancelar: 'Cancelar',
+  });
+  if (!ok) return;
+  perms.nao_conformidades = !tinha;
+  const { data: salvo, error: e2 } = await db.from('usuarios').update({ permissoes: perms }).eq('id', userId).select('id, permissoes');
+  if (e2) { setFlash('error', 'Não foi possível salvar: ' + e2.message); return; }
+  if (!salvo || !salvo.length || (salvo[0]?.permissoes?.nao_conformidades === true) !== !tinha) {
+    setFlash('error', 'O banco não confirmou a alteração. Tente novamente.'); return;
+  }
+  setFlash('success', tinha ? 'Acesso removido.' : `${u.nome} agora tem acesso a Não conformidades. Peça para ela atualizar a página (F5).`);
+  try { if (typeof carregarAdminEquipeDesktop === 'function') await carregarAdminEquipeDesktop(); } catch (e) {}
+};
+
+const NC = { periodo: '90d', dados: null, carregando: false };
+const _ncEsc = (t) => String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+const _ncPct = (a, b) => (b > 0 ? (100 * a / b) : 0);
+const _ncFmtPct = (v) => _pctBR(v, v > 0 && v < 10 ? 1 : 0) + '%';
+const _ncData = (iso) => { const [y, m, d] = String(iso).split('-'); return `${d}/${m}/${y}`; };
+
+function _ncIntervalo(p) {
+  const hoje = new Date();
+  const d = (x) => _dataArquivo(x);
+  if (p === '30d' || p === '90d' || p === '180d') {
+    const dias = parseInt(p, 10);
+    const ini = new Date(hoje); ini.setDate(ini.getDate() - (dias - 1));
+    return { ini: d(ini), fim: d(hoje), dias, rotulo: `Últimos ${dias} dias` };
+  }
+  if (p === 'mes') {
+    const ini = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+    return { ini: d(ini), fim: d(hoje), dias: hoje.getDate(), rotulo: 'Mês atual' };
+  }
+  if (p === 'mes_ant') {
+    const ini = new Date(hoje.getFullYear(), hoje.getMonth() - 1, 1);
+    const fim = new Date(hoje.getFullYear(), hoje.getMonth(), 0);
+    return { ini: d(ini), fim: d(fim), dias: fim.getDate(), rotulo: 'Mês anterior' };
+  }
+  const ini = new Date(hoje.getFullYear(), 0, 1);
+  return { ini: d(ini), fim: d(hoje), dias: Math.round((hoje - ini) / 86400000) + 1, rotulo: 'Ano atual' };
+}
+
+async function _ncCarregar() {
+  const iv = _ncIntervalo(NC.periodo);
+  const campos = 'id,nutricionista_id,instituicao_id,data_visita,status,checkin_timestamp,checkout_timestamp,checkin_manual,' +
+    'flag_gps_divergente,flag_gps_impreciso,flag_sem_checkout,flag_horario_fora_margem,distancia_checkin_metros,' +
+    'fechada_automaticamente,checkout_automatico,checkin_retroativo,resumo,proximos_passos,revisao_solicitada_em,' +
+    'cancelado_em,visita_realizada,qtd_reagendamentos';
+  const visitas = [];
+  for (let de = 0; de < 20000; de += 1000) {        // o banco devolve no máximo 1000 por vez
+    const { data, error } = await db.from('visitas').select(campos)
+      .gte('data_visita', iv.ini).lte('data_visita', iv.fim).order('data_visita').range(de, de + 999);
+    if (error) throw new Error(error.message);
+    visitas.push(...(data || []));
+    if (!data || data.length < 1000) break;
+  }
+  const { data: usuarios, error: eU } = await db.from('usuarios')
+    .select('id,nome,perfil,status,arquivado').in('perfil', ['nutricionista']);
+  if (eU) throw new Error(eU.message);
+
+  // meta mensal (mesma regra das Configurações: global ou individual)
+  let metaModo = 'global', metaGlobal = 20, metaIndv = {};
+  try {
+    metaModo = String(await getConfig('meta_visitas_mes_modo', 'global') || 'global');
+    metaGlobal = parseInt(await getConfig('meta_visitas_mes_global', '20'), 10) || 20;
+    const raw = await getConfig('meta_visitas_mes_individual', '{}');
+    metaIndv = typeof raw === 'string' ? JSON.parse(raw || '{}') : (raw || {});
+  } catch (e) {}
+  const metaDe = (id) => (metaModo === 'individual' && metaIndv && metaIndv[id]) ? Number(metaIndv[id]) : metaGlobal;
+
+  const meio = (() => { const a = new Date(iv.ini + 'T12:00:00'), b = new Date(iv.fim + 'T12:00:00'); return _dataArquivo(new Date((a.getTime() + b.getTime()) / 2)); })();
+  const tresDiasAtras = Date.now() - 3 * 86400000;
+  const nomes = {};
+  (usuarios || []).forEach(u => { nomes[u.id] = u; });
+
+  const por = {};
+  const novo = (id) => ({
+    id, nome: nomes[id]?.nome || 'Sem nome', registros: 0, ci: 0, realizadas: 0, naoRealizadas: 0, cancel: 0,
+    gps: 0, div: 0, distDiv: [], impreciso: 0, manual: 0, semCo: 0, retro: 0, fora: 0,
+    rel: 0, palavras: 0, curtos: 0, semProx: 0, rascParados: 0, revisoes: 0, reag: 0,
+    perm: [], gps1: 0, div1: 0, gps2: 0, div2: 0, divPorInst: {}, comNC: 0,
+  });
+  visitas.forEach(v => {
+    if (v.status === 'agendada' || v.status === 'sugerida') return;          // ainda não aconteceu
+    const p = por[v.nutricionista_id] = por[v.nutricionista_id] || novo(v.nutricionista_id);
+    p.registros++;
+    if (v.qtd_reagendamentos) p.reag += Number(v.qtd_reagendamentos) || 0;
+    if (v.cancelado_em || v.status === 'cancelada') { p.cancel++; return; }
+    if (!v.checkin_timestamp) return;
+    p.ci++;
+    if (v.visita_realizada === false) p.naoRealizadas++; else p.realizadas++;
+    let nc = false;
+    if (v.checkin_manual) { p.manual++; }
+    else {
+      p.gps++;
+      const primeiraMetade = v.data_visita <= meio;
+      if (primeiraMetade) p.gps1++; else p.gps2++;
+      if (v.flag_gps_divergente) {
+        p.div++; nc = true;
+        if (primeiraMetade) p.div1++; else p.div2++;
+        if (v.distancia_checkin_metros != null) p.distDiv.push(Number(v.distancia_checkin_metros));
+        if (v.instituicao_id) p.divPorInst[v.instituicao_id] = (p.divPorInst[v.instituicao_id] || 0) + 1;
+      }
+    }
+    if (v.flag_gps_impreciso) p.impreciso++;
+    if (v.flag_sem_checkout || v.checkout_automatico || v.fechada_automaticamente) { p.semCo++; nc = true; }
+    if (v.checkin_retroativo) { p.retro++; nc = true; }
+    if (v.flag_horario_fora_margem) { p.fora++; nc = true; }
+    if (v.revisao_solicitada_em) p.revisoes++;
+    if (v.status === 'rascunho') {
+      if (new Date(v.checkin_timestamp).getTime() < tresDiasAtras) { p.rascParados++; nc = true; }
+    } else {
+      p.rel++;
+      const txt = String(v.resumo || '').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').trim();
+      const w = txt ? txt.split(/\s+/).length : 0;
+      p.palavras += w;
+      if (w < 15) { p.curtos++; nc = true; }
+      if (!String(v.proximos_passos || '').replace(/<[^>]+>/g, '').trim()) p.semProx++;
+    }
+    if (v.checkout_timestamp && !v.checkout_automatico && !v.fechada_automaticamente) {
+      const min = (new Date(v.checkout_timestamp) - new Date(v.checkin_timestamp)) / 60000;
+      if (min > 0 && min < 12 * 60) p.perm.push(min);
+    }
+    if (nc) p.comNC++;
+  });
+
+  const lista = Object.values(por).filter(p => p.registros > 0 && nomes[p.id]).map(p => {
+    const metaPer = metaDe(p.id) * (iv.dias / 30);
+    const med = (arr) => { if (!arr.length) return null; const s = [...arr].sort((a, b) => a - b); return s[Math.floor(s.length / 2)]; };
+    const pd1 = _ncPct(p.div1, p.gps1), pd2 = _ncPct(p.div2, p.gps2);
+    return {
+      ...p,
+      metaPer, pctMeta: _ncPct(p.realizadas, metaPer),
+      pctDiv: _ncPct(p.div, p.gps), pctManual: _ncPct(p.manual, p.ci), pctSemCo: _ncPct(p.semCo, p.ci),
+      pctRetro: _ncPct(p.retro, p.ci), pctFora: _ncPct(p.fora, p.ci), pctCurtos: _ncPct(p.curtos, p.rel),
+      pctSemProx: _ncPct(p.semProx, p.rel), pctCancel: _ncPct(p.cancel, p.registros),
+      mediaPalavras: p.rel ? Math.round(p.palavras / p.rel) : 0,
+      distMedDiv: med(p.distDiv), permMed: med(p.perm),
+      conformidade: p.ci ? 100 - _ncPct(p.comNC, p.ci) : null,
+      pctDiv1: pd1, pctDiv2: pd2,
+      gpsNaoResolve: p.gps1 >= 5 && p.gps2 >= 5 && pd1 >= 8 && pd2 >= 8 && pd2 >= pd1 * 0.8,
+      gpsTendencia: (p.gps1 >= 5 && p.gps2 >= 5) ? (pd2 > pd1 + 3 ? 'piorou' : pd2 < pd1 - 3 ? 'melhorou' : 'igual') : null,
+      reincidentes: Object.values(p.divPorInst).filter(n => n >= 2).length,
+    };
+  }).sort((a, b) => (a.conformidade ?? 101) - (b.conformidade ?? 101));
+
+  const soma = (k) => lista.reduce((s, r) => s + (r[k] || 0), 0);
+  const equipe = {
+    pessoas: lista.length, registros: soma('registros'), ci: soma('ci'), realizadas: soma('realizadas'),
+    cancel: soma('cancel'), gps: soma('gps'), div: soma('div'), manual: soma('manual'), semCo: soma('semCo'),
+    retro: soma('retro'), fora: soma('fora'), rel: soma('rel'), curtos: soma('curtos'), semProx: soma('semProx'),
+    rascParados: soma('rascParados'), revisoes: soma('revisoes'), comNC: soma('comNC'), metaPer: soma('metaPer'),
+  };
+  equipe.pctDiv = _ncPct(equipe.div, equipe.gps);
+  equipe.pctSemCo = _ncPct(equipe.semCo, equipe.ci);
+  equipe.pctManual = _ncPct(equipe.manual, equipe.ci);
+  equipe.pctCurtos = _ncPct(equipe.curtos, equipe.rel);
+  equipe.conformidade = equipe.ci ? 100 - _ncPct(equipe.comNC, equipe.ci) : null;
+  equipe.pctMeta = _ncPct(equipe.realizadas, equipe.metaPer);
+
+  return { iv, lista, equipe, insights: _ncInsights(lista, equipe), geradoEm: new Date() };
+}
+
+// Leitura automática: frases com nome, número e o que fazer. Ordenadas pela gravidade.
+function _ncInsights(lista, eq) {
+  const out = [];
+  const nome = (r) => nomeCurto(r.nome);
+  const comBase = (k, min) => lista.filter(r => (r[k] || 0) >= min);
+  const pior = (arr, k) => arr.slice().sort((a, b) => (b[k] || 0) - (a[k] || 0))[0];
+
+  const gpsBase = comBase('gps', 10);
+  const naoResolve = gpsBase.filter(r => r.gpsNaoResolve).sort((a, b) => b.pctDiv - a.pctDiv);
+  if (naoResolve.length) {
+    const r = naoResolve[0];
+    out.push({ nivel: 3, titulo: 'GPS divergente que não melhora',
+      texto: `${nome(r)} tem ${_ncFmtPct(r.pctDiv)} dos check-ins por GPS fora do local (${r.div} de ${r.gps})` +
+        `${r.distMedDiv != null ? `, a ${r.distMedDiv >= 1000 ? _pctBR(r.distMedDiv / 1000, 1) + ' km' : Math.round(r.distMedDiv) + ' m'} em média` : ''}. ` +
+        `Estava em ${_ncFmtPct(r.pctDiv1)} na primeira metade do período e ${_ncFmtPct(r.pctDiv2)} na segunda: o problema continua.` +
+        (r.reincidentes ? ` Em ${r.reincidentes} instituiç${r.reincidentes > 1 ? 'ões' : 'ão'} a divergência se repete.` : '') +
+        (naoResolve.length > 1 ? ` Também não melhoraram: ${naoResolve.slice(1).map(nome).join(', ')}.` : '') });
+  } else if (gpsBase.length) {
+    const r = pior(gpsBase, 'pctDiv');
+    if (r && r.pctDiv >= 8) out.push({ nivel: 2, titulo: 'Maior índice de GPS divergente',
+      texto: `${nome(r)}: ${_ncFmtPct(r.pctDiv)} dos check-ins por GPS fora do local (${r.div} de ${r.gps}).` +
+        (r.gpsTendencia === 'melhorou' ? ' A segunda metade do período já está melhor.' : '') });
+  }
+
+  const coBase = comBase('ci', 10);
+  const rCo = pior(coBase, 'pctSemCo');
+  if (rCo && rCo.pctSemCo >= 10) out.push({ nivel: rCo.pctSemCo >= 20 ? 3 : 2, titulo: 'Check-out esquecido',
+    texto: `${nome(rCo)} deixou ${_ncFmtPct(rCo.pctSemCo)} das visitas sem check-out (${rCo.semCo} de ${rCo.ci}). Sem check-out não há tempo de permanência confiável.` });
+
+  const rMan = pior(coBase, 'pctManual');
+  if (rMan && rMan.pctManual >= 25) out.push({ nivel: rMan.pctManual >= 40 ? 3 : 2, titulo: 'Check-in manual em excesso',
+    texto: `${nome(rMan)} fez ${_ncFmtPct(rMan.pctManual)} dos check-ins no modo manual (${rMan.manual} de ${rMan.ci}), sem prova de presença pelo GPS.` });
+
+  const rRet = pior(coBase, 'pctRetro');
+  if (rRet && rRet.pctRetro >= 10) out.push({ nivel: 2, titulo: 'Visitas registradas depois',
+    texto: `${nome(rRet)} registrou ${_ncFmtPct(rRet.pctRetro)} das visitas de forma retroativa (${rRet.retro}), em dia diferente da visita.` });
+
+  const metaBase = lista.filter(r => r.metaPer >= 3);
+  const rMeta = metaBase.slice().sort((a, b) => a.pctMeta - b.pctMeta)[0];
+  if (rMeta && rMeta.pctMeta < 80) out.push({ nivel: rMeta.pctMeta < 50 ? 3 : 2, titulo: 'Menor volume de visitas',
+    texto: `${nome(rMeta)} fez ${rMeta.realizadas} visitas no período, ${_ncFmtPct(rMeta.pctMeta)} da meta proporcional (${Math.round(rMeta.metaPer)}).` +
+      (metaBase.filter(r => r.pctMeta < 80).length > 1 ? ` Abaixo de 80% da meta também: ${metaBase.filter(r => r.pctMeta < 80 && r !== rMeta).map(nome).join(', ')}.` : '') });
+
+  const relBase = comBase('rel', 10);
+  const rRel = pior(relBase, 'pctCurtos');
+  if (rRel && rRel.pctCurtos >= 15) out.push({ nivel: rRel.pctCurtos >= 30 ? 3 : 2, titulo: 'Relatórios fracos',
+    texto: `${nome(rRel)}: ${_ncFmtPct(rRel.pctCurtos)} dos relatórios têm menos de 15 palavras (${rRel.curtos} de ${rRel.rel}). A média dela é de ${rRel.mediaPalavras} palavras por relatório; a da equipe é ${eq.rel ? Math.round(lista.reduce((s, r) => s + r.palavras, 0) / eq.rel) : 0}.` });
+  const rProx = pior(relBase, 'pctSemProx');
+  if (rProx && rProx.pctSemProx >= 20) out.push({ nivel: 1, titulo: 'Relatório sem próximos passos',
+    texto: `${nome(rProx)} deixou ${_ncFmtPct(rProx.pctSemProx)} dos relatórios sem próximos passos (${rProx.semProx}). Sem isso a visita não vira ação comercial.` });
+
+  const rRasc = pior(lista, 'rascParados');
+  if (rRasc && rRasc.rascParados >= 3) out.push({ nivel: 2, titulo: 'Relatórios parados em rascunho',
+    texto: `${nome(rRasc)} tem ${rRasc.rascParados} visitas com relatório em rascunho há mais de 3 dias.` });
+
+  const rCan = pior(comBase('registros', 10), 'pctCancel');
+  if (rCan && rCan.pctCancel >= 20) out.push({ nivel: 1, titulo: 'Cancelamentos',
+    texto: `${nome(rCan)} cancelou ${_ncFmtPct(rCan.pctCancel)} das visitas marcadas (${rCan.cancel} de ${rCan.registros}).` });
+
+  const rRev = pior(lista, 'revisoes');
+  if (rRev && rRev.revisoes >= 5) out.push({ nivel: 1, titulo: 'Mais revisões solicitadas',
+    texto: `${nome(rRev)} teve ${rRev.revisoes} visitas devolvidas para revisão no período.` });
+
+  const melhores = lista.filter(r => r.ci >= 10 && r.conformidade != null).sort((a, b) => b.conformidade - a.conformidade);
+  if (melhores.length) out.push({ nivel: 0, titulo: 'Referência da equipe',
+    texto: `${nome(melhores[0])} tem a melhor conformidade: ${_ncFmtPct(melhores[0].conformidade)} das visitas sem nenhuma não conformidade.` });
+
+  out.sort((a, b) => b.nivel - a.nivel);
+  return out;
+}
+
+/* ---------- tela ---------- */
+function _ncCor(v, medio, ruim, inverso = false) {
+  if (v == null) return 'var(--neutral-400)';
+  const x = inverso ? -v : v, m = inverso ? -medio : medio, r = inverso ? -ruim : ruim;
+  if (x >= r) return '#B91C1C';
+  if (x >= m) return '#B45309';
+  return '#15803D';
+}
+
+function _ncCorpoHtml(d, paraPdf = false) {
+  const { iv, lista, equipe: eq, insights } = d;
+  const nivelCor = ['#15803D', '#1D4ED8', '#B45309', '#B91C1C'];
+  const nivelTxt = ['Destaque', 'Atenção', 'Importante', 'Crítico'];
+  const kpi = (rot, val, sub, cor) => `
+    <div class="nc-kpi" style="background:#fff;border:1px solid #E5E7EB;border-radius:12px;padding:12px 14px;">
+      <div style="font-size:10.5px;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;font-weight:700;">${rot}</div>
+      <div style="font-family:'Poppins',sans-serif;font-size:24px;font-weight:700;color:${cor || '#0A1F5C'};line-height:1.15;margin-top:3px;">${val}</div>
+      <div style="font-size:11px;color:#6B7280;margin-top:2px;">${sub}</div>
+    </div>`;
+  const cel = (v, cor, t) => `<td style="padding:7px 8px;text-align:right;font-family:'JetBrains Mono',monospace;font-size:11.5px;color:${cor};font-weight:700;white-space:nowrap;" ${t ? `title="${_ncEsc(t)}"` : ''}>${v}</td>`;
+  const tend = (r) => r.gpsTendencia === 'piorou' ? ' ↑' : r.gpsTendencia === 'melhorou' ? ' ↓' : '';
+
+  const linhas = lista.map(r => `
+    <tr style="border-top:1px solid #F1F2F6;">
+      <td style="padding:7px 8px;font-size:12px;font-weight:700;color:#0A1F5C;white-space:nowrap;">${_ncEsc(nomeCurto(r.nome))}</td>
+      ${cel(r.realizadas + '<span style="color:#9CA3AF;font-weight:500;"> / ' + Math.round(r.metaPer) + '</span>', _ncCor(r.pctMeta, 80, 50, true), 'Visitas realizadas / meta proporcional do período')}
+      ${cel(r.conformidade == null ? '-' : _ncFmtPct(r.conformidade), _ncCor(r.conformidade, 80, 65, true), 'Visitas sem nenhuma não conformidade')}
+      ${cel(r.gps ? _ncFmtPct(r.pctDiv) + tend(r) : '-', _ncCor(r.pctDiv, 6, 10), `${r.div} de ${r.gps} check-ins por GPS. Seta: tendência entre a 1ª e a 2ª metade do período`)}
+      ${cel(_ncFmtPct(r.pctSemCo), _ncCor(r.pctSemCo, 10, 20), `${r.semCo} de ${r.ci}`)}
+      ${cel(_ncFmtPct(r.pctManual), _ncCor(r.pctManual, 25, 40), `${r.manual} de ${r.ci}`)}
+      ${cel(_ncFmtPct(r.pctRetro), _ncCor(r.pctRetro, 10, 20), `${r.retro} de ${r.ci}`)}
+      ${cel(r.mediaPalavras, _ncCor(r.mediaPalavras, 40, 20, true), 'Média de palavras por relatório')}
+      ${cel(r.rel ? _ncFmtPct(r.pctCurtos) : '-', _ncCor(r.pctCurtos, 15, 30), `${r.curtos} de ${r.rel} com menos de 15 palavras`)}
+      ${cel(r.rascParados, _ncCor(r.rascParados, 1, 3), 'Rascunhos com mais de 3 dias')}
+      ${cel(_ncFmtPct(r.pctCancel), _ncCor(r.pctCancel, 10, 20), `${r.cancel} de ${r.registros}`)}
+    </tr>`).join('');
+
+  const tabela = `
+    <div class="nc-pdf-bloco" style="background:#fff;border:1px solid #E5E7EB;border-radius:12px;overflow:hidden;">
+      <div style="padding:12px 14px;border-bottom:1px solid #E5E7EB;font-family:'Poppins',sans-serif;font-weight:700;color:#0A1F5C;font-size:14px;">Indicadores por profissional</div>
+      <div style="overflow-x:auto;">
+      <table style="width:100%;border-collapse:collapse;">
+        <thead><tr style="background:#F8FAFC;">
+          ${['Profissional', 'Visitas / meta', 'Conformidade', 'GPS diverg.', 'Sem check-out', 'Manual', 'Retroativo', 'Palavras/rel.', 'Rel. curtos', 'Rascunhos', 'Cancel.']
+            .map((h, i) => `<th style="padding:8px;font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:#6B7280;text-align:${i ? 'right' : 'left'};font-weight:700;white-space:nowrap;">${h}</th>`).join('')}
+        </tr></thead>
+        <tbody>${linhas || '<tr><td colspan="11" style="padding:20px;text-align:center;color:#6B7280;">Sem visitas no período.</td></tr>'}</tbody>
+      </table></div>
+      <div style="padding:9px 14px;border-top:1px solid #E5E7EB;font-size:10.5px;color:#6B7280;line-height:1.5;">
+        Verde: dentro do esperado. Laranja: atenção. Vermelho: crítico. Seta no GPS: ↑ piorou, ↓ melhorou entre a 1ª e a 2ª metade do período.
+      </div>
+    </div>`;
+
+  const blocoInsights = `
+    <div class="nc-pdf-bloco" style="background:#fff;border:1px solid #E5E7EB;border-radius:12px;padding:14px 16px;">
+      <div style="font-family:'Poppins',sans-serif;font-weight:700;color:#0A1F5C;font-size:14px;margin-bottom:10px;">Leitura do período</div>
+      ${insights.length ? insights.map(i => `
+        <div style="display:flex;gap:10px;padding:9px 0;border-top:1px solid #F1F2F6;">
+          <span style="flex-shrink:0;font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:#fff;background:${nivelCor[i.nivel]};border-radius:6px;padding:3px 7px;height:fit-content;margin-top:1px;">${nivelTxt[i.nivel]}</span>
+          <div style="min-width:0;">
+            <div style="font-weight:700;color:#0A1F5C;font-size:12.5px;">${_ncEsc(i.titulo)}</div>
+            <div style="font-size:12px;color:#374151;line-height:1.5;margin-top:2px;">${_ncEsc(i.texto)}</div>
+          </div>
+        </div>`).join('') : '<div style="font-size:12px;color:#6B7280;">Nenhuma não conformidade relevante no período.</div>'}
+    </div>`;
+
+  const kpis = `
+    <div style="display:grid;grid-template-columns:repeat(${paraPdf ? 3 : 'auto-fit'}, ${paraPdf ? '1fr' : 'minmax(170px,1fr)'});gap:10px;">
+      ${kpi('Conformidade da equipe', eq.conformidade == null ? '-' : _ncFmtPct(eq.conformidade), `${eq.ci - eq.comNC} de ${eq.ci} visitas sem nenhuma NC`, _ncCor(eq.conformidade, 80, 65, true))}
+      ${kpi('Visitas x meta', `${eq.realizadas}`, `${_ncFmtPct(eq.pctMeta)} da meta do período (${Math.round(eq.metaPer)})`, _ncCor(eq.pctMeta, 80, 50, true))}
+      ${kpi('GPS divergente', _ncFmtPct(eq.pctDiv), `${eq.div} de ${eq.gps} check-ins por GPS`, _ncCor(eq.pctDiv, 6, 10))}
+      ${kpi('Sem check-out', _ncFmtPct(eq.pctSemCo), `${eq.semCo} visitas`, _ncCor(eq.pctSemCo, 10, 20))}
+      ${kpi('Check-in manual', _ncFmtPct(eq.pctManual), `${eq.manual} visitas sem GPS`, _ncCor(eq.pctManual, 25, 40))}
+      ${kpi('Relatórios curtos', _ncFmtPct(eq.pctCurtos), `${eq.curtos} de ${eq.rel} com menos de 15 palavras`, _ncCor(eq.pctCurtos, 15, 30))}
+    </div>`;
+
+  const metodo = `
+    <div class="nc-pdf-bloco" style="font-size:10.5px;color:#6B7280;line-height:1.55;padding:4px 2px;">
+      <b>Como os números são calculados.</b> Período de ${_ncData(iv.ini)} a ${_ncData(iv.fim)} pela data real da visita.
+      Visitas agendadas que ainda não aconteceram não entram. GPS divergente conta só check-ins feitos por GPS (o manual não tem GPS).
+      Sem check-out inclui as visitas fechadas automaticamente pelo sistema. Relatório curto: menos de 15 palavras no resumo.
+      Rascunho parado: relatório não finalizado 3 dias após o check-in. Meta: meta mensal das Configurações proporcional aos dias do período.
+      Conformidade: visitas sem GPS divergente, sem check-out esquecido, sem registro retroativo, sem horário fora da margem, sem relatório curto e sem rascunho parado.
+    </div>`;
+
+  return `<div style="display:flex;flex-direction:column;gap:14px;">${kpis}${blocoInsights}${tabela}${metodo}</div>`;
+}
+
+function _ncRender() {
+  const el = document.getElementById('ncConteudo');
+  if (!el) return;
+  if (NC.carregando || !NC.dados) {
+    el.innerHTML = `<div style="padding:50px;text-align:center;color:var(--neutral-500);font-size:13px;background:#fff;border:1px solid var(--neutral-200);border-radius:14px;"><div class="splash__spinner" style="margin:0 auto 12px;"></div>Montando o relatório...</div>`;
+    return;
+  }
+  if (NC.dados.erro) { el.innerHTML = `<div style="padding:30px;color:var(--status-danger);background:#fff;border:1px solid var(--neutral-200);border-radius:14px;">Erro: ${_ncEsc(NC.dados.erro)}</div>`; return; }
+  el.innerHTML = _ncCorpoHtml(NC.dados);
+}
+
+async function _ncAtualizar() {
+  NC.carregando = true; _ncRender();
+  try { NC.dados = await _ncCarregar(); }
+  catch (e) { NC.dados = { erro: e.message || String(e) }; }
+  NC.carregando = false; _ncRender();
+  const r = document.getElementById('ncPeriodoRotulo');
+  if (r && NC.dados?.iv) r.textContent = `${_ncData(NC.dados.iv.ini)} a ${_ncData(NC.dados.iv.fim)}`;
+}
+
+window._ncTrocarPeriodo = function(p) {
+  NC.periodo = p;
+  document.querySelectorAll('[data-nc-per]').forEach(b => {
+    const on = b.getAttribute('data-nc-per') === p;
+    b.style.background = on ? 'var(--brand-navy)' : 'transparent';
+    b.style.color = on ? '#fff' : 'var(--neutral-600)';
+  });
+  _ncAtualizar();
+};
+
+function _ncCabecalhoTela() {
+  const pers = [['30d', '30 dias'], ['90d', '90 dias'], ['mes', 'Mês atual'], ['mes_ant', 'Mês anterior'], ['ano', 'Ano']];
+  return `
+    <div style="background:#fff;border:1px solid var(--neutral-200);border-radius:14px;padding:14px 16px;margin-bottom:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+      <div style="flex:1;min-width:220px;">
+        <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:16px;display:flex;align-items:center;gap:8px;">
+          <span class="material-symbols-rounded" style="font-size:21px;color:#B91C1C;">report</span>Não conformidades da equipe
+        </div>
+        <div style="font-size:12px;color:var(--neutral-600);margin-top:2px;">Período: <span id="ncPeriodoRotulo">-</span></div>
+      </div>
+      <div style="display:inline-flex;gap:3px;background:var(--neutral-100);border-radius:9999px;padding:3px;flex-wrap:wrap;">
+        ${pers.map(([k, t]) => `<button data-nc-per="${k}" onclick="_ncTrocarPeriodo('${k}')" style="padding:6px 12px;border:0;border-radius:9999px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:inherit;background:${NC.periodo === k ? 'var(--brand-navy)' : 'transparent'};color:${NC.periodo === k ? '#fff' : 'var(--neutral-600)'};">${t}</button>`).join('')}
+      </div>
+      <button onclick="_ncBaixarPdf(this)" style="background:#fff;border:1.5px solid var(--brand-navy);color:var(--brand-navy);padding:8px 14px;border-radius:9px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px;">
+        <span class="material-symbols-rounded" style="font-size:17px;">picture_as_pdf</span>Gerar PDF</button>
+      <button onclick="_ncAbrirEnvio()" style="background:var(--brand-lime);border:0;color:#fff;padding:9px 15px;border-radius:9px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px;">
+        <span class="material-symbols-rounded" style="font-size:17px;">forward_to_inbox</span>Enviar por e-mail</button>
+    </div>`;
+}
+
+function _ncSemAcesso() {
+  return `<div style="padding:40px;text-align:center;background:#fff;border:1px solid var(--neutral-200);border-radius:14px;">
+    <span class="material-symbols-rounded" style="font-size:40px;color:var(--neutral-400);">lock</span>
+    <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);margin-top:8px;">Acesso restrito</div>
+    <div style="font-size:12.5px;color:var(--neutral-600);margin-top:4px;">Peça ao super administrador para liberar Não conformidades para você na Equipe.</div></div>`;
+}
+
+function renderAdminNaoConformidadesDesktop() {
+  const user = requireAdmin();
+  if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
+  const ok = podeVerNC();
+  if (ok) setTimeout(_ncAtualizar, 0);
+  return desktopShell({
+    title: 'Não conformidades',
+    breadcrumb: ['Admin', 'Operação', 'Não conformidades'],
+    content: `<div style="max-width:1280px;margin:0 auto;">${ok ? _ncCabecalhoTela() + '<div id="ncConteudo"></div>' : _ncSemAcesso()}</div>`,
+    activeId: 'nao_conformidades',
+  });
+}
+
+function renderAdminNaoConformidades() {
+  const user = requireAdmin();
+  if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
+  const ok = podeVerNC();
+  if (ok) setTimeout(_ncAtualizar, 0);
+  return `
+    <div class="mobile-app">
+      ${mobileTopBar({ title: 'Não conformidades', showBack: true })}
+      <main class="mcontent" style="padding:14px 14px 80px;">
+        ${ok ? _ncCabecalhoTela() + '<div id="ncConteudo"></div>' : _ncSemAcesso()}
+      </main>
+    </div>`;
+}
+
+/* ---------- PDF ---------- */
+function _ncCarregarHtml2pdf() {
+  if (window.html2pdf) return Promise.resolve(window.html2pdf);
+  if (window._ncH2pPromise) return window._ncH2pPromise;
+  window._ncH2pPromise = new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+    s.onload = () => res(window.html2pdf);
+    s.onerror = () => { window._ncH2pPromise = null; rej(new Error('Não consegui carregar o gerador de PDF. Verifique a internet.')); };
+    document.head.appendChild(s);
+  });
+  return window._ncH2pPromise;
+}
+
+function _ncDocumentoPdf(d) {
+  const eu = getCurrentUserReal();
+  const quando = d.geradoEm.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  return `
+    <div style="width:760px;background:#fff;color:#0A1F5C;font-family:'Inter','Segoe UI',Arial,sans-serif;">
+      <div style="background:#0A1F5C;border-radius:14px;padding:16px 22px;display:flex;align-items:center;justify-content:space-between;gap:16px;">
+        <img src="icons/logo-relatorio.png" alt="B&amp;N Logística" style="height:58px;display:block;" />
+        <div style="text-align:right;color:#fff;">
+          <div style="font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#8BC63F;font-weight:800;">Relatório gerencial</div>
+          <div style="font-family:'Poppins',sans-serif;font-size:19px;font-weight:700;margin-top:2px;">Não conformidades da equipe</div>
+          <div style="font-size:11px;color:#C7D2FE;margin-top:3px;">${d.iv.rotulo} · ${_ncData(d.iv.ini)} a ${_ncData(d.iv.fim)}</div>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:10.5px;color:#6B7280;margin:10px 4px 14px;">
+        <span>Emitido por ${_ncEsc(eu?.nome || '')} em ${quando}</span>
+        <span>${d.equipe.pessoas} profissionais · ${d.equipe.ci} visitas com check-in</span>
+      </div>
+      ${_ncCorpoHtml(d, true)}
+      <div style="margin-top:16px;padding-top:10px;border-top:1px solid #E5E7EB;font-size:9.5px;color:#9CA3AF;display:flex;justify-content:space-between;">
+        <span>B&amp;N Logística · benlogistica.com.br</span><span>Documento interno e confidencial</span>
+      </div>
+    </div>`;
+}
+
+async function _ncGerarPdfBlob() {
+  if (!NC.dados || NC.dados.erro) throw new Error('O relatório ainda não carregou.');
+  const h2p = await _ncCarregarHtml2pdf();
+  const caixa = document.createElement('div');
+  caixa.style.cssText = 'position:fixed;left:-10000px;top:0;width:760px;background:#fff;z-index:-1;';
+  caixa.innerHTML = _ncDocumentoPdf(NC.dados);
+  document.body.appendChild(caixa);
+  try {
+    await Promise.all([...caixa.querySelectorAll('img')].map(img => img.complete ? null : new Promise(r => { img.onload = img.onerror = r; })));
+    return await h2p().set({
+      margin: [8, 8, 10, 8],
+      image: { type: 'jpeg', quality: 0.9 },
+      html2canvas: { scale: 1.7, useCORS: true, backgroundColor: '#ffffff' },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+      pagebreak: { mode: ['css', 'legacy'], avoid: ['.nc-pdf-bloco', '.nc-kpi', 'tr'] },
+    }).from(caixa.firstElementChild).outputPdf('blob');
+  } finally { caixa.remove(); }
+}
+
+function _ncNomeArquivo() {
+  const iv = NC.dados?.iv;
+  return `nao-conformidades-${iv ? iv.ini + '_a_' + iv.fim : _dataArquivo()}.pdf`;
+}
+
+window._ncBaixarPdf = async function(btn) {
+  const rot = btn ? btn.innerHTML : null;
+  if (btn) { btn.disabled = true; btn.innerHTML = 'Gerando PDF…'; }
+  try {
+    const blob = await _ncGerarPdfBlob();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = _ncNomeArquivo(); a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 30000);
+  } catch (e) { setFlash('error', e.message || String(e)); }
+  finally { if (btn) { btn.disabled = false; btn.innerHTML = rot; } }
+};
+
+/* ---------- e-mail ---------- */
+window._ncAbrirEnvio = async function() {
+  if (!NC.dados || NC.dados.erro) { setFlash('warning', 'Espere o relatório carregar.'); return; }
+  const { data: admins } = await db.from('usuarios').select('id, nome, email, perfil, status').eq('perfil', 'admin').eq('status', 'ativo').order('nome');
+  let salvos = [];
+  try { const raw = await getConfig('nc_destinatarios', '[]'); salvos = typeof raw === 'string' ? JSON.parse(raw || '[]') : (raw || []); } catch (e) {}
+  const salvosSet = new Set(salvos.map(s => String(s).toLowerCase()));
+  const daEquipe = (admins || []).filter(a => a.email);
+  const extras = salvos.filter(e => !daEquipe.some(a => a.email.toLowerCase() === String(e).toLowerCase()));
+  const iv = NC.dados.iv;
+  document.getElementById('ncEnvioModal')?.remove();
+  document.body.insertAdjacentHTML('beforeend', `
+    <div id="ncEnvioModal" style="position:fixed;inset:0;background:rgba(10,31,92,0.5);z-index:99999;display:flex;align-items:center;justify-content:center;padding:18px;" onclick="if(event.target===this)this.remove()">
+      <div style="background:#fff;border-radius:14px;max-width:520px;width:100%;max-height:92vh;overflow:auto;box-shadow:0 20px 60px rgba(0,0,0,.3);">
+        <div style="padding:16px 18px;border-bottom:1px solid var(--neutral-200);font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:16px;display:flex;align-items:center;gap:8px;">
+          <span class="material-symbols-rounded" style="color:var(--brand-lime);">forward_to_inbox</span>Enviar relatório por e-mail
+        </div>
+        <div style="padding:14px 18px;display:flex;flex-direction:column;gap:12px;font-size:12.5px;">
+          <div>
+            <div style="font-weight:700;color:var(--brand-navy);margin-bottom:6px;">Quem recebe</div>
+            ${daEquipe.map(a => `<label style="display:flex;align-items:center;gap:8px;padding:5px 0;cursor:pointer;">
+              <input type="checkbox" class="ncDest" value="${_ncEsc(a.email)}" ${salvosSet.has(a.email.toLowerCase()) ? 'checked' : ''} />
+              <span><b>${_ncEsc(nomeCurto(a.nome))}</b> <span style="color:var(--neutral-500);">${_ncEsc(a.email)}</span></span></label>`).join('')}
+          </div>
+          <div>
+            <div style="font-weight:700;color:var(--brand-navy);margin-bottom:4px;">Outros e-mails <span style="font-weight:500;color:var(--neutral-500);">(CEO, diretoria... separe com vírgula)</span></div>
+            <textarea id="ncDestExtra" rows="2" style="width:100%;border:1.5px solid var(--neutral-200);border-radius:8px;padding:8px;font-family:inherit;font-size:12.5px;">${_ncEsc(extras.join(', '))}</textarea>
+          </div>
+          <div>
+            <div style="font-weight:700;color:var(--brand-navy);margin-bottom:4px;">Assunto</div>
+            <input id="ncAssunto" value="${_ncEsc('[B&N Logistica] Relatorio de nao conformidades - ' + _ncData(iv.ini) + ' a ' + _ncData(iv.fim))}" style="width:100%;border:1.5px solid var(--neutral-200);border-radius:8px;padding:8px;font-family:inherit;font-size:12.5px;" />
+          </div>
+          <div>
+            <div style="font-weight:700;color:var(--brand-navy);margin-bottom:4px;">Mensagem <span style="font-weight:500;color:var(--neutral-500);">(opcional)</span></div>
+            <textarea id="ncMensagem" rows="3" placeholder="Ex.: Segue o relatório do período para alinharmos na reunião de segunda." style="width:100%;border:1.5px solid var(--neutral-200);border-radius:8px;padding:8px;font-family:inherit;font-size:12.5px;"></textarea>
+          </div>
+          <label style="display:flex;align-items:center;gap:8px;color:var(--neutral-600);"><input type="checkbox" id="ncLembrar" checked /> Lembrar estes destinatários para os próximos envios</label>
+          <div style="font-size:11px;color:var(--neutral-500);">O PDF vai anexado e o resumo da leitura vai no corpo do e-mail.</div>
+        </div>
+        <div style="padding:12px 18px;border-top:1px solid var(--neutral-200);display:flex;justify-content:flex-end;gap:8px;">
+          <button onclick="document.getElementById('ncEnvioModal').remove()" style="background:transparent;border:1.5px solid var(--neutral-200);color:var(--neutral-600);padding:9px 15px;border-radius:9px;font-weight:600;cursor:pointer;font-family:inherit;">Cancelar</button>
+          <button id="ncBtnEnviar" onclick="_ncEnviar(this)" style="background:var(--brand-lime);border:0;color:#fff;padding:9px 16px;border-radius:9px;font-weight:700;cursor:pointer;font-family:inherit;">Enviar</button>
+        </div>
+      </div>
+    </div>`);
+};
+
+window._ncEnviar = async function(btn) {
+  const marcados = [...document.querySelectorAll('.ncDest:checked')].map(c => c.value);
+  const extras = String(document.getElementById('ncDestExtra')?.value || '').split(/[,;\s]+/).map(s => s.trim()).filter(Boolean);
+  const invalidos = extras.filter(e => !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e));
+  if (invalidos.length) { setFlash('warning', 'E-mail inválido: ' + invalidos.join(', ')); return; }
+  const para = [...new Set([...marcados, ...extras].map(e => e.toLowerCase()))];
+  if (!para.length) { setFlash('warning', 'Escolha pelo menos um destinatário.'); return; }
+  if (para.length > 15) { setFlash('warning', 'No máximo 15 destinatários por envio.'); return; }
+  const assunto = String(document.getElementById('ncAssunto')?.value || '').trim() || 'Relatório de não conformidades';
+  const msg = String(document.getElementById('ncMensagem')?.value || '').trim();
+  const lembrar = document.getElementById('ncLembrar')?.checked;
+  btn.disabled = true; btn.textContent = 'Gerando PDF…';
+  try {
+    const blob = await _ncGerarPdfBlob();
+    btn.textContent = 'Enviando…';
+    const b64 = await new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(String(fr.result).split(',')[1]); fr.onerror = rej; fr.readAsDataURL(blob); });
+    const d = NC.dados, eu = getCurrentUserReal();
+    const itens = d.insights.slice(0, 6).map(i => `<li style="margin-bottom:8px;"><b>${_ncEsc(i.titulo)}.</b> ${_ncEsc(i.texto)}</li>`).join('');
+    const html = _emailTemplateBN({
+      titulo: 'Relatório de não conformidades',
+      corpoHtml: `
+        ${msg ? `<p>${_ncEsc(msg).replace(/\n/g, '<br>')}</p>` : ''}
+        <p><strong>Período:</strong> ${_ncData(d.iv.ini)} a ${_ncData(d.iv.fim)} · ${d.equipe.pessoas} profissionais · ${d.equipe.ci} visitas.</p>
+        <p><strong>Conformidade da equipe:</strong> ${d.equipe.conformidade == null ? '-' : _ncFmtPct(d.equipe.conformidade)} das visitas sem nenhuma não conformidade.</p>
+        <p style="margin-top:18px;"><strong>Principais pontos</strong></p>
+        <ul style="padding-left:18px;line-height:1.5;">${itens || '<li>Nenhuma não conformidade relevante no período.</li>'}</ul>
+        <p style="font-size:13px;color:#6b7280;">O relatório completo, com os indicadores de cada profissional, está no PDF anexo.</p>`,
+      rodape: `Enviado por ${_ncEsc(eu?.nome || 'B&N Logística')} pelo sistema B&amp;N Logística. Documento interno e confidencial.`,
+    });
+    const texto = `Relatório de não conformidades\nPeríodo: ${_ncData(d.iv.ini)} a ${_ncData(d.iv.fim)}\n\n` + d.insights.slice(0, 6).map(i => `- ${i.titulo}: ${i.texto}`).join('\n') + '\n\nRelatório completo no PDF anexo.';
+    const { data: r, error } = await db.rpc('email_enviar_nc', { p_para: para, p_assunto: assunto, p_html: html, p_texto: texto, p_anexo_b64: b64, p_anexo_nome: _ncNomeArquivo() });
+    if (error) throw new Error(error.message);
+    if (!r?.ok) throw new Error(r?.error === 'sem_permissao' ? 'Você não tem acesso a Não conformidades.' : (r?.error || 'Falha ao enviar'));
+    if (lembrar) { try { await salvarMetaConfig('nc_destinatarios', para); } catch (e) {} }
+    document.getElementById('ncEnvioModal')?.remove();
+    setFlash('success', `Relatório enviado para ${r.enviados} destinatário${r.enviados > 1 ? 's' : ''}.`);
+  } catch (e) {
+    setFlash('error', 'Não consegui enviar: ' + (e.message || e));
+    btn.disabled = false; btn.textContent = 'Enviar';
+  }
+};
+
 
 window._fatTrocarFiltro = function(campo, valor) {
   window._fatFiltro[campo] = valor;

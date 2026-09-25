@@ -1,5 +1,5 @@
 // =============================================================================
-// Edge Function: send-email   |   versão 9.32.464
+// Edge Function: send-email   |   versão 9.32.475
 // =============================================================================
 // Source-of-truth do código que está deployado no Supabase
 //   (Edge Functions → send-email → Code).
@@ -12,6 +12,9 @@
 //   o banco escreve (funções _email_enfileirar, email_enviar_admin,
 //   email_cadastro_recebido, recuperacao_solicitar — ver email_fila_servidor.sql).
 //   Um id inventado não acha nada; um id real já enviado não reenvia.
+//
+// Sprint 9.32.475: aceita anexo (PDF do relatório de Não conformidades). O anexo
+//   fica na fila só até o envio e é apagado junto com o conteúdo.
 //
 // Sprint 9.32.204 (fix do "=20"): o HTML é minificado antes de ir ao denomailer.
 //
@@ -66,7 +69,7 @@ Deno.serve(async (req) => {
     .eq("id", id)
     .eq("status", "pendente")
     .gt("criado_em", umaHoraAtras)
-    .select("id, para, assunto, html, texto, origem")
+    .select("id, para, assunto, html, texto, origem, anexo_b64, anexo_nome, anexo_tipo")
     .maybeSingle();
 
   if (errClaim) {
@@ -95,6 +98,12 @@ Deno.serve(async (req) => {
       subject: msg.assunto,
       content: msg.texto || "Veja em HTML.",
       html: msg.html ? minifyEmailHtml(msg.html) : undefined,
+      attachments: msg.anexo_b64 ? [{
+        filename: msg.anexo_nome || "anexo.pdf",
+        contentType: msg.anexo_tipo || "application/pdf",
+        encoding: "base64",
+        content: msg.anexo_b64,
+      }] : undefined,
     });
     await client.close();
 
@@ -104,6 +113,7 @@ Deno.serve(async (req) => {
       enviado_em: new Date().toISOString(),
       html: null,
       texto: null,
+      anexo_b64: null,
       assunto: String(msg.origem || "").startsWith("recuperacao:") ? "[recuperação de senha]" : msg.assunto,
     }).eq("id", msg.id);
 
