@@ -153,17 +153,47 @@ FATIA_CAMPOS = {
 }
 
 
+def ids_pf_do_banco() -> set:
+    """9.32.472: ids (HMAC) das instituições pessoa física cadastradas.
+    O banco só devolve HMAC da chave mestra, nunca o CPF. Com isso geramos
+    fatia só para os CPFs que são instituição (não para 11 mil pessoas)."""
+    import urllib.request
+    try:
+        html = Path('index.html').read_text(encoding='utf-8')
+        url = re.search(r"SUPABASE_URL:\s*'([^']+)'", html).group(1).rstrip('/')
+        anon = re.search(r"SUPABASE_ANON_KEY:\s*'([^']+)'", html).group(1)
+        req = urllib.request.Request(url + '/rest/v1/rpc/faturamento_ids_pf', data=b'{}', method='POST',
+                                     headers={'apikey': anon, 'Authorization': 'Bearer ' + anon,
+                                              'Content-Type': 'application/json'})
+        with urllib.request.urlopen(req, timeout=20) as r:
+            return set(json.loads(r.read().decode('utf-8')) or [])
+    except Exception as e:
+        print(f"   ⚠ Não consegui buscar as instituições pessoa física no banco ({e}). Fatias de CPF ficam de fora nesta rodada.")
+        return None
+
+
 def gerar_fatias(dados: dict, mestra: bytes) -> int:
     import hmac
     from cryptography.hazmat.primitives.ciphers.aead import AESGCM
     pasta = Path('fat_cli')
     pasta.mkdir(exist_ok=True)
     so_digitos = lambda v: re.sub(r'\D', '', str(v or ''))
+    ids_pf = ids_pf_do_banco()
+    id_de = lambda c: hmac.new(mestra, b'id:' + c.encode(), hashlib.sha256).hexdigest()[:24]
+    pf_ok = {}
     por_cli = {}
     for campo, chave_cnpj in FATIA_CAMPOS.items():
         for linha in dados.get(campo) or []:
             c = so_digitos(linha.get(chave_cnpj))
-            if len(c) != 14:          # só PJ: hospital/clínica. Pessoa física fica fora.
+            if len(c) == 11:
+                # Pessoa física: só se for uma instituição cadastrada (paciente de home care etc.)
+                if ids_pf is None:
+                    continue
+                if c not in pf_ok:
+                    pf_ok[c] = id_de(c) in ids_pf
+                if not pf_ok[c]:
+                    continue
+            elif len(c) != 14:
                 continue
             por_cli.setdefault(c, {}).setdefault(campo, []).append(linha)
     comum = {'meta': dados.get('meta'),
@@ -183,9 +213,10 @@ def gerar_fatias(dados: dict, mestra: bytes) -> int:
         if not destino.exists() or destino.read_bytes() != blob:
             destino.write_bytes(blob)
         feitos.add(destino.name)
-    # cliente que saiu do faturamento: a fatia antiga não pode ficar publicada
+    # cliente que saiu do faturamento: a fatia antiga não pode ficar publicada.
+    # (se o banco não respondeu, mantém as fatias de CPF já existentes)
     for velho in pasta.glob('*.bin'):
-        if velho.name not in feitos:
+        if velho.name not in feitos and ids_pf is not None:
             velho.unlink()
     return len(por_cli)
 

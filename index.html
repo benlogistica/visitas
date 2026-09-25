@@ -8418,7 +8418,7 @@ mark.search-hl {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.471-push',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.472-melhorias',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -10872,10 +10872,15 @@ if ('serviceWorker' in navigator) {
 }
 
 // Desenha o cartao na tela de notificacoes (desktop e mobile usam o mesmo id).
-async function pushPintarCartao() {
-  const el = document.getElementById('pushCard');
+// 9.32.472: também no Início (pushInicio / pushInicioD). Lá ele some quando já
+// está ativo, para não ocupar espaço de quem já ligou.
+async function pushPintarCartao(idEl = 'pushCard', { esconderAtivo = false } = {}) {
+  const el = document.getElementById(idEl);
   if (!el) return;
+  const u = typeof getCurrentUser === 'function' ? getCurrentUser() : null;
+  if (esconderAtivo && (!u || u.perfil === 'admin' || u._simulando)) { el.style.display = 'none'; return; }
   const estado = await pushEstado();
+  if (esconderAtivo && estado === 'ativo') { el.style.display = 'none'; el.innerHTML = ''; return; }
 
   const molde = (cor, bg, icone, titulo, texto, botao) => `
     <div style="background:${bg};border:1px solid ${cor}33;border-radius:12px;padding:12px 14px;display:flex;align-items:center;gap:11px;flex-wrap:wrap;">
@@ -10900,7 +10905,9 @@ async function pushPintarCartao() {
   } else if (estado === 'bloqueado') {
     el.innerHTML = molde('#B45309', '#FEF4E1', 'notifications_off',
       'Avisos bloqueados neste aparelho',
-      'Você recusou as notificações antes. Para reativar, abra os ajustes do navegador para este site e permita notificações.', '');
+      /Android/i.test(navigator.userAgent)
+        ? 'O Android está bloqueando os avisos deste app. Para liberar: toque e segure o ícone do app B&amp;N, vá em Informações do app, Notificações, e ligue. Depois feche e abra o app de novo.'
+        : 'Você recusou as notificações antes. Para reativar, abra os ajustes do navegador para este site e permita notificações.', '');
   } else if (estado === 'precisa-instalar') {
     el.innerHTML = molde('#1D4ED8', '#E4ECFD', 'install_mobile',
       'Instale o app para receber avisos',
@@ -10971,6 +10978,8 @@ window.pushAtivarClick = async function(botao) {
       ok ? 'Pronto. Você será avisado no celular.' : 'Não consegui ativar. Verifique se as notificações estão permitidas para este site.');
   }
   pushPintarCartao();
+  pushPintarCartao('pushInicio', { esconderAtivo: true });
+  pushPintarCartao('pushInicioD', { esconderAtivo: true });
   pushPintarAtalhoSino(ok);   // <- o que faltava: o sino agora acompanha
 };
 
@@ -15809,7 +15818,7 @@ window.editarMetaVisitasDia = function() {
           <button onclick="window._metaVisIncr()" style="width:44px;height:44px;border-radius:8px;background:var(--neutral-50,#FAFBFD);border:1.5px solid var(--neutral-200);color:var(--brand-navy);font-size:22px;cursor:pointer;font-family:inherit;">+</button>
         </div>
         <div style="background:#FFF8EE;border:1px solid #FCD9A0;border-radius:8px;padding:10px;font-size:11.5px;color:#854F0B;line-height:1.5;margin-bottom:14px;">
-          📅 Equivale a <strong id="metaVisEquiv">${atual * 5}/sem · ${atual * 22}/mês</strong> (considerando 5 dias úteis/semana, 22/mês)
+          Equivale a <strong id="metaVisEquiv">${atual * 5}/sem · ${atual * 22}/mês</strong> (considerando 5 dias úteis/semana, 22/mês)
         </div>
         <div style="display:flex;gap:8px;justify-content:flex-end;">
           <button onclick="document.getElementById('metaVisDayOverlay').remove()" style="background:transparent;color:var(--neutral-600);border:1.5px solid var(--neutral-200);padding:9px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">Cancelar</button>
@@ -15882,7 +15891,7 @@ window.editarMetaVisitasMesNutri = function() {
           <button onclick="window._metaVisMesIncr()" style="width:44px;height:44px;border-radius:8px;background:var(--neutral-50,#FAFBFD);border:1.5px solid var(--neutral-200);color:var(--brand-navy);font-size:22px;cursor:pointer;font-family:inherit;">+</button>
         </div>
         <div style="background:#FFF8EE;border:1px solid #FCD9A0;border-radius:8px;padding:10px;font-size:11.5px;color:#854F0B;line-height:1.5;margin-bottom:14px;">
-          📅 Equivale a <strong id="metaVisMesEquiv">~${(atual / 22).toFixed(1)}/dia útil</strong> (considerando 22 dias úteis/mês)
+          Equivale a <strong id="metaVisMesEquiv">~${(atual / 22).toFixed(1)}/dia útil</strong> (considerando 22 dias úteis/mês)
         </div>
         <div style="display:flex;gap:8px;justify-content:flex-end;">
           <button onclick="document.getElementById('metaVisMesOverlay').remove()" style="background:transparent;color:var(--neutral-600);border:1.5px solid var(--neutral-200);padding:9px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">Cancelar</button>
@@ -16266,10 +16275,10 @@ async function renderDsdMapaVisitas(visitas) {
     container.innerHTML = `
       <div id="${mapId}" style="width:100%;height:300px;border-radius:8px;border:1px solid var(--neutral-200);overflow:hidden;background:var(--neutral-100);"></div>
       <div style="display:flex;flex-wrap:wrap;gap:7px;margin-top:11px;">
-        <span style="background:#E4ECFD;color:#0C447C;padding:5px 12px;border-radius:6px;font-size:11.5px;font-weight:700;display:inline-flex;align-items:center;gap:5px;">📍 ${totalVisitas} visita${totalVisitas !== 1 ? 's' : ''}</span>
-        <span style="background:#E4ECFD;color:#0C447C;padding:5px 12px;border-radius:6px;font-size:11.5px;font-weight:700;display:inline-flex;align-items:center;gap:5px;">🏥 ${pontos.length} hospitai${pontos.length !== 1 ? 's' : 'l'}</span>
-        <button type="button" onclick="window.abrirRankingCidadesMapa && window.abrirRankingCidadesMapa()" title="Ver ranking completo de cidades" style="background:#E4ECFD;color:#0C447C;padding:5px 12px;border:0;border-radius:6px;font-size:11.5px;font-weight:700;display:inline-flex;align-items:center;gap:5px;cursor:pointer;font-family:inherit;transition:background 120ms;" onmouseover="this.style.background='#D2DDFA'" onmouseout="this.style.background='#E4ECFD'">🌆 ${Object.keys(porCidade).length} cidade${Object.keys(porCidade).length !== 1 ? 's' : ''} <span style="font-size:9px;opacity:0.7;">▾</span></button>
-        ${cidadeLider ? `<span style="background:#F0F7E1;color:#27500A;padding:5px 12px;border-radius:6px;font-size:11.5px;font-weight:700;display:inline-flex;align-items:center;gap:5px;margin-left:auto;">🏆 ${cidadeLider.cidade} lidera · ${cidadeLider.count} visita${cidadeLider.count !== 1 ? 's' : ''} (${liderPct}%)</span>` : ''}
+        <span style="background:#E4ECFD;color:#0C447C;padding:5px 12px;border-radius:6px;font-size:11.5px;font-weight:700;display:inline-flex;align-items:center;gap:5px;">${totalVisitas} visita${totalVisitas !== 1 ? 's' : ''}</span>
+        <span style="background:#E4ECFD;color:#0C447C;padding:5px 12px;border-radius:6px;font-size:11.5px;font-weight:700;display:inline-flex;align-items:center;gap:5px;">${pontos.length} hospitai${pontos.length !== 1 ? 's' : 'l'}</span>
+        <button type="button" onclick="window.abrirRankingCidadesMapa && window.abrirRankingCidadesMapa()" title="Ver ranking completo de cidades" style="background:#E4ECFD;color:#0C447C;padding:5px 12px;border:0;border-radius:6px;font-size:11.5px;font-weight:700;display:inline-flex;align-items:center;gap:5px;cursor:pointer;font-family:inherit;transition:background 120ms;" onmouseover="this.style.background='#D2DDFA'" onmouseout="this.style.background='#E4ECFD'">${Object.keys(porCidade).length} cidade${Object.keys(porCidade).length !== 1 ? 's' : ''} <span style="font-size:9px;opacity:0.7;">▾</span></button>
+        ${cidadeLider ? `<span style="background:#F0F7E1;color:#27500A;padding:5px 12px;border-radius:6px;font-size:11.5px;font-weight:700;display:inline-flex;align-items:center;gap:5px;margin-left:auto;">${cidadeLider.cidade} lidera · ${cidadeLider.count} visita${cidadeLider.count !== 1 ? 's' : ''} (${liderPct}%)</span>` : ''}
       </div>
     `;
     if (subtitle) subtitle.textContent = `${pontos.length} hospitais · ${Object.keys(porCidade).length} cidades`;
@@ -16356,7 +16365,7 @@ window.abrirRankingCidadesMapa = function() {
     <div id="${id}" style="position:fixed;inset:0;background:rgba(10,31,92,0.5);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;font-family:inherit;" onclick="if(event.target===this) document.getElementById('${id}').remove()">
       <div style="background:var(--neutral-0);border-radius:14px;max-width:500px;width:100%;max-height:80vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.3);overflow:hidden;">
         <div style="padding:18px 20px;border-bottom:1px solid var(--neutral-200);display:flex;align-items:center;gap:12px;">
-          <div style="width:40px;height:40px;border-radius:10px;background:#E4ECFD;color:#0C447C;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:20px;">🌆</div>
+          <div style="width:40px;height:40px;border-radius:10px;background:#E4ECFD;color:#0C447C;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:20px;"></div>
           <div style="flex:1;">
             <div style="font-family:var(--font-display);font-weight:700;font-size:16px;color:var(--brand-navy);">Ranking de cidades</div>
             <div style="font-size:12px;color:var(--neutral-500);margin-top:2px;">${cidades.length} cidade${cidades.length !== 1 ? 's' : ''} · ${total} visita${total !== 1 ? 's' : ''} no período</div>
@@ -16370,7 +16379,7 @@ window.abrirRankingCidadesMapa = function() {
             const pct = (c.count / maxCount * 100).toFixed(1);
             const pctTotal = total > 0 ? (c.count / total * 100).toFixed(1) : '0.0';
             const cor = corBarra(c.count);
-            const medalhas = ['🥇','🥈','🥉'];
+            const medalhas = ['1º','2º','3º'];
             const med = i < 3 ? medalhas[i] : `${i + 1}º`;
             return `
               <div style="padding:10px 0;${i < cidades.length - 1 ? 'border-bottom:1px solid var(--neutral-100);' : ''}">
@@ -16801,7 +16810,7 @@ async function renderDsdNutrisInativos(visitasPeriodo) {
 
     if (subtitle) {
       subtitle.textContent = inativos.length === 0
-        ? 'Todos os nutricionistas registraram pelo menos 1 visita no período 🎉'
+        ? 'Todos os nutricionistas registraram pelo menos 1 visita no período '
         : `${inativos.length} de ${(todosNutris || []).length} nutris sem atividade no período`;
     }
 
@@ -20556,7 +20565,7 @@ async function carregarAutoFechamentos() {
 
   // === Ranking HTML ===
   const rankingHtml = rankingArr.length === 0
-    ? `<div style="padding:18px;text-align:center;color:var(--neutral-500);font-size:12.5px;">Nenhum esquecimento no período 🎉</div>`
+    ? `<div style="padding:18px;text-align:center;color:var(--neutral-500);font-size:12.5px;">Nenhum esquecimento no período </div>`
     : rankingArr.map(r => {
         const inits = (r.nome || '?').split(' ').filter(Boolean).slice(0, 2).map(s => s[0].toUpperCase()).join('');
         const avatar = r.foto
@@ -20723,7 +20732,7 @@ async function _carregarAutoCancelamentosTab(dataInicio) {
   });
   const rankingArr = Object.values(ranking).sort((a, b) => b.count - a.count).slice(0, 5);
   const rankingHtml = rankingArr.length === 0
-    ? `<div style="padding:18px;text-align:center;color:var(--neutral-500);font-size:12.5px;">Nenhum auto-cancelamento no período 🎉</div>`
+    ? `<div style="padding:18px;text-align:center;color:var(--neutral-500);font-size:12.5px;">Nenhum auto-cancelamento no período </div>`
     : rankingArr.map(r => {
         const inits = (r.nome || '?').split(' ').filter(Boolean).slice(0, 2).map(s => s[0].toUpperCase()).join('');
         const avatar = r.foto
@@ -21463,7 +21472,7 @@ function bottomNav(active) {
         }
         if (it.disabled) {
           return `
-            <a href="javascript:void(0)" onclick="setFlash('info', '🔒 Em breve. Essa funcionalidade está em desenvolvimento.');return false;" class="bnav__item" style="opacity:0.4;cursor:not-allowed;position:relative;" title="Em breve">
+            <a href="javascript:void(0)" onclick="setFlash('info', 'Em breve. Essa funcionalidade está em desenvolvimento.');return false;" class="bnav__item" style="opacity:0.4;cursor:not-allowed;position:relative;" title="Em breve">
               <span class="material-symbols-rounded" style="font-size:22px;font-variation-settings: 'FILL' 0;">${it.icon}</span>
               <span class="bnav__item-label">${it.label}</span>
               <span style="position:absolute;top:4px;right:calc(50% - 22px);width:12px;height:12px;border-radius:50%;background:var(--status-warning);color:#fff;font-size:8px;font-weight:700;display:flex;align-items:center;justify-content:center;">
@@ -22564,7 +22573,7 @@ const ConfigMeta = {
   },
   groq_api_key: {
     titulo: 'Chave da Groq (ditado por voz)',
-    descricao: 'Necessária para o ditado por voz no relatório de visita usar Whisper Large v3. A chave começa com <code>gsk_</code> e fica salva apenas neste sistema.<br><br><strong>Atalhos úteis:</strong><br>• <a href="https://console.groq.com/keys" target="_blank" rel="noopener" style="color:var(--brand-lime);text-decoration:underline;">🔑 Criar/gerenciar chaves</a><br>• <a href="https://console.groq.com/dashboard/usage" target="_blank" rel="noopener" style="color:var(--brand-lime);text-decoration:underline;">📊 Ver consumo da API (dashboard)</a><br>• <a href="https://console.groq.com/settings/limits" target="_blank" rel="noopener" style="color:var(--brand-lime);text-decoration:underline;">⚡ Limites do free tier</a>',
+    descricao: 'Necessária para o ditado por voz no relatório de visita usar Whisper Large v3. A chave começa com <code>gsk_</code> e fica salva apenas neste sistema.<br><br><strong>Atalhos úteis:</strong><br>• <a href="https://console.groq.com/keys" target="_blank" rel="noopener" style="color:var(--brand-lime);text-decoration:underline;">Criar/gerenciar chaves</a><br>• <a href="https://console.groq.com/dashboard/usage" target="_blank" rel="noopener" style="color:var(--brand-lime);text-decoration:underline;">Ver consumo da API (dashboard)</a><br>• <a href="https://console.groq.com/settings/limits" target="_blank" rel="noopener" style="color:var(--brand-lime);text-decoration:underline;">Limites do free tier</a>',
     categoria: 'voz',
     tipo: 'text',
     placeholder: 'gsk_...',
@@ -22914,7 +22923,7 @@ async function renderCardMetasProfissionais(configs) {
               }).join('')}
             </div>
             <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;gap:10px;flex-wrap:wrap;">
-              <div style="font-size:11px;color:var(--neutral-500);">💡 Quem ficar em branco usa o valor padrão (${valorGlobal}).</div>
+              <div style="font-size:11px;color:var(--neutral-500);">Quem ficar em branco usa o valor padrão (${valorGlobal}).</div>
               <button onclick="window.metasSalvarIndividual()" style="background:var(--brand-lime);color:#fff;border:0;padding:9px 18px;border-radius:8px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit;">Salvar todas</button>
             </div>
           `}
@@ -25606,6 +25615,7 @@ function renderInicio() {
 
       // Sprint 9.11: carrega KPIs extras (Semana, Ano, Hospitais, comparação mês anterior)
       carregarKpisHomeNutri().catch(err => console.warn('[Home KPIs]', err));
+      pushPintarCartao('pushInicio', { esconderAtivo: true }).catch(() => {});
 
       // Sprint 9.32.414: lembrete de revisita (cadência definida no relatório)
       carregarRevisitasNutri().catch(err => console.warn('[Revisitas]', err));
@@ -25719,6 +25729,9 @@ function renderInicio() {
           <span class="cta-checkin-badge" style="display:none;"></span>
         </a>
 
+        <!-- 9.32.472: convite para ligar os avisos no celular (some quando já está ligado) -->
+        <div id="pushInicio" style="display:none;margin:0 0 10px;"></div>
+
         <!-- Sprint 9.11: grid de 4 KPIs compactos (mês / semana / ano / hospitais) -->
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:0 0 10px;">
           <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:12px;padding:12px;">
@@ -25815,6 +25828,7 @@ function renderInicioNutriDesktop() {
 
       const kpiMes = document.getElementById('kpiMesD');
       if (kpiMes) kpiMes.textContent = String(totalMes);
+      pushPintarCartao('pushInicioD', { esconderAtivo: true }).catch(() => {});
 
       // Reusa o carregador dos KPIs extras da mobile (populam kpiSemana, kpiAno, kpiHospitais, kpiMesDiff)
       // Adaptamos IDs pra "*D" no desktop — fazemos aliasing aqui.
@@ -25907,7 +25921,7 @@ function renderInicioNutriDesktop() {
       <!-- Saudação + CTA check-in lado a lado -->
       <div style="display:grid;grid-template-columns:1fr auto;gap:24px;align-items:end;margin-bottom:22px;flex-wrap:wrap;">
         <div>
-          <div style="font-family:var(--font-display);font-size:28px;font-weight:700;color:var(--brand-navy);line-height:1.1;">${getSaudacao()}, ${primeiroNome} 👋</div>
+          <div style="font-family:var(--font-display);font-size:28px;font-weight:700;color:var(--brand-navy);line-height:1.1;">${getSaudacao()}, ${primeiroNome} </div>
           <div style="font-size:13.5px;color:var(--neutral-600);margin-top:6px;">${formatarDataPtBr(new Date())} · ${formatarHoraHM(new Date())}</div>
         </div>
         <a href="#/checkin" style="display:inline-flex;align-items:center;gap:10px;background:var(--brand-lime);color:#fff;padding:14px 24px;border-radius:9999px;text-decoration:none;font-weight:700;font-size:14px;box-shadow:0 4px 14px rgba(139,198,63,0.35);transition:transform 140ms;"
@@ -25938,6 +25952,9 @@ function renderInicioNutriDesktop() {
 
       <!-- Banner check-in esquecido (Sprint 9.32.14) -->
       <div id="nutriCheckinEsquecidoBanner" style="display:none;margin-bottom:18px;"></div>
+
+      <!-- 9.32.472: convite para ligar os avisos no celular (some quando já está ligado) -->
+      <div id="pushInicioD" style="display:none;margin-bottom:18px;"></div>
 
       <!-- Sprint 9.32.8: Banner de pendências de revisão (preenchido async) -->
       <div id="nutriPendenciasRevisaoBanner" style="display:none;margin-bottom:18px;"></div>
@@ -29779,7 +29796,7 @@ window.handleCancelarVisitaFinalizada = async function(visitaId) {
 
   const motivo = await showModalCancelarComMotivo({
     contexto: 'já preenchida',
-    aviso: '⚠️ Atenção: você está marcando como NÃO REALIZADA uma visita já preenchida. Os dados ficam preservados no histórico, mas a visita não conta como realizada. Justifique o motivo.',
+    aviso: '⚠ Atenção: você está marcando como NÃO REALIZADA uma visita já preenchida. Os dados ficam preservados no histórico, mas a visita não conta como realizada. Justifique o motivo.',
     titulo: 'Marcar visita como não realizada',
     botaoConfirmar: 'Marcar como não realizada',
     labelMotivo: 'Motivo da não-realização',
@@ -31729,7 +31746,7 @@ async function _hidratarThumbnails(anexos) {
       console.warn('[anexo thumb] falha ao gerar URL:', a.nome_original, err?.message);
       const loading = card.querySelector('.anexo-thumb__loading');
       if (loading) {
-        loading.outerHTML = '<div class="anexo-thumb__error">⚠️</div>';
+        loading.outerHTML = '<div class="anexo-thumb__error">⚠</div>';
       }
     }
   }));
@@ -32717,7 +32734,7 @@ window.rteMostrarAjudaPermissao = function() {
   } else if (ehChrome || ehEdge) {
     const navName = ehEdge ? 'Edge' : 'Chrome';
     instrucoes = `
-      <p style="margin:0 0 10px;"><strong>1.</strong> Clique no <strong>cadeado</strong> 🔒 à esquerda da URL</p>
+      <p style="margin:0 0 10px;"><strong>1.</strong> Clique no <strong>cadeado</strong> à esquerda da URL</p>
       <p style="margin:0 0 10px;"><strong>2.</strong> Clique em <strong>"Configurações do site"</strong></p>
       <p style="margin:0 0 10px;"><strong>3.</strong> Encontre <strong>"Microfone"</strong> e mude pra <strong>"Permitir"</strong></p>
       <p style="margin:0 0 10px;"><strong>4.</strong> Recarregue a página (F5)</p>
@@ -36212,7 +36229,7 @@ async function carregarIndicadoresNutri() {
       .sort((a,b) => b.count - a.count)[0];
     if (hospitalEsfriando) {
       insights.push({
-        emoji: '🔥',
+        emoji: '',
         cor: '#F59E0B',
         bg: 'linear-gradient(135deg,#FEF4E1 0%,#FFF9EB 100%)',
         borda: 'rgba(245,158,11,0.35)',
@@ -36237,7 +36254,7 @@ async function carregarIndicadoresNutri() {
       const pctMelhor = Math.round((visitasPorDiaSemana[melhorDia] / totalVisDS) * 100);
       if (pctMelhor >= 25) {
         insights.push({
-          emoji: '🎯',
+          emoji: '',
           cor: '#22A06B',
           bg: 'linear-gradient(135deg,#E6F6EF 0%,#EFF7EE 100%)',
           borda: 'rgba(34,160,107,0.35)',
@@ -36253,7 +36270,7 @@ async function carregarIndicadoresNutri() {
       const concentracao = Math.round((topHosp[0][1] / totalTH) * 100);
       if (concentracao >= 50) {
         insights.push({
-          emoji: '💡',
+          emoji: '',
           cor: '#2563EB',
           bg: 'linear-gradient(135deg,#E4ECFD 0%,#EFF3FC 100%)',
           borda: 'rgba(37,99,235,0.35)',
@@ -36266,7 +36283,7 @@ async function carregarIndicadoresNutri() {
     // Streak ativo (insight motivacional)
     if (streak >= 5) {
       insights.unshift({
-        emoji: '🚀',
+        emoji: '',
         cor: '#8BC63F',
         bg: 'linear-gradient(135deg,#F0F7E1 0%,#F7FBE8 100%)',
         borda: 'rgba(139,198,63,0.4)',
@@ -36420,7 +36437,7 @@ async function carregarIndicadoresNutri() {
 
           ${m.qtdAuto > 0 ? `
             <div style="margin-top:10px;font-size:11px;color:var(--neutral-600);line-height:1.5;background:#FFF6E5;padding:8px 10px;border-radius:7px;">
-              💡 <strong>Dica:</strong> resolva pendências assim que o modal aparecer (no login), você tem 72h pra escolher entre fazer check-in tardio, marcar como não realizada, reagendar ou cancelar.
+              <strong>Dica:</strong> resolva pendências assim que o modal aparecer (no login), você tem 72h pra escolher entre fazer check-in tardio, marcar como não realizada, reagendar ou cancelar.
             </div>
           ` : ''}
         </div>
@@ -36449,12 +36466,12 @@ async function carregarIndicadoresNutri() {
 
         <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px;position:relative;z-index:1;">
           <div style="background:rgba(255,255,255,0.09);border-radius:10px;padding:9px 8px;text-align:center;">
-            <div style="font-size:18px;line-height:1;">🔥</div>
+            <div style="font-size:18px;line-height:1;"></div>
             <div style="font-family:var(--font-display);font-weight:800;font-size:18px;margin-top:3px;">${streak}</div>
             <div style="font-size:9.5px;font-weight:600;opacity:0.78;text-transform:uppercase;letter-spacing:0.3px;margin-top:1px;">${streak === 1 ? 'dia ativo' : 'dias ativos'}</div>
           </div>
           <div style="background:rgba(255,255,255,0.09);border-radius:10px;padding:9px 8px;text-align:center;" title="${metaMensal} visitas é a meta definida pelo admin">
-            <div style="font-size:18px;line-height:1;">🎯</div>
+            <div style="font-size:18px;line-height:1;"></div>
             <div style="font-family:var(--font-display);font-weight:800;font-size:18px;margin-top:3px;">${pctMetaStr}</div>
             <div style="font-size:9.5px;font-weight:600;opacity:0.78;text-transform:uppercase;letter-spacing:0.3px;margin-top:1px;">${metaLabel}</div>
           </div>
@@ -38175,10 +38192,10 @@ window.abrirBuscaGlobal = function() {
       <div style="padding:10px 16px;border-bottom:1px solid var(--neutral-100);display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
         <span style="font-size:11px;color:var(--neutral-500);font-weight:600;text-transform:uppercase;letter-spacing:0.4px;margin-right:4px;">Filtros:</span>
         <button type="button" data-bg-tipo="todos" class="bg-chip is-active" onclick="window.bgFiltrarPorTipo('todos')">Todos</button>
-        <button type="button" data-bg-tipo="instituicoes" class="bg-chip" onclick="window.bgFiltrarPorTipo('instituicoes')">🏥 Instituições</button>
-        <button type="button" data-bg-tipo="visitas" class="bg-chip" onclick="window.bgFiltrarPorTipo('visitas')">📋 Visitas</button>
-        <button type="button" data-bg-tipo="profissionais" class="bg-chip" onclick="window.bgFiltrarPorTipo('profissionais')">🩺 Profissionais</button>
-        ${ehAdmin ? `<button type="button" data-bg-tipo="equipe" class="bg-chip" onclick="window.bgFiltrarPorTipo('equipe')">👥 Equipe</button>` : ''}
+        <button type="button" data-bg-tipo="instituicoes" class="bg-chip" onclick="window.bgFiltrarPorTipo('instituicoes')">Instituições</button>
+        <button type="button" data-bg-tipo="visitas" class="bg-chip" onclick="window.bgFiltrarPorTipo('visitas')">Visitas</button>
+        <button type="button" data-bg-tipo="profissionais" class="bg-chip" onclick="window.bgFiltrarPorTipo('profissionais')">Profissionais</button>
+        ${ehAdmin ? `<button type="button" data-bg-tipo="equipe" class="bg-chip" onclick="window.bgFiltrarPorTipo('equipe')">Equipe</button>` : ''}
       </div>
 
       <!-- Resultados -->
@@ -40191,7 +40208,7 @@ function renderReviewDetailContent(v, opts = {}) {
       <span class="material-symbols-rounded" style="color:var(--status-warning);">rate_review</span>
       <div>
         <strong>Revisão solicitada ${v.status === 'rascunho' ? '— aguardando correção do profissional.' : '.'}</strong> ${v.revisor_solicitou?.nome ? `Por ${v.revisor_solicitou.nome}` : 'Por admin'}${v.revisao_solicitada_em ? ` em ${formatarDataCurta(v.revisao_solicitada_em)}` : ''}.
-        ${v.revisao_expira_em ? `<div style="font-size:11.5px;margin-top:4px;color:#854F0B;">⏱ Prazo pra resposta: <strong>${new Date(v.revisao_expira_em).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' })}</strong> ${new Date(v.revisao_expira_em).getTime() < Date.now() ? '<span style="color:#A32D2D;font-weight:700;">· EXPIRADO</span>' : ''}</div>` : ''}
+        ${v.revisao_expira_em ? `<div style="font-size:11.5px;margin-top:4px;color:#854F0B;">Prazo pra resposta: <strong>${new Date(v.revisao_expira_em).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' })}</strong> ${new Date(v.revisao_expira_em).getTime() < Date.now() ? '<span style="color:#A32D2D;font-weight:700;">· EXPIRADO</span>' : ''}</div>` : ''}
         <div style="margin-top:6px;background:var(--neutral-0);border-radius:6px;padding:8px 10px;font-style:italic;color:var(--brand-navy);">
           "${v.revisao_motivo.replace(/"/g,'&quot;')}"
         </div>
@@ -41207,7 +41224,7 @@ function showModalPendencias72h(pendenciasIniciais) {
             <div class="lbl">Herdado do agendamento original</div>
             ${objHtml}
             ${obsHtml}
-            <div style="margin-top:6px;font-size:10.5px;color:var(--neutral-500);">📅 era <b>${dataOrig} · ${horaBr}</b></div>
+            <div style="margin-top:6px;font-size:10.5px;color:var(--neutral-500);">era <b>${dataOrig} · ${horaBr}</b></div>
           </div>
           <div class="pend72-reag__inputs">
             <div>
@@ -41244,7 +41261,7 @@ function showModalPendencias72h(pendenciasIniciais) {
               <div class="pend72-item__nome">${escapeHtml(nomeInst)}</div>
               <div class="pend72-item__data"><b>${dataBr} · ${horaBr}</b> · ${_pend72FmtAtraso(dt)}</div>
             </div>
-            <span class="pend72-item__cnt ${restanteCls}">⏰ ${restanteTxt}</span>
+            <span class="pend72-item__cnt ${restanteCls}">${restanteTxt}</span>
           </div>
           <div class="pend72-item__meta">
             ${objHtml}
@@ -41308,7 +41325,7 @@ function showModalPendencias72h(pendenciasIniciais) {
       <div class="pend72-success">
         <div class="pend72-success__big"><span class="material-symbols-rounded">check_circle</span></div>
         <div class="pend72-success__ttl">Tudo certo!</div>
-        <div class="pend72-success__sub">Você resolveu ${state.resolvidos.length} pendência${state.resolvidos.length > 1 ? 's' : ''}. Boa visita hoje 👋</div>
+        <div class="pend72-success__sub">Você resolveu ${state.resolvidos.length} pendência${state.resolvidos.length > 1 ? 's' : ''}. Boa visita hoje </div>
       </div>
       <div style="padding:0 20px 16px;">
         <div style="font-size:10.5px;font-weight:700;color:var(--neutral-500);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;">Resumo</div>
@@ -43728,7 +43745,7 @@ function showModalEdicaoInstituicao(inst) {
             <span id="meiGeocodeLabel">Buscar coordenadas pelo endereço</span>
           </button>
           <div style="background:#E4ECFD;border-radius:8px;padding:10px;font-size:11.5px;color:#1E40AF;">
-            <strong>💡 Dica:</strong> Clique no botão acima pra buscar automaticamente as coordenadas pelo endereço (OpenStreetMap). Ou, para maior precisão, abra o endereço no Google Maps, clique com o botão direito no local exato e copie as coordenadas manualmente.
+            <strong>Dica:</strong> Clique no botão acima pra buscar automaticamente as coordenadas pelo endereço (OpenStreetMap). Ou, para maior precisão, abra o endereço no Google Maps, clique com o botão direito no local exato e copie as coordenadas manualmente.
           </div>
         </div>
         <div class="modal-card__footer" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
@@ -44697,7 +44714,7 @@ function _fatRenderInner() {
             <div id="fatEvolSegInfo" style="font-size:11px;color:var(--neutral-500);margin-left:auto;"></div>
           </div>
           <div style="font-size:11.5px;color:var(--neutral-600);margin-bottom:10px;line-height:1.5;">
-            💡 Ao aplicar filtros (vendedor, marca, estado) na barra superior, o gráfico abaixo recompõe a evolução temporal do segmento selecionado, ou compara <strong>Top 5 vendedores ao longo do tempo</strong> quando sem filtro.
+            Ao aplicar filtros (vendedor, marca, estado) na barra superior, o gráfico abaixo recompõe a evolução temporal do segmento selecionado, ou compara <strong>Top 5 vendedores ao longo do tempo</strong> quando sem filtro.
           </div>
           <div style="position:relative;height:300px;"><canvas id="fatChartEvolSeg"></canvas></div>
         </div>
@@ -45578,7 +45595,7 @@ function _roiRenderEquipe() {
         const pct = maxFat > 0 ? (r.faturamento / maxFat) * 100 : 0;
         const fotoUrl = r.foto_url || '';
         const iniciais_ = (r.nome || 'N').split(' ').slice(0,2).map(p => p[0]).join('').toUpperCase();
-        const medalha = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '';
+        const medalha = i === 0 ? '1º' : i === 1 ? '2º' : i === 2 ? '3º' : '';
         const corUlt = corDataRelativa(r.ultimaVisita);
         return `
           <div style="display:grid;grid-template-columns:40px 1fr 70px 85px 95px 85px 100px 110px 120px;gap:10px;padding:12px 14px;align-items:center;border-bottom:1px solid var(--neutral-100);position:relative;">
@@ -46587,7 +46604,7 @@ window._fatAbrirVendedor = function(nome) {
   const isMarketplace = ['Mercado Livre','Amazon','Magazine Luiza','Shopee','Tray','Nuvem Shop','Enviado via API'].includes(nome);
   const isPDV = nome.startsWith('Devi PDV');
   const isND = nome === 'N/D';
-  const tipo = isMarketplace ? '🛒 Marketplace' : isPDV ? '🏪 PDV interno' : isND ? '📋 Sem vendedor identificado' : '👤 Vendedor';
+  const tipo = isMarketplace ? 'Marketplace' : isPDV ? 'PDV interno' : isND ? 'Sem vendedor identificado' : 'Vendedor';
 
   // Sprint 9.32.82: badge mostrando contexto filtrado (cliente)
   const contextoBadge = filtroAtivo
@@ -46626,7 +46643,7 @@ window._fatAbrirVendedor = function(nome) {
 
       ${isND ? `
         <div style="margin:0 22px 18px;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.3);border-radius:10px;padding:12px 14px;">
-          <div style="font-size:12px;color:var(--brand-navy);font-weight:700;margin-bottom:3px;">⚠️ Sobre "N/D"</div>
+          <div style="font-size:12px;color:var(--brand-navy);font-weight:700;margin-bottom:3px;">⚠ Sobre "N/D"</div>
           <div style="font-size:11.5px;color:var(--neutral-600);line-height:1.5;">Vendedor não identificado no sistema de origem. Pode incluir representantes externos, grandes contas e licitações. <strong>Mapear esses pra ranking de comissão correto é fundamental.</strong></div>
         </div>
       ` : ''}
@@ -46838,7 +46855,7 @@ window._fatAbrirCliente = function(nomeFantasia) {
       <!-- Header -->
       <div style="padding:18px 22px;border-bottom:1px solid var(--neutral-200);display:flex;align-items:flex-start;justify-content:space-between;gap:12px;">
         <div style="flex:1;min-width:0;">
-          <div style="font-size:11px;color:var(--neutral-500);font-weight:700;letter-spacing:0.06em;text-transform:uppercase;">🏥 Cliente · #${posicao} no ranking</div>
+          <div style="font-size:11px;color:var(--neutral-500);font-weight:700;letter-spacing:0.06em;text-transform:uppercase;">Cliente · #${posicao} no ranking</div>
           <div style="font-family:var(--font-display);font-size:18px;font-weight:700;color:var(--brand-navy);margin-top:2px;line-height:1.25;">${nomeFantasia.replace(/</g,'&lt;')}</div>
           <div style="font-size:11.5px;color:var(--neutral-500);margin-top:3px;">${cidade}/${estado} · CNPJ ${cnpj}</div>
         </div>
@@ -46880,7 +46897,7 @@ window._fatAbrirCliente = function(nomeFantasia) {
       <!-- Info de relacionamento -->
       <div style="padding:14px 22px;background:linear-gradient(135deg,rgba(139,198,63,0.06),rgba(10,31,92,0.04));">
         <div style="font-size:11.5px;color:var(--neutral-600);line-height:1.5;">
-          💡 <strong style="color:var(--brand-navy);">Possível conexão futura:</strong> esse cliente pode ser cruzado com instituições visitadas pelos nutris no app, pra entender ROI das visitas em vendas.
+          <strong style="color:var(--brand-navy);">Possível conexão futura:</strong> esse cliente pode ser cruzado com instituições visitadas pelos nutris no app, pra entender ROI das visitas em vendas.
         </div>
       </div>
 
@@ -47004,7 +47021,7 @@ window._fatAbrirMarca = function(nomeMarca) {
       <!-- Header -->
       <div style="padding:18px 22px;border-bottom:1px solid var(--neutral-200);display:flex;align-items:center;justify-content:space-between;gap:12px;">
         <div style="flex:1;min-width:0;">
-          <div style="font-size:11px;color:var(--neutral-500);font-weight:700;letter-spacing:0.06em;text-transform:uppercase;">🏷️ Marca · #${posicao} no ranking${filtroAtivo ? ' (no recorte)' : ''}</div>
+          <div style="font-size:11px;color:var(--neutral-500);font-weight:700;letter-spacing:0.06em;text-transform:uppercase;">Marca · #${posicao} no ranking${filtroAtivo ? ' (no recorte)' : ''}</div>
           <div style="font-family:var(--font-display);font-size:20px;font-weight:700;color:var(--brand-navy);margin-top:2px;line-height:1.2;">${nomeMarca.replace(/</g,'&lt;')}</div>
         </div>
         <button onclick="document.getElementById('fatMarcaModal').remove();" style="background:transparent;border:0;color:var(--neutral-500);cursor:pointer;font-size:24px;line-height:0;padding:8px;border-radius:50%;" title="Fechar">×</button>
@@ -51714,7 +51731,7 @@ function _fatRender() {
   if (tvEl) {
     tvEl.innerHTML = vendArr.map((v, i) => {
       const pct = (v.faturamento / maxVend) * 100;
-      const podio = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `<span style="color:var(--neutral-400);font-size:11.5px;width:18px;display:inline-block;text-align:center;">${i+1}</span>`;
+      const podio = i === 0 ? '1º' : i === 1 ? '2º' : i === 2 ? '3º' : `<span style="color:var(--neutral-400);font-size:11.5px;width:18px;display:inline-block;text-align:center;">${i+1}</span>`;
       const nomeEsc = v.nome.replace(/'/g, "\\'").replace(/</g,'&lt;');
       return `
         <div class="fat-row" onclick="_fatAbrirVendedor('${nomeEsc}')" style="cursor:pointer;border-radius:8px;padding:6px;transition:background 140ms;" onmouseover="this.style.background='var(--neutral-100)'" onmouseout="this.style.background='transparent'">
@@ -52019,9 +52036,9 @@ function _fatRender() {
 
     const totalP = dadosP.reduce((s, p) => s + p.faturamento, 0);
     const meta = {
-      'PJ': { label: 'Pessoa jurídica (CNPJ)', icon: '🏢', cor: '#0A1F5C', bg: 'rgba(10,31,92,0.05)', desc: 'Hospitais, clínicas e empresas' },
-      'PF': { label: 'Pessoa física (CPF)', icon: '👤', cor: '#8BC63F', bg: 'rgba(139,198,63,0.08)', desc: 'Varejo direto ao consumidor' },
-      'N/D': { label: 'Não identificado', icon: '❓', cor: '#94A3B8', bg: 'rgba(148,163,184,0.08)', desc: 'Documento inválido ou vazio' },
+      'PJ': { label: 'Pessoa jurídica (CNPJ)', icon: '', cor: '#0A1F5C', bg: 'rgba(10,31,92,0.05)', desc: 'Hospitais, clínicas e empresas' },
+      'PF': { label: 'Pessoa física (CPF)', icon: '', cor: '#8BC63F', bg: 'rgba(139,198,63,0.08)', desc: 'Varejo direto ao consumidor' },
+      'N/D': { label: 'Não identificado', icon: '', cor: '#94A3B8', bg: 'rgba(148,163,184,0.08)', desc: 'Documento inválido ou vazio' },
     };
 
     pessoaEl.innerHTML = dadosP.map(p => {
@@ -52373,18 +52390,18 @@ const ITENS_PAD_CATEGORIAS = [
 ];
 
 const ITENS_PAD_STATUS = {
-  padronizado:    { label: 'Padronizado',    cor: 'var(--neutral-500)',     bg: 'var(--neutral-100)',                emoji: '📋' },
-  em_negociacao:  { label: 'Em negociação',  cor: 'var(--status-info)',     bg: 'var(--status-info-bg,#E4ECFD)',      emoji: '🤝' },
-  convertido:     { label: 'Convertido',     cor: 'var(--status-success)',  bg: 'var(--status-success-bg,#E6F6EF)',  emoji: '🏆' },
+  padronizado:    { label: 'Padronizado',    cor: 'var(--neutral-500)',     bg: 'var(--neutral-100)',                emoji: '' },
+  em_negociacao:  { label: 'Em negociação',  cor: 'var(--status-info)',     bg: 'var(--status-info-bg,#E4ECFD)',      emoji: '' },
+  convertido:     { label: 'Convertido',     cor: 'var(--status-success)',  bg: 'var(--status-success-bg,#E6F6EF)',  emoji: '' },
   perdido:        { label: 'Perdido',        cor: 'var(--status-danger)',   bg: 'var(--status-danger-bg,#FCE8E8)',    emoji: '✗' },
 };
 
 // Medalhas baseadas em qtd de conversões (acumulado lifetime)
 const ITENS_PAD_MEDALHAS = [
-  { min: 25, label: 'Lenda',     icon: '🏆', cor: '#D4AF37' },
-  { min: 10, label: 'Mestre',    icon: '🥇', cor: '#FFD700' },
-  { min: 5,  label: 'Avançado',  icon: '🥈', cor: '#C0C0C0' },
-  { min: 1,  label: 'Iniciante', icon: '🥉', cor: '#CD7F32' },
+  { min: 25, label: 'Lenda',     icon: '', cor: '#D4AF37' },
+  { min: 10, label: 'Mestre',    icon: '1º', cor: '#FFD700' },
+  { min: 5,  label: 'Avançado',  icon: '2º', cor: '#C0C0C0' },
+  { min: 1,  label: 'Iniciante', icon: '3º', cor: '#CD7F32' },
 ];
 
 function getMedalhaPorConversoes(qtd) {
@@ -52666,12 +52683,12 @@ async function showModalItemPadronizado({ modo = 'cadastro', itemExistente = nul
                 `;
               }).join('')}
             </div>
-            ${ehEdicao && valStatus !== 'padronizado' ? `<div style="font-size:11px;color:var(--neutral-500);margin-top:6px;line-height:1.4;">💡 Voltar pra <strong>Padronizado</strong> mantém o histórico do item, você pode renegociar depois.</div>` : ''}
+            ${ehEdicao && valStatus !== 'padronizado' ? `<div style="font-size:11px;color:var(--neutral-500);margin-top:6px;line-height:1.4;">Voltar pra <strong>Padronizado</strong> mantém o histórico do item, você pode renegociar depois.</div>` : ''}
           </div>
 
           <div id="mipSecaoNhsc" style="display:${mostrarSecaoNhsc ? 'flex' : 'none'};background:#FFF8EE;border:1.5px solid #F59E0B;border-radius:10px;padding:12px;flex-direction:column;gap:10px;">
             <div style="font-family:var(--font-display);font-weight:700;color:#92400E;font-size:13px;display:flex;align-items:center;gap:6px;">
-              🎯 Produto NHSC oferecido
+              Produto NHSC oferecido
             </div>
             <div style="font-size:11.5px;color:#92400E;line-height:1.4;margin-top:-4px;">
               Qual produto da nossa linha você está oferecendo no lugar do item original? Pode trocar a qualquer momento.
@@ -53015,21 +53032,21 @@ async function showModalConversao(itemPadronizado, modo = 'converter') {
 
     // Configuração por modo
     const cfg = modo === 'negociar' ? {
-      icone: '🤝',
+      icone: '',
       titulo: 'Negociar item',
       descricao: 'Qual produto da nossa linha você vai oferecer no lugar deste? Pesquise o catálogo ou cadastre um novo.',
       labelCampo: 'Produto que você vai oferecer',
-      btnLabel: '🤝 Iniciar negociação',
+      btnLabel: 'Iniciar negociação',
       btnCor: 'var(--status-info)',
       cardCor: '#E4ECFD',
       cardBorda: 'var(--status-info)',
       cardLabel: 'Vou oferecer',
     } : {
-      icone: '🏆',
+      icone: '',
       titulo: 'Converter item',
       descricao: 'Este item virou qual produto da nossa linha? Procure o produto ou cadastre um novo.',
       labelCampo: 'Produto que entrou no lugar',
-      btnLabel: '🏆 Confirmar conversão',
+      btnLabel: 'Confirmar conversão',
       btnCor: 'var(--status-success)',
       cardCor: '#E6F6EF',
       cardBorda: 'var(--status-success)',
@@ -53131,7 +53148,7 @@ async function showModalConversao(itemPadronizado, modo = 'converter') {
         // Sempre adiciona opção de cadastrar novo no fim
         html += `
           <div class="mcv-sug-novo" style="padding:10px 12px;cursor:pointer;background:#FEF3C7;border-top:2px solid #F59E0B;font-size:13px;color:#92400E;font-weight:600;">
-            ➕ Cadastrar "<span style="font-style:italic;">${termo.replace(/</g,'&lt;')}</span>" como novo produto
+            Cadastrar "<span style="font-style:italic;">${termo.replace(/</g,'&lt;')}</span>" como novo produto
           </div>
         `;
 
@@ -53314,7 +53331,7 @@ window.handleMudarStatusItem = async function(id, novoStatus) {
       dadosDepois: depois,
     });
     if (novoStatus === 'convertido' && dadosConversao) {
-      setFlash('success', `🎉 Convertido para "${dadosConversao.descricao}"!`);
+      setFlash('success', `Convertido para "${dadosConversao.descricao}"!`);
     } else {
       setFlash('success', `Status: ${ITENS_PAD_STATUS[novoStatus].label}`);
     }
@@ -53426,11 +53443,11 @@ window.handleAssumirConversao = async function(id) {
 
     // Toast contextual
     if (ehTrocaDeAlvo && antes.convertido_em_descricao) {
-      setFlash('success', `Realocado de "${antes.convertido_em_descricao}" para "${dadosNeg.descricao}". 🔄`);
+      setFlash('success', `Realocado de "${antes.convertido_em_descricao}" para "${dadosNeg.descricao}". `);
     } else if (antes.profissional_conversao_id && antes.profissional_conversao_id !== user.id) {
-      setFlash('success', `Você assumiu a negociação. Oferecendo "${dadosNeg.descricao}". 🤝`);
+      setFlash('success', `Você assumiu a negociação. Oferecendo "${dadosNeg.descricao}". `);
     } else {
-      setFlash('success', `Em negociação por você. Oferecendo "${dadosNeg.descricao}". 🤝`);
+      setFlash('success', `Em negociação por você. Oferecendo "${dadosNeg.descricao}". `);
     }
 
     if (typeof window._reloadItensPadronizados === 'function') window._reloadItensPadronizados();
@@ -53544,13 +53561,13 @@ async function showModalHistoricoItem(itemId) {
 
   // Mapeia ações pra labels visuais
   const acoesConfig = {
-    cadastrou:           { icon: '📌', label: 'Item cadastrado',    cor: 'var(--neutral-500)' },
-    mudou_status:        { icon: '🔄', label: 'Mudou status',       cor: 'var(--status-info)' },
+    cadastrou:           { icon: '', label: 'Item cadastrado',    cor: 'var(--neutral-500)' },
+    mudou_status:        { icon: '', label: 'Mudou status',       cor: 'var(--status-info)' },
     realocou_alvo:       { icon: '↔', label: 'Trocou produto-alvo', cor: 'var(--status-info)' },
-    assumiu_conversao:   { icon: '🤝', label: 'Assumiu negociação', cor: 'var(--status-info)' },
+    assumiu_conversao:   { icon: '', label: 'Assumiu negociação', cor: 'var(--status-info)' },
     cancelou_negociacao: { icon: '✕', label: 'Cancelou negociação', cor: 'var(--status-danger)' },
-    editou:              { icon: '✏️', label: 'Editou item',         cor: 'var(--neutral-500)' },
-    excluiu:             { icon: '🗑', label: 'Excluiu',             cor: 'var(--status-danger)' },
+    editou:              { icon: '', label: 'Editou item',         cor: 'var(--neutral-500)' },
+    excluiu:             { icon: '', label: 'Excluiu',             cor: 'var(--status-danger)' },
   };
 
   const fmtDt = (iso) => {
@@ -53562,7 +53579,7 @@ async function showModalHistoricoItem(itemId) {
   // Renderiza cada entrada do timeline com detalhes contextuais
   const timelineHtml = logs.length === 0 ? `
     <div style="text-align:center;padding:30px 14px;color:var(--neutral-500);font-size:13px;">
-      <div style="font-size:32px;margin-bottom:8px;opacity:0.5;">📭</div>
+      <div style="font-size:32px;margin-bottom:8px;opacity:0.5;"></div>
       Nenhuma ação registrada ainda
     </div>
   ` : logs.map((l, idx) => {
@@ -53578,7 +53595,7 @@ async function showModalHistoricoItem(itemId) {
       const lblDepois = ITENS_PAD_STATUS[sDepois]?.label || sDepois;
       detalhe = `<span style="color:var(--neutral-600);">${lblAntes}</span> → <strong style="color:${cfg.cor};">${lblDepois}</strong>`;
       if (sDepois === 'convertido' && l.dados_depois.convertido_em_descricao) {
-        detalhe += `<div style="margin-top:4px;font-size:11.5px;color:var(--status-success);">🎯 Pra: <strong>${l.dados_depois.convertido_em_descricao.replace(/</g,'&lt;')}</strong></div>`;
+        detalhe += `<div style="margin-top:4px;font-size:11.5px;color:var(--status-success);">Pra: <strong>${l.dados_depois.convertido_em_descricao.replace(/</g,'&lt;')}</strong></div>`;
       }
     } else if (l.acao === 'realocou_alvo' && l.dados_antes && l.dados_depois) {
       const de = l.dados_antes.convertido_em_descricao || '—';
@@ -53590,7 +53607,7 @@ async function showModalHistoricoItem(itemId) {
     } else if (l.acao === 'cancelou_negociacao' && l.dados_depois) {
       const motivo = l.dados_depois.motivo_cancelamento;
       if (motivo) {
-        detalhe = `<div style="background:#FEE2E2;color:#991B1B;border-radius:6px;padding:6px 10px;margin-top:4px;font-size:11.5px;font-style:italic;">💬 "${motivo.replace(/</g,'&lt;').replace(/"/g,'&quot;')}"</div>`;
+        detalhe = `<div style="background:#FEE2E2;color:#991B1B;border-radius:6px;padding:6px 10px;margin-top:4px;font-size:11.5px;font-style:italic;">"${motivo.replace(/</g,'&lt;').replace(/"/g,'&quot;')}"</div>`;
       }
     } else if (l.acao === 'cadastrou' && l.dados_depois) {
       detalhe = `<span style="color:var(--neutral-600);">Item criado: <strong>${(l.dados_depois.descricao_produto || '').replace(/</g,'&lt;')}</strong></span>`;
@@ -53629,7 +53646,7 @@ async function showModalHistoricoItem(itemId) {
       <!-- Header -->
       <div style="padding:20px 24px 14px;border-bottom:1px solid var(--neutral-100);">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
-          <span style="font-size:24px;">📜</span>
+          <span style="font-size:24px;"></span>
           <h2 style="margin:0;font-family:var(--font-display);font-size:18px;color:var(--brand-navy);font-weight:700;flex:1;">Histórico do item</h2>
           <button id="mhiClose" type="button" style="background:transparent;border:0;cursor:pointer;color:var(--neutral-500);font-size:22px;line-height:1;padding:2px 6px;">×</button>
         </div>
@@ -53761,7 +53778,7 @@ function renderItensRankingInsights() {
       <!-- Header com título -->
       <div style="margin-bottom:18px;">
         <h1 style="font-family:var(--font-display);font-size:24px;font-weight:700;color:var(--brand-navy);margin:0;line-height:1.15;display:flex;align-items:center;gap:10px;">
-          <span style="font-size:28px;">🏆</span>
+          <span style="font-size:28px;"></span>
           Ranking & Insights
         </h1>
         <div style="font-size:13px;color:var(--neutral-600);margin-top:6px;line-height:1.4;max-width:640px;">Quem mais converteu, hospitais com mais ações, produtos mais oferecidos.</div>
@@ -53874,17 +53891,17 @@ function _renderRankingConteudo(itens) {
         <div style="font-size:11px;color:var(--neutral-500);margin-top:2px;">itens em todos status</div>
       </div>
       <div style="background:linear-gradient(135deg,#FBBF24 0%,#F59E0B 100%);border:0;border-radius:12px;padding:14px;color:#fff;">
-        <div style="font-size:10.5px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;opacity:0.9;">🏆 Convertidos</div>
+        <div style="font-size:10.5px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;opacity:0.9;">Convertidos</div>
         <div style="font-family:var(--font-display);font-size:26px;font-weight:700;line-height:1.1;margin-top:4px;">${convertidos}</div>
         <div style="font-size:11px;opacity:0.9;margin-top:2px;">${taxaConv}% de taxa</div>
       </div>
       <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:12px;padding:14px;">
-        <div style="font-size:10.5px;color:var(--neutral-500);font-weight:700;letter-spacing:0.04em;text-transform:uppercase;">🤝 Em negociação</div>
+        <div style="font-size:10.5px;color:var(--neutral-500);font-weight:700;letter-spacing:0.04em;text-transform:uppercase;">Em negociação</div>
         <div style="font-family:var(--font-display);font-size:26px;font-weight:700;color:var(--status-info);line-height:1.1;margin-top:4px;">${emNeg}</div>
         <div style="font-size:11px;color:var(--neutral-500);margin-top:2px;">ativas agora</div>
       </div>
       <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:12px;padding:14px;">
-        <div style="font-size:10.5px;color:var(--neutral-500);font-weight:700;letter-spacing:0.04em;text-transform:uppercase;">📋 Padronizados</div>
+        <div style="font-size:10.5px;color:var(--neutral-500);font-weight:700;letter-spacing:0.04em;text-transform:uppercase;">Padronizados</div>
         <div style="font-family:var(--font-display);font-size:26px;font-weight:700;color:var(--neutral-700);line-height:1.1;margin-top:4px;">${padronizados}</div>
         <div style="font-size:11px;color:var(--neutral-500);margin-top:2px;">aguardando ação</div>
       </div>
@@ -53894,13 +53911,13 @@ function _renderRankingConteudo(itens) {
       <!-- Ranking de profissionais -->
       <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:12px;padding:16px;">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
-          <span style="font-size:20px;">🥇</span>
+          <span style="font-size:20px;">1º</span>
           <h3 style="margin:0;font-family:var(--font-display);font-size:15px;font-weight:700;color:var(--brand-navy);">Top conversores da equipe</h3>
         </div>
         ${rankingUsuarios.length === 0 ? `
           <div style="text-align:center;padding:24px;color:var(--neutral-500);font-size:13px;">Nenhuma conversão registrada ainda</div>
         ` : rankingUsuarios.map((u, i) => {
-          const medalhas = ['🥇', '🥈', '🥉'];
+          const medalhas = ['1º', '2º', '3º'];
           const medalha = medalhas[i] || `${i+1}º`;
           return `
             <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--neutral-100);">
@@ -53915,7 +53932,7 @@ function _renderRankingConteudo(itens) {
       <!-- Top hospitais -->
       <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:12px;padding:16px;">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
-          <span style="font-size:20px;">🏥</span>
+          <span style="font-size:20px;"></span>
           <h3 style="margin:0;font-family:var(--font-display);font-size:15px;font-weight:700;color:var(--brand-navy);">Hospitais com mais conversões</h3>
         </div>
         ${rankingHospitais.length === 0 ? `
@@ -53935,7 +53952,7 @@ function _renderRankingConteudo(itens) {
       <!-- Produtos NHSC mais oferecidos / convertidos -->
       <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:12px;padding:16px;">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
-          <span style="font-size:20px;">📦</span>
+          <span style="font-size:20px;"></span>
           <h3 style="margin:0;font-family:var(--font-display);font-size:15px;font-weight:700;color:var(--brand-navy);">Nossos produtos no jogo</h3>
         </div>
         ${topProdutos.length === 0 ? `
@@ -53947,8 +53964,8 @@ function _renderRankingConteudo(itens) {
               ${p.marca ? `<div style="font-size:11px;color:var(--neutral-500);">${p.marca.replace(/</g,'&lt;')}</div>` : ''}
             </div>
             <div style="display:flex;gap:4px;flex-shrink:0;">
-              ${p.oferecendo > 0 ? `<span title="Em negociação" style="background:#E4ECFD;color:var(--status-info);padding:2px 8px;border-radius:9999px;font-size:11px;font-weight:700;">🤝 ${p.oferecendo}</span>` : ''}
-              ${p.convertidos > 0 ? `<span title="Convertidos" style="background:#E6F6EF;color:var(--status-success);padding:2px 8px;border-radius:9999px;font-size:11px;font-weight:700;">🏆 ${p.convertidos}</span>` : ''}
+              ${p.oferecendo > 0 ? `<span title="Em negociação" style="background:#E4ECFD;color:var(--status-info);padding:2px 8px;border-radius:9999px;font-size:11px;font-weight:700;">${p.oferecendo}</span>` : ''}
+              ${p.convertidos > 0 ? `<span title="Convertidos" style="background:#E6F6EF;color:var(--status-success);padding:2px 8px;border-radius:9999px;font-size:11px;font-weight:700;">${p.convertidos}</span>` : ''}
             </div>
           </div>
         `).join('')}
@@ -53957,7 +53974,7 @@ function _renderRankingConteudo(itens) {
       <!-- Top concorrentes (marcas) -->
       <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:12px;padding:16px;">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
-          <span style="font-size:20px;">⚔️</span>
+          <span style="font-size:20px;"></span>
           <h3 style="margin:0;font-family:var(--font-display);font-size:15px;font-weight:700;color:var(--brand-navy);">Concorrentes mais presentes</h3>
         </div>
         ${topConcorrentes.length === 0 ? `
@@ -54018,7 +54035,7 @@ function renderItensPadronizados(opts = {}) {
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;flex-shrink:0;">
           <button onclick="window.location.hash='#/itens-padronizados/ranking'" style="background:linear-gradient(135deg,#FBBF24 0%,#F59E0B 100%);color:#fff;border:0;padding:10px 18px;border-radius:9999px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-family:inherit;box-shadow:0 4px 12px rgba(245,158,11,0.25);" title="Ver ranking, KPIs e insights">
-            <span style="font-size:16px;">🏆</span>
+            <span style="font-size:16px;"></span>
             Ranking & Insights
           </button>
           <button onclick="handleNovoItemPadronizado()" style="background:var(--brand-lime);color:#fff;border:0;padding:10px 18px;border-radius:9999px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-family:inherit;">
@@ -54038,7 +54055,7 @@ function renderItensPadronizados(opts = {}) {
         <div>
           <!-- Filtros -->
           <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:12px;padding:12px;margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-            <input type="text" id="ipBusca" placeholder="🔍 Buscar produto, marca, instituição..." value="${window._ipFiltro.busca.replace(/"/g,'&quot;')}" style="flex:1;min-width:200px;padding:8px 12px;border:1.5px solid var(--neutral-200);border-radius:8px;font-size:13px;font-family:inherit;" />
+            <input type="text" id="ipBusca" placeholder="Buscar produto, marca, instituição..." value="${window._ipFiltro.busca.replace(/"/g,'&quot;')}" style="flex:1;min-width:200px;padding:8px 12px;border:1.5px solid var(--neutral-200);border-radius:8px;font-size:13px;font-family:inherit;" />
             <select id="ipFCat" style="padding:8px 12px;border:1.5px solid var(--neutral-200);border-radius:8px;font-size:12.5px;font-family:inherit;background:var(--neutral-0);">
               <option value="todas">Todas categorias</option>
               ${(() => {
@@ -54056,15 +54073,15 @@ function renderItensPadronizados(opts = {}) {
           <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;font-size:12px;">
             <button type="button" id="ipTogglePad" onclick="window.toggleEsconderStatusIp('padronizado')" class="ip-toggle${window._ipFiltro.esconderPadronizado ? ' is-off' : ''}" title="Mostrar/esconder padronizados">
               <span class="ip-toggle__dot"></span>
-              📋 Padronizados
+              Padronizados
             </button>
             <button type="button" id="ipToggleNeg" onclick="window.toggleEsconderStatusIp('em_negociacao')" class="ip-toggle${window._ipFiltro.esconderEmNeg ? ' is-off' : ''}" title="Mostrar/esconder em negociação">
               <span class="ip-toggle__dot"></span>
-              🤝 Em negociação
+              Em negociação
             </button>
             <button type="button" id="ipToggleConv" onclick="window.toggleEsconderStatusIp('convertido')" class="ip-toggle${window._ipFiltro.esconderConvertido ? ' is-off' : ''}" title="Mostrar/esconder convertidos">
               <span class="ip-toggle__dot"></span>
-              🏆 Convertidos
+              Convertidos
             </button>
           </div>
           <div id="ipLista" style="display:flex;flex-direction:column;gap:10px;">
@@ -54295,7 +54312,7 @@ function renderItensPadronizadosSwimlane() {
           </button>
           ` : ''}
           <button onclick="window.location.hash='#/itens-padronizados/ranking'" style="background:linear-gradient(135deg,#FBBF24 0%,#F59E0B 100%);color:#fff;border:0;padding:10px 18px;border-radius:9999px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-family:inherit;box-shadow:0 4px 12px rgba(245,158,11,0.25);">
-            <span style="font-size:16px;">🏆</span>
+            <span style="font-size:16px;"></span>
             Ranking & Insights
           </button>
           <button onclick="handleNovoItemPadronizado()" style="background:var(--brand-lime);color:#fff;border:0;padding:10px 18px;border-radius:9999px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-family:inherit;">
@@ -54310,7 +54327,7 @@ function renderItensPadronizadosSwimlane() {
 
       <!-- Filtros -->
       <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:12px;padding:10px 12px;margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-        <input type="text" id="ipBusca" placeholder="🔍 Buscar produto, marca, hospital..." value="${(window._ipFiltro.busca || '').replace(/"/g,'&quot;')}" style="flex:1;min-width:200px;padding:8px 12px;border:1.5px solid var(--neutral-200);border-radius:8px;font-size:13px;font-family:inherit;" />
+        <input type="text" id="ipBusca" placeholder="Buscar produto, marca, hospital..." value="${(window._ipFiltro.busca || '').replace(/"/g,'&quot;')}" style="flex:1;min-width:200px;padding:8px 12px;border:1.5px solid var(--neutral-200);border-radius:8px;font-size:13px;font-family:inherit;" />
         <select id="ipFCat" style="padding:8px 12px;border:1.5px solid var(--neutral-200);border-radius:8px;font-size:12.5px;font-family:inherit;background:var(--neutral-0);">
           <option value="todas">Todas categorias</option>
           ${(() => {
@@ -54343,7 +54360,7 @@ function renderItensPadronizadosSwimlane() {
             </div>
             <div id="ipVisaoRapida" style="font-size:12px;color:var(--neutral-600);"></div>
             <button onclick="window.toggleSoOportunidadesIp()" id="ipBtnOport" style="margin-top:10px;width:100%;background:linear-gradient(135deg,#FBBF24 0%,#F59E0B 100%);color:#fff;border:0;padding:8px 12px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px;">
-              <span style="font-size:14px;">🎯</span>
+              <span style="font-size:14px;"></span>
               <span id="ipBtnOportTxt">Ver oportunidades</span>
             </button>
           </div>
@@ -54351,7 +54368,7 @@ function renderItensPadronizadosSwimlane() {
           <!-- Sprint 9.32.96: Insights inteligentes (igual mobile, mas agregado pra todos os hospitais) -->
           <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:12px;padding:12px 14px;">
             <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;">
-              <span style="font-size:16px;">💡</span>
+              <span style="font-size:16px;"></span>
               <div style="font-family:var(--font-display);font-size:13px;font-weight:700;color:var(--brand-navy);">Insights da equipe</div>
             </div>
             <div id="ipInsights" style="font-size:11.5px;"></div>
@@ -54577,8 +54594,8 @@ function _ipSwimRender() {
     contentEl.innerHTML = `
       <div style="background:var(--neutral-0);border:1px dashed var(--neutral-200);border-radius:12px;padding:40px;text-align:center;color:var(--neutral-500);font-size:13px;">
         ${filtro.soOportunidades
-          ? '🎉 Todos os hospitais visíveis já têm conversões!<br><span style="font-size:11.5px;">Clique em "Ver oportunidades" pra desativar o filtro.</span>'
-          : (itens.length === 0 ? 'Nenhum item cadastrado ainda. Clique em "Novo item" pra começar! 🎯' : 'Nenhum item bate com os filtros aplicados.')}
+          ? 'Todos os hospitais visíveis já têm conversões!<br><span style="font-size:11.5px;">Clique em "Ver oportunidades" pra desativar o filtro.</span>'
+          : (itens.length === 0 ? 'Nenhum item cadastrado ainda. Clique em "Novo item" pra começar! ' : 'Nenhum item bate com os filtros aplicados.')}
       </div>
     `;
     return;
@@ -54590,9 +54607,9 @@ function _ipSwimRender() {
   contentEl.innerHTML = `
     <div class="ip-swim-head">
       <span></span>
-      <span>📋 Padronizados</span>
-      <span style="color:#F59E0B;">🤝 Em negociação</span>
-      <span style="color:var(--status-success);">🏆 Convertidos · 7d</span>
+      <span>Padronizados</span>
+      <span style="color:#F59E0B;">Em negociação</span>
+      <span style="color:var(--status-success);">Convertidos · 7d</span>
     </div>
     ${instOrdenadas.map(([instId, g]) => {
       const totalItens = g.padronizado.length + g.em_negociacao.length + g.convertido.length;
@@ -54606,14 +54623,14 @@ function _ipSwimRender() {
         ? `<button class="ip-swim-add ip-swim-add--neg" onclick="_ipSwimAbrirSeletor('${instId}','padronizado')" title="Escolher um padronizado pra começar a negociar">↪ Iniciar negociação</button>`
         : `<button class="ip-swim-add ip-swim-add--disabled" disabled title="Cadastre um padronizado primeiro">↪ Cadastre um padronizado</button>`;
       const btnConv = podeMarcar
-        ? `<button class="ip-swim-add ip-swim-add--conv" onclick="_ipSwimAbrirSeletor('${instId}','em_negociacao')" title="Escolher um item em negociação pra marcar como convertido">🏆 Marcar conversão</button>`
-        : `<button class="ip-swim-add ip-swim-add--disabled" disabled title="Inicie uma negociação primeiro">🏆 Inicie uma negociação</button>`;
+        ? `<button class="ip-swim-add ip-swim-add--conv" onclick="_ipSwimAbrirSeletor('${instId}','em_negociacao')" title="Escolher um item em negociação pra marcar como convertido">Marcar conversão</button>`
+        : `<button class="ip-swim-add ip-swim-add--disabled" disabled title="Inicie uma negociação primeiro">Inicie uma negociação</button>`;
 
       return `
       <div class="ip-swim-row" data-inst-id="${instId}">
         <div class="ip-swim-hosp">
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
-            <span style="font-size:18px;">🏥</span>
+            <span style="font-size:18px;"></span>
             <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:13.5px;line-height:1.2;">${g.nome.replace(/</g,'&lt;')}</div>
           </div>
           <div style="font-size:11px;color:var(--neutral-500);margin-top:2px;">
@@ -54651,7 +54668,7 @@ function _ipSwimRender() {
       rankEl.innerHTML = ranking.slice(0, 6).map((r, idx) => {
         const med = getMedalhaPorConversoes(r.conversoes);
         const inits = (r.user.nome || '?').split(' ').filter(Boolean).slice(0,2).map(s => s[0].toUpperCase()).join('');
-        const podio = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `<span style="color:var(--neutral-400);font-size:11px;width:16px;display:inline-block;text-align:center;">${idx+1}</span>`;
+        const podio = idx === 0 ? '1º' : idx === 1 ? '2º' : idx === 2 ? '3º' : `<span style="color:var(--neutral-400);font-size:11px;width:16px;display:inline-block;text-align:center;">${idx+1}</span>`;
         return `
           <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--neutral-100);">
             <span style="width:16px;text-align:center;font-size:13px;">${podio}</span>
@@ -54721,7 +54738,7 @@ function _ipSwimRenderInsights(grupos) {
   aquecendo.sort((a, b) => b.count - a.count);
 
   if (oportunidades.length === 0 && esfriando.length === 0 && aquecendo.length === 0 && semCatalogo.length === 0) {
-    el.innerHTML = '<div style="color:var(--neutral-400);font-size:11.5px;text-align:center;padding:10px 0;font-style:italic;">Tudo nos eixos por aqui 🎉</div>';
+    el.innerHTML = '<div style="color:var(--neutral-400);font-size:11.5px;text-align:center;padding:10px 0;font-style:italic;">Tudo nos eixos por aqui </div>';
     return;
   }
 
@@ -54747,10 +54764,10 @@ function _ipSwimRenderInsights(grupos) {
   };
 
   el.innerHTML = [
-    _renderGrupo('Oportunidades', '💡', '#854F0B', '#FFF8EE', oportunidades, 'Padronizados parados há +60 dias. Hora de iniciar negociação.'),
-    _renderGrupo('Esfriando', '⏳', '#A32D2D', '#FCEBEB', esfriando, 'Negociações há +30 dias. Hora de fechar ou cancelar.'),
-    _renderGrupo('Aquecendo', '🔥', '#0F6E56', '#EAF5EE', aquecendo, '≥2 conversões nos últimos 30 dias. Aproveite o momento.'),
-    _renderGrupo('Sem catálogo', '📋', '#0C447C', '#E6F1FB', semCatalogo, 'Nenhum item cadastrado. Bora mapear?'),
+    _renderGrupo('Oportunidades', '', '#854F0B', '#FFF8EE', oportunidades, 'Padronizados parados há +60 dias. Hora de iniciar negociação.'),
+    _renderGrupo('Esfriando', '', '#A32D2D', '#FCEBEB', esfriando, 'Negociações há +30 dias. Hora de fechar ou cancelar.'),
+    _renderGrupo('Aquecendo', '', '#0F6E56', '#EAF5EE', aquecendo, '≥2 conversões nos últimos 30 dias. Aproveite o momento.'),
+    _renderGrupo('Sem catálogo', '', '#0C447C', '#E6F1FB', semCatalogo, 'Nenhum item cadastrado. Bora mapear?'),
   ].join('');
 }
 
@@ -54774,7 +54791,7 @@ function _ipSwimCardOrigem(it) {
   const marca = (it.marca || '').replace(/</g,'&lt;');
   return `
     <div class="ip-swim-card ip-swim-card--origem" data-item-id="${it.id}" onclick="handleVerDetalheItemSwim('${it.id}')" title="Item padronizado de origem (em negociação)">
-      <div style="font-size:9px;font-weight:700;color:#92400E;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:3px;">📋 Origem · em negoc</div>
+      <div style="font-size:9px;font-weight:700;color:#92400E;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:3px;">Origem · em negoc</div>
       <div class="prod">${prod.length > 36 ? prod.slice(0,36) + '…' : prod}</div>
       ${marca ? `<div class="meta">${marca}</div>` : ''}
     </div>
@@ -54788,14 +54805,14 @@ function _ipSwimCard(it, colVisual) {
   const cad = (it.cadastrador?.nome || it.usuarios?.nome || '').split(' ')[0] || '';
   const mostrarSelo = colVisual === 'padronizado' && jaFoiConvertido(it);
   const seloHtml = mostrarSelo
-    ? `<div class="selo" title="Já converteu pelo menos uma vez · ${formatarMesAnoConv(it)}">🏆 Conquistado · ${formatarMesAnoConv(it)}</div>`
+    ? `<div class="selo" title="Já converteu pelo menos uma vez · ${formatarMesAnoConv(it)}">Conquistado · ${formatarMesAnoConv(it)}</div>`
     : '';
   const targetHtml = (colVisual === 'em_negociacao' && it.convertido_em_descricao)
     ? (() => {
         const desc = (it.convertido_em_descricao || '').replace(/</g,'&lt;');
         const marcaNhsc = (it.convertido_em_marca || '').replace(/</g,'&lt;');
         return `<div style="background:#FFE9B8;color:#92400E;padding:4px 8px;border-radius:4px;margin-top:4px;font-size:10.5px;line-height:1.3;">
-          <div style="font-weight:600;">🎯 ${desc}</div>
+          <div style="font-weight:600;">${desc}</div>
           ${marcaNhsc ? `<div style="font-size:10px;opacity:0.8;margin-top:1px;">${marcaNhsc}</div>` : ''}
         </div>`;
       })()
@@ -54808,14 +54825,14 @@ function _ipSwimCard(it, colVisual) {
     return `
       <div class="ip-swim-card col-convertido ip-swim-card--converted-pair" data-item-id="${it.id}" data-col-atual="convertido" draggable="true" onclick="handleVerDetalheItemSwim('${it.id}')" title="Clique pra editar${cad ? ' · por ' + cad : ''}">
         <div style="display:flex;gap:6px;align-items:flex-start;line-height:1.25;">
-          <span style="font-size:11px;flex-shrink:0;opacity:0.7;padding-top:1px;">📋</span>
+          <span style="font-size:11px;flex-shrink:0;opacity:0.7;padding-top:1px;"></span>
           <div style="flex:1;min-width:0;">
             <div style="font-size:11px;color:var(--neutral-600);font-weight:500;">${prod}</div>
             ${marca ? `<div style="font-size:10px;color:var(--neutral-500);">${marca}</div>` : ''}
           </div>
         </div>
         <div style="display:flex;gap:6px;align-items:flex-start;line-height:1.25;margin-top:5px;padding-top:5px;border-top:1px dashed rgba(46,154,99,0.3);">
-          <span style="font-size:11px;flex-shrink:0;color:var(--status-success);padding-top:1px;">🏆</span>
+          <span style="font-size:11px;flex-shrink:0;color:var(--status-success);padding-top:1px;"></span>
           <div style="flex:1;min-width:0;">
             <div style="font-size:11.5px;color:var(--status-success);font-weight:700;">${destino}</div>
             ${destinoMarca ? `<div style="font-size:10px;color:var(--neutral-500);">${destinoMarca}</div>` : ''}
@@ -54928,7 +54945,7 @@ function _ipSwimAbrirConfirmMover(itemId, colAtual, colDestino) {
   // Aviso especial pra "convertido" (vai pedir info de produto convertido)
   const avisoConv = colDestino === 'convertido'
     ? `<div style="margin-top:10px;padding:10px;background:#FEF4E1;border-radius:6px;font-size:12px;color:#92400E;">
-         ⚠️ Marcar como convertido vai abrir um formulário pra registrar pra qual produto NHSC.
+         ⚠ Marcar como convertido vai abrir um formulário pra registrar pra qual produto NHSC.
        </div>`
     : '';
 
@@ -55143,7 +55160,7 @@ function renderItensPadronizadosCarrossel() {
 
         <!-- Busca + Categoria -->
         <div style="background:var(--neutral-0);padding:10px 12px;border-bottom:1px solid var(--neutral-200);display:flex;gap:6px;">
-          <input type="text" id="ipCarBusca" placeholder="🔍 Buscar..." value="${(window._ipFiltro.busca || '').replace(/"/g,'&quot;')}" style="flex:1;padding:8px 10px;border:1.5px solid var(--neutral-200);border-radius:8px;font-size:12.5px;font-family:inherit;" />
+          <input type="text" id="ipCarBusca" placeholder="Buscar..." value="${(window._ipFiltro.busca || '').replace(/"/g,'&quot;')}" style="flex:1;padding:8px 10px;border:1.5px solid var(--neutral-200);border-radius:8px;font-size:12.5px;font-family:inherit;" />
           <button onclick="handleNovoItemPadronizado()" style="background:var(--brand-lime);color:#fff;border:0;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:4px;">
             <span class="material-symbols-rounded" style="font-size:16px;">add</span>
           </button>
@@ -55155,11 +55172,11 @@ function renderItensPadronizadosCarrossel() {
         <!-- Atalhos: Ranking + Histórico -->
         <div style="display:flex;gap:6px;padding:8px 12px;background:var(--neutral-50,#FAFBFD);border-bottom:1px solid var(--neutral-200);">
           <button onclick="window.location.hash='#/itens-padronizados/ranking'" style="flex:1;background:linear-gradient(135deg,#FBBF24 0%,#F59E0B 100%);color:#fff;border:0;padding:7px 10px;border-radius:8px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:4px;">
-            🏆 Ranking
+            Ranking
           </button>
           ${ehAdmin && !ehNutriRoute ? `
             <button onclick="window.location.hash='#/admin/itens-padronizados/historico'" style="flex:1;background:var(--neutral-0);color:var(--brand-navy);border:1.5px solid var(--neutral-200);padding:6px 10px;border-radius:8px;font-size:11.5px;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:4px;">
-              📜 Histórico
+              Histórico
             </button>
           ` : ''}
         </div>
@@ -55412,9 +55429,9 @@ function _ipCarRender() {
     };
     chipsEl.innerHTML = `
       ${def('todos',      'Todos',          totaisChip.todos,      null)}
-      ${def('parados60',  '⏰ Parados +60d', totaisChip.parados60,  '#BA7517')}
-      ${def('negociando', '🤝 Negoc',       totaisChip.negociando, '#BA7517')}
-      ${def('conv_mes',   '🏆 Conv mês',    totaisChip.conv_mes,   '#1D9E75')}
+      ${def('parados60',  'Parados +60d', totaisChip.parados60,  '#BA7517')}
+      ${def('negociando', 'Negoc',       totaisChip.negociando, '#BA7517')}
+      ${def('conv_mes',   'Conv mês',    totaisChip.conv_mes,   '#1D9E75')}
     `;
   }
 
@@ -55431,7 +55448,7 @@ function _ipCarRender() {
       const instNome = (visitaAtiva.instituicoes?.nome || 'Hospital').replace(/</g,'&lt;');
       bannerEl.innerHTML = `
         <div style="background:#EAF5EE;padding:9px 12px;border-bottom:1px solid #97C459;display:flex;align-items:center;gap:8px;">
-          <span style="background:#3B6D11;color:#fff;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;">📍</span>
+          <span style="background:#3B6D11;color:#fff;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;"></span>
           <div style="flex:1;min-width:0;">
             <div style="font-size:11px;color:#27500A;font-weight:600;">Em visita agora${tempoTxt ? ' · ' + tempoTxt : ''}</div>
             <div style="font-size:12.5px;color:var(--brand-navy);font-weight:600;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${instNome}</div>
@@ -55474,9 +55491,9 @@ function _ipCarRender() {
     headerEl.innerHTML = '';
     let msgVazio;
     if (itens.length === 0) {
-      msgVazio = 'Nenhum item cadastrado ainda.<br>Clique no <strong>+</strong> pra começar! 🎯';
+      msgVazio = 'Nenhum item cadastrado ainda.<br>Clique no <strong>+</strong> pra começar! ';
     } else if (chip !== 'todos') {
-      const labelChip = { parados60: '⏰ Parados +60d', negociando: '🤝 Negoc', conv_mes: '🏆 Conv mês' }[chip] || chip;
+      const labelChip = { parados60: 'Parados +60d', negociando: 'Negoc', conv_mes: 'Conv mês' }[chip] || chip;
       msgVazio = `Nenhum hospital bate com o filtro <strong>${labelChip}</strong>.<br><button onclick="window.ipCarTrocarChip('todos')" style="margin-top:10px;background:var(--brand-navy);color:#fff;border:0;padding:8px 14px;border-radius:8px;font-size:11.5px;font-weight:600;cursor:pointer;font-family:inherit;">↺ Mostrar todos</button>`;
     } else {
       msgVazio = 'Nenhum item bate com a busca.';
@@ -55504,7 +55521,7 @@ function _ipCarRender() {
   headerEl.innerHTML = `
     <button class="ipc-nav-btn" onclick="window.ipCarPrev()" ${idx === 0 ? 'disabled' : ''} aria-label="Hospital anterior">‹</button>
     <div style="flex:1;text-align:center;min-width:0;padding:0 8px;">
-      <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:14px;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">🏥 ${h.nome.replace(/</g,'&lt;')}</div>
+      <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:14px;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${h.nome.replace(/</g,'&lt;')}</div>
       ${dotsHtml}
     </div>
     <button class="ipc-nav-btn" onclick="window.ipCarNext()" ${idx === hospitais.length - 1 ? 'disabled' : ''} aria-label="Próximo hospital">›</button>
@@ -55518,8 +55535,8 @@ function _ipCarRender() {
     ? `<button class="ipc-add ipc-add--neg" onclick="_ipSwimAbrirSeletor('${h.id}','padronizado')">↪ Iniciar negociação</button>`
     : `<button class="ipc-add ipc-add--disabled" disabled>↪ Cadastre um padronizado</button>`;
   const btnConvMobile = podeMarcarMobile
-    ? `<button class="ipc-add ipc-add--conv" onclick="_ipSwimAbrirSeletor('${h.id}','em_negociacao')">🏆 Marcar conversão</button>`
-    : `<button class="ipc-add ipc-add--disabled" disabled>🏆 Inicie uma negociação</button>`;
+    ? `<button class="ipc-add ipc-add--conv" onclick="_ipSwimAbrirSeletor('${h.id}','em_negociacao')">Marcar conversão</button>`
+    : `<button class="ipc-add ipc-add--disabled" disabled>Inicie uma negociação</button>`;
 
   // Sprint 9.32.87: insight automático do hospital atual (se aplicável)
   const insightHtml = _ipCarInsightHospital(h);
@@ -55529,21 +55546,21 @@ function _ipCarRender() {
     ${insightHtml}
     <div class="ipc-statusbox">
       <div class="ipc-statusbox__head">
-        📋 Padronizados <span>${h.padronizado.length}</span>
+        Padronizados <span>${h.padronizado.length}</span>
       </div>
       ${h.padronizado.map(it => _ipCarCardHtml(it, 'padronizado')).join('')}
       <button class="ipc-add" onclick="handleNovoItemPadronizado('${h.id}')">+ adicionar item</button>
     </div>
     <div class="ipc-statusbox is-neg">
       <div class="ipc-statusbox__head">
-        🤝 Em negociação <span>${h.em_negociacao.length}</span>
+        Em negociação <span>${h.em_negociacao.length}</span>
       </div>
       ${h.em_negociacao.map(it => _ipCarCardHtml(it, 'em_negociacao')).join('')}
       ${btnNegMobile}
     </div>
     <div class="ipc-statusbox is-conv">
       <div class="ipc-statusbox__head">
-        🏆 Convertidos · 7d <span>${h.convertido.length}</span>
+        Convertidos · 7d <span>${h.convertido.length}</span>
       </div>
       ${h.convertido.map(it => _ipCarCardHtml(it, 'convertido')).join('')}
       ${btnConvMobile}
@@ -55570,7 +55587,7 @@ function _ipCarInsightHospital(g) {
   if (padraoParados.length > 0 && g.em_negociacao.length === 0) {
     return `
       <div class="ipc-insight">
-        <span class="ipc-insight-icon">💡</span>
+        <span class="ipc-insight-icon"></span>
         <div class="ipc-insight-body">
           <div class="ipc-insight-title">Oportunidade detectada</div>
           <div class="ipc-insight-text">${padraoParados.length === 1 ? '1 padronizado aqui está' : padraoParados.length + ' padronizados aqui estão'} <strong>há +60 dias parados</strong>. Boa hora pra iniciar negociação.</div>
@@ -55589,7 +55606,7 @@ function _ipCarInsightHospital(g) {
   if (negLongas.length > 0) {
     return `
       <div class="ipc-insight">
-        <span class="ipc-insight-icon">⏳</span>
+        <span class="ipc-insight-icon"></span>
         <div class="ipc-insight-body">
           <div class="ipc-insight-title">Negociação esfriando</div>
           <div class="ipc-insight-text">${negLongas.length === 1 ? '1 item está' : negLongas.length + ' itens estão'} <strong>em negociação há +30 dias</strong>. Hora de mover pra conversão ou cancelar.</div>
@@ -55608,7 +55625,7 @@ function _ipCarInsightHospital(g) {
   if (convRecentes.length >= 2) {
     return `
       <div class="ipc-insight" style="background:linear-gradient(135deg,#EAF5EE 0%,#C0DD97 100%);border-color:#1D9E75;">
-        <span class="ipc-insight-icon">🔥</span>
+        <span class="ipc-insight-icon"></span>
         <div class="ipc-insight-body">
           <div class="ipc-insight-title" style="color:#0F6E56;">Hospital aquecendo</div>
           <div class="ipc-insight-text" style="color:#085041;"><strong>${convRecentes.length} conversões</strong> nos últimos 30 dias. Aproveite pra empurrar mais ofertas!</div>
@@ -55621,7 +55638,7 @@ function _ipCarInsightHospital(g) {
   if (g.padronizado.length === 0 && g.em_negociacao.length === 0 && g.convertido.length === 0) {
     return `
       <div class="ipc-insight" style="background:linear-gradient(135deg,#E6F1FB 0%,#B5D4F4 100%);border-color:#185FA5;">
-        <span class="ipc-insight-icon">📋</span>
+        <span class="ipc-insight-icon"></span>
         <div class="ipc-insight-body">
           <div class="ipc-insight-title" style="color:#0C447C;">Hospital sem catálogo</div>
           <div class="ipc-insight-text" style="color:#042C53;">Cadastre os produtos padronizados desse hospital pra começar a mapear oportunidades.</div>
@@ -55640,10 +55657,10 @@ function _ipCarCardHtml(it, colVisual) {
   const cad = ((it.cadastrador?.nome || it.usuarios?.nome) || '').split(' ')[0];
   const mostrarSelo = colVisual === 'padronizado' && jaFoiConvertido(it);
   const seloHtml = mostrarSelo
-    ? `<div class="selo">🏆 Conquistado · ${formatarMesAnoConv(it)}</div>`
+    ? `<div class="selo">Conquistado · ${formatarMesAnoConv(it)}</div>`
     : '';
   const targetHtml = (colVisual === 'em_negociacao' && it.convertido_em_descricao)
-    ? `<div class="target">🎯 ${(it.convertido_em_descricao || '').replace(/</g,'&lt;').slice(0,30)}${(it.convertido_em_descricao || '').length > 30 ? '…' : ''}</div>`
+    ? `<div class="target">${(it.convertido_em_descricao || '').replace(/</g,'&lt;').slice(0,30)}${(it.convertido_em_descricao || '').length > 30 ? '…' : ''}</div>`
     : '';
 
   // Sprint 9.32.87: estado expandido por item
@@ -55670,18 +55687,18 @@ function _ipCarCardHtml(it, colVisual) {
   const convDias = _diasAtras(it.convertido_em);
 
   // Detalhes expandidos
-  let detalhes = `<div class="ipc-row"><span class="lbl">📅 Cadastro</span><span>${_fmtDias(cadDias)}</span></div>`;
+  let detalhes = `<div class="ipc-row"><span class="lbl">Cadastro</span><span>${_fmtDias(cadDias)}</span></div>`;
   if (it.status === 'em_negociacao' && negDias !== null) {
-    detalhes += `<div class="ipc-row"><span class="lbl">🤝 Em negoc.</span><span>${_fmtDias(negDias)}</span></div>`;
+    detalhes += `<div class="ipc-row"><span class="lbl">Em negoc.</span><span>${_fmtDias(negDias)}</span></div>`;
   }
   if (it.convertido_em_descricao) {
-    detalhes += `<div class="ipc-row"><span class="lbl">🎯 Oferecendo</span><span>${(it.convertido_em_descricao || '').replace(/</g,'&lt;')}</span></div>`;
+    detalhes += `<div class="ipc-row"><span class="lbl">Oferecendo</span><span>${(it.convertido_em_descricao || '').replace(/</g,'&lt;')}</span></div>`;
   }
   if (it.status === 'convertido' && convDias !== null) {
-    detalhes += `<div class="ipc-row"><span class="lbl">🏆 Convertido</span><span>${_fmtDias(convDias)}</span></div>`;
+    detalhes += `<div class="ipc-row"><span class="lbl">Convertido</span><span>${_fmtDias(convDias)}</span></div>`;
   }
   if (it.observacao) {
-    detalhes += `<div class="ipc-row"><span class="lbl">💬 Obs</span><span style="font-style:italic;">${it.observacao.replace(/</g,'&lt;')}</span></div>`;
+    detalhes += `<div class="ipc-row"><span class="lbl">Obs</span><span style="font-style:italic;">${it.observacao.replace(/</g,'&lt;')}</span></div>`;
   }
 
   // Ações inline (depende do status atual)
@@ -55689,22 +55706,22 @@ function _ipCarCardHtml(it, colVisual) {
   let acoesInline = '';
   if (it.status === 'padronizado') {
     if (it.eh_propria === true) {
-      acoesInline = `<button class="ipc-btn-act ipc-btn-edit" onclick="event.stopPropagation();handleEditarItemPadronizado('${it.id}')">✏️ Editar</button>`;
+      acoesInline = `<button class="ipc-btn-act ipc-btn-edit" onclick="event.stopPropagation();handleEditarItemPadronizado('${it.id}')">Editar</button>`;
     } else {
       acoesInline = `
         <button class="ipc-btn-act ipc-btn-neg" onclick="event.stopPropagation();handleAssumirConversao('${it.id}')">↪ Negociar</button>
-        <button class="ipc-btn-act ipc-btn-edit" onclick="event.stopPropagation();handleEditarItemPadronizado('${it.id}')">✏️ Editar</button>
+        <button class="ipc-btn-act ipc-btn-edit" onclick="event.stopPropagation();handleEditarItemPadronizado('${it.id}')">Editar</button>
       `;
     }
   } else if (it.status === 'em_negociacao') {
     acoesInline = `
-      <button class="ipc-btn-act ipc-btn-conv" onclick="event.stopPropagation();handleMudarStatusItem('${it.id}','convertido')">🏆 Converteu</button>
-      <button class="ipc-btn-act ipc-btn-edit" onclick="event.stopPropagation();handleEditarItemPadronizado('${it.id}')">✏️ Editar</button>
+      <button class="ipc-btn-act ipc-btn-conv" onclick="event.stopPropagation();handleMudarStatusItem('${it.id}','convertido')">Converteu</button>
+      <button class="ipc-btn-act ipc-btn-edit" onclick="event.stopPropagation();handleEditarItemPadronizado('${it.id}')">Editar</button>
       <button class="ipc-btn-act ipc-btn-cancel" onclick="event.stopPropagation();handleCancelarNegociacao('${it.id}')" title="Cancelar negociação">✕</button>
     `;
   } else if (it.status === 'convertido') {
     acoesInline = `
-      <button class="ipc-btn-act ipc-btn-edit" onclick="event.stopPropagation();handleEditarItemPadronizado('${it.id}')">✏️ Editar</button>
+      <button class="ipc-btn-act ipc-btn-edit" onclick="event.stopPropagation();handleEditarItemPadronizado('${it.id}')">Editar</button>
       <button class="ipc-btn-act ipc-btn-cancel" onclick="event.stopPropagation();reverterConversaoItem('${it.id}')" title="Reverter conversão">↶ Reverter</button>
     `;
   }
@@ -55792,15 +55809,15 @@ window.ipCarAcoes = function(itemId, colAtual) {
 
   const opcoes = [];
   if (colAtual !== 'em_negociacao' && item.status !== 'convertido') {
-    opcoes.push({ id: 'negociar', label: '🤝 Iniciar negociação', cor: '#F59E0B', acao: () => handleAssumirConversao(itemId) });
+    opcoes.push({ id: 'negociar', label: 'Iniciar negociação', cor: '#F59E0B', acao: () => handleAssumirConversao(itemId) });
   }
   if (colAtual === 'em_negociacao') {
     opcoes.push({ id: 'cancelar', label: '✕ Cancelar negociação', cor: 'var(--status-danger)', acao: () => handleCancelarNegociacao(itemId) });
   }
   if (item.status !== 'convertido') {
-    opcoes.push({ id: 'converter', label: '🏆 Marcar como convertido', cor: 'var(--status-success)', acao: () => handleMudarStatusItem(itemId, 'convertido') });
+    opcoes.push({ id: 'converter', label: 'Marcar como convertido', cor: 'var(--status-success)', acao: () => handleMudarStatusItem(itemId, 'convertido') });
   }
-  opcoes.push({ id: 'editar', label: '✏️ Editar item', cor: 'var(--brand-navy)', acao: () => handleEditarItemPadronizado(itemId) });
+  opcoes.push({ id: 'editar', label: 'Editar item', cor: 'var(--brand-navy)', acao: () => handleEditarItemPadronizado(itemId) });
 
   // Salva referência das ações pra dispatch
   window._ipCarAcoesMap = {};
@@ -56008,12 +56025,12 @@ function renderItensHistoricoConversoes(opts = {}) {
           border-bottom: 1px solid var(--neutral-200) !important;
         }
         .hist-row.head { display: none !important; }
-        .hist-row > span:nth-child(1)::before { content: '📅 '; }
-        .hist-row > span:nth-child(4)::before { content: '🏥 '; }
-        .hist-row > span:nth-child(5)::before { content: '👤 '; }
+        .hist-row > span:nth-child(1)::before { content: ''; }
+        .hist-row > span:nth-child(4)::before { content: ''; }
+        .hist-row > span:nth-child(5)::before { content: ''; }
         .hist-row > span:nth-child(6) { text-align: left !important; }
         .hist-row > span:nth-child(7) { text-align: left !important; padding-top: 4px; }
-        .hist-row > span:nth-child(6)::before { content: '⏱️ '; color: var(--neutral-500); }
+        .hist-row > span:nth-child(6)::before { content: ''; color: var(--neutral-500); }
         .hist-cell-de, .hist-cell-para {
           padding: 6px 0;
           border-top: 1px solid var(--neutral-100);
@@ -56150,8 +56167,8 @@ function _ipHistRender() {
   tabEl.innerHTML = `
     <div class="hist-row head">
       <span>DATA</span>
-      <span>📋 DE</span>
-      <span style="color:var(--status-success);">🏆 PARA</span>
+      <span>DE</span>
+      <span style="color:var(--status-success);">PARA</span>
       <span>HOSPITAL</span>
       <span>POR</span>
       <span style="text-align:right;">TEMPO</span>
@@ -56169,7 +56186,7 @@ function _ipHistRender() {
 
       const cellDe = `
         <div class="hist-cell-de">
-          <div class="marker">📋</div>
+          <div class="marker"></div>
           <div class="text">
             <div class="nome">${prod}</div>
             ${marca ? `<div class="marca">${marca}</div>` : ''}
@@ -56179,7 +56196,7 @@ function _ipHistRender() {
       const cellPara = destino
         ? `
           <div class="hist-cell-para">
-            <div class="marker">🏆</div>
+            <div class="marker"></div>
             <div class="text">
               <div class="nome">${destino}</div>
               ${destinoMarca ? `<div class="marca">${destinoMarca}</div>` : ''}
@@ -56380,7 +56397,7 @@ function _ipRender() {
     if (filtrados.length === 0) {
       listaEl.innerHTML = `
         <div style="background:var(--neutral-0);border:1px dashed var(--neutral-200);border-radius:12px;padding:30px;text-align:center;color:var(--neutral-500);font-size:13px;">
-          ${itens.length === 0 ? 'Nenhum item cadastrado ainda. Clique em "Novo item" pra começar! 🎯' : 'Nenhum item bate com os filtros aplicados.'}
+          ${itens.length === 0 ? 'Nenhum item cadastrado ainda. Clique em "Novo item" pra começar! ' : 'Nenhum item bate com os filtros aplicados.'}
         </div>
       `;
     } else {
@@ -56426,7 +56443,7 @@ function _ipRender() {
             <div class="ip-card__row">
               <span class="ip-cat-chip"><span class="material-symbols-rounded" style="font-size:13px;">category</span>${catLabel.replace(/</g,'&lt;')}</span>
               <span class="ip-status-chip" style="background:${st.bg};color:${st.cor};">${st.emoji} ${st.label}</span>
-              ${naoRevisado && origemManual ? '<span class="ip-status-chip" style="background:#FEF4E1;color:#945200;" title="Aguardando revisão do admin">⏳ A revisar</span>' : ''}
+              ${naoRevisado && origemManual ? '<span class="ip-status-chip" style="background:#FEF4E1;color:#945200;" title="Aguardando revisão do admin">A revisar</span>' : ''}
               <span style="font-size:11.5px;color:var(--neutral-500);margin-left:auto;">${data}</span>
             </div>
             <div style="background:var(--neutral-50,#FAFBFD);padding:10px 12px;border-radius:8px;">
@@ -56438,12 +56455,12 @@ function _ipRender() {
                 <strong>${(it.marca || '—').replace(/</g,'&lt;')}</strong>
               </div>
             </div>
-            ${it.observacao ? `<div style="font-size:12px;color:var(--neutral-600);font-style:italic;padding:0 4px;">💬 ${it.observacao.replace(/</g,'&lt;')}</div>` : ''}
+            ${it.observacao ? `<div style="font-size:12px;color:var(--neutral-600);font-style:italic;padding:0 4px;">${it.observacao.replace(/</g,'&lt;')}</div>` : ''}
 
             <!-- Sprint 9.32.17: card mostra item-alvo durante negociação -->
             ${it.status === 'em_negociacao' && it.convertido_em_descricao ? `
               <div style="background:#E4ECFD;border:1.5px solid var(--status-info);border-radius:8px;padding:8px 12px;margin:0 4px;display:flex;align-items:center;gap:8px;">
-                <span style="font-size:18px;">🎯</span>
+                <span style="font-size:18px;"></span>
                 <div style="flex:1;font-size:12px;line-height:1.3;">
                   <span style="color:var(--neutral-600);">Oferecendo</span>
                   <strong style="color:var(--brand-navy);display:block;">${it.convertido_em_descricao.replace(/</g,'&lt;')}</strong>
@@ -56458,7 +56475,7 @@ function _ipRender() {
             <!-- Sprint 9.32.16: mostra produto NHSC pra qual foi convertido -->
             ${it.status === 'convertido' && it.convertido_em_descricao ? `
               <div style="background:#E6F6EF;border:1.5px solid var(--status-success);border-radius:8px;padding:8px 12px;margin:0 4px;display:flex;align-items:center;gap:8px;">
-                <span style="font-size:18px;">🎯</span>
+                <span style="font-size:18px;"></span>
                 <div style="flex:1;font-size:12px;line-height:1.3;">
                   <span style="color:var(--neutral-600);">Convertido para</span>
                   <strong style="color:var(--brand-navy);display:block;">${it.convertido_em_descricao.replace(/</g,'&lt;')}</strong>
@@ -56470,12 +56487,12 @@ function _ipRender() {
             <!-- Bloco "atribuição": cadastrador + convertedor (se houver) -->
             <div style="display:flex;flex-wrap:wrap;gap:10px;font-size:11px;color:var(--neutral-600);padding:6px 4px 0;">
               <span title="Quem cadastrou esse item">
-                <span style="opacity:0.6;">📌 Cadastrou:</span>
+                <span style="opacity:0.6;">Cadastrou:</span>
                 <strong style="color:var(--brand-navy);">${cad.replace(/</g,'&lt;')}</strong>
               </span>
               ${conv ? `
                 <span title="Quem está convertendo esse item" style="display:inline-flex;align-items:center;gap:4px;background:${euConvertendo ? '#E6F6EF' : '#E4ECFD'};padding:2px 8px;border-radius:9999px;">
-                  <span>🤝 Convertendo:</span>
+                  <span>Convertendo:</span>
                   <strong style="color:${euConvertendo ? 'var(--status-success)' : 'var(--status-info)'};">${conv.nome.replace(/</g,'&lt;')}${euConvertendo ? ' (você)' : ''}</strong>
                   ${convDesde ? `<span style="opacity:0.7;">· ${convDesde}</span>` : ''}
                 </span>
@@ -56484,13 +56501,13 @@ function _ipRender() {
 
             <div class="ip-card__row" style="border-top:1px dashed var(--neutral-200);padding-top:8px;margin-top:2px;">
               <div style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap;">
-                ${it.status !== 'em_negociacao' && it.status !== 'convertido' ? `<button class="ip-status-quick" onclick="handleAssumirConversao('${it.id}')" style="color:var(--status-info);" title="Iniciar negociação (vai pedir qual produto você vai oferecer)">🤝 Negociar</button>` : ''}
+                ${it.status !== 'em_negociacao' && it.status !== 'convertido' ? `<button class="ip-status-quick" onclick="handleAssumirConversao('${it.id}')" style="color:var(--status-info);" title="Iniciar negociação (vai pedir qual produto você vai oferecer)">Negociar</button>` : ''}
                 ${it.status === 'em_negociacao' && !euConvertendo ? `<button class="ip-status-quick" onclick="handleAssumirConversao('${it.id}')" style="color:var(--status-info);" title="Assumir a negociação deste item">↪ Assumir</button>` : ''}
-                ${it.status !== 'convertido' ? `<button class="ip-status-quick" onclick="handleMudarStatusItem('${it.id}', 'convertido')" style="color:var(--status-success);">🏆 Converteu!</button>` : ''}
+                ${it.status !== 'convertido' ? `<button class="ip-status-quick" onclick="handleMudarStatusItem('${it.id}', 'convertido')" style="color:var(--status-success);">Converteu!</button>` : ''}
                 ${it.status === 'em_negociacao' && (euConvertendo || (userAtual && userAtual.perfil === 'admin')) ? `<button class="ip-status-quick" onclick="handleCancelarNegociacao('${it.id}')" style="color:var(--status-danger);" title="Cancelar negociação (volta o item pra padronizado)">✕ Cancelar negociação</button>` : ''}
-                ${(it.status === 'convertido' || it.status === 'em_negociacao') ? `<button class="ip-status-quick" onclick="handleVerHistoricoItem('${it.id}')" style="color:var(--neutral-600);" title="Ver histórico completo">📜 Histórico</button>` : ''}
-                ${ehMeuItem || (userAtual && userAtual.perfil === 'admin') ? `<button class="ip-status-quick" onclick="handleEditarItemPadronizado('${it.id}')">✏️ Editar</button>` : ''}
-                ${ehMeuItem || (userAtual && userAtual.perfil === 'admin') ? `<button class="ip-status-quick" onclick="handleExcluirItemPadronizado('${it.id}')" style="color:var(--status-danger);">🗑️</button>` : ''}
+                ${(it.status === 'convertido' || it.status === 'em_negociacao') ? `<button class="ip-status-quick" onclick="handleVerHistoricoItem('${it.id}')" style="color:var(--neutral-600);" title="Ver histórico completo">Histórico</button>` : ''}
+                ${ehMeuItem || (userAtual && userAtual.perfil === 'admin') ? `<button class="ip-status-quick" onclick="handleEditarItemPadronizado('${it.id}')">Editar</button>` : ''}
+                ${ehMeuItem || (userAtual && userAtual.perfil === 'admin') ? `<button class="ip-status-quick" onclick="handleExcluirItemPadronizado('${it.id}')" style="color:var(--status-danger);"></button>` : ''}
               </div>
             </div>
           </div>
@@ -56517,14 +56534,14 @@ function _ipRender() {
                  onmouseenter="this.style.background='var(--neutral-50,#FAFBFD)'"
                  onmouseleave="this.style.background='${expandido ? 'var(--neutral-50,#FAFBFD)' : 'var(--neutral-0)'}'">
               <span class="material-symbols-rounded" style="font-size:22px;color:var(--neutral-500);transition:transform 180ms;${expandido ? 'transform:rotate(90deg);' : ''}">chevron_right</span>
-              <span style="font-size:20px;">🏥</span>
+              <span style="font-size:20px;"></span>
               <div style="flex:1;min-width:0;">
                 <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:15px;">${grp.nome.replace(/</g,'&lt;')}</div>
                 <div style="font-size:11.5px;color:var(--neutral-500);margin-top:2px;display:flex;flex-wrap:wrap;gap:10px;">
                   <span><strong>${total}</strong> ${total === 1 ? 'item' : 'itens'}</span>
-                  ${padronizados > 0 ? `<span>📋 ${padronizados} padronizado${padronizados > 1 ? 's' : ''}</span>` : ''}
-                  ${emNegociacao > 0 ? `<span style="color:var(--status-info);">🤝 ${emNegociacao} em negociação</span>` : ''}
-                  ${convertidos > 0 ? `<span style="color:var(--status-success);">🏆 ${convertidos} convertido${convertidos > 1 ? 's' : ''}</span>` : ''}
+                  ${padronizados > 0 ? `<span>${padronizados} padronizado${padronizados > 1 ? 's' : ''}</span>` : ''}
+                  ${emNegociacao > 0 ? `<span style="color:var(--status-info);">${emNegociacao} em negociação</span>` : ''}
+                  ${convertidos > 0 ? `<span style="color:var(--status-success);">${convertidos} convertido${convertidos > 1 ? 's' : ''}</span>` : ''}
                 </div>
               </div>
               <span style="font-size:11px;color:var(--neutral-400);">${expandido ? 'Recolher' : 'Expandir'}</span>
@@ -56557,7 +56574,7 @@ window._ipToggleInstituicao = function(instId) {
       rankEl.innerHTML = ranking.slice(0, 8).map((r, idx) => {
         const med = getMedalhaPorConversoes(r.conversoes);
         const inits = (r.user.nome || '?').split(' ').filter(Boolean).slice(0,2).map(s => s[0].toUpperCase()).join('');
-        const podio = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `<span style="color:var(--neutral-400);font-size:11.5px;width:18px;display:inline-block;text-align:center;">${idx+1}</span>`;
+        const podio = idx === 0 ? '1º' : idx === 1 ? '2º' : idx === 2 ? '3º' : `<span style="color:var(--neutral-400);font-size:11.5px;width:18px;display:inline-block;text-align:center;">${idx+1}</span>`;
         return `
           <div class="ip-rank-row">
             <span style="width:18px;text-align:center;font-size:14px;">${podio}</span>
@@ -61235,7 +61252,7 @@ function renderConfigItem({ chave, meta, atual }) {
         ${meta.sensitive ? `
           <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:${temValor ? 'var(--status-success,#16a34a)' : 'var(--status-warning,#d97706)'};">
             <span class="material-symbols-rounded" style="font-size:14px;">${temValor ? 'lock' : 'warning'}</span>
-            <span>${temValor ? 'Chave cadastrada (oculta por segurança). Clique no olho 👁 para conferir.' : 'Nenhuma chave cadastrada ainda.'}</span>
+            <span>${temValor ? 'Chave cadastrada (oculta por segurança). Clique no olho para conferir.' : 'Nenhuma chave cadastrada ainda.'}</span>
           </div>
         ` : ''}
       </div>
@@ -61293,13 +61310,13 @@ window.handleConfigEmailTest = async function(chave) {
     const html = _emailTemplateBN({
       titulo: 'E-mail de teste',
       corpoHtml: `
-        <p>Olá! 👋</p>
+        <p>Olá! </p>
         <p>Este é um <strong>e-mail de teste</strong> enviado pelo sistema B&N Logística pra confirmar que a configuração de SMTP está funcionando corretamente.</p>
         <p>Se você está vendo essa mensagem, significa que:</p>
         <ul style="line-height:1.8;">
-          <li>✅ O SMTP está autenticado</li>
-          <li>✅ O domínio está autorizado</li>
-          <li>✅ Os e-mails do sistema vão chegar normalmente</li>
+          <li>O SMTP está autenticado</li>
+          <li>O domínio está autorizado</li>
+          <li>Os e-mails do sistema vão chegar normalmente</li>
         </ul>
         <p><strong>Enviado em:</strong> ${new Date().toLocaleString('pt-BR')}</p>
       `,
