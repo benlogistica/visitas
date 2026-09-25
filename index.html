@@ -8418,7 +8418,7 @@ mark.search-hl {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.475-nao-conformidades',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.476-nc-pdf',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -19155,7 +19155,7 @@ async function carregarAdminEquipeDesktop() {
         <div class="ds-table__cell" style="flex:1;">Categoria</div>
         <div class="ds-table__cell" style="width:110px;">Cadastro</div>
         <div class="ds-table__cell" style="width:110px;">Último login</div>
-        <div class="ds-table__cell" style="width:200px;text-align:right;">Ações</div>
+        <div class="ds-table__cell" style="width:290px;text-align:right;">Ações</div>
       </div>
     `;
 
@@ -19305,8 +19305,8 @@ async function carregarAdminEquipeDesktop() {
           <div class="ds-table__cell" style="flex:1;color:var(--neutral-600);font-size:12.5px;">${categoria}</div>
           <div class="ds-table__cell" style="width:110px;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--neutral-600);">${dataCad}</div>
           <div class="ds-table__cell" style="width:110px;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--neutral-600);">${ultimoLogin}</div>
-          <div class="ds-table__cell" style="width:200px;text-align:right;">
-            <div style="display:inline-flex;gap:4px;justify-content:flex-end;align-items:center;">${acoes}</div>
+          <div class="ds-table__cell" style="width:290px;text-align:right;">
+            <div style="display:flex;flex-wrap:wrap;gap:4px;justify-content:flex-end;align-items:center;">${acoes}</div>
           </div>
         </div>
       `;
@@ -46647,7 +46647,15 @@ window.alternarPermissaoNC = async function(userId) {
   try { if (typeof carregarAdminEquipeDesktop === 'function') await carregarAdminEquipeDesktop(); } catch (e) {}
 };
 
-const NC = { periodo: '90d', dados: null, carregando: false };
+const NC = { periodo: '90d', dados: null, carregando: false, todos: [] };
+// 9.32.476: quem fica FORA do relatório (conta de teste, quem saiu). Fica salvo no navegador.
+function _ncExcluidos() { try { return new Set(JSON.parse(localStorage.getItem('bnNcExcluidos') || '[]')); } catch (e) { return new Set(); } }
+window._ncAlternarPessoa = function(id) {
+  const s = _ncExcluidos();
+  if (s.has(id)) s.delete(id); else s.add(id);
+  try { localStorage.setItem('bnNcExcluidos', JSON.stringify([...s])); } catch (e) {}
+  _ncAtualizar();
+};
 const _ncEsc = (t) => String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const _ncPct = (a, b) => (b > 0 ? (100 * a / b) : 0);
 const _ncFmtPct = (v) => _pctBR(v, v > 0 && v < 10 ? 1 : 0) + '%';
@@ -46758,7 +46766,10 @@ async function _ncCarregar() {
     if (nc) p.comNC++;
   });
 
-  const lista = Object.values(por).filter(p => p.registros > 0 && nomes[p.id]).map(p => {
+  const excl = _ncExcluidos();
+  NC.todos = Object.values(por).filter(p => p.registros > 0 && nomes[p.id]).map(p => ({ id: p.id, nome: p.nome, registros: p.registros }))
+    .sort((a, b) => a.nome.localeCompare(b.nome));
+  const lista = Object.values(por).filter(p => p.registros > 0 && nomes[p.id] && !excl.has(p.id)).map(p => {
     const metaPer = metaDe(p.id) * (iv.dias / 30);
     const med = (arr) => { if (!arr.length) return null; const s = [...arr].sort((a, b) => a - b); return s[Math.floor(s.length / 2)]; };
     const pd1 = _ncPct(p.div1, p.gps1), pd2 = _ncPct(p.div2, p.gps2);
@@ -46906,7 +46917,7 @@ function _ncCorpoHtml(d, paraPdf = false) {
   const tabela = `
     <div class="nc-pdf-bloco" style="background:#fff;border:1px solid #E5E7EB;border-radius:12px;overflow:hidden;">
       <div style="padding:12px 14px;border-bottom:1px solid #E5E7EB;font-family:'Poppins',sans-serif;font-weight:700;color:#0A1F5C;font-size:14px;">Indicadores por profissional</div>
-      <div style="overflow-x:auto;">
+      <div class="nc-rolagem" style="overflow-x:auto;">
       <table style="width:100%;border-collapse:collapse;">
         <thead><tr style="background:#F8FAFC;">
           ${['Profissional', 'Visitas / meta', 'Conformidade', 'GPS diverg.', 'Sem check-out', 'Manual', 'Retroativo', 'Palavras/rel.', 'Rel. curtos', 'Rascunhos', 'Cancel.']
@@ -46962,7 +46973,16 @@ function _ncRender() {
     return;
   }
   if (NC.dados.erro) { el.innerHTML = `<div style="padding:30px;color:var(--status-danger);background:#fff;border:1px solid var(--neutral-200);border-radius:14px;">Erro: ${_ncEsc(NC.dados.erro)}</div>`; return; }
-  el.innerHTML = _ncCorpoHtml(NC.dados);
+  const excl = _ncExcluidos();
+  const chips = (NC.todos || []).map(p => {
+    const fora = excl.has(p.id);
+    return `<button onclick="_ncAlternarPessoa('${p.id}')" title="${fora ? 'Fora do relatório. Clique para incluir' : 'No relatório. Clique para tirar'}" style="border:1.5px solid ${fora ? 'var(--neutral-200)' : 'var(--brand-navy)'};background:${fora ? '#fff' : '#EEF2FF'};color:${fora ? 'var(--neutral-400)' : 'var(--brand-navy)'};${fora ? 'text-decoration:line-through;' : ''}padding:4px 10px;border-radius:9999px;font-size:11.5px;font-weight:600;cursor:pointer;font-family:inherit;">${_ncEsc(nomeCurto(p.nome))} <span style="opacity:.6;">${p.registros}</span></button>`;
+  }).join('');
+  el.innerHTML = `
+    <div style="background:#fff;border:1px solid var(--neutral-200);border-radius:12px;padding:10px 14px;margin-bottom:14px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+      <span style="font-size:11.5px;font-weight:700;color:var(--neutral-600);margin-right:4px;">Quem entra no relatório:</span>${chips}
+      <span style="font-size:11px;color:var(--neutral-500);">Clique para tirar conta de teste ou quem saiu da equipe.</span>
+    </div>` + _ncCorpoHtml(NC.dados);
 }
 
 async function _ncAtualizar() {
@@ -47056,7 +47076,14 @@ function _ncDocumentoPdf(d) {
   const eu = getCurrentUserReal();
   const quando = d.geradoEm.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
   return `
-    <div style="width:760px;background:#fff;color:#0A1F5C;font-family:'Inter','Segoe UI',Arial,sans-serif;">
+    <div class="nc-pdf" style="width:720px;box-sizing:border-box;background:#fff;color:#0A1F5C;font-family:'Inter','Segoe UI',Arial,sans-serif;">
+      <style>
+        .nc-pdf table { table-layout: fixed; width: 100%; }
+        .nc-pdf th { padding: 6px 3px !important; font-size: 8.5px !important; white-space: normal !important; line-height: 1.2; }
+        .nc-pdf td { padding: 6px 3px !important; font-size: 10px !important; }
+        .nc-pdf th:first-child, .nc-pdf td:first-child { width: 118px; white-space: normal !important; }
+        .nc-pdf .nc-rolagem { overflow: visible !important; }
+      </style>
       <div style="background:#0A1F5C;border-radius:14px;padding:16px 22px;display:flex;align-items:center;justify-content:space-between;gap:16px;">
         <img src="icons/logo-relatorio.png" alt="B&amp;N Logística" style="height:58px;display:block;" />
         <div style="text-align:right;color:#fff;">
@@ -47080,7 +47107,9 @@ async function _ncGerarPdfBlob() {
   if (!NC.dados || NC.dados.erro) throw new Error('O relatório ainda não carregou.');
   const h2p = await _ncCarregarHtml2pdf();
   const caixa = document.createElement('div');
-  caixa.style.cssText = 'position:fixed;left:-10000px;top:0;width:760px;background:#fff;z-index:-1;';
+  // 9.32.476: a caixa fica no canto da tela, atrás de tudo. Fora da tela
+  // (left:-10000px) o html2canvas recortava a lateral direita do relatório.
+  caixa.style.cssText = 'position:fixed;left:0;top:0;width:720px;background:#fff;z-index:-9999;pointer-events:none;';
   caixa.innerHTML = _ncDocumentoPdf(NC.dados);
   document.body.appendChild(caixa);
   try {
@@ -47088,7 +47117,7 @@ async function _ncGerarPdfBlob() {
     return await h2p().set({
       margin: [8, 8, 10, 8],
       image: { type: 'jpeg', quality: 0.9 },
-      html2canvas: { scale: 1.7, useCORS: true, backgroundColor: '#ffffff' },
+      html2canvas: { scale: 1.7, useCORS: true, backgroundColor: '#ffffff', scrollX: 0, scrollY: 0, x: 0, y: 0, width: 720, windowWidth: 720 },
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
       pagebreak: { mode: ['css', 'legacy'], avoid: ['.nc-pdf-bloco', '.nc-kpi', 'tr'] },
     }).from(caixa.firstElementChild).outputPdf('blob');
