@@ -8418,7 +8418,7 @@ mark.search-hl {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.478-nc-semana',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.479-nc-15d',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -46693,7 +46693,7 @@ function _ncIntervalo(p) {
     const fim = new Date(ini.getFullYear(), ini.getMonth(), ini.getDate() + 6);
     return { ini: d(ini), fim: d(fim), dias: 7, rotulo: 'Semana passada' };
   }
-  if (p === '7d' || p === '30d' || p === '90d' || p === '180d') {
+  if (p === '7d' || p === '15d' || p === '30d' || p === '90d' || p === '180d') {
     const dias = parseInt(p, 10);
     const ini = new Date(hoje); ini.setDate(ini.getDate() - (dias - 1));
     return { ini: d(ini), fim: d(hoje), dias, rotulo: `Últimos ${dias} dias` };
@@ -47036,7 +47036,7 @@ window._ncTrocarPeriodo = function(p) {
 };
 
 function _ncCabecalhoTela() {
-  const pers = [['7d', '7 dias'], ['semana_ant', 'Semana passada'], ['30d', '30 dias'],['90d', '90 dias'], ['mes', 'Mês atual'], ['mes_ant', 'Mês anterior'], ['ano', 'Ano']];
+  const pers = [['semana_ant', 'Semana passada'], ['15d', '15 dias'], ['30d', '30 dias'],['90d', '90 dias'], ['mes', 'Mês atual'], ['mes_ant', 'Mês anterior'], ['ano', 'Ano']];
   return `
     <div style="background:#fff;border:1px solid var(--neutral-200);border-radius:14px;padding:14px 16px;margin-bottom:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
       <div style="flex:1;min-width:220px;">
