@@ -8418,7 +8418,7 @@ mark.search-hl {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.479-nc-15d',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.481-bombas',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -13913,6 +13913,7 @@ function sidebarActiveFromHash(hash) {
   if (hash.startsWith('#/admin/agenda')) return 'agenda';
   if (hash.startsWith('#/admin/objetivos')) return 'objectives';
   if (hash.startsWith('#/admin/itens-padronizados')) return 'standardized';
+  if (hash.startsWith('#/admin/bombas')) return 'bombas';
   if (hash.startsWith('#/admin/faturamento')) return 'faturamento';
   if (hash.startsWith('#/admin/clientes-mes')) return 'faturamento';
   if (hash.startsWith('#/admin/funil')) return 'funil';
@@ -13942,6 +13943,7 @@ function desktopSidebar(activeId, itemsCustom = null) {
     { id: 'agenda',       href: '#/admin/agenda',         icon: 'calendar_month',  label: 'Agenda global' },
     { id: 'objectives',   href: '#/admin/objetivos',      icon: 'flag',            label: 'Objetivos' },
     { id: 'standardized', href: '#/admin/itens-padronizados', icon: 'inventory_2', label: 'Itens padronizados' },
+    { id: 'bombas',       href: '#/admin/bombas',         icon: 'medical_services', label: 'Bombas de infusão' },
     { id: 'faturamento',  href: '#/admin/faturamento',    icon: 'paid',            label: 'Faturamento' },
     { id: 'roi_equipe',   href: '#/admin/roi-equipe',     icon: 'insights',        label: 'ROI da Equipe' },
     { id: 'itinerario',   href: '#/admin/itinerario',     icon: 'explore',         label: 'Itinerário' },
@@ -14098,6 +14100,7 @@ function sidebarActiveFromHashNutri(hash) {
   if (hash.startsWith('#/nutri/instituicoes')) return 'institutions';
   if (hash.startsWith('#/nutri/profissionais')) return 'professions';
   if (hash.startsWith('#/nutri/itens-padronizados')) return 'standardized';
+  if (hash.startsWith('#/nutri/bombas')) return 'bombas';
   if (hash.startsWith('#/nutri/indicadores')) return 'indicators';
   if (hash.startsWith('#/nutri/performance')) return 'performance';
   return '';
@@ -14114,6 +14117,7 @@ function desktopSidebarNutri(activeId) {
     { id: 'institutions', href: '#/nutri/instituicoes',       icon: 'local_hospital',   label: 'Instituições' },
     { id: 'professions',  href: '#/nutri/profissionais',      icon: 'stethoscope',      label: 'Profissionais' },
     { id: 'standardized', href: '#/nutri/itens-padronizados', icon: 'inventory_2',      label: 'Itens padronizados' },
+    { id: 'bombas',       href: '#/nutri/bombas',             icon: 'medical_services', label: 'Bombas de infusão' },
     { id: 'indicators',   href: '#/nutri/indicadores',        icon: 'bar_chart',        label: 'Indicadores' },
     { id: 'performance',  href: '#/nutri/performance',        icon: 'insights',         label: 'Performance' },
   ];
@@ -20385,16 +20389,40 @@ window.buscarVisitasDesktop = function(termo) {
   }, 220);
 };
 
-window.exportarVisitasCsvDesktop = function() {
+// 9.32.480: profissionais de saúde visitados (para os CSVs de visitas). Pedido da Paula.
+async function _profVisitadosPorVisita(ids) {
+  const mapa = new Map();
+  const lista = [...new Set((ids || []).filter(Boolean))];
+  for (let i = 0; i < lista.length; i += 150) {
+    const { data, error } = await db.from('visitas_profissionais')
+      .select('visita_id, profissionais(nome, profissao, profissao_outro)')
+      .in('visita_id', lista.slice(i, i + 150));
+    if (error) throw new Error(error.message);
+    (data || []).forEach(r => {
+      const pr = r.profissionais; if (!pr || !pr.nome) return;
+      const cargo = (typeof labelProfissao === 'function') ? labelProfissao(pr) : (pr.profissao || '');
+      const txt = cargo && cargo !== '—' ? `${pr.nome} (${cargo})` : pr.nome;
+      if (!mapa.has(r.visita_id)) mapa.set(r.visita_id, []);
+      mapa.get(r.visita_id).push(txt);
+    });
+  }
+  return mapa;
+}
+
+window.exportarVisitasCsvDesktop = async function() {
   const lista = window._visitasDesktopCurrent || [];
   if (lista.length === 0) { setFlash('info', 'Nada pra exportar.'); return; }
-  const header = ['Data check-in','Data check-out','Duração (min)','Profissional','Instituição','Cidade','Status','Realizada','GPS manual','GPS divergente','Horário fora margem','Sem check-in'];
+  let profs = new Map();
+  try { profs = await _profVisitadosPorVisita(lista.map(v => v.id)); }
+  catch (e) { setFlash('error', 'Não consegui buscar os profissionais visitados: ' + (e.message || e)); return; }
+  const header = ['Data check-in','Data check-out','Duração (min)','Visitador','Instituição','Profissional visitado','Cidade','Status','Realizada','GPS manual','GPS divergente','Horário fora margem','Sem check-in'];
   const rows = lista.map(v => [
     v.checkin_timestamp ? new Date(v.checkin_timestamp).toLocaleString('pt-BR') : '',
     v.checkout_timestamp ? new Date(v.checkout_timestamp).toLocaleString('pt-BR') : '',
     calcularDuracaoMin(v.checkin_timestamp, v.checkout_timestamp) ?? '',
     v.usuarios?.nome || '',
     v.instituicoes?.nome || '',
+    (profs.get(v.id) || []).join(' / '),
     v.instituicoes?.cidade || '',
     v.status || '',
     v.visita_realizada === true ? 'Sim' : v.visita_realizada === false ? 'Não' : '',
@@ -23381,12 +23409,14 @@ const routes = {
   '#/admin/roi-equipe':{ title: 'ROI da Equipe', icon: 'insights', render: renderAdminRoiEquipe },
   '#/admin/mapear-cnpjs':{ title: 'Mapear CNPJs', icon: 'link', render: renderAdminMapearCnpjs },
   '#/admin/nao-conformidades':{ title: 'Não conformidades', icon: 'report', render: renderAdminNaoConformidades },   // Sprint 9.32.475
+  '#/admin/bombas':     { title: 'Bombas de infusão', icon: 'medical_services', render: renderAdminBombas },   // Sprint 9.32.481
   '#/admin/agenda':   { title: 'Agenda da equipe', icon: 'event_note', render: renderAdminAgenda },
   // Sprint 9.10: rotas nutri (acessadas via hambúrguer no topo)
   '#/nutri/instituicoes':   { title: 'Instituições',  icon: 'local_hospital', render: renderNutriInstituicoes },
   '#/nutri/profissionais':  { title: 'Profissionais', icon: 'stethoscope',    render: renderNutriProfissionais },
   '#/nutri/indicadores':    { title: 'Indicadores',   icon: 'bar_chart',      render: renderNutriIndicadores },
   '#/nutri/itens-padronizados':{ title: 'Itens padronizados', icon: 'inventory_2', render: renderItensPadronizadosCarrossel },
+  '#/nutri/bombas':         { title: 'Bombas de infusão', icon: 'medical_services', render: renderNutriBombas },   // Sprint 9.32.481
   // Sprint 9.26 Fase 4: Performance só tem versão desktop. No mobile, redireciona pra indicadores.
   '#/nutri/performance':    { title: 'Performance',   icon: 'insights',       render: renderNutriPerformanceFallback },
 };
@@ -23413,6 +23443,7 @@ const DESKTOP_RENDERERS = {
   '#/admin/roi-equipe': renderAdminRoiEquipeDesktop,
   '#/admin/mapear-cnpjs': renderAdminMapearCnpjsDesktop,
   '#/admin/nao-conformidades': renderAdminNaoConformidadesDesktop,
+  '#/admin/bombas': renderAdminBombasDesktop,
   '#/notificacoes': renderNotificacoesDesktop,
   '#/visitas/relatorio': renderRelatorioDesktop,
   // 🎉 Desktop completo!
@@ -23431,6 +23462,7 @@ const DESKTOP_RENDERERS_NUTRI = {
   '#/nutri/profissionais':      renderNutriProfissionaisDesktop,
   '#/nutri/indicadores':        renderNutriIndicadoresDesktop,
   '#/nutri/itens-padronizados': renderItensPadronizadosDesktopNutri,
+  '#/nutri/bombas':             renderNutriBombasDesktop,
   '#/nutri/performance':        renderNutriPerformanceDesktop,
   '#/notificacoes':             renderNotificacoesDesktop,
 };
@@ -38087,6 +38119,7 @@ function renderAdminDrawer() {
     { href: '#/admin/agenda',             icon: 'event_note',     titulo: 'Agenda da equipe',   desc: 'Ver e atribuir visitas agendadas' },
     { href: '#/admin/objetivos',          icon: 'flag',           titulo: 'Objetivos',          desc: 'Gerenciar lista de objetivos de visita' },
     { href: '#/admin/itens-padronizados', icon: 'inventory_2',    titulo: 'Itens padronizados', desc: 'Mapear concorrentes e converter vendas' },
+    { href: '#/admin/bombas',             icon: 'medical_services', titulo: 'Bombas de infusão', desc: 'Comodato nos hospitais: painel gerencial' },
     { href: '#/admin/faturamento',        icon: 'paid',           titulo: 'Faturamento',        desc: 'Painel financeiro completo da empresa' },
     { href: '#/admin/roi-equipe',         icon: 'insights',       titulo: 'ROI da Equipe',      desc: 'Ranking de nutris pelo faturamento dos hospitais' },
     { href: '#/admin/mapear-cnpjs',       icon: 'link',           titulo: 'Mapear CNPJs',       desc: 'Vincular hospitais cadastrados ao faturamento' },
@@ -38102,6 +38135,7 @@ function renderAdminDrawer() {
     { href: '#/nutri/instituicoes',       icon: 'local_hospital',  titulo: 'Instituições',   desc: 'Hospitais que você visita' },
     { href: '#/nutri/profissionais',      icon: 'stethoscope',     titulo: 'Profissionais',  desc: 'Contatos nos hospitais' },
     { href: '#/nutri/itens-padronizados', icon: 'inventory_2',     titulo: 'Itens padronizados', desc: 'Concorrentes nos hospitais que você visita' },
+    { href: '#/nutri/bombas',             icon: 'medical_services', titulo: 'Bombas de infusão', desc: 'Bombas em comodato nos seus hospitais' },
     { href: '#/nutri/indicadores',        icon: 'bar_chart',       titulo: 'Indicadores',    desc: 'Sua produção em números' },
     { href: '#/nutri/performance',        icon: 'insights',        titulo: 'Performance & ROI', desc: 'Faturamento dos hospitais que você visita' },
     { href: '#/logout',                   icon: 'logout',          titulo: 'Sair',           desc: 'Encerrar sessão' },
@@ -39809,8 +39843,8 @@ window.exportarVisitasCSV = async function() {  const btn = document.getElementB
     const cabecalho = [
       'ID', 'Data da visita', 'Hora início', 'Hora fim',
       'Check-in', 'Check-out', 'Duração (min)',
-      'Profissional', 'E-mail', 'CPF',
-      'Instituição', 'Cidade', 'UF',
+      'Visitador', 'E-mail', 'CPF',
+      'Instituição', 'Profissional visitado', 'Cidade', 'UF',
       'Status', 'Resultado',
       'Check-in manual', 'GPS divergente', 'Horário fora da margem',
       'Sem check-in', 'Sem check-out',
@@ -39818,6 +39852,7 @@ window.exportarVisitasCSV = async function() {  const btn = document.getElementB
       'Relatório'
     ];
 
+    const profs = await _profVisitadosPorVisita(todas.map(v => v.id));   // 9.32.480
     const sim = v => v === true ? 'Sim' : v === false ? 'Não' : '';
     const duracao = (ci, co) => {
       if (!ci || !co) return '';
@@ -39838,6 +39873,7 @@ window.exportarVisitasCSV = async function() {  const btn = document.getElementB
       v.usuarios?.email || '',
       v.usuarios?.cpf || '',
       v.instituicoes?.nome || '',
+      (profs.get(v.id) || []).join(' / '),
       v.instituicoes?.cidade || '',
       v.instituicoes?.estado || '',
       _labelStatusCsv(v),
@@ -43966,7 +44002,7 @@ window.rejeitarObjetivoPendente = async function(id) {
 let FAT_DATA = null;
 let _fatDataPromise = null;
 // __FAT_VERSION_START__ — substituído pelo atualizar_index.py com hash do JSON
-const FAT_DATA_VERSION = '8bc972e957a7';
+const FAT_DATA_VERSION = 'e363f7fef3e8';
 // __FAT_VERSION_END__
 // Sprint 9.32.426: o arquivo passou a ser versionado COMPRIMIDO (.json.gz).
 // PORQUE: ele tem 20,5 MB e entra no git 2x por dia. O git guarda cada versao
@@ -47260,6 +47296,763 @@ window._ncEnviar = async function(btn) {
     btn.disabled = false; btn.textContent = 'Enviar';
   }
 };
+
+
+/* ==========================================================================
+   Sprint 9.32.481: Controle de bombas de infusão (comodato)
+   --------------------------------------------------------------------------
+   Pedido da Paula: cada visitador controla as bombas que deixou nos hospitais
+   (hospital da lista de cadastro, data da entrega, marca, número de série,
+   vencimento da calibração, manutenção e retirada). O admin tem o painel
+   gerencial. Banco: bombas_infusao + bombas_infusao_eventos
+   (bombas_infusao_servidor.sql).
+   ========================================================================== */
+const BI_MARCAS = ['Compact Ella', 'Kangaroo'];
+const BI_STATUS = {
+  em_uso:     { rot: 'Em uso',        cor: '#15803D', bg: '#DCFCE7', icone: 'check_circle' },
+  manutencao: { rot: 'Em manutenção', cor: '#B45309', bg: '#FEF3C7', icone: 'build' },
+  retirada:   { rot: 'Retirada',      cor: '#475569', bg: '#F1F5F9', icone: 'assignment_return' },
+};
+const BI = {
+  lista: [], carregando: false, erro: null, aba: 'ativas', busca: '',
+  insts: null, minhasInst: null, visitadores: [], eventos: [], ultVisita: {},
+  adm: { visitador: 'todos', marca: 'todas', status: 'ativas', busca: '', ordem: 'hospital' },
+  charts: [],
+};
+const _biEsc = (t) => String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+const _biHoje = () => _dataArquivo(new Date());
+const _biDataBR = (iso) => { if (!iso) return '-'; const [y, m, d] = String(iso).slice(0, 10).split('-'); return `${d}/${m}/${y}`; };
+const _biNorm = (t) => String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+function _biDias(a, b) {
+  const x = new Date(String(a).slice(0, 10) + 'T12:00:00'), y = new Date(String(b).slice(0, 10) + 'T12:00:00');
+  return Math.round((y - x) / 86400000);
+}
+function _biCalib(b) {
+  if (!b.calibracao_vencimento) return { nivel: 'sem', rot: 'Sem data', cor: '#64748B', bg: '#F1F5F9' };
+  const d = _biDias(_biHoje(), b.calibracao_vencimento);
+  if (d < 0) return { nivel: 'vencida', dias: d, rot: `Vencida há ${-d} dia${-d === 1 ? '' : 's'}`, cor: '#B91C1C', bg: '#FEE2E2' };
+  if (d <= 30) return { nivel: 'vence', dias: d, rot: d === 0 ? 'Vence hoje' : `Vence em ${d} dia${d === 1 ? '' : 's'}`, cor: '#B45309', bg: '#FEF3C7' };
+  return { nivel: 'ok', dias: d, rot: 'Em dia', cor: '#15803D', bg: '#DCFCE7' };
+}
+const _biAtiva = (b) => b.status !== 'retirada';
+const _biPill = (txt, cor, bg, icone) => `<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:9999px;font-size:11px;font-weight:700;color:${cor};background:${bg};white-space:nowrap;">${icone ? `<span class="material-symbols-rounded" style="font-size:13px;">${icone}</span>` : ''}${txt}</span>`;
+const _biBtn = (txt, icone, onclick, estilo = 'sec') => {
+  const s = estilo === 'pri' ? 'background:var(--brand-lime);color:#fff;border:0;'
+    : estilo === 'perigo' ? 'background:#fff;color:#B91C1C;border:1px solid #FECACA;'
+    : 'background:#fff;color:var(--brand-navy);border:1px solid var(--neutral-200);';
+  return `<button onclick="${onclick}" style="${s}padding:7px 11px;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:5px;white-space:nowrap;">${icone ? `<span class="material-symbols-rounded" style="font-size:16px;">${icone}</span>` : ''}${txt}</button>`;
+};
+function _biEhAdmin() { const u = getCurrentUserReal(); return !!(u && u.perfil === 'admin'); }
+
+function _biMsgErro(e) {
+  const m = String(e?.message || e || '');
+  if (/bombas_infusao/.test(m) && /(does not exist|schema cache|não existe)/i.test(m)) return 'O banco ainda não tem a tabela de bombas. Avise o administrador.';
+  if (/bombas_serie_ativa_uk|duplicate key/i.test(m)) return 'Essa bomba (mesma marca e número de série) já está registrada como ativa em algum hospital. Se ela voltou, marque a retirada no registro antigo ou fale com o administrador.';
+  if (/bombas_datas_chk/.test(m)) return 'A data da retirada não pode ser antes da data da entrega.';
+  if (/bombas_serie_chk/.test(m)) return 'Número de série inválido.';
+  if (/row-level security|violates row/i.test(m)) return 'Você não tem permissão para essa alteração.';
+  return m || 'Erro desconhecido';
+}
+
+async function _biCarregar({ todos = false } = {}) {
+  const sel = 'id,instituicao_id,responsavel_id,marca,numero_serie,data_entrega,calibracao_vencimento,status,manutencao_desde,data_retirada,observacao,criado_por,criado_em,atualizado_em,' +
+    'instituicoes(id,nome,cidade,estado),responsavel:responsavel_id(id,nome)';
+  const out = [];
+  for (let de = 0; de < 20000; de += 1000) {
+    let q = db.from('bombas_infusao').select(sel).order('data_entrega', { ascending: false }).range(de, de + 999);
+    if (!todos) q = q.eq('responsavel_id', getCurrentUser().id);
+    const { data, error } = await q;
+    if (error) throw error;
+    out.push(...(data || []));
+    if (!data || data.length < 1000) break;
+  }
+  return out;
+}
+
+async function _biCarregarInstituicoes() {
+  if (!BI.insts) {
+    const lista = await listarInstituicoes();
+    BI.insts = (lista || []).map(i => ({ id: i.id, nome: i.nome || '', cidade: i.cidade || '', estado: i.estado || '', n: _biNorm((i.nome || '') + ' ' + (i.cidade || '')) }));
+  }
+  if (!BI.minhasInst) {
+    BI.minhasInst = new Set();
+    try {
+      const { data } = await db.from('visitas').select('instituicao_id').eq('nutricionista_id', getCurrentUser().id)
+        .order('data_visita', { ascending: false }).limit(1500);
+      (data || []).forEach(v => v.instituicao_id && BI.minhasInst.add(v.instituicao_id));
+    } catch (e) {}
+  }
+  return BI.insts;
+}
+
+/* ---------------------------- tela do visitador --------------------------- */
+function _biResumo(lista) {
+  const at = lista.filter(_biAtiva);
+  return {
+    emUso: at.filter(b => b.status === 'em_uso').length,
+    manut: at.filter(b => b.status === 'manutencao').length,
+    vencidas: at.filter(b => _biCalib(b).nivel === 'vencida').length,
+    vencem: at.filter(b => _biCalib(b).nivel === 'vence').length,
+    hospitais: new Set(at.map(b => b.instituicao_id)).size,
+    retiradas: lista.filter(b => b.status === 'retirada').length,
+  };
+}
+
+function _biKpi(rot, valor, sub, cor = 'var(--brand-navy)', icone = '') {
+  return `<div style="background:#fff;border:1px solid var(--neutral-200);border-radius:12px;padding:12px 14px;min-width:0;">
+    <div style="font-size:10.5px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--neutral-500);display:flex;align-items:center;gap:5px;">${icone ? `<span class="material-symbols-rounded" style="font-size:15px;">${icone}</span>` : ''}${rot}</div>
+    <div style="font-family:var(--font-display);font-size:24px;font-weight:700;color:${cor};margin-top:4px;line-height:1.1;">${valor}</div>
+    ${sub ? `<div style="font-size:11.5px;color:var(--neutral-500);margin-top:3px;">${sub}</div>` : ''}
+  </div>`;
+}
+
+function _biCard(b, { mostrarResp = false } = {}) {
+  const st = BI_STATUS[b.status] || BI_STATUS.em_uso;
+  const cal = _biCalib(b);
+  const inst = b.instituicoes || {};
+  const diasCom = b.status === 'retirada' ? _biDias(b.data_entrega, b.data_retirada) : _biDias(b.data_entrega, _biHoje());
+  const id = b.id;
+  const podeExcluir = _biEhAdmin() || (b.criado_por === getCurrentUserReal()?.id && (Date.now() - new Date(b.criado_em).getTime()) < 24 * 3600000);
+  const acoes = [];
+  acoes.push(_biBtn('Editar', 'edit', `_biAbrirForm('${id}')`));
+  if (b.status === 'em_uso') acoes.push(_biBtn('Manutenção', 'build', `_biMudarStatus('${id}','manutencao')`));
+  if (b.status === 'manutencao') acoes.push(_biBtn('Voltou da manutenção', 'check_circle', `_biMudarStatus('${id}','em_uso')`));
+  if (b.status !== 'retirada') acoes.push(_biBtn('Retirar', 'assignment_return', `_biRetirar('${id}')`));
+  if (podeExcluir) acoes.push(_biBtn('Excluir', 'delete', `_biExcluir('${id}')`, 'perigo'));
+  return `<div style="background:#fff;border:1px solid ${cal.nivel === 'vencida' && b.status !== 'retirada' ? '#FECACA' : 'var(--neutral-200)'};border-radius:12px;padding:13px 14px;display:flex;flex-direction:column;gap:9px;">
+    <div style="display:flex;align-items:flex-start;gap:10px;">
+      <div style="width:38px;height:38px;border-radius:10px;background:#EEF2FF;color:var(--brand-navy);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+        <span class="material-symbols-rounded" style="font-size:21px;">medical_services</span></div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-weight:700;color:var(--brand-navy);font-size:13.5px;line-height:1.3;">${_biEsc(inst.nome || 'Hospital removido')}</div>
+        <div style="font-size:11.5px;color:var(--neutral-500);">${_biEsc([inst.cidade, inst.estado].filter(Boolean).join(' - '))}${mostrarResp ? ` · ${_biEsc(nomeCurto(b.responsavel?.nome || '-'))}` : ''}</div>
+      </div>
+      ${_biPill(st.rot, st.cor, st.bg, st.icone)}
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px 12px;font-size:12px;">
+      <div><div style="color:var(--neutral-500);font-size:10.5px;font-weight:700;text-transform:uppercase;">Marca</div><div style="color:var(--brand-navy);font-weight:600;">${_biEsc(b.marca)}</div></div>
+      <div><div style="color:var(--neutral-500);font-size:10.5px;font-weight:700;text-transform:uppercase;">Nº de série</div><div style="color:var(--brand-navy);font-weight:600;font-family:'JetBrains Mono',monospace;font-size:12px;">${_biEsc(b.numero_serie)}</div></div>
+      <div><div style="color:var(--neutral-500);font-size:10.5px;font-weight:700;text-transform:uppercase;">Entrega</div><div style="color:var(--brand-navy);font-weight:600;">${_biDataBR(b.data_entrega)} <span style="color:var(--neutral-500);font-weight:500;">(${diasCom} dia${diasCom === 1 ? '' : 's'})</span></div></div>
+      <div><div style="color:var(--neutral-500);font-size:10.5px;font-weight:700;text-transform:uppercase;">Calibração vence</div><div style="color:var(--brand-navy);font-weight:600;">${_biDataBR(b.calibracao_vencimento)} ${b.status !== 'retirada' ? _biPill(cal.rot, cal.cor, cal.bg) : ''}</div></div>
+    </div>
+    ${b.status === 'manutencao' && b.manutencao_desde ? `<div style="font-size:12px;color:#92400E;background:#FFFBEB;border-radius:8px;padding:6px 10px;">Em manutenção desde ${_biDataBR(b.manutencao_desde)} (${_biDias(b.manutencao_desde, _biHoje())} dias)</div>` : ''}
+    ${b.status === 'retirada' ? `<div style="font-size:12px;color:#334155;background:#F8FAFC;border-radius:8px;padding:6px 10px;">Retirada em ${_biDataBR(b.data_retirada)}</div>` : ''}
+    ${b.observacao ? `<div style="font-size:12px;color:var(--neutral-600);"><b>Obs.:</b> ${_biEsc(b.observacao)}</div>` : ''}
+    <div style="display:flex;gap:6px;flex-wrap:wrap;">${acoes.join('')}</div>
+  </div>`;
+}
+
+function _biTelaVisitador() {
+  return `<div id="biConteudo" style="display:flex;flex-direction:column;gap:14px;">
+    <div style="padding:50px;text-align:center;color:var(--neutral-500);font-size:13px;background:#fff;border:1px solid var(--neutral-200);border-radius:14px;"><div class="splash__spinner" style="margin:0 auto 12px;"></div>Carregando as bombas...</div>
+  </div>`;
+}
+
+async function _biAtualizarVisitador() {
+  BI.carregando = true;
+  BI.insts = null; BI.minhasInst = null;     // hospital novo aparece sem precisar recarregar a página
+  try { BI.lista = await _biCarregar({ todos: false }); BI.erro = null; }
+  catch (e) { BI.erro = _biMsgErro(e); }
+  BI.carregando = false;
+  _biRenderVisitador();
+}
+
+function _biRenderVisitador() {
+  const el = document.getElementById('biConteudo');
+  if (!el) return;
+  if (BI.erro) { el.innerHTML = `<div style="padding:24px;background:#fff;border:1px solid #FECACA;border-radius:14px;color:#B91C1C;font-size:13px;">${_biEsc(BI.erro)}</div>`; return; }
+  const r = _biResumo(BI.lista);
+  const termo = _biNorm(BI.busca);
+  let lista = BI.lista.filter(b => BI.aba === 'todas' ? true : BI.aba === 'retiradas' ? b.status === 'retirada' : _biAtiva(b));
+  if (termo) lista = lista.filter(b => _biNorm([b.instituicoes?.nome, b.instituicoes?.cidade, b.numero_serie, b.marca].join(' ')).includes(termo));
+  const peso = (b) => b.status === 'retirada' ? 9 : ({ vencida: 0, vence: 1, sem: 2, ok: 3 }[_biCalib(b).nivel] ?? 3) + (b.status === 'manutencao' ? 0.5 : 0);
+  lista.sort((a, b) => peso(a) - peso(b) || String(a.instituicoes?.nome || '').localeCompare(String(b.instituicoes?.nome || '')));
+  const abas = [['ativas', `Ativas (${r.emUso + r.manut})`], ['retiradas', `Retiradas (${r.retiradas})`], ['todas', 'Todas']];
+  el.innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;">
+      ${_biKpi('Em uso', r.emUso, `em ${r.hospitais} hospita${r.hospitais === 1 ? 'l' : 'is'}`, '#15803D', 'check_circle')}
+      ${_biKpi('Em manutenção', r.manut, '', r.manut ? '#B45309' : 'var(--brand-navy)', 'build')}
+      ${_biKpi('Calibração vencida', r.vencidas, `${r.vencem} vence${r.vencem === 1 ? '' : 'm'} em 30 dias`, r.vencidas ? '#B91C1C' : 'var(--brand-navy)', 'event_busy')}
+      ${_biKpi('Retiradas', r.retiradas, 'já devolvidas', 'var(--brand-navy)', 'assignment_return')}
+    </div>
+    ${r.vencidas ? `<div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:12px;padding:10px 14px;font-size:12.5px;color:#991B1B;display:flex;gap:8px;align-items:center;"><span class="material-symbols-rounded" style="font-size:19px;">warning</span><span><b>${r.vencidas} bomba${r.vencidas === 1 ? '' : 's'} com calibração vencida.</b> Combine com o hospital a troca ou a calibração e atualize a data aqui.</span></div>` : ''}
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+      <div style="display:inline-flex;gap:3px;background:var(--neutral-100);border-radius:9999px;padding:3px;">
+        ${abas.map(([k, t]) => `<button onclick="_biTrocarAba('${k}')" style="padding:6px 12px;border:0;border-radius:9999px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:inherit;background:${BI.aba === k ? 'var(--brand-navy)' : 'transparent'};color:${BI.aba === k ? '#fff' : 'var(--neutral-600)'};">${t}</button>`).join('')}
+      </div>
+      <div style="flex:1;min-width:200px;position:relative;">
+        <span class="material-symbols-rounded" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--neutral-500);font-size:18px;pointer-events:none;">search</span>
+        <input id="biBusca" type="text" value="${_biEsc(BI.busca)}" oninput="_biBuscar(this.value)" placeholder="Buscar hospital ou número de série..." style="width:100%;height:40px;padding:0 12px 0 38px;border:1px solid var(--neutral-200);border-radius:10px;font-family:inherit;font-size:13px;background:#fff;color:var(--brand-navy);" />
+      </div>
+      ${_biBtn('Nova bomba', 'add', '_biAbrirForm()', 'pri')}
+    </div>
+    <div id="biLista" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px;">
+      ${lista.length ? lista.map(b => _biCard(b)).join('') : `<div style="grid-column:1/-1;padding:36px 20px;text-align:center;background:#fff;border:1px dashed var(--neutral-300);border-radius:14px;color:var(--neutral-500);font-size:13px;">
+        <span class="material-symbols-rounded" style="font-size:34px;color:var(--neutral-400);">medical_services</span>
+        <div style="margin-top:6px;">${BI.lista.length ? 'Nada nesse filtro.' : 'Nenhuma bomba registrada ainda. Toque em <b>Nova bomba</b> para lançar a primeira entrega.'}</div></div>`}
+    </div>`;
+  if (BI._focoBusca) { const i = document.getElementById('biBusca'); if (i) { i.focus(); i.setSelectionRange(i.value.length, i.value.length); } BI._focoBusca = false; }
+}
+window._biTrocarAba = function(k) { BI.aba = k; _biRenderVisitador(); };
+let _biBuscaTimer = null;
+window._biBuscar = function(v) {
+  clearTimeout(_biBuscaTimer);
+  _biBuscaTimer = setTimeout(() => { BI.busca = v || ''; BI._focoBusca = true; _biRenderVisitador(); }, 200);
+};
+
+function renderNutriBombasDesktop() {
+  const user = requireAuth();
+  if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
+  setTimeout(_biAtualizarVisitador, 0);
+  return desktopShellNutri({
+    title: 'Bombas de infusão',
+    breadcrumb: ['Nutri', 'Bombas de infusão'],
+    content: `<div style="max-width:1200px;margin:0 auto;">${_biTelaVisitador()}</div>`,
+    activeId: 'bombas',
+  });
+}
+function renderNutriBombas() {
+  const user = requireAuth();
+  if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
+  setTimeout(_biAtualizarVisitador, 0);
+  return `
+    <div class="mobile-app">
+      ${mobileTopBar({ title: 'Bombas de infusão', showBack: true })}
+      <main class="mcontent" style="padding:14px 14px 90px;">${_biTelaVisitador()}</main>
+      ${bottomNav('')}
+    </div>`;
+}
+
+/* ------------------------------ formulário -------------------------------- */
+function _biAchar(id) { return BI.lista.find(b => b.id === id) || null; }
+
+window._biAbrirForm = async function(id) {
+  const b = id ? _biAchar(id) : null;
+  if (id && !b) { setFlash('error', 'Registro não encontrado. Atualize a página.'); return; }
+  const admin = _biEhAdmin();
+  try { await _biCarregarInstituicoes(); } catch (e) { setFlash('error', 'Não consegui carregar os hospitais: ' + (e.message || e)); return; }
+  if (admin && !BI.visitadores.length) { try { await _biCarregarVisitadores(); } catch (e) {} }
+  const eu = getCurrentUser();
+  const novoPeloAdmin = admin && !b && getCurrentUser().id === getCurrentUserReal().id;
+  const respAtual = b ? b.responsavel_id : (novoPeloAdmin ? (BI.adm.visitador !== 'todos' ? BI.adm.visitador : '') : eu.id);
+  const inst = b ? (BI.insts.find(i => i.id === b.instituicao_id) || { id: b.instituicao_id, nome: b.instituicoes?.nome || '', cidade: b.instituicoes?.cidade || '' }) : null;
+  const marca = b ? b.marca : '';
+  const st = b ? b.status : 'em_uso';
+  const inp = 'width:100%;height:42px;padding:0 12px;border:1.5px solid var(--neutral-200);border-radius:9px;font-family:inherit;font-size:13.5px;color:var(--brand-navy);background:#fff;';
+  const rot = (t, obrig) => `<div style="font-size:12px;font-weight:700;color:var(--brand-navy);margin-bottom:5px;">${t}${obrig ? ' <span style="color:#B91C1C;">*</span>' : ''}</div>`;
+  document.getElementById('biFormModal')?.remove();
+  document.body.insertAdjacentHTML('beforeend', `
+    <div id="biFormModal" style="position:fixed;inset:0;background:rgba(10,31,92,0.5);z-index:99999;display:flex;align-items:center;justify-content:center;padding:14px;" onclick="if(event.target===this)this.remove()">
+      <div style="background:#fff;border-radius:14px;max-width:540px;width:100%;max-height:94vh;overflow:auto;box-shadow:0 20px 60px rgba(0,0,0,.3);">
+        <div style="padding:15px 18px;border-bottom:1px solid var(--neutral-200);font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:16px;display:flex;align-items:center;gap:8px;">
+          <span class="material-symbols-rounded" style="color:var(--brand-lime);">medical_services</span>${b ? 'Editar bomba' : 'Nova bomba de infusão'}
+          <button onclick="document.getElementById('biFormModal').remove()" style="margin-left:auto;background:none;border:0;cursor:pointer;color:var(--neutral-500);"><span class="material-symbols-rounded">close</span></button>
+        </div>
+        <div style="padding:14px 18px;display:flex;flex-direction:column;gap:13px;">
+          <div style="position:relative;">
+            ${rot('Hospital', true)}
+            <input type="hidden" id="biInstId" value="${_biEsc(inst?.id || '')}" />
+            <input id="biInstBusca" type="text" autocomplete="off" value="${_biEsc(inst?.nome || '')}" placeholder="Digite o nome do hospital..." oninput="_biInstFiltrar(this.value)" onfocus="_biInstFiltrar(this.value)" style="${inp}" />
+            <div id="biInstLista" style="display:none;position:absolute;left:0;right:0;top:100%;margin-top:4px;background:#fff;border:1px solid var(--neutral-200);border-radius:10px;box-shadow:0 10px 30px rgba(10,31,92,.15);max-height:260px;overflow:auto;z-index:5;"></div>
+            <div style="font-size:11px;color:var(--neutral-500);margin-top:4px;">Vem da lista de instituições cadastradas. Não achou? Cadastre em Instituições.</div>
+          </div>
+          <div>
+            ${rot('Marca', true)}
+            <input type="hidden" id="biMarca" value="${_biEsc(marca)}" />
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+              ${BI_MARCAS.map(m => `<button type="button" class="biMarcaBtn" data-m="${_biEsc(m)}" onclick="_biEscolherMarca(this.dataset.m)" style="height:44px;border-radius:10px;font-family:inherit;font-size:13.5px;font-weight:700;cursor:pointer;border:1.5px solid ${marca === m ? 'var(--brand-navy)' : 'var(--neutral-200)'};background:${marca === m ? '#EEF2FF' : '#fff'};color:var(--brand-navy);">${_biEsc(m)}</button>`).join('')}
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+            <div>${rot('Número de série', true)}<input id="biSerie" type="text" maxlength="60" value="${_biEsc(b?.numero_serie || '')}" placeholder="Ex.: KG123456" style="${inp}text-transform:uppercase;font-family:'JetBrains Mono',monospace;" /></div>
+            <div>${rot('Data da entrega', true)}<input id="biEntrega" type="date" max="${_biHoje()}" value="${_biEsc(b?.data_entrega || _biHoje())}" style="${inp}" /></div>
+          </div>
+          <div>${rot('Vencimento da calibração', true)}<input id="biCalib" type="date" value="${_biEsc(b?.calibracao_vencimento || '')}" style="${inp}" /></div>
+          ${b ? `<div>
+            ${rot('Situação', true)}
+            <select id="biStatus" onchange="document.getElementById('biRetiradaBox').style.display=this.value==='retirada'?'':'none'" style="${inp}">
+              ${Object.entries(BI_STATUS).map(([k, v]) => `<option value="${k}" ${st === k ? 'selected' : ''}>${v.rot}</option>`).join('')}
+            </select>
+          </div>
+          <div id="biRetiradaBox" style="${st === 'retirada' ? '' : 'display:none;'}">${rot('Retirado dia', true)}<input id="biRetirada" type="date" max="${_biHoje()}" value="${_biEsc(b?.data_retirada || _biHoje())}" style="${inp}" /></div>` : ''}
+          ${admin ? `<div>${rot('Visitador responsável', true)}
+            <select id="biResp" style="${inp}">
+              ${novoPeloAdmin ? `<option value="" ${respAtual ? '' : 'selected'}>Escolha o visitador</option>` : ''}
+              ${BI.visitadores.map(u => `<option value="${u.id}" ${u.id === respAtual ? 'selected' : ''}>${_biEsc(u.nome)}</option>`).join('')}
+              ${!respAtual || BI.visitadores.some(u => u.id === respAtual) ? '' : `<option value="${respAtual}" selected>${_biEsc(b?.responsavel?.nome || eu.nome || 'Você')}</option>`}
+            </select></div>` : ''}
+          <div>${rot('Observação', false)}<textarea id="biObs" rows="2" maxlength="500" placeholder="Opcional. Ex.: setor da UTI, acessórios entregues..." style="width:100%;border:1.5px solid var(--neutral-200);border-radius:9px;padding:9px 12px;font-family:inherit;font-size:13px;color:var(--brand-navy);">${_biEsc(b?.observacao || '')}</textarea></div>
+          <div id="biFormErro" style="display:none;background:#FEF2F2;border:1px solid #FECACA;color:#991B1B;border-radius:9px;padding:9px 12px;font-size:12.5px;"></div>
+          ${b ? `<div id="biHistorico" style="font-size:12px;color:var(--neutral-500);">Carregando histórico...</div>` : ''}
+        </div>
+        <div style="padding:12px 18px;border-top:1px solid var(--neutral-200);display:flex;justify-content:flex-end;gap:8px;">
+          <button onclick="document.getElementById('biFormModal').remove()" style="background:transparent;border:1.5px solid var(--neutral-200);color:var(--neutral-600);padding:9px 15px;border-radius:9px;font-weight:600;cursor:pointer;font-family:inherit;">Cancelar</button>
+          <button id="biBtnSalvar" onclick="_biSalvar('${b ? b.id : ''}')" style="background:var(--brand-lime);border:0;color:#fff;padding:9px 18px;border-radius:9px;font-weight:700;cursor:pointer;font-family:inherit;">${b ? 'Salvar' : 'Registrar entrega'}</button>
+        </div>
+      </div>
+    </div>`);
+  if (b) _biCarregarHistorico(b.id);
+  else setTimeout(() => document.getElementById('biInstBusca')?.focus(), 50);
+};
+
+window._biEscolherMarca = function(m) {
+  document.getElementById('biMarca').value = m;
+  document.querySelectorAll('.biMarcaBtn').forEach(btn => {
+    const on = btn.dataset.m === m;
+    btn.style.borderColor = on ? 'var(--brand-navy)' : 'var(--neutral-200)';
+    btn.style.background = on ? '#EEF2FF' : '#fff';
+  });
+};
+
+window._biInstFiltrar = function(txt) {
+  const box = document.getElementById('biInstLista');
+  if (!box) return;
+  const idEl = document.getElementById('biInstId');
+  const atual = BI.insts.find(i => i.id === idEl.value);
+  if (atual && atual.nome !== txt) idEl.value = '';
+  const t = _biNorm(txt).trim();
+  const partes = t.split(/\s+/).filter(Boolean);
+  let achados = BI.insts.filter(i => partes.every(p => i.n.includes(p)));
+  achados.sort((a, b) => (BI.minhasInst.has(b.id) - BI.minhasInst.has(a.id)) || a.nome.localeCompare(b.nome));
+  achados = achados.slice(0, 40);
+  box.innerHTML = achados.length ? achados.map(i => `<div onmousedown="event.preventDefault();_biInstEscolher('${i.id}')" style="padding:9px 12px;cursor:pointer;border-bottom:1px solid var(--neutral-100);font-size:13px;" onmouseover="this.style.background='#F4F6FA'" onmouseout="this.style.background='#fff'">
+      <div style="font-weight:600;color:var(--brand-navy);">${_biEsc(i.nome)}${BI.minhasInst.has(i.id) ? ' <span style="font-size:10.5px;color:#15803D;font-weight:700;">você visita</span>' : ''}</div>
+      <div style="font-size:11.5px;color:var(--neutral-500);">${_biEsc([i.cidade, i.estado].filter(Boolean).join(' - '))}</div></div>`).join('')
+    : `<div style="padding:12px;font-size:12.5px;color:var(--neutral-500);">Nenhum hospital com esse nome.</div>`;
+  box.style.display = 'block';
+  if (!box._fecharInstalado) {
+    box._fecharInstalado = true;
+    document.getElementById('biInstBusca').addEventListener('blur', () => setTimeout(() => { box.style.display = 'none'; }, 150));
+  }
+};
+window._biInstEscolher = function(id) {
+  const i = BI.insts.find(x => x.id === id);
+  if (!i) return;
+  document.getElementById('biInstId').value = i.id;
+  document.getElementById('biInstBusca').value = i.nome;
+  document.getElementById('biInstLista').style.display = 'none';
+};
+
+async function _biCarregarHistorico(id) {
+  const el = document.getElementById('biHistorico');
+  if (!el) return;
+  try {
+    const { data, error } = await db.from('bombas_infusao_eventos').select('tipo,detalhe,usuario_id,criado_em').eq('bomba_id', id).order('criado_em', { ascending: false }).limit(30);
+    if (error) throw error;
+    if (!data || !data.length) { el.innerHTML = ''; return; }
+    const nomes = {};
+    (BI.visitadores || []).forEach(u => { nomes[u.id] = u.nome; });
+    const eu = getCurrentUserReal();
+    if (eu) nomes[eu.id] = eu.nome;
+    const rot = { entrega: 'Entrega registrada', manutencao: 'Foi para manutenção', volta_uso: 'Voltou a uso', retirada: 'Retirada', reativada: 'Reativada', transferencia: 'Transferida de visitador', troca_hospital: 'Hospital alterado', calibracao: 'Vencimento da calibração alterado', edicao: 'Dados editados' };
+    el.innerHTML = `<div style="font-weight:700;color:var(--brand-navy);margin-bottom:6px;">Histórico</div>` + data.map(e => {
+      const q = new Date(e.criado_em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' });
+      let extra = '';
+      if (e.tipo === 'calibracao' && e.detalhe) extra = `: ${_biDataBR(e.detalhe.de)} para ${_biDataBR(e.detalhe.para)}`;
+      if (e.tipo === 'retirada' && e.detalhe?.data_retirada) extra = ` em ${_biDataBR(e.detalhe.data_retirada)}`;
+      return `<div style="display:flex;gap:8px;padding:4px 0;border-top:1px solid var(--neutral-100);"><span style="color:var(--neutral-400);white-space:nowrap;">${q}</span><span style="color:var(--neutral-600);">${rot[e.tipo] || _biEsc(e.tipo)}${extra}${nomes[e.usuario_id] ? ' · ' + _biEsc(nomeCurto(nomes[e.usuario_id])) : ''}</span></div>`;
+    }).join('');
+  } catch (e) { el.innerHTML = ''; }
+}
+
+window._biSalvar = async function(id) {
+  const erroEl = document.getElementById('biFormErro');
+  const erro = (m) => { erroEl.textContent = m; erroEl.style.display = 'block'; };
+  erroEl.style.display = 'none';
+  const instId = document.getElementById('biInstId').value;
+  const marca = document.getElementById('biMarca').value;
+  const serie = String(document.getElementById('biSerie').value || '').trim().toUpperCase();
+  const entrega = document.getElementById('biEntrega').value;
+  const calib = document.getElementById('biCalib').value;
+  const obs = String(document.getElementById('biObs').value || '').trim();
+  const stEl = document.getElementById('biStatus');
+  const status = stEl ? stEl.value : 'em_uso';
+  const retirada = status === 'retirada' ? (document.getElementById('biRetirada')?.value || '') : null;
+  const respEl = document.getElementById('biResp');
+  if (!instId) return erro('Escolha o hospital na lista.');
+  if (respEl && !respEl.value) return erro('Escolha o visitador responsável.');
+  if (!marca) return erro('Escolha a marca.');
+  if (!serie) return erro('Informe o número de série.');
+  if (/[<>]/.test(serie) || /[<>]/.test(obs)) return erro('Não use os caracteres < e >.');
+  if (!entrega) return erro('Informe a data da entrega.');
+  if (entrega > _biHoje()) return erro('A data da entrega não pode ser no futuro.');
+  if (!calib) return erro('Informe o vencimento da calibração.');
+  if (status === 'retirada') {
+    if (!retirada) return erro('Informe o dia da retirada.');
+    if (retirada < entrega) return erro('A retirada não pode ser antes da entrega.');
+    if (retirada > _biHoje()) return erro('A data da retirada não pode ser no futuro.');
+  }
+  const dados = {
+    instituicao_id: instId, marca, numero_serie: serie, data_entrega: entrega,
+    calibracao_vencimento: calib, observacao: obs || null, status, data_retirada: retirada,
+  };
+  if (respEl) dados.responsavel_id = respEl.value;
+  else if (!id) dados.responsavel_id = getCurrentUser().id;
+  const btn = document.getElementById('biBtnSalvar');
+  btn.disabled = true; btn.textContent = 'Salvando...';
+  try {
+    const q = id ? db.from('bombas_infusao').update(dados).eq('id', id).select('id') : db.from('bombas_infusao').insert(dados).select('id');
+    const { data, error } = await q;
+    if (error) throw error;
+    if (!data || !data.length) throw new Error('O banco não confirmou a gravação.');
+    document.getElementById('biFormModal')?.remove();
+    setFlash('success', id ? 'Bomba atualizada.' : 'Entrega registrada.');
+    await _biRecarregar();
+  } catch (e) {
+    erro(_biMsgErro(e));
+    btn.disabled = false; btn.textContent = id ? 'Salvar' : 'Registrar entrega';
+  }
+};
+
+async function _biRecarregar() {
+  if (document.getElementById('biAdmConteudo')) await _biAtualizarAdmin();
+  else await _biAtualizarVisitador();
+}
+
+window._biMudarStatus = async function(id, status) {
+  const b = _biAchar(id);
+  if (!b) return;
+  const ok = await showModalConfirmacao({
+    icone: status === 'manutencao' ? 'build' : 'check_circle', iconeCor: status === 'manutencao' ? 'warning' : 'success',
+    titulo: status === 'manutencao' ? 'Colocar em manutenção?' : 'A bomba voltou da manutenção?',
+    subtitulo: `${_biEsc(b.marca)} ${_biEsc(b.numero_serie)} · ${_biEsc(b.instituicoes?.nome || '')}`,
+    btnConfirmar: status === 'manutencao' ? 'Colocar em manutenção' : 'Voltou a uso',
+  });
+  if (!ok) return;
+  const { data, error } = await db.from('bombas_infusao').update({ status, data_retirada: null }).eq('id', id).select('id');
+  if (error || !data?.length) { setFlash('error', 'Não consegui salvar: ' + _biMsgErro(error || 'sem confirmação')); return; }
+  setFlash('success', status === 'manutencao' ? 'Bomba em manutenção.' : 'Bomba de volta ao uso.');
+  await _biRecarregar();
+};
+
+window._biRetirar = function(id) {
+  const b = _biAchar(id);
+  if (!b) return;
+  document.getElementById('biRetModal')?.remove();
+  document.body.insertAdjacentHTML('beforeend', `
+    <div id="biRetModal" style="position:fixed;inset:0;background:rgba(10,31,92,0.5);z-index:99999;display:flex;align-items:center;justify-content:center;padding:14px;" onclick="if(event.target===this)this.remove()">
+      <div style="background:#fff;border-radius:14px;max-width:400px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.3);">
+        <div style="padding:16px 18px 6px;font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:16px;">Registrar retirada</div>
+        <div style="padding:0 18px 12px;font-size:12.5px;color:var(--neutral-600);">${_biEsc(b.marca)} ${_biEsc(b.numero_serie)} · ${_biEsc(b.instituicoes?.nome || '')}</div>
+        <div style="padding:0 18px 14px;">
+          <div style="font-size:12px;font-weight:700;color:var(--brand-navy);margin-bottom:5px;">Retirado dia</div>
+          <input id="biRetData" type="date" min="${_biEsc(b.data_entrega)}" max="${_biHoje()}" value="${_biHoje()}" style="width:100%;height:42px;padding:0 12px;border:1.5px solid var(--neutral-200);border-radius:9px;font-family:inherit;font-size:13.5px;color:var(--brand-navy);" />
+        </div>
+        <div style="padding:12px 18px;border-top:1px solid var(--neutral-200);display:flex;justify-content:flex-end;gap:8px;">
+          <button onclick="document.getElementById('biRetModal').remove()" style="background:transparent;border:1.5px solid var(--neutral-200);color:var(--neutral-600);padding:9px 15px;border-radius:9px;font-weight:600;cursor:pointer;font-family:inherit;">Cancelar</button>
+          <button onclick="_biConfirmarRetirada('${id}', this)" style="background:var(--brand-navy);border:0;color:#fff;padding:9px 16px;border-radius:9px;font-weight:700;cursor:pointer;font-family:inherit;">Confirmar retirada</button>
+        </div>
+      </div>
+    </div>`);
+};
+window._biConfirmarRetirada = async function(id, btn) {
+  const b = _biAchar(id);
+  const d = document.getElementById('biRetData')?.value;
+  if (!d) { setFlash('warning', 'Informe a data da retirada.'); return; }
+  if (b && d < b.data_entrega) { setFlash('warning', 'A retirada não pode ser antes da entrega.'); return; }
+  if (d > _biHoje()) { setFlash('warning', 'A data não pode ser no futuro.'); return; }
+  btn.disabled = true; btn.textContent = 'Salvando...';
+  const { data, error } = await db.from('bombas_infusao').update({ status: 'retirada', data_retirada: d }).eq('id', id).select('id');
+  if (error || !data?.length) { setFlash('error', 'Não consegui salvar: ' + _biMsgErro(error || 'sem confirmação')); btn.disabled = false; btn.textContent = 'Confirmar retirada'; return; }
+  document.getElementById('biRetModal')?.remove();
+  setFlash('success', 'Retirada registrada.');
+  await _biRecarregar();
+};
+
+window._biExcluir = async function(id) {
+  const b = _biAchar(id);
+  if (!b) return;
+  const ok = await showModalConfirmacao({
+    icone: 'delete', iconeCor: 'danger', titulo: 'Excluir este registro?',
+    subtitulo: `${_biEsc(b.marca)} ${_biEsc(b.numero_serie)} · ${_biEsc(b.instituicoes?.nome || '')}. Use só para lançamento errado. Se a bomba voltou do hospital, use Retirar.`,
+    btnConfirmar: 'Excluir',
+  });
+  if (!ok) return;
+  const { data, error } = await db.from('bombas_infusao').delete().eq('id', id).select('id');
+  if (error || !data?.length) { setFlash('error', 'Não consegui excluir: ' + _biMsgErro(error || 'Só dá para excluir nas primeiras 24 horas. Depois disso, fale com o administrador.')); return; }
+  setFlash('success', 'Registro excluído.');
+  await _biRecarregar();
+};
+
+/* --------------------------- painel do admin ------------------------------ */
+async function _biCarregarVisitadores() {
+  const { data, error } = await db.from('usuarios').select('id,nome,perfil,status').in('perfil', ['nutricionista', 'admin']).eq('status', 'ativo').order('nome');
+  if (error) throw error;
+  const fora = (n) => (typeof _ncForaFixo === 'function') && _ncForaFixo(n);
+  BI.visitadores = (data || []).filter(u => u.perfil === 'nutricionista' && !fora(u.nome));
+  BI.todosUsuarios = data || [];
+}
+
+function _biTelaAdmin() {
+  return `<div id="biAdmConteudo" style="display:flex;flex-direction:column;gap:14px;">
+    <div style="padding:50px;text-align:center;color:var(--neutral-500);font-size:13px;background:#fff;border:1px solid var(--neutral-200);border-radius:14px;"><div class="splash__spinner" style="margin:0 auto 12px;"></div>Montando o painel...</div>
+  </div>`;
+}
+
+async function _biAtualizarAdmin() {
+  BI.insts = null; BI.minhasInst = null;
+  try {
+    const [lista] = await Promise.all([_biCarregar({ todos: true }), _biCarregarVisitadores()]);
+    BI.lista = lista;
+    BI.erro = null;
+    // última visita de cada hospital com bomba ativa (risco de comodato esquecido)
+    const ids = [...new Set(lista.filter(_biAtiva).map(b => b.instituicao_id))];
+    BI.ultVisita = {};
+    const desde = new Date(); desde.setDate(desde.getDate() - 365);
+    for (let i = 0; i < ids.length; i += 20) {
+      const { data } = await db.from('visitas').select('instituicao_id,data_visita,status').in('instituicao_id', ids.slice(i, i + 20))
+        .gte('data_visita', _dataArquivo(desde)).lte('data_visita', _biHoje()).not('status', 'in', '(agendada,sugerida,cancelada)')
+        .order('data_visita', { ascending: false }).limit(5000);
+      (data || []).forEach(v => { if (!BI.ultVisita[v.instituicao_id] || v.data_visita > BI.ultVisita[v.instituicao_id]) BI.ultVisita[v.instituicao_id] = v.data_visita; });
+    }
+  } catch (e) { BI.erro = _biMsgErro(e); }
+  _biRenderAdmin();
+}
+
+function _biFiltradaAdmin() {
+  const f = BI.adm;
+  return BI.lista.filter(b => (f.visitador === 'todos' || b.responsavel_id === f.visitador) && (f.marca === 'todas' || b.marca === f.marca));
+}
+
+function _biMeses(n) {
+  const out = [], h = new Date();
+  for (let i = n - 1; i >= 0; i--) {
+    const d = new Date(h.getFullYear(), h.getMonth() - i, 1);
+    const fim = new Date(d.getFullYear(), d.getMonth() + 1, 0);
+    out.push({ chave: _dataArquivo(d).slice(0, 7), fim: _dataArquivo(fim), rot: d.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '') + '/' + String(d.getFullYear()).slice(2) });
+  }
+  return out;
+}
+
+function _biInsightsAdmin(base, porHosp, porVis) {
+  const out = [];
+  const at = base.filter(_biAtiva);
+  const nAt = at.length;
+  if (!nAt) return out;
+  const venc = at.filter(b => _biCalib(b).nivel === 'vencida');
+  if (venc.length) {
+    const pv = {}; venc.forEach(b => { pv[b.responsavel_id] = (pv[b.responsavel_id] || 0) + 1; });
+    const top = Object.entries(pv).sort((a, b) => b[1] - a[1])[0];
+    out.push({ n: 3, t: 'Calibração vencida', x: `${venc.length} bomba${venc.length === 1 ? '' : 's'} em comodato com calibração vencida (${_pctBR(100 * venc.length / nAt, 0)}% das ativas). ${top ? `A maior parte está com ${nomeCurto(porVis[top[0]]?.nome || '-')} (${top[1]}).` : ''}` });
+  }
+  const manLonga = at.filter(b => b.status === 'manutencao' && b.manutencao_desde && _biDias(b.manutencao_desde, _biHoje()) > 30);
+  if (manLonga.length) out.push({ n: 2, t: 'Manutenção parada', x: `${manLonga.length} bomba${manLonga.length === 1 ? '' : 's'} em manutenção há mais de 30 dias. Vale cobrar o retorno do fornecedor.` });
+  const semVisita = Object.values(porHosp).filter(h => h.ativas > 0 && (!BI.ultVisita[h.id] || _biDias(BI.ultVisita[h.id], _biHoje()) > 60));
+  if (semVisita.length) {
+    const bombas = semVisita.reduce((s, h) => s + h.ativas, 0);
+    out.push({ n: 2, t: 'Comodato sem acompanhamento', x: `${semVisita.length} hospita${semVisita.length === 1 ? 'l tem' : 'is têm'} ${bombas} bomba${bombas === 1 ? '' : 's'} e nenhuma visita nos últimos 60 dias: ${semVisita.slice(0, 3).map(h => h.nome).join(', ')}${semVisita.length > 3 ? '...' : ''}.` });
+  }
+  const hosps = Object.values(porHosp).filter(h => h.ativas > 0).sort((a, b) => b.ativas - a.ativas);
+  if (hosps.length >= 3) {
+    const top3 = hosps.slice(0, 3).reduce((s, h) => s + h.ativas, 0);
+    out.push({ n: 1, t: 'Concentração', x: `Os 3 hospitais que mais usam ficam com ${_pctBR(100 * top3 / nAt, 0)}% das bombas ativas (${hosps[0].nome}: ${hosps[0].ativas}).` });
+  }
+  const semCalib = at.filter(b => !b.calibracao_vencimento).length;
+  if (semCalib) out.push({ n: 1, t: 'Sem data de calibração', x: `${semCalib} bomba${semCalib === 1 ? '' : 's'} sem vencimento de calibração informado.` });
+  const longas = at.filter(b => _biDias(b.data_entrega, _biHoje()) > 365).length;
+  if (longas) out.push({ n: 1, t: 'Comodato longo', x: `${longas} bomba${longas === 1 ? '' : 's'} está${longas === 1 ? '' : 'ão'} no mesmo hospital há mais de 1 ano.` });
+  return out.sort((a, b) => b.n - a.n);
+}
+
+function _biRenderAdmin() {
+  const el = document.getElementById('biAdmConteudo');
+  if (!el) return;
+  (BI.charts || []).forEach(c => { try { c.destroy(); } catch (e) {} });
+  BI.charts = [];
+  if (BI.erro) { el.innerHTML = `<div style="padding:24px;background:#fff;border:1px solid #FECACA;border-radius:14px;color:#B91C1C;font-size:13px;">${_biEsc(BI.erro)}</div>`; return; }
+  const f = BI.adm;
+  const base = _biFiltradaAdmin();
+  const at = base.filter(_biAtiva);
+  const hoje = _biHoje();
+  const meses = _biMeses(12);
+  const ini12 = meses[0].chave + '-01';
+  const ent12 = base.filter(b => b.data_entrega >= ini12).length;
+  const ret12 = base.filter(b => b.data_retirada && b.data_retirada >= ini12).length;
+  const venc = at.filter(b => _biCalib(b).nivel === 'vencida').length;
+  const vence = at.filter(b => _biCalib(b).nivel === 'vence').length;
+  const manut = at.filter(b => b.status === 'manutencao').length;
+  const tempoMed = at.length ? Math.round(at.reduce((s, b) => s + _biDias(b.data_entrega, hoje), 0) / at.length) : 0;
+  const nomeU = {}; (BI.todosUsuarios || []).forEach(u => { nomeU[u.id] = u; });
+
+  const porHosp = {}, porVis = {};
+  base.forEach(b => {
+    const h = porHosp[b.instituicao_id] = porHosp[b.instituicao_id] || { id: b.instituicao_id, nome: b.instituicoes?.nome || '-', cidade: b.instituicoes?.cidade || '', ativas: 0, total: 0, manut: 0, venc: 0, marcas: {}, vis: new Set() };
+    h.total++;
+    if (_biAtiva(b)) { h.ativas++; h.marcas[b.marca] = (h.marcas[b.marca] || 0) + 1; h.vis.add(b.responsavel_id); if (b.status === 'manutencao') h.manut++; if (_biCalib(b).nivel === 'vencida') h.venc++; }
+    const v = porVis[b.responsavel_id] = porVis[b.responsavel_id] || { id: b.responsavel_id, nome: b.responsavel?.nome || nomeU[b.responsavel_id]?.nome || '-', ativas: 0, hosp: new Set(), ent12: 0, ret12: 0, venc: 0, manut: 0 };
+    if (_biAtiva(b)) { v.ativas++; v.hosp.add(b.instituicao_id); if (b.status === 'manutencao') v.manut++; if (_biCalib(b).nivel === 'vencida') v.venc++; }
+    if (b.data_entrega >= ini12) v.ent12++;
+    if (b.data_retirada && b.data_retirada >= ini12) v.ret12++;
+  });
+  const rankH = Object.values(porHosp).filter(h => h.ativas > 0).sort((a, b) => b.ativas - a.ativas || b.total - a.total);
+  const rankV = Object.values(porVis).sort((a, b) => b.ativas - a.ativas || b.ent12 - a.ent12);
+  const insights = _biInsightsAdmin(base, porHosp, porVis);
+  const atencao = at.filter(b => ['vencida', 'vence'].includes(_biCalib(b).nivel) || (b.status === 'manutencao' && b.manutencao_desde && _biDias(b.manutencao_desde, hoje) > 15))
+    .sort((a, b) => String(a.calibracao_vencimento || '9999').localeCompare(String(b.calibracao_vencimento || '9999')));
+
+  // lista completa
+  const termo = _biNorm(f.busca);
+  let tab = base.filter(b => f.status === 'todas' ? true : f.status === 'ativas' ? _biAtiva(b) : b.status === f.status);
+  if (termo) tab = tab.filter(b => _biNorm([b.instituicoes?.nome, b.instituicoes?.cidade, b.numero_serie, b.marca, b.responsavel?.nome].join(' ')).includes(termo));
+  const ord = {
+    hospital: (a, b) => String(a.instituicoes?.nome || '').localeCompare(String(b.instituicoes?.nome || '')),
+    calibracao: (a, b) => String(a.calibracao_vencimento || '9999').localeCompare(String(b.calibracao_vencimento || '9999')),
+    entrega: (a, b) => String(b.data_entrega).localeCompare(String(a.data_entrega)),
+    visitador: (a, b) => String(a.responsavel?.nome || '').localeCompare(String(b.responsavel?.nome || '')),
+  }[f.ordem] || (() => 0);
+  tab.sort(ord);
+  BI._tabAtual = tab;
+
+  const sel = 'height:38px;padding:0 10px;border:1px solid var(--neutral-200);border-radius:9px;font-family:inherit;font-size:12.5px;color:var(--brand-navy);background:#fff;';
+  const card = (titulo, corpo, extra = '') => `<div style="background:#fff;border:1px solid var(--neutral-200);border-radius:14px;padding:14px 16px;min-width:0;${extra}"><div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:14px;margin-bottom:10px;">${titulo}</div>${corpo}</div>`;
+  const th = (t, al = 'left') => `<th style="text-align:${al};padding:7px 8px;font-size:10.5px;text-transform:uppercase;letter-spacing:.3px;color:var(--neutral-500);border-bottom:1px solid var(--neutral-200);white-space:nowrap;">${t}</th>`;
+  const td = (t, al = 'left', ex = '') => `<td style="text-align:${al};padding:7px 8px;font-size:12.5px;color:var(--brand-navy);border-bottom:1px solid var(--neutral-100);${ex}">${t}</td>`;
+  const nivelCor = { 3: ['#B91C1C', '#FEE2E2', 'Crítico'], 2: ['#B45309', '#FEF3C7', 'Importante'], 1: ['#1D4ED8', '#DBEAFE', 'Atenção'] };
+
+  el.innerHTML = `
+    <div style="background:#fff;border:1px solid var(--neutral-200);border-radius:14px;padding:12px 14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+      <span class="material-symbols-rounded" style="color:var(--brand-navy);">filter_alt</span>
+      <select onchange="_biAdmFiltro('visitador', this.value)" style="${sel}">
+        <option value="todos">Todos os visitadores</option>
+        ${Object.values(porVis).concat(BI.visitadores.filter(u => !porVis[u.id]).map(u => ({ id: u.id, nome: u.nome }))).sort((a, b) => a.nome.localeCompare(b.nome)).map(u => `<option value="${u.id}" ${f.visitador === u.id ? 'selected' : ''}>${_biEsc(u.nome)}</option>`).join('')}
+      </select>
+      <select onchange="_biAdmFiltro('marca', this.value)" style="${sel}">
+        <option value="todas">Todas as marcas</option>
+        ${BI_MARCAS.map(m => `<option ${f.marca === m ? 'selected' : ''}>${_biEsc(m)}</option>`).join('')}
+      </select>
+      <div style="flex:1;"></div>
+      ${_biBtn('Exportar CSV', 'download', '_biExportarCsv()')}
+      ${_biBtn('Nova bomba', 'add', '_biAbrirForm()', 'pri')}
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;">
+      ${_biKpi('Em comodato', at.length - manut, `+${manut} em manutenção`, '#15803D', 'medical_services')}
+      ${_biKpi('Hospitais atendidos', rankH.length, `${rankV.filter(v => v.ativas > 0).length} visitadores com bomba`, 'var(--brand-navy)', 'local_hospital')}
+      ${_biKpi('Calibração vencida', venc, `${vence} vence${vence === 1 ? '' : 'm'} em 30 dias`, venc ? '#B91C1C' : 'var(--brand-navy)', 'event_busy')}
+      ${_biKpi('Entregas 12 meses', ent12, `${ret12} retirada${ret12 === 1 ? '' : 's'} no período`, 'var(--brand-navy)', 'local_shipping')}
+      ${_biKpi('Tempo médio', tempoMed + ' dias', 'das bombas ativas no hospital', 'var(--brand-navy)', 'schedule')}
+    </div>
+
+    ${insights.length ? card('Leitura do comodato', insights.map(i => `<div style="display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-top:1px solid var(--neutral-100);">
+        <span style="font-size:10px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;color:#fff;background:${nivelCor[i.n][0]};padding:3px 7px;border-radius:5px;white-space:nowrap;">${nivelCor[i.n][2]}</span>
+        <div style="font-size:12.5px;color:var(--neutral-600);"><b style="color:var(--brand-navy);">${_biEsc(i.t)}.</b> ${_biEsc(i.x)}</div></div>`).join('')) : ''}
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:14px;">
+      ${card('Movimento mês a mês', `<div style="position:relative;height:250px;"><canvas id="biChMov"></canvas></div>`)}
+      ${card('Bombas ativas por marca', `<div style="position:relative;height:250px;"><canvas id="biChMarca"></canvas></div>`)}
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:14px;">
+      ${card('Hospitais que mais usam', rankH.length ? `<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;"><thead><tr>${th('Hospital')}${th('Ativas', 'right')}${th('Marcas')}${th('Visitador')}${th('Última visita', 'right')}</tr></thead><tbody>
+        ${rankH.slice(0, 15).map(h => {
+          const uv = BI.ultVisita[h.id];
+          const dUv = uv ? _biDias(uv, hoje) : null;
+          return `<tr>${td(`<b>${_biEsc(h.nome)}</b><div style="font-size:11px;color:var(--neutral-500);">${_biEsc(h.cidade)}</div>`)}${td(`<b>${h.ativas}</b>${h.venc ? ` <span style="color:#B91C1C;font-size:11px;">(${h.venc} venc.)</span>` : ''}`, 'right')}${td(_biEsc(Object.entries(h.marcas).map(([m, n]) => `${m} ${n}`).join(', ')), 'left', 'font-size:11.5px;')}${td(_biEsc([...h.vis].map(id => nomeCurto(porVis[id]?.nome || '-')).join(', ')), 'left', 'font-size:11.5px;')}${td(uv ? `${_biDataBR(uv)}<div style="font-size:11px;color:${dUv > 60 ? '#B91C1C' : 'var(--neutral-500)'};">${dUv} dias</div>` : '<span style="color:#B91C1C;font-size:11.5px;">sem visita</span>', 'right')}</tr>`;
+        }).join('')}</tbody></table></div>${rankH.length > 15 ? `<div style="font-size:11.5px;color:var(--neutral-500);margin-top:6px;">E mais ${rankH.length - 15} hospitais. Veja todos na lista abaixo.</div>` : ''}` : '<div style="font-size:12.5px;color:var(--neutral-500);">Nenhuma bomba ativa.</div>')}
+      ${card('Visitadores que mais disponibilizam', rankV.length ? `<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;"><thead><tr>${th('Visitador')}${th('Ativas', 'right')}${th('Hospitais', 'right')}${th('Entregas 12m', 'right')}${th('Retiradas 12m', 'right')}${th('Venc.', 'right')}</tr></thead><tbody>
+        ${rankV.map((v, i) => `<tr>${td(`<span style="color:var(--neutral-400);font-size:11px;margin-right:4px;">${i + 1}º</span><b>${_biEsc(nomeCurto(v.nome))}</b>`)}${td(`<b>${v.ativas}</b>${v.manut ? ` <span style="color:#B45309;font-size:11px;">(${v.manut} manut.)</span>` : ''}`, 'right')}${td(v.hosp.size, 'right')}${td(v.ent12, 'right')}${td(v.ret12, 'right')}${td(v.venc ? `<span style="color:#B91C1C;font-weight:700;">${v.venc}</span>` : '0', 'right')}</tr>`).join('')}
+        </tbody></table></div>` : '<div style="font-size:12.5px;color:var(--neutral-500);">Ninguém registrou bomba ainda.</div>')}
+    </div>
+
+    ${atencao.length ? card(`Precisa de atenção (${atencao.length})`, `<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;"><thead><tr>${th('Hospital')}${th('Bomba')}${th('Visitador')}${th('Calibração')}${th('Situação')}</tr></thead><tbody>
+      ${atencao.slice(0, 40).map(b => { const c = _biCalib(b); const st = BI_STATUS[b.status]; return `<tr style="cursor:pointer;" onclick="_biAbrirForm('${b.id}')">${td(_biEsc(b.instituicoes?.nome || '-'))}${td(`${_biEsc(b.marca)} <span style="font-family:'JetBrains Mono',monospace;font-size:11.5px;">${_biEsc(b.numero_serie)}</span>`)}${td(_biEsc(nomeCurto(b.responsavel?.nome || '-')))}${td(`${_biDataBR(b.calibracao_vencimento)} ${c.nivel !== 'ok' ? _biPill(c.rot, c.cor, c.bg) : ''}`)}${td(_biPill(st.rot + (b.status === 'manutencao' && b.manutencao_desde ? ` há ${_biDias(b.manutencao_desde, hoje)}d` : ''), st.cor, st.bg))}</tr>`; }).join('')}
+      </tbody></table></div>`) : ''}
+
+    ${card('Todas as bombas', `
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px;">
+        <div style="display:inline-flex;gap:3px;background:var(--neutral-100);border-radius:9999px;padding:3px;">
+          ${[['ativas', 'Ativas'], ['em_uso', 'Em uso'], ['manutencao', 'Manutenção'], ['retirada', 'Retiradas'], ['todas', 'Todas']].map(([k, t]) => `<button onclick="_biAdmFiltro('status','${k}')" style="padding:5px 11px;border:0;border-radius:9999px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:inherit;background:${f.status === k ? 'var(--brand-navy)' : 'transparent'};color:${f.status === k ? '#fff' : 'var(--neutral-600)'};">${t}</button>`).join('')}
+        </div>
+        <input id="biAdmBusca" type="text" value="${_biEsc(f.busca)}" oninput="_biAdmBuscar(this.value)" placeholder="Buscar hospital, série, visitador..." style="flex:1;min-width:180px;${sel}" />
+        <select onchange="_biAdmFiltro('ordem', this.value)" style="${sel}">
+          ${[['hospital', 'Ordenar por hospital'], ['calibracao', 'Por vencimento da calibração'], ['entrega', 'Por entrega mais recente'], ['visitador', 'Por visitador']].map(([k, t]) => `<option value="${k}" ${f.ordem === k ? 'selected' : ''}>${t}</option>`).join('')}
+        </select>
+      </div>
+      <div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;min-width:820px;"><thead><tr>${th('Hospital')}${th('Marca')}${th('Nº de série')}${th('Visitador')}${th('Entrega')}${th('Calibração')}${th('Situação')}${th('', 'right')}</tr></thead><tbody>
+        ${tab.length ? tab.slice(0, 300).map(b => { const c = _biCalib(b); const st = BI_STATUS[b.status]; return `<tr>${td(`<b>${_biEsc(b.instituicoes?.nome || '-')}</b><div style="font-size:11px;color:var(--neutral-500);">${_biEsc(b.instituicoes?.cidade || '')}</div>`)}${td(_biEsc(b.marca))}${td(_biEsc(b.numero_serie), 'left', "font-family:'JetBrains Mono',monospace;font-size:11.5px;")}${td(_biEsc(nomeCurto(b.responsavel?.nome || '-')))}${td(_biDataBR(b.data_entrega))}${td(`${_biDataBR(b.calibracao_vencimento)}${b.status !== 'retirada' && c.nivel !== 'ok' ? '<br>' + _biPill(c.rot, c.cor, c.bg) : ''}`)}${td(_biPill(st.rot, st.cor, st.bg) + (b.status === 'retirada' ? `<div style="font-size:11px;color:var(--neutral-500);margin-top:2px;">${_biDataBR(b.data_retirada)}</div>` : ''))}${td(`<div style="display:flex;gap:4px;justify-content:flex-end;">${_biBtn('', 'edit', `_biAbrirForm('${b.id}')`)}${b.status !== 'retirada' ? _biBtn('', 'assignment_return', `_biRetirar('${b.id}')`) : ''}${_biBtn('', 'delete', `_biExcluir('${b.id}')`, 'perigo')}</div>`, 'right')}</tr>`; }).join('') : `<tr><td colspan="8" style="padding:24px;text-align:center;color:var(--neutral-500);font-size:12.5px;">Nada nesse filtro.</td></tr>`}
+      </tbody></table></div>
+      <div style="font-size:11.5px;color:var(--neutral-500);margin-top:6px;">${tab.length} registro${tab.length === 1 ? '' : 's'}${tab.length > 300 ? ' (mostrando 300; o CSV traz todos)' : ''}</div>`)}
+  `;
+
+  // gráficos
+  if (typeof Chart !== 'undefined') {
+    const ent = meses.map(m => base.filter(b => String(b.data_entrega).slice(0, 7) === m.chave).length);
+    const ret = meses.map(m => base.filter(b => b.data_retirada && String(b.data_retirada).slice(0, 7) === m.chave).length);
+    const emUso = meses.map(m => base.filter(b => b.data_entrega <= m.fim && (!b.data_retirada || b.data_retirada > m.fim)).length);
+    const c1 = document.getElementById('biChMov');
+    if (c1) BI.charts.push(new Chart(c1, {
+      type: 'bar',
+      data: {
+        labels: meses.map(m => m.rot),
+        datasets: [
+          { type: 'bar', label: 'Entregas', data: ent, backgroundColor: '#8BC63F', borderRadius: 4, order: 2 },
+          { type: 'bar', label: 'Retiradas', data: ret, backgroundColor: '#94A3B8', borderRadius: 4, order: 3 },
+          { type: 'line', label: 'Em comodato no fim do mês', data: emUso, borderColor: '#0A1F5C', backgroundColor: '#0A1F5C', tension: .3, pointRadius: 3, yAxisID: 'y2', order: 1 },
+        ],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
+        plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } } },
+        scales: { x: { grid: { display: false }, ticks: { font: { size: 10.5 } } }, y: { beginAtZero: true, ticks: { precision: 0 }, title: { display: true, text: 'Movimento', font: { size: 10.5 } } }, y2: { position: 'right', beginAtZero: true, grid: { display: false }, ticks: { precision: 0 }, title: { display: true, text: 'Em comodato', font: { size: 10.5 } } } },
+      },
+    }));
+    const c2 = document.getElementById('biChMarca');
+    if (c2) {
+      const porM = BI_MARCAS.map(m => at.filter(b => b.marca === m).length);
+      BI.charts.push(new Chart(c2, {
+        type: 'doughnut',
+        data: { labels: BI_MARCAS, datasets: [{ data: porM, backgroundColor: ['#0A1F5C', '#8BC63F'], borderWidth: 0 }] },
+        options: { responsive: true, maintainAspectRatio: false, cutout: '62%', plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11.5 }, generateLabels: (ch) => ch.data.labels.map((l, i) => ({ text: `${l}: ${porM[i]}`, fillStyle: ch.data.datasets[0].backgroundColor[i], strokeStyle: 'transparent', index: i })) } } } },
+      }));
+    }
+  }
+  if (BI._focoAdmBusca) { const i = document.getElementById('biAdmBusca'); if (i) { i.focus(); i.setSelectionRange(i.value.length, i.value.length); } BI._focoAdmBusca = false; }
+}
+
+window._biAdmFiltro = function(campo, valor) { BI.adm[campo] = valor; _biRenderAdmin(); };
+let _biAdmTimer = null;
+window._biAdmBuscar = function(v) {
+  clearTimeout(_biAdmTimer);
+  _biAdmTimer = setTimeout(() => { BI.adm.busca = v || ''; BI._focoAdmBusca = true; _biRenderAdmin(); }, 220);
+};
+
+window._biExportarCsv = function() {
+  const lista = BI._tabAtual || [];
+  if (!lista.length) { setFlash('info', 'Nada pra exportar.'); return; }
+  const header = ['Hospital', 'Cidade', 'UF', 'Marca', 'Número de série', 'Visitador', 'Data da entrega', 'Vencimento da calibração', 'Calibração', 'Situação', 'Em manutenção desde', 'Retirado dia', 'Dias no hospital', 'Observação'];
+  const rows = lista.map(b => [
+    b.instituicoes?.nome || '', b.instituicoes?.cidade || '', b.instituicoes?.estado || '', b.marca, b.numero_serie,
+    b.responsavel?.nome || '', _biDataBR(b.data_entrega), _biDataBR(b.calibracao_vencimento),
+    b.status === 'retirada' ? '' : _biCalib(b).rot, (BI_STATUS[b.status] || {}).rot || b.status,
+    b.manutencao_desde ? _biDataBR(b.manutencao_desde) : '', b.data_retirada ? _biDataBR(b.data_retirada) : '',
+    b.status === 'retirada' ? _biDias(b.data_entrega, b.data_retirada) : _biDias(b.data_entrega, _biHoje()),
+    b.observacao || '',
+  ]);
+  baixarCsv(`bombas-infusao-${_dataArquivo()}.csv`, header, rows);
+  setFlash('success', 'CSV baixado.');
+};
+
+function renderAdminBombasDesktop() {
+  const user = requireAdmin();
+  if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
+  setTimeout(_biAtualizarAdmin, 0);
+  return desktopShell({
+    title: 'Bombas de infusão',
+    breadcrumb: ['Admin', 'Operação', 'Bombas de infusão'],
+    content: `<div style="max-width:1320px;margin:0 auto;">${_biTelaAdmin()}</div>`,
+    activeId: 'bombas',
+  });
+}
+function renderAdminBombas() {
+  const user = requireAdmin();
+  if (!user) return '<div class="splash"><div class="splash__spinner"></div></div>';
+  setTimeout(_biAtualizarAdmin, 0);
+  return `
+    <div class="mobile-app">
+      ${mobileTopBar({ title: 'Bombas de infusão', showBack: true })}
+      <main class="mcontent" style="padding:14px 14px 80px;">${_biTelaAdmin()}</main>
+    </div>`;
+}
 
 
 window._fatTrocarFiltro = function(campo, valor) {
