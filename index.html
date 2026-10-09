@@ -8418,7 +8418,7 @@ mark.search-hl {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.481-bombas',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.483-bombas-anexos',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -44224,9 +44224,11 @@ function _fatPreviaFechamento(mensal, devMensalTodas, modo) {
 
     const passados = _diasUteis(primeiro, corte);
     const total    = _diasUteis(primeiro, fimMes);
-    // Abaixo do 5o dia util a projecao erra demais (o erro historico passa de
-    // 30%): e' palpite com cara de numero. Melhor nao mostrar nada.
-    if (passados < 5 || total <= passados) return null;
+    // 9.32.482: a pedido do Edu, aparece a partir do 3o dia util (antes era o 5o).
+    // No 3o dia util o erro medio historico da curva fica perto de 30%, no 5o perto
+    // de 20%. Por isso, ate o 4o dia util o card avisa que a estimativa e' instavel
+    // e mostra a margem larga.
+    if (passados < 3 || total <= passados) return null;
 
     // Base liquida: mesmo numero do card principal, coerente com o que o Edu
     // ja' olha. Bruto projetaria dinheiro que volta como devolucao.
@@ -44339,6 +44341,7 @@ function _fatPreviaCardHtml(mensal) {
       <div style="font-size:10px;opacity:0.72;margin-top:5px;line-height:1.45;">
         <strong style="font-weight:700;">${ehCurva ? 'Curva histórica' : 'Regra de três'}</strong>${pv.faixaMin ? ` · margem ${_fmtMoeda(pv.faixaMin)} a ${_fmtMoeda(pv.faixaMax)}` : ''}
       </div>
+      ${pv.passados < 5 ? `<div style="font-size:10px;margin-top:5px;line-height:1.4;background:rgba(255,255,255,0.14);border-radius:6px;padding:4px 7px;">Início do mês: estimativa ainda instável. Fica mais firme a partir do 5º dia útil.</div>` : ''}
     </div>`;
 }
 window._fatPreviaCardHtml = _fatPreviaCardHtml;
@@ -47317,7 +47320,7 @@ const BI = {
   lista: [], carregando: false, erro: null, aba: 'ativas', busca: '',
   insts: null, minhasInst: null, visitadores: [], eventos: [], ultVisita: {},
   adm: { visitador: 'todos', marca: 'todas', status: 'ativas', busca: '', ordem: 'hospital' },
-  charts: [],
+  charts: [], pend: [], _anexos: [], _anexosMudou: false,
 };
 const _biEsc = (t) => String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 const _biHoje = () => _dataArquivo(new Date());
@@ -47356,7 +47359,7 @@ function _biMsgErro(e) {
 
 async function _biCarregar({ todos = false } = {}) {
   const sel = 'id,instituicao_id,responsavel_id,marca,numero_serie,data_entrega,calibracao_vencimento,status,manutencao_desde,data_retirada,observacao,criado_por,criado_em,atualizado_em,' +
-    'instituicoes(id,nome,cidade,estado),responsavel:responsavel_id(id,nome)';
+    'instituicoes(id,nome,cidade,estado),responsavel:responsavel_id(id,nome),bombas_infusao_anexos(tipo)';
   const out = [];
   for (let de = 0; de < 20000; de += 1000) {
     let q = db.from('bombas_infusao').select(sel).order('data_entrega', { ascending: false }).range(de, de + 999);
@@ -47415,6 +47418,7 @@ function _biCard(b, { mostrarResp = false } = {}) {
   const podeExcluir = _biEhAdmin() || (b.criado_por === getCurrentUserReal()?.id && (Date.now() - new Date(b.criado_em).getTime()) < 24 * 3600000);
   const acoes = [];
   acoes.push(_biBtn('Editar', 'edit', `_biAbrirForm('${id}')`));
+  acoes.push(_biBtn('Fotos e documentos', 'photo_camera', `_biAbrirForm('${id}', true)`));
   if (b.status === 'em_uso') acoes.push(_biBtn('Manutenção', 'build', `_biMudarStatus('${id}','manutencao')`));
   if (b.status === 'manutencao') acoes.push(_biBtn('Voltou da manutenção', 'check_circle', `_biMudarStatus('${id}','em_uso')`));
   if (b.status !== 'retirada') acoes.push(_biBtn('Retirar', 'assignment_return', `_biRetirar('${id}')`));
@@ -47438,6 +47442,7 @@ function _biCard(b, { mostrarResp = false } = {}) {
     ${b.status === 'manutencao' && b.manutencao_desde ? `<div style="font-size:12px;color:#92400E;background:#FFFBEB;border-radius:8px;padding:6px 10px;">Em manutenção desde ${_biDataBR(b.manutencao_desde)} (${_biDias(b.manutencao_desde, _biHoje())} dias)</div>` : ''}
     ${b.status === 'retirada' ? `<div style="font-size:12px;color:#334155;background:#F8FAFC;border-radius:8px;padding:6px 10px;">Retirada em ${_biDataBR(b.data_retirada)}</div>` : ''}
     ${b.observacao ? `<div style="font-size:12px;color:var(--neutral-600);"><b>Obs.:</b> ${_biEsc(b.observacao)}</div>` : ''}
+    ${_biAnexosChip(b) ? `<div>${_biAnexosChip(b)}</div>` : ''}
     <div style="display:flex;gap:6px;flex-wrap:wrap;">${acoes.join('')}</div>
   </div>`;
 }
@@ -47526,8 +47531,9 @@ function renderNutriBombas() {
 /* ------------------------------ formulário -------------------------------- */
 function _biAchar(id) { return BI.lista.find(b => b.id === id) || null; }
 
-window._biAbrirForm = async function(id) {
+window._biAbrirForm = async function(id, focarAnexos) {
   const b = id ? _biAchar(id) : null;
+  BI.pend = []; BI._anexos = []; BI._anexosMudou = false;
   if (id && !b) { setFlash('error', 'Registro não encontrado. Atualize a página.'); return; }
   const admin = _biEhAdmin();
   try { await _biCarregarInstituicoes(); } catch (e) { setFlash('error', 'Não consegui carregar os hospitais: ' + (e.message || e)); return; }
@@ -47542,11 +47548,11 @@ window._biAbrirForm = async function(id) {
   const rot = (t, obrig) => `<div style="font-size:12px;font-weight:700;color:var(--brand-navy);margin-bottom:5px;">${t}${obrig ? ' <span style="color:#B91C1C;">*</span>' : ''}</div>`;
   document.getElementById('biFormModal')?.remove();
   document.body.insertAdjacentHTML('beforeend', `
-    <div id="biFormModal" style="position:fixed;inset:0;background:rgba(10,31,92,0.5);z-index:99999;display:flex;align-items:center;justify-content:center;padding:14px;" onclick="if(event.target===this)this.remove()">
+    <div id="biFormModal" style="position:fixed;inset:0;background:rgba(10,31,92,0.5);z-index:99999;display:flex;align-items:center;justify-content:center;padding:14px;" onclick="if(event.target===this)_biFecharForm()">
       <div style="background:#fff;border-radius:14px;max-width:540px;width:100%;max-height:94vh;overflow:auto;box-shadow:0 20px 60px rgba(0,0,0,.3);">
         <div style="padding:15px 18px;border-bottom:1px solid var(--neutral-200);font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:16px;display:flex;align-items:center;gap:8px;">
           <span class="material-symbols-rounded" style="color:var(--brand-lime);">medical_services</span>${b ? 'Editar bomba' : 'Nova bomba de infusão'}
-          <button onclick="document.getElementById('biFormModal').remove()" style="margin-left:auto;background:none;border:0;cursor:pointer;color:var(--neutral-500);"><span class="material-symbols-rounded">close</span></button>
+          <button onclick="_biFecharForm()" style="margin-left:auto;background:none;border:0;cursor:pointer;color:var(--neutral-500);"><span class="material-symbols-rounded">close</span></button>
         </div>
         <div style="padding:14px 18px;display:flex;flex-direction:column;gap:13px;">
           <div style="position:relative;">
@@ -47582,17 +47588,40 @@ window._biAbrirForm = async function(id) {
               ${!respAtual || BI.visitadores.some(u => u.id === respAtual) ? '' : `<option value="${respAtual}" selected>${_biEsc(b?.responsavel?.nome || eu.nome || 'Você')}</option>`}
             </select></div>` : ''}
           <div>${rot('Observação', false)}<textarea id="biObs" rows="2" maxlength="500" placeholder="Opcional. Ex.: setor da UTI, acessórios entregues..." style="width:100%;border:1.5px solid var(--neutral-200);border-radius:9px;padding:9px 12px;font-family:inherit;font-size:13px;color:var(--brand-navy);">${_biEsc(b?.observacao || '')}</textarea></div>
+          <div id="biAnexosBox" style="border:1px solid var(--neutral-200);border-radius:10px;padding:10px 12px;">
+            <div style="font-size:12px;font-weight:700;color:var(--brand-navy);margin-bottom:6px;display:flex;align-items:center;gap:6px;"><span class="material-symbols-rounded" style="font-size:17px;">attach_file</span>Fotos e documentos</div>
+            <div id="biAnexosLista"><div style="font-size:12px;color:var(--neutral-500);">Carregando...</div></div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
+              <label style="background:#fff;color:var(--brand-navy);border:1px solid var(--neutral-200);padding:7px 11px;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:5px;">
+                <span class="material-symbols-rounded" style="font-size:16px;">photo_camera</span>Adicionar foto
+                <input type="file" accept="image/*" multiple style="display:none;" onchange="_biAnexarArquivos(this,'foto','${b ? b.id : ''}')" /></label>
+              <label style="background:#fff;color:var(--brand-navy);border:1px solid var(--neutral-200);padding:7px 11px;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:5px;">
+                <span class="material-symbols-rounded" style="font-size:16px;">upload_file</span>Anexar documento
+                <input type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,image/*" multiple style="display:none;" onchange="_biAnexarArquivos(this,'documento','${b ? b.id : ''}')" /></label>
+            </div>
+            <div style="font-size:11px;color:var(--neutral-500);margin-top:6px;">Foto da bomba, contrato de comodato, certificado de calibração, laudo de manutenção. Até 10 MB cada (fotos são reduzidas automaticamente).</div>
+          </div>
           <div id="biFormErro" style="display:none;background:#FEF2F2;border:1px solid #FECACA;color:#991B1B;border-radius:9px;padding:9px 12px;font-size:12.5px;"></div>
           ${b ? `<div id="biHistorico" style="font-size:12px;color:var(--neutral-500);">Carregando histórico...</div>` : ''}
         </div>
         <div style="padding:12px 18px;border-top:1px solid var(--neutral-200);display:flex;justify-content:flex-end;gap:8px;">
-          <button onclick="document.getElementById('biFormModal').remove()" style="background:transparent;border:1.5px solid var(--neutral-200);color:var(--neutral-600);padding:9px 15px;border-radius:9px;font-weight:600;cursor:pointer;font-family:inherit;">Cancelar</button>
+          <button onclick="_biFecharForm()" style="background:transparent;border:1.5px solid var(--neutral-200);color:var(--neutral-600);padding:9px 15px;border-radius:9px;font-weight:600;cursor:pointer;font-family:inherit;">${b ? 'Fechar' : 'Cancelar'}</button>
           <button id="biBtnSalvar" onclick="_biSalvar('${b ? b.id : ''}')" style="background:var(--brand-lime);border:0;color:#fff;padding:9px 18px;border-radius:9px;font-weight:700;cursor:pointer;font-family:inherit;">${b ? 'Salvar' : 'Registrar entrega'}</button>
         </div>
       </div>
     </div>`);
-  if (b) _biCarregarHistorico(b.id);
-  else setTimeout(() => document.getElementById('biInstBusca')?.focus(), 50);
+  if (b) {
+    _biCarregarHistorico(b.id);
+    _biCarregarAnexos(b.id).then(() => { if (focarAnexos) document.getElementById('biAnexosBox')?.scrollIntoView({ behavior: 'smooth', block: 'center' }); });
+  } else {
+    _biRenderAnexosPendentes();
+    setTimeout(() => document.getElementById('biInstBusca')?.focus(), 50);
+  }
+};
+
+window._biFecharForm = function() {
+  document.getElementById('biFormModal')?.remove();
+  if (BI._anexosMudou) { BI._anexosMudou = false; _biRecarregar(); }
 };
 
 window._biEscolherMarca = function(m) {
@@ -47695,8 +47724,18 @@ window._biSalvar = async function(id) {
     const { data, error } = await q;
     if (error) throw error;
     if (!data || !data.length) throw new Error('O banco não confirmou a gravação.');
+    let falhas = 0;
+    if (!id && BI.pend.length) {
+      btn.textContent = 'Enviando arquivos...';
+      for (const pd of BI.pend) {
+        try { await _biEnviarAnexo(data[0].id, pd.file, pd.tipo, true); }
+        catch (e) { falhas++; console.warn('[bombas] anexo', e); }
+      }
+      BI.pend = [];
+    }
     document.getElementById('biFormModal')?.remove();
-    setFlash('success', id ? 'Bomba atualizada.' : 'Entrega registrada.');
+    setFlash(falhas ? 'warning' : 'success', (id ? 'Bomba atualizada.' : 'Entrega registrada.')
+      + (falhas ? ` ${falhas} arquivo${falhas === 1 ? '' : 's'} não subiu. Abra a bomba e anexe de novo.` : ''));
     await _biRecarregar();
   } catch (e) {
     erro(_biMsgErro(e));
@@ -47768,11 +47807,185 @@ window._biExcluir = async function(id) {
     btnConfirmar: 'Excluir',
   });
   if (!ok) return;
+  try {   // 9.32.483: apaga os arquivos antes (depois que a bomba some, o storage não deixa mais)
+    const { data: ax } = await db.from('bombas_infusao_anexos').select('caminho_storage').eq('bomba_id', id);
+    if (ax && ax.length) await db.storage.from(BI_ANX_BUCKET).remove(ax.map(a => a.caminho_storage));
+  } catch (e) {}
   const { data, error } = await db.from('bombas_infusao').delete().eq('id', id).select('id');
   if (error || !data?.length) { setFlash('error', 'Não consegui excluir: ' + _biMsgErro(error || 'Só dá para excluir nas primeiras 24 horas. Depois disso, fale com o administrador.')); return; }
   setFlash('success', 'Registro excluído.');
   await _biRecarregar();
 };
+
+/* ------------------------- fotos e documentos (9.32.483) ------------------ */
+const BI_ANX_BUCKET = 'bomba-anexos';
+const BI_ANX_MAX = 10 * 1024 * 1024;
+const BI_ANX_MIME = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf', 'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'];
+const _biTam = (n) => n >= 1048576 ? _pctBR(n / 1048576, 1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB';
+
+async function _biComprimirImagem(file) {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error('img')); i.src = url; });
+    let w = img.naturalWidth, h = img.naturalHeight;
+    if (!w || !h) throw new Error('img');
+    const k = Math.min(1, 1600 / Math.max(w, h)); w = Math.round(w * k); h = Math.round(h * k);
+    const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+    const cx = cv.getContext('2d'); cx.fillStyle = '#fff'; cx.fillRect(0, 0, w, h); cx.drawImage(img, 0, 0, w, h);
+    const blob = await new Promise(res => cv.toBlob(res, 'image/jpeg', 0.82));
+    if (!blob) throw new Error('img');
+    return new File([blob], String(file.name || 'foto').replace(/\.[^.]+$/, '') + '.jpg', { type: 'image/jpeg' });
+  } finally { URL.revokeObjectURL(url); }
+}
+
+// Foto de celular vem com 4 a 8 MB: reduz para uns 300 KB antes de subir.
+async function _biPrepararArquivo(file) {
+  if (!file || !file.size) throw new Error('Arquivo vazio.');
+  const ehImagem = /^image\//.test(file.type || '') || /\.(jpe?g|png|webp|heic|heif)$/i.test(file.name || '');
+  if (ehImagem) {
+    try { return await _biComprimirImagem(file); }
+    catch (e) {
+      if (BI_ANX_MIME.includes(file.type) && file.size <= BI_ANX_MAX) return file;
+      throw new Error(`Não consegui abrir a imagem ${file.name}. Tire a foto em JPG ou tente outra.`);
+    }
+  }
+  if (!BI_ANX_MIME.includes(file.type)) throw new Error(`${file.name}: tipo não aceito. Use foto, PDF, Word ou Excel.`);
+  if (file.size > BI_ANX_MAX) throw new Error(`${file.name} passa de 10 MB.`);
+  return file;
+}
+
+async function _biEnviarAnexo(bombaId, file, tipo, jaPreparado = false) {
+  const pronto = jaPreparado ? file : await _biPrepararArquivo(file);
+  const nomeSeguro = (typeof _sanitizarNomeArquivo === 'function') ? _sanitizarNomeArquivo(pronto.name) : 'arquivo';
+  const caminho = `${bombaId}/${Date.now()}_${Math.random().toString(36).slice(2, 7)}_${nomeSeguro}`;
+  const { error: eUp } = await db.storage.from(BI_ANX_BUCKET).upload(caminho, pronto, { contentType: pronto.type, upsert: false });
+  if (eUp) throw new Error('Falha no envio de ' + (file.name || 'arquivo') + ': ' + eUp.message);
+  const { error: eIns } = await db.from('bombas_infusao_anexos').insert({
+    bomba_id: bombaId, tipo, nome_original: String(file.name || pronto.name).replace(/[<>]/g, '').slice(0, 200) || 'arquivo',
+    mime_type: pronto.type, tamanho_bytes: pronto.size, caminho_storage: caminho,
+  });
+  if (eIns) {
+    await db.storage.from(BI_ANX_BUCKET).remove([caminho]).catch(() => {});
+    throw new Error(/Limite de 15/.test(eIns.message) ? 'Essa bomba já tem 15 anexos. Remova algum antes.' : ('Falha ao registrar ' + (file.name || 'arquivo') + ': ' + eIns.message));
+  }
+}
+
+window._biAnexarArquivos = async function(input, tipo, bombaId) {
+  const files = [...(input.files || [])];
+  input.value = '';
+  if (!files.length) return;
+  if (!bombaId) {                     // bomba ainda não salva: guarda e sobe depois de salvar
+    for (const f of files) {
+      try { BI.pend.push({ tipo, file: await _biPrepararArquivo(f), nome: f.name }); }
+      catch (e) { setFlash('error', e.message || String(e)); }
+    }
+    _biRenderAnexosPendentes();
+    return;
+  }
+  const box = document.getElementById('biAnexosLista');
+  if (box) box.insertAdjacentHTML('afterbegin', `<div style="font-size:12px;color:var(--neutral-500);padding:6px 0;">Enviando ${files.length} arquivo${files.length === 1 ? '' : 's'}...</div>`);
+  let ok = 0;
+  for (const f of files) {
+    try { await _biEnviarAnexo(bombaId, f, tipo); ok++; }
+    catch (e) { setFlash('error', e.message || String(e)); }
+  }
+  if (ok) setFlash('success', ok === 1 ? 'Arquivo anexado.' : `${ok} arquivos anexados.`);
+  BI._anexosMudou = true;
+  await _biCarregarAnexos(bombaId);
+};
+
+function _biRenderAnexosPendentes() {
+  const box = document.getElementById('biAnexosLista');
+  if (!box) return;
+  if (!BI.pend.length) { box.innerHTML = '<div style="font-size:12px;color:var(--neutral-500);">Nenhum arquivo ainda.</div>'; return; }
+  box.innerHTML = BI.pend.map((p, i) => `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-top:1px solid var(--neutral-100);font-size:12.5px;">
+      <span class="material-symbols-rounded" style="font-size:18px;color:var(--brand-navy);">${p.tipo === 'foto' ? 'photo_camera' : 'description'}</span>
+      <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--brand-navy);">${_biEsc(p.nome)}</span>
+      <span style="color:var(--neutral-500);font-size:11px;white-space:nowrap;">${_biTam(p.file.size)} · sobe ao salvar</span>
+      <button onclick="BI.pend.splice(${i},1);_biRenderAnexosPendentes()" title="Tirar" style="background:none;border:0;cursor:pointer;color:#B91C1C;"><span class="material-symbols-rounded" style="font-size:18px;">close</span></button>
+    </div>`).join('');
+}
+
+async function _biCarregarAnexos(bombaId) {
+  const box = document.getElementById('biAnexosLista');
+  if (!box) return;
+  try {
+    const { data, error } = await db.from('bombas_infusao_anexos').select('id,tipo,nome_original,mime_type,tamanho_bytes,caminho_storage,enviado_por,enviado_em')
+      .eq('bomba_id', bombaId).order('enviado_em', { ascending: true });
+    if (error) throw error;
+    const lista = data || [];
+    BI._anexos = lista;
+    if (!lista.length) { box.innerHTML = '<div style="font-size:12px;color:var(--neutral-500);">Nenhuma foto ou documento ainda.</div>'; return; }
+    const fotos = lista.filter(a => a.tipo === 'foto' || /^image\//.test(a.mime_type));
+    const docs = lista.filter(a => !fotos.includes(a));
+    const urls = {};
+    if (fotos.length) {
+      const { data: su } = await db.storage.from(BI_ANX_BUCKET).createSignedUrls(fotos.map(f => f.caminho_storage), 3600);
+      (su || []).forEach(s => { if (s.signedUrl) urls[s.path] = s.signedUrl; });
+    }
+    const eu = getCurrentUserReal();
+    const podeTirar = (a) => _biEhAdmin() || (eu && a.enviado_por === eu.id);
+    const tirarFoto = (a) => podeTirar(a) ? `<button onclick="event.stopPropagation();_biRemoverAnexo('${a.id}','${bombaId}')" title="Remover" style="position:absolute;top:3px;right:3px;width:24px;height:24px;border-radius:9999px;border:0;background:rgba(0,0,0,.55);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;"><span class="material-symbols-rounded" style="font-size:15px;">close</span></button>` : '';
+    box.innerHTML = `
+      ${fotos.length ? `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:8px;margin-bottom:8px;">
+        ${fotos.map(f => `<div onclick="_biAbrirAnexo('${f.id}')" title="${_biEsc(f.nome_original)}" style="position:relative;aspect-ratio:1/1;border-radius:10px;overflow:hidden;background:#F1F5F9;border:1px solid var(--neutral-200);cursor:pointer;">
+          ${urls[f.caminho_storage] ? `<img src="${_biEsc(urls[f.caminho_storage])}" alt="${_biEsc(f.nome_original)}" style="width:100%;height:100%;object-fit:cover;display:block;" />` : '<span class="material-symbols-rounded" style="font-size:28px;color:var(--neutral-400);position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);">image</span>'}
+          ${tirarFoto(f)}</div>`).join('')}
+      </div>` : ''}
+      ${docs.map(d => `<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-top:1px solid var(--neutral-100);font-size:12.5px;">
+        <span class="material-symbols-rounded" style="font-size:19px;color:${/pdf/.test(d.mime_type) ? '#B91C1C' : 'var(--brand-navy)'};">${/pdf/.test(d.mime_type) ? 'picture_as_pdf' : 'description'}</span>
+        <a href="javascript:void(0)" onclick="_biAbrirAnexo('${d.id}')" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--brand-navy);font-weight:600;text-decoration:none;">${_biEsc(d.nome_original)}</a>
+        <span style="color:var(--neutral-500);font-size:11px;white-space:nowrap;">${_biTam(d.tamanho_bytes)} · ${_biDataBR(String(d.enviado_em).slice(0, 10))}</span>
+        ${podeTirar(d) ? `<button onclick="_biRemoverAnexo('${d.id}','${bombaId}')" title="Remover" style="background:none;border:0;cursor:pointer;color:#B91C1C;"><span class="material-symbols-rounded" style="font-size:18px;">delete</span></button>` : ''}
+      </div>`).join('')}`;
+  } catch (e) {
+    box.innerHTML = `<div style="font-size:12px;color:#B91C1C;">Não consegui carregar os anexos: ${_biEsc(_biMsgErro(e))}</div>`;
+  }
+}
+
+window._biAbrirAnexo = async function(anexoId) {
+  const a = (BI._anexos || []).find(x => x.id === anexoId);
+  if (!a) return;
+  const janela = window.open('', '_blank');
+  try {
+    const { data, error } = await db.storage.from(BI_ANX_BUCKET).createSignedUrl(a.caminho_storage, 600);
+    if (error || !data?.signedUrl) throw error || new Error('sem link');
+    if (janela) janela.location.href = data.signedUrl; else window.location.href = data.signedUrl;
+  } catch (e) {
+    if (janela) janela.close();
+    setFlash('error', 'Não consegui abrir o arquivo: ' + (e.message || e));
+  }
+};
+
+window._biRemoverAnexo = async function(anexoId, bombaId) {
+  const a = (BI._anexos || []).find(x => x.id === anexoId);
+  if (!a) return;
+  const ok = await showModalConfirmacao({ icone: 'delete', iconeCor: 'danger', titulo: 'Remover este arquivo?', subtitulo: _biEsc(a.nome_original), btnConfirmar: 'Remover' });
+  if (!ok) return;
+  const { error: eSt } = await db.storage.from(BI_ANX_BUCKET).remove([a.caminho_storage]);
+  if (eSt) { setFlash('error', 'Não consegui remover: ' + eSt.message); return; }
+  const { error } = await db.from('bombas_infusao_anexos').delete().eq('id', anexoId);
+  if (error) { setFlash('error', 'Não consegui remover: ' + _biMsgErro(error)); return; }
+  setFlash('success', 'Arquivo removido.');
+  BI._anexosMudou = true;
+  await _biCarregarAnexos(bombaId);
+};
+
+function _biContaAnexos(b) {
+  const l = b.bombas_infusao_anexos || [];
+  const f = l.filter(a => a.tipo === 'foto').length;
+  return { f, d: l.length - f, total: l.length };
+}
+function _biAnexosChip(b) {
+  const c = _biContaAnexos(b);
+  if (!c.total) return '';
+  const partes = [];
+  if (c.f) partes.push(`${c.f} foto${c.f === 1 ? '' : 's'}`);
+  if (c.d) partes.push(`${c.d} documento${c.d === 1 ? '' : 's'}`);
+  return `<span onclick="_biAbrirForm('${b.id}', true)" style="display:inline-flex;align-items:center;gap:4px;font-size:11.5px;color:var(--brand-navy);background:#EEF2FF;border-radius:9999px;padding:3px 9px;cursor:pointer;font-weight:600;"><span class="material-symbols-rounded" style="font-size:14px;">attach_file</span>${partes.join(' · ')}</span>`;
+}
 
 /* --------------------------- painel do admin ------------------------------ */
 async function _biCarregarVisitadores() {
@@ -47969,7 +48182,7 @@ function _biRenderAdmin() {
         </select>
       </div>
       <div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;min-width:820px;"><thead><tr>${th('Hospital')}${th('Marca')}${th('Nº de série')}${th('Visitador')}${th('Entrega')}${th('Calibração')}${th('Situação')}${th('', 'right')}</tr></thead><tbody>
-        ${tab.length ? tab.slice(0, 300).map(b => { const c = _biCalib(b); const st = BI_STATUS[b.status]; return `<tr>${td(`<b>${_biEsc(b.instituicoes?.nome || '-')}</b><div style="font-size:11px;color:var(--neutral-500);">${_biEsc(b.instituicoes?.cidade || '')}</div>`)}${td(_biEsc(b.marca))}${td(_biEsc(b.numero_serie), 'left', "font-family:'JetBrains Mono',monospace;font-size:11.5px;")}${td(_biEsc(nomeCurto(b.responsavel?.nome || '-')))}${td(_biDataBR(b.data_entrega))}${td(`${_biDataBR(b.calibracao_vencimento)}${b.status !== 'retirada' && c.nivel !== 'ok' ? '<br>' + _biPill(c.rot, c.cor, c.bg) : ''}`)}${td(_biPill(st.rot, st.cor, st.bg) + (b.status === 'retirada' ? `<div style="font-size:11px;color:var(--neutral-500);margin-top:2px;">${_biDataBR(b.data_retirada)}</div>` : ''))}${td(`<div style="display:flex;gap:4px;justify-content:flex-end;">${_biBtn('', 'edit', `_biAbrirForm('${b.id}')`)}${b.status !== 'retirada' ? _biBtn('', 'assignment_return', `_biRetirar('${b.id}')`) : ''}${_biBtn('', 'delete', `_biExcluir('${b.id}')`, 'perigo')}</div>`, 'right')}</tr>`; }).join('') : `<tr><td colspan="8" style="padding:24px;text-align:center;color:var(--neutral-500);font-size:12.5px;">Nada nesse filtro.</td></tr>`}
+        ${tab.length ? tab.slice(0, 300).map(b => { const c = _biCalib(b); const st = BI_STATUS[b.status]; return `<tr>${td(`<b>${_biEsc(b.instituicoes?.nome || '-')}</b><div style="font-size:11px;color:var(--neutral-500);">${_biEsc(b.instituicoes?.cidade || '')}</div>`)}${td(_biEsc(b.marca))}${td(_biEsc(b.numero_serie) + (_biContaAnexos(b).total ? ` <span title="Fotos e documentos" onclick="_biAbrirForm('${b.id}', true)" style="cursor:pointer;font-family:inherit;color:var(--brand-navy);white-space:nowrap;"><span class="material-symbols-rounded" style="font-size:14px;vertical-align:-3px;">attach_file</span>${_biContaAnexos(b).total}</span>` : ''), 'left', "font-family:'JetBrains Mono',monospace;font-size:11.5px;")}${td(_biEsc(nomeCurto(b.responsavel?.nome || '-')))}${td(_biDataBR(b.data_entrega))}${td(`${_biDataBR(b.calibracao_vencimento)}${b.status !== 'retirada' && c.nivel !== 'ok' ? '<br>' + _biPill(c.rot, c.cor, c.bg) : ''}`)}${td(_biPill(st.rot, st.cor, st.bg) + (b.status === 'retirada' ? `<div style="font-size:11px;color:var(--neutral-500);margin-top:2px;">${_biDataBR(b.data_retirada)}</div>` : ''))}${td(`<div style="display:flex;gap:4px;justify-content:flex-end;">${_biBtn('', 'edit', `_biAbrirForm('${b.id}')`)}${b.status !== 'retirada' ? _biBtn('', 'assignment_return', `_biRetirar('${b.id}')`) : ''}${_biBtn('', 'delete', `_biExcluir('${b.id}')`, 'perigo')}</div>`, 'right')}</tr>`; }).join('') : `<tr><td colspan="8" style="padding:24px;text-align:center;color:var(--neutral-500);font-size:12.5px;">Nada nesse filtro.</td></tr>`}
       </tbody></table></div>
       <div style="font-size:11.5px;color:var(--neutral-500);margin-top:6px;">${tab.length} registro${tab.length === 1 ? '' : 's'}${tab.length > 300 ? ' (mostrando 300; o CSV traz todos)' : ''}</div>`)}
   `;
@@ -48019,13 +48232,14 @@ window._biAdmBuscar = function(v) {
 window._biExportarCsv = function() {
   const lista = BI._tabAtual || [];
   if (!lista.length) { setFlash('info', 'Nada pra exportar.'); return; }
-  const header = ['Hospital', 'Cidade', 'UF', 'Marca', 'Número de série', 'Visitador', 'Data da entrega', 'Vencimento da calibração', 'Calibração', 'Situação', 'Em manutenção desde', 'Retirado dia', 'Dias no hospital', 'Observação'];
+  const header = ['Hospital', 'Cidade', 'UF', 'Marca', 'Número de série', 'Visitador', 'Data da entrega', 'Vencimento da calibração', 'Calibração', 'Situação', 'Em manutenção desde', 'Retirado dia', 'Dias no hospital', 'Fotos', 'Documentos', 'Observação'];
   const rows = lista.map(b => [
     b.instituicoes?.nome || '', b.instituicoes?.cidade || '', b.instituicoes?.estado || '', b.marca, b.numero_serie,
     b.responsavel?.nome || '', _biDataBR(b.data_entrega), _biDataBR(b.calibracao_vencimento),
     b.status === 'retirada' ? '' : _biCalib(b).rot, (BI_STATUS[b.status] || {}).rot || b.status,
     b.manutencao_desde ? _biDataBR(b.manutencao_desde) : '', b.data_retirada ? _biDataBR(b.data_retirada) : '',
     b.status === 'retirada' ? _biDias(b.data_entrega, b.data_retirada) : _biDias(b.data_entrega, _biHoje()),
+    _biContaAnexos(b).f, _biContaAnexos(b).d,
     b.observacao || '',
   ]);
   baixarCsv(`bombas-infusao-${_dataArquivo()}.csv`, header, rows);
@@ -51064,7 +51278,7 @@ function _fatInsMontar(c) {
       sub: `${pv.passados} de ${pv.total} dias úteis${pv.faixaMin ? ` · margem de ${_insM(pv.faixaMin)} a ${_insM(pv.faixaMax)}` : ''}`,
       faixa: pv.faixaMin ? [pv.faixaMin, pv.faixaMax] : null };
   } else if (parc) {
-    placar.prev = { rot: `${_insMesExt(parc.ym)} · em curso`, val: null, sub: 'prévia aparece a partir do 5º dia útil' };
+    placar.prev = { rot: `${_insMesExt(parc.ym)} · em curso`, val: null, sub: 'prévia aparece a partir do 3º dia útil' };
   }
 
   // ─── 2. Candidatas a ação (competem pelo R$ em jogo) ─────────────
