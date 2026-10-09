@@ -8418,7 +8418,7 @@ mark.search-hl {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.483-bombas-anexos',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.484-funil-nsa',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -63764,7 +63764,9 @@ window.funilAbrirModal = async function(editId) {
           <label>Quem indicou <span style="color:var(--status-danger)">*</span></label>
           <select id="fnProf" style="width:100%;padding:10px;border:1.5px solid var(--neutral-200);border-radius:10px;font-family:inherit;font-size:14px;">
             <option value="">Escolha o local primeiro…</option>
+            <option value="__nsa__">Não se aplica</option>
           </select>
+          <div style="font-size:10.5px;color:var(--neutral-500);margin-top:4px;">Sem profissional no local (ou ninguém indicou)? Escolha "Não se aplica".</div>
         </div>
         <div class="report-field">
           <label>Forma de desconto</label>
@@ -63844,6 +63846,7 @@ window.funilAbrirModal = async function(editId) {
     setv('fnInstBusca', reg.local_nome);
     window._funilInstNome = reg.local_nome;
   }
+  if (!reg.profissional_id && reg.profissional_nome === 'Não se aplica') setv('fnProf', '__nsa__');
 
   const itensSalvos = reg.funil_itens || [];
   if (itensSalvos.length === 0) funilAddProduto();
@@ -63892,7 +63895,7 @@ window.funilTrocarLocal = async function(instId) {
   window._funilVisitador = null;
   if (!sel) return;
   if (!instId) {
-    sel.innerHTML = '<option value="">Escolha o local primeiro…</option>';
+    sel.innerHTML = '<option value="">Escolha o local primeiro…</option>' + FUNIL_OPT_NSA;
     if (boxVis) boxVis.style.display = 'none';
     return;
   }
@@ -63908,9 +63911,12 @@ window.funilTrocarLocal = async function(instId) {
     funilVisitadorDoLocal(instId),
   ]);
 
+  // 9.32.484: "Não se aplica" sempre disponível (local sem profissional cadastrado,
+  // visitador que saiu...). Pedido da Paula: sem isso a venda não salvava.
   sel.innerHTML = profs.length
-    ? '<option value="">Selecione…</option>' + profs.map(pf => `<option value="${pf.id}">${esc(pf.nome)}${pf.profissao ? ' · ' + esc(pf.profissao) : ''}</option>`).join('')
-    : '<option value="">Nenhum profissional cadastrado neste local</option>';
+    ? '<option value="">Selecione…</option>' + profs.map(pf => `<option value="${pf.id}">${esc(pf.nome)}${pf.profissao ? ' · ' + esc(pf.profissao) : ''}</option>`).join('') + FUNIL_OPT_NSA
+    : '<option value="">Nenhum profissional cadastrado neste local</option>' + FUNIL_OPT_NSA;
+  if (!profs.length) sel.value = '__nsa__';
 
   // Sprint 9.32.406: alguns locais têm MAIS DE UM visitador (ex.: a nutricionista de dietas
   // e a enfermeira de curativos). Quando há vários, a atendente ESCOLHE de quem foi a indicação.
@@ -63950,6 +63956,8 @@ window.funilTrocarLocal = async function(instId) {
   }
 };
 
+const FUNIL_OPT_NSA = '<option value="__nsa__">Não se aplica</option>';
+
 window.funilTrocarVisitador = function(id) {
   const sel = document.getElementById('fnVisitadorSel');
   const nome = sel && sel.selectedIndex >= 0 ? sel.options[sel.selectedIndex].text.split(' · ')[0] : '';
@@ -63962,7 +63970,8 @@ window.funilSalvar = async function() {
   const profSel = document.getElementById('fnProf');
   const profId = v('fnProf');
   if (!cliente) { setFlash('warning', 'Informe o nome do cliente.'); return; }
-  if (!profId) { setFlash('warning', 'Escolha quem indicou.'); return; }
+  if (!profId) { setFlash('warning', 'Escolha quem indicou (ou "Não se aplica").'); return; }
+  const naoSeAplica = profId === '__nsa__';
 
   // Sprint 9.32.406: coleta os produtos (um ou vários). Todo lançamento já é venda.
   const itens = [];
@@ -63986,8 +63995,9 @@ window.funilSalvar = async function() {
     tipo_local: v('fnTipoLocal') || 'outro',
     instituicao_id: window._funilInstId || null,
     local_nome: window._funilInstNome || null,
-    profissional_id: profId,
-    profissional_nome: profSel && profSel.selectedIndex > 0 ? profSel.options[profSel.selectedIndex].text.split(' · ')[0] : null,
+    profissional_id: naoSeAplica ? null : profId,
+    profissional_nome: naoSeAplica ? 'Não se aplica'
+      : (profSel && profSel.selectedIndex > 0 ? profSel.options[profSel.selectedIndex].text.split(' · ')[0] : null),
     forma_desconto: v('fnDesc') || null,
     observacao: v('fnObs') || null,        // Sprint 9.32.416
     visitador_id: window._funilVisitador?.id || null,
