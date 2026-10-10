@@ -8418,7 +8418,7 @@ mark.search-hl {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.484-funil-nsa',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.485-nc-docs',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -44002,7 +44002,7 @@ window.rejeitarObjetivoPendente = async function(id) {
 let FAT_DATA = null;
 let _fatDataPromise = null;
 // __FAT_VERSION_START__ — substituído pelo atualizar_index.py com hash do JSON
-const FAT_DATA_VERSION = '7d30220b5058';
+const FAT_DATA_VERSION = '8a4d071f6d65';
 // __FAT_VERSION_END__
 // Sprint 9.32.426: o arquivo passou a ser versionado COMPRIMIDO (.json.gz).
 // PORQUE: ele tem 20,5 MB e entra no git 2x por dia. O git guarda cada versao
@@ -47052,8 +47052,84 @@ function _ncRender() {
     <div style="background:#fff;border:1px solid var(--neutral-200);border-radius:12px;padding:10px 14px;margin-bottom:14px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
       <span style="font-size:11.5px;font-weight:700;color:var(--neutral-600);margin-right:4px;">Quem entra no relatório:</span>${chips}
       <span style="font-size:11px;color:var(--neutral-500);">Clique para tirar quem saiu da equipe (vale para todos). Paula Lopes e Eduardo Marques nunca entram.</span>
-    </div>` + _ncCorpoHtml(NC.dados);
+    </div>
+    <div id="ncDocs" style="margin-bottom:14px;"></div>` + _ncCorpoHtml(NC.dados);
+  _ncDocsCarregar();
 }
+
+/* 9.32.485: documentos anexados (auditorias, laudos). Bucket nc-documentos, tabela nc_documentos.
+   Só quem tem acesso a Não conformidades vê (app_pode_nc no banco). */
+async function _ncDocsCarregar() {
+  const el = document.getElementById('ncDocs');
+  if (!el) return;
+  let lista = [];
+  try {
+    const { data, error } = await db.from('nc_documentos').select('id,titulo,nome_arquivo,tamanho_bytes,caminho_storage,enviado_por,enviado_em').order('enviado_em', { ascending: false });
+    if (error) throw error;
+    lista = data || [];
+  } catch (e) { el.innerHTML = ''; return; }
+  NC.docs = lista;
+  const tam = (n) => n >= 1048576 ? _pctBR(n / 1048576, 1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB';
+  el.innerHTML = `
+    <div style="background:#fff;border:1px solid var(--neutral-200);border-radius:12px;padding:12px 14px;">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:${lista.length ? '8px' : '0'};">
+        <span class="material-symbols-rounded" style="font-size:19px;color:var(--brand-navy);">folder_open</span>
+        <span style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:13.5px;">Relatórios anexados</span>
+        <span style="font-size:11.5px;color:var(--neutral-500);">${lista.length ? lista.length + ' arquivo' + (lista.length === 1 ? '' : 's') : 'Auditorias, laudos e relatórios em PDF ficam guardados aqui.'}</span>
+        <label style="margin-left:auto;background:#fff;color:var(--brand-navy);border:1.5px solid var(--brand-navy);padding:6px 12px;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:5px;">
+          <span class="material-symbols-rounded" style="font-size:16px;">upload_file</span>Anexar PDF
+          <input type="file" accept=".pdf,.xlsx,.docx" style="display:none;" onchange="_ncDocsEnviar(this)" /></label>
+      </div>
+      ${lista.map(d => `<div style="display:flex;align-items:center;gap:9px;padding:7px 0;border-top:1px solid var(--neutral-100);">
+          <span class="material-symbols-rounded" style="font-size:20px;color:#B91C1C;">picture_as_pdf</span>
+          <a href="javascript:void(0)" onclick="_ncDocsAbrir('${d.id}')" style="flex:1;min-width:0;color:var(--brand-navy);font-weight:600;font-size:12.5px;text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_ncEsc(d.titulo)}</a>
+          <span style="font-size:11px;color:var(--neutral-500);white-space:nowrap;">${tam(d.tamanho_bytes)} · ${new Date(d.enviado_em).toLocaleDateString('pt-BR')}</span>
+          <button onclick="_ncDocsAbrir('${d.id}')" title="Abrir" style="background:none;border:0;cursor:pointer;color:var(--brand-navy);"><span class="material-symbols-rounded" style="font-size:19px;">open_in_new</span></button>
+          <button onclick="_ncDocsRemover('${d.id}')" title="Remover" style="background:none;border:0;cursor:pointer;color:#B91C1C;"><span class="material-symbols-rounded" style="font-size:19px;">delete</span></button>
+        </div>`).join('')}
+    </div>`;
+}
+
+window._ncDocsEnviar = async function(input) {
+  const f = input.files && input.files[0];
+  input.value = '';
+  if (!f) return;
+  const tipos = ['application/pdf', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+  if (!tipos.includes(f.type)) { setFlash('warning', 'Use PDF, Excel (.xlsx) ou Word (.docx).'); return; }
+  if (f.size > 20 * 1024 * 1024) { setFlash('warning', 'O arquivo passa de 20 MB.'); return; }
+  const titulo = String(f.name || 'documento').replace(/\.[^.]+$/, '').replace(/[_]+/g, ' ').replace(/[<>]/g, '').slice(0, 150) || 'Documento';
+  const seguro = (typeof _sanitizarNomeArquivo === 'function') ? _sanitizarNomeArquivo(f.name) : 'documento.pdf';
+  const caminho = `${Date.now()}_${Math.random().toString(36).slice(2, 7)}_${seguro}`;
+  setFlash('info', 'Enviando ' + f.name + '...');
+  const { error: eUp } = await db.storage.from('nc-documentos').upload(caminho, f, { contentType: f.type, upsert: false });
+  if (eUp) { setFlash('error', 'Não consegui enviar: ' + eUp.message); return; }
+  const { error } = await db.from('nc_documentos').insert({ titulo, nome_arquivo: String(f.name).replace(/[<>]/g, '').slice(0, 200), mime_type: f.type, tamanho_bytes: f.size, caminho_storage: caminho });
+  if (error) { await db.storage.from('nc-documentos').remove([caminho]).catch(() => {}); setFlash('error', 'Não consegui registrar: ' + error.message); return; }
+  setFlash('success', 'Relatório anexado.');
+  _ncDocsCarregar();
+};
+
+window._ncDocsAbrir = async function(id) {
+  const d = (NC.docs || []).find(x => x.id === id);
+  if (!d) return;
+  const janela = window.open('', '_blank');
+  const { data, error } = await db.storage.from('nc-documentos').createSignedUrl(d.caminho_storage, 600);
+  if (error || !data?.signedUrl) { if (janela) janela.close(); setFlash('error', 'Não consegui abrir o arquivo.'); return; }
+  if (janela) janela.location.href = data.signedUrl; else window.location.href = data.signedUrl;
+};
+
+window._ncDocsRemover = async function(id) {
+  const d = (NC.docs || []).find(x => x.id === id);
+  if (!d) return;
+  const ok = await showModalConfirmacao({ icone: 'delete', iconeCor: 'danger', titulo: 'Remover este relatório?', subtitulo: _ncEsc(d.titulo), btnConfirmar: 'Remover' });
+  if (!ok) return;
+  const { error: eSt } = await db.storage.from('nc-documentos').remove([d.caminho_storage]);
+  if (eSt) { setFlash('error', 'Não consegui remover: ' + eSt.message); return; }
+  const { error } = await db.from('nc_documentos').delete().eq('id', id);
+  if (error) { setFlash('error', 'Não consegui remover: ' + error.message); return; }
+  setFlash('success', 'Relatório removido.');
+  _ncDocsCarregar();
+};
 
 async function _ncAtualizar() {
   NC.carregando = true; _ncRender();
