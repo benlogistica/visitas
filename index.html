@@ -8418,7 +8418,7 @@ mark.search-hl {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.485-nc-docs',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.486-reabrir-revisao',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -40266,6 +40266,17 @@ function renderReviewDetailContent(v, opts = {}) {
         <div style="margin-top:6px;background:var(--neutral-0);border-radius:6px;padding:8px 10px;font-style:italic;color:var(--brand-navy);">
           "${v.revisao_motivo.replace(/"/g,'&quot;')}"
         </div>
+        ${v.status === 'rascunho' ? (() => {
+          // 9.32.486: prazo da revisão venceu e o profissional ficou travado. O admin reabre por mais 72h.
+          const venceu = (v.revisao_expira_em && new Date(v.revisao_expira_em).getTime() < Date.now())
+            || (!v.revisao_expira_em && v.revisao_solicitada_em && Date.now() - new Date(v.revisao_solicitada_em).getTime() > 72 * 3600000);
+          const reabAte = v.reabertura_expira_em && new Date(v.reabertura_expira_em) > new Date() ? new Date(v.reabertura_expira_em) : null;
+          return `<div style="margin-top:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <button onclick="_revEstenderPrazo(this)" style="background:${venceu ? 'var(--brand-navy)' : '#fff'};color:${venceu ? '#fff' : 'var(--brand-navy)'};border:1.5px solid var(--brand-navy);padding:6px 12px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:5px;font-style:normal;">
+              <span class="material-symbols-rounded" style="font-size:16px;">lock_open</span>${venceu ? 'Reabrir por mais 72h' : 'Dar mais 72h'}</button>
+            <span style="font-size:11px;color:#854F0B;">${reabAte ? 'Liberado para edição até ' + reabAte.toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' }) + '.' : venceu ? 'O profissional não consegue mais editar. Reabra para ele corrigir.' : 'Use se o profissional precisar de mais tempo.'}</span>
+          </div>`;
+        })() : ''}
       </div>
     </div>
   ` : v.status === 'aprovada_pos_revisao' ? `
@@ -41137,6 +41148,42 @@ window.handleEnviarParaRevisao = async function() {
   } catch (err) {
     alert('Erro ao enviar pra revisão: ' + err.message);
     console.error('[handleEnviarParaRevisao]', err);
+  }
+};
+
+// 9.32.486: estende a janela de correção de uma visita devolvida (prazo vencido ou quase).
+// Usa a reabertura (reabertura_expira_em), que já libera a edição para o profissional,
+// e atualiza o prazo da revisão. Mantém a data original da devolução no histórico.
+window._revEstenderPrazo = async function(btn) {
+  const v = window._currentReviewVisita;
+  if (!v) return;
+  const ok = await showModalConfirmacao({
+    icone: 'lock_open', iconeCor: 'info', titulo: 'Reabrir por mais 72 horas?',
+    subtitulo: `${(v.nutricionista?.nome || v.usuarios?.nome || 'O profissional')} volta a poder corrigir esta visita até ${new Date(Date.now() + 72 * 3600000).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}. O motivo da revisão continua o mesmo.`,
+    btnConfirmar: 'Reabrir',
+  });
+  if (!ok) return;
+  if (btn) { btn.disabled = true; btn.textContent = 'Reabrindo...'; }
+  const ate = new Date(Date.now() + 72 * 3600000).toISOString();
+  try {
+    const { data, error } = await db.from('visitas').update({
+      reabertura_expira_em: ate, revisao_expira_em: ate, atualizado_em: new Date().toISOString(),
+    }).eq('id', v.id).select('id');
+    if (error) throw new Error(error.message);
+    if (!data || !data.length) throw new Error('O banco não confirmou a alteração.');
+    try {
+      await db.from('notificacoes').insert({
+        user_id: v.nutricionista_id, tipo: 'reabertura_aprovada',
+        titulo: 'Visita liberada para correção',
+        mensagem: `Você tem até ${new Date(ate).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })} para corrigir a visita${v.instituicoes?.nome ? ' em ' + v.instituicoes.nome : ''}.`,
+        link: '#/visitas/relatorio?id=' + v.id, objeto_id: String(v.id), lida: false,
+      });
+    } catch (e) {}
+    setFlash('success', 'Visita reaberta por mais 72 horas.');
+    router();
+  } catch (e) {
+    setFlash('error', 'Não consegui reabrir: ' + (e.message || e));
+    if (btn) { btn.disabled = false; btn.textContent = 'Reabrir por mais 72h'; }
   }
 };
 
