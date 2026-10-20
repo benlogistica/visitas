@@ -8418,7 +8418,7 @@ mark.search-hl {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.486-reabrir-revisao',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.487-conta-responsavel',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -27388,19 +27388,27 @@ async function _perfCalcular({ userId, periodo }) {
     return p;
   });
 
-  // Ordena por faturamento desc (depois visitas)
-  rows.sort((a, b) => (b.faturamento - a.faturamento) || (b.visitas - a.visitas));
+  // 9.32.487: conta que tem outro responsável aparece, mas não soma no total dele
+  const _resp = await _contasResponsaveis();
+  if (_resp) rows.forEach(r => {
+    const d = _resp.get(r.inst_id);
+    if (d && d.id && d.id !== userId) r.contaDe = d.nome || 'outro assessor';
+  });
+
+  // Ordena por faturamento desc (depois visitas); contas de outro responsável vão para o fim
+  rows.sort((a, b) => ((a.contaDe ? 1 : 0) - (b.contaDe ? 1 : 0)) || (b.faturamento - a.faturamento) || (b.visitas - a.visitas));
 
   // 6) KPIs
   const totInst = rows.length;
-  const instComVendas = rows.filter(r => r.temMatch).length;
+  const _minhas = rows.filter(r => !r.contaDe);   // 9.32.487
+  const instComVendas = _minhas.filter(r => r.temMatch).length;
   // Sprint 9.32.395: KPI conta só visitas REALIZADAS — tentativa não é visita feita.
   const totVisitas = rows.reduce((s, r) => s + r.visitas, 0);
   const totTentativas = rows.reduce((s, r) => s + (r.tentativas || 0), 0);
-  const totFaturamento = rows.reduce((s, r) => s + r.faturamento, 0);
-  const totQtdNotas = rows.reduce((s, r) => s + (r.qtd_notas || 0), 0);
-  const totDevolucao = rows.reduce((s, r) => s + (r.valor_devolucao || 0), 0);
-  const totQtdDevolucoes = rows.reduce((s, r) => s + (r.qtd_devolucoes || 0), 0);
+  const totFaturamento = _minhas.reduce((s, r) => s + r.faturamento, 0);
+  const totQtdNotas = _minhas.reduce((s, r) => s + (r.qtd_notas || 0), 0);
+  const totDevolucao = _minhas.reduce((s, r) => s + (r.valor_devolucao || 0), 0);
+  const totQtdDevolucoes = _minhas.reduce((s, r) => s + (r.qtd_devolucoes || 0), 0);
   const instSemMatch = rows.filter(r => !r.temMatch).length;
 
   // Sprint 9.32.23: faturamento médio mensal AGREGADO segue a lógica do filtro
@@ -27745,7 +27753,7 @@ function _perfRender() {
             ${_perfListaFiltrada(rows).length === 0 ? '<div style="padding:24px 14px;text-align:center;color:var(--neutral-500);font-size:12px;">Nenhum hospital encontrado.</div>' : ''}
             ${_perfListaFiltrada(rows).map(({ r, idx }) => {
               const ativo = idx === window._perfSelectedIdx;
-              const labelFat = r.temMatch ? _perfFmtMoeda(r.faturamento) : 'sem CNPJ';
+              const labelFat = r.contaDe ? 'conta de ' + nomeCurto(r.contaDe).replace(/</g, '&lt;') : r.temMatch ? _perfFmtMoeda(r.faturamento) : 'sem CNPJ';
               return `
                 <div onclick="window._perfSelecionarHospital(${idx})"
                      style="padding:12px 14px;border-bottom:1px solid var(--neutral-100);cursor:pointer;transition:background 120ms;${ativo ? 'background:rgba(29,78,216,0.08);border-left:3px solid var(--brand-navy);padding-left:11px;' : 'border-left:3px solid transparent;'}"
@@ -27784,7 +27792,7 @@ function _perfRender() {
         (_perfListaFiltrada(rows).length === 0 ? '<div style="padding:24px;text-align:center;color:var(--neutral-500);font-size:12.5px;">Nenhum hospital encontrado.</div>' : '') +
         _perfListaFiltrada(rows).map(({ r, idx }) => {
         const aberto = idx === window._perfSelectedIdx;
-        const labelFat = r.temMatch ? _perfFmtMoeda(r.faturamento) : '<span style="color:var(--neutral-400);font-style:italic;font-size:11px;">sem CNPJ</span>';
+        const labelFat = r.contaDe ? `<span style="color:var(--neutral-400);font-size:11px;">conta de ${nomeCurto(r.contaDe).replace(/</g, '&lt;')}</span>` : r.temMatch ? _perfFmtMoeda(r.faturamento) : '<span style="color:var(--neutral-400);font-style:italic;font-size:11px;">sem CNPJ</span>';
         return `
           <div style="border:1px solid ${aberto ? 'var(--brand-navy)' : 'var(--neutral-200)'};border-radius:12px;margin-bottom:8px;background:var(--neutral-0);overflow:hidden;${aberto ? 'background:rgba(29,78,216,0.04);' : ''}">
             <div onclick="window._perfSelecionarHospital(${idx})"
@@ -28014,7 +28022,8 @@ function _perfRenderDetalhe() {
     `;
   }
 
-  det.innerHTML = headerHtml + kpisDetHtml + itensHtml;
+  const avisoConta = r.contaDe ? `<div style="background:#EEF2FF;border:1px solid #C7D2FE;border-radius:9px;padding:8px 12px;margin-bottom:12px;font-size:12px;color:var(--brand-navy);display:flex;gap:8px;align-items:center;"><span class="material-symbols-rounded" style="font-size:17px;">group</span><span>Esta conta é de <b>${(r.contaDe || '').replace(/</g, '&lt;')}</b>, que é o responsável. O faturamento aparece aqui só para consulta e não entra no seu total.</span></div>` : '';   // 9.32.487
+  det.innerHTML = headerHtml + avisoConta + kpisDetHtml + itensHtml;
 }
 
 // Sprint 9.32.401: filtro dentro da lista de hospitais.
@@ -45135,6 +45144,92 @@ function renderFaturamentoDesktop() {
 // Sprint 9.32.46: ROI da Equipe enriquecido — KPIs com delta vs período anterior,
 // ranking com tendência e última visita, oportunidades (hospitais não cobertos),
 // visitados sem retorno, e alerta de hospitais esfriando.
+/* ==========================================================================
+   9.32.487: responsável pela conta.
+   Instituição visitada por mais de um assessor: o faturamento vai para UM só.
+   Regra (função contas_responsaveis no banco): quem o admin definir; sem
+   definição, quem mais visitou (ativos primeiro; empate = visita mais recente).
+   Pedido da Paula: Santa Casa e Mont Serrat são do Reinaldo.
+   ========================================================================== */
+let _contasRespCache = null, _contasRespEm = 0;
+async function _contasResponsaveis(forcar) {
+  if (!forcar && _contasRespCache && Date.now() - _contasRespEm < 5 * 60000) return _contasRespCache;
+  try {
+    const { data, error } = await db.rpc('contas_responsaveis');
+    if (error) throw error;
+    const m = new Map();
+    (data || []).forEach(r => m.set(r.instituicao_id, { id: r.responsavel_id, nome: r.responsavel_nome, definido: !!r.definido, visitadores: r.visitadores || [] }));
+    _contasRespCache = m; _contasRespEm = Date.now();
+  } catch (e) { console.warn('[contas] responsáveis indisponíveis', e); }
+  return _contasRespCache;
+}
+
+async function _contasRenderCompartilhadas() {
+  const el = document.getElementById('roiContasComp');
+  if (!el) return;
+  const m = await _contasResponsaveis();
+  if (!m) { el.innerHTML = ''; return; }
+  const lista = [...m.entries()].filter(([, d]) => d.definido || (d.visitadores || []).filter(v => v.ativo).length > 1);
+  if (!lista.length) { el.innerHTML = ''; return; }
+  const nomes = window._contasNomesInst || (window._contasNomesInst = {});
+  const faltam = lista.map(([id]) => id).filter(id => !nomes[id]);
+  for (let i = 0; i < faltam.length; i += 150) {
+    const { data } = await db.from('instituicoes').select('id,nome,cidade').in('id', faltam.slice(i, i + 150));
+    (data || []).forEach(x => { nomes[x.id] = x; });
+  }
+  const esc = (t) => String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+  const busca = String(window._contasBusca || '').toLowerCase();
+  let rows = lista.map(([id, d]) => ({ id, d, inst: nomes[id] || { nome: '?', cidade: '' } }))
+    .filter(r => !busca || (r.inst.nome + ' ' + r.inst.cidade + ' ' + (r.d.nome || '')).toLowerCase().includes(busca))
+    .sort((a, b) => (b.d.definido - a.d.definido) || a.inst.nome.localeCompare(b.inst.nome));
+  const total = rows.length;
+  const todas = !!window._contasVerTodas;
+  if (!todas && !busca) rows = rows.slice(0, 12);
+  el.innerHTML = `
+    <div style="background:var(--neutral-0);border:1px solid var(--neutral-200);border-radius:14px;padding:14px 16px;">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px;">
+        <div style="flex:1;min-width:240px;">
+          <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:14.5px;">Contas com mais de um visitador</div>
+          <div style="font-size:11.5px;color:var(--neutral-600);margin-top:2px;">O faturamento de cada conta vai só para o responsável. Sem escolha, fica com quem mais visita. Para trocar, escolha outro nome.</div>
+        </div>
+        <input type="text" value="${esc(window._contasBusca || '')}" placeholder="Buscar conta ou visitador..." oninput="window._contasBusca=this.value;clearTimeout(window._contasT);window._contasT=setTimeout(()=>{_contasRenderCompartilhadas().then(()=>{const i=document.querySelector('#roiContasComp input');if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length);}})},250)" style="height:36px;padding:0 12px;border:1px solid var(--neutral-200);border-radius:9px;font-family:inherit;font-size:12.5px;min-width:220px;" />
+      </div>
+      <div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:12.5px;">
+        <thead><tr style="text-align:left;color:var(--neutral-500);font-size:10.5px;text-transform:uppercase;letter-spacing:.3px;">
+          <th style="padding:6px 8px;border-bottom:1px solid var(--neutral-200);">Instituição</th>
+          <th style="padding:6px 8px;border-bottom:1px solid var(--neutral-200);">Visitadores (visitas)</th>
+          <th style="padding:6px 8px;border-bottom:1px solid var(--neutral-200);">Responsável pela conta</th></tr></thead>
+        <tbody>${rows.map(r => {
+          const vis = (r.d.visitadores || []);
+          const auto = vis.filter(v => v.ativo)[0] || vis[0];
+          return `<tr>
+            <td style="padding:7px 8px;border-bottom:1px solid var(--neutral-100);"><b style="color:var(--brand-navy);">${esc(r.inst.nome)}</b><div style="font-size:11px;color:var(--neutral-500);">${esc(r.inst.cidade)}</div></td>
+            <td style="padding:7px 8px;border-bottom:1px solid var(--neutral-100);color:var(--neutral-600);">${vis.map(v => `${esc(nomeCurto(v.nome))} <span style="color:var(--neutral-400);">${v.visitas}</span>${v.ativo ? '' : ' <span style="color:var(--neutral-400);">(saiu)</span>'}`).join(' · ')}</td>
+            <td style="padding:7px 8px;border-bottom:1px solid var(--neutral-100);">
+              <select onchange="_contasDefinir('${r.id}', this.value, this)" style="height:32px;border:1.5px solid ${r.d.definido ? 'var(--brand-navy)' : 'var(--neutral-200)'};border-radius:8px;font-family:inherit;font-size:12px;color:var(--brand-navy);padding:0 8px;">
+                <option value="" ${r.d.definido ? '' : 'selected'}>Automático: ${esc(nomeCurto(auto ? auto.nome : '-'))}</option>
+                ${vis.filter(v => v.ativo).map(v => `<option value="${v.id}" ${r.d.definido && r.d.id === v.id ? 'selected' : ''}>${esc(v.nome)}</option>`).join('')}
+              </select>
+              ${r.d.definido ? '<span style="font-size:10.5px;color:var(--brand-navy);font-weight:700;margin-left:4px;">definido</span>' : ''}
+            </td></tr>`;
+        }).join('')}</tbody></table></div>
+      ${!todas && !busca && total > 12 ? `<button onclick="window._contasVerTodas=true;_contasRenderCompartilhadas()" style="margin-top:8px;background:none;border:0;color:var(--brand-navy);font-weight:700;font-size:12px;cursor:pointer;font-family:inherit;">Ver as ${total} contas</button>` : `<div style="font-size:11px;color:var(--neutral-500);margin-top:6px;">${total} conta${total === 1 ? '' : 's'}</div>`}
+    </div>`;
+}
+
+window._contasDefinir = async function(instId, valor, sel) {
+  if (sel) sel.disabled = true;
+  const { data, error } = await db.from('instituicoes').update({ responsavel_conta_id: valor || null }).eq('id', instId).select('id');
+  if (error || !data || !data.length) {
+    setFlash('error', 'Não consegui salvar: ' + (error ? error.message : 'sem confirmação do banco'));
+    if (sel) sel.disabled = false;
+    return;
+  }
+  setFlash('success', valor ? 'Responsável definido. Recalculando o ROI...' : 'Voltou para o automático. Recalculando o ROI...');
+  await _contasResponsaveis(true);
+  if (typeof window._roiEquipeTrocarPeriodo === 'function') window._roiEquipeTrocarPeriodo(window._roiEquipePeriodo || '6m');
+};
+
 async function _roiCalcularEquipe({ periodo = '6m' }) {
   if (!FAT_DATA) {
     try { await _fatCarregarDados(); }
@@ -45238,6 +45333,9 @@ async function _roiCalcularEquipe({ periodo = '6m' }) {
     return buckets;
   }
 
+  // 9.32.487: quem é o responsável por cada conta (faturamento vai para um só)
+  const _resp = await _contasResponsaveis();
+
   // 5) Helper: dado um array de visitas, calcula métricas agregadas
   function calcularMetricas(visitasArr) {
     const cnpjsPorNutri = {}, visitasPorNutri = {}, instPorNutri = {};
@@ -45259,7 +45357,8 @@ async function _roiCalcularEquipe({ periodo = '6m' }) {
       const cnpjNorm = _perfNormalizaCnpj(inst.cnpj);
       if (!cnpjNorm) return;
       if (!cnpjsPorNutri[nId]) cnpjsPorNutri[nId] = new Set();
-      cnpjsPorNutri[nId].add(cnpjNorm);
+      const _dono = _resp && v.instituicao_id ? _resp.get(v.instituicao_id) : null;
+      if (!_dono || !_dono.id || _dono.id === nId) cnpjsPorNutri[nId].add(cnpjNorm);   // 9.32.487
 
       if (!ultimaVisitaPorCnpj[cnpjNorm] || dt > ultimaVisitaPorCnpj[cnpjNorm]) ultimaVisitaPorCnpj[cnpjNorm] = dt;
 
@@ -45889,7 +45988,7 @@ function _roiRenderEquipe() {
         <div>
           <div style="font-family:var(--font-display);font-weight:700;color:var(--brand-navy);font-size:14.5px;">Ranking da equipe</div>
           <div style="font-size:11.5px;color:var(--neutral-600);margin-top:2px;line-height:1.45;">
-            Ordenado por <strong>Resultado</strong>: Δ faturamento da carteira + venda PF. <strong>Território</strong> é o faturamento herdado do hospital: aparece, mas <strong>não ranqueia</strong>, porque a conta já faturava antes do vendedor chegar.
+            Ordenado por <strong>Resultado</strong>: Δ faturamento da carteira + venda PF. <strong>Território</strong> é o faturamento herdado do hospital: aparece, mas <strong>não ranqueia</strong>, porque a conta já faturava antes do vendedor chegar. Conta visitada por mais de um assessor conta só para o <strong>responsável</strong> (lista no fim da página).
           </div>
           ${window._roiMeta?.mesParcial ? `
             <div style="margin-top:6px;display:inline-flex;align-items:center;gap:5px;background:#FEF4E1;color:#B45309;border-radius:9999px;padding:3px 10px;font-size:10.5px;font-weight:700;">
@@ -45912,7 +46011,9 @@ function _roiRenderEquipe() {
     ${oportunidadesHtml}
     ${semRetornoHtml}
     ${topHospHtml}
+    <div id="roiContasComp" style="margin-top:14px;"></div>
   `;
+  _contasRenderCompartilhadas();
 }
 
 function _roiLabelMes(ym) {
