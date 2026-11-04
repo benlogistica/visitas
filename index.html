@@ -8418,7 +8418,7 @@ mark.search-hl {
 const CONFIG = {
   SUPABASE_URL: 'https://qrlnbtxscjrmnpfjbtvv.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybG5idHhzY2pybW5wZmpidHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjM5MTksImV4cCI6MjA5MjEzOTkxOX0.1NWzT79-2agX9WO8qkJAk9dnpvmyaKLD9zRjKOBaDUE',
-  APP_VERSION: '1.0.0-alpha.sprint9.32.487-conta-responsavel',
+  APP_VERSION: '1.0.0-alpha.sprint9.32.488-contagem-equipe',
   APP_NAME: 'B&N Logística',
   GPS_RADIUS_METERS: 500,
   MARGIN_TIME_MINUTES: 90,
@@ -8630,7 +8630,7 @@ async function testConnection() {
     ];
 
     const { count: userCount, error: userError } = await db
-      .from('usuarios').select('*', { count: 'exact', head: true });
+      .from('usuarios').select('id', { count: 'exact', head: true });
 
     if (userError) {
       connectionStatus.error = `Erro ao ler usuarios: ${userError.message}`;
@@ -20556,7 +20556,7 @@ async function carregarAutoFechamentos() {
   // Total de nutris ativos pra mostrar "X de Y"
   let totalNutris = 0;
   try {
-    const { count } = await db.from('usuarios').select('*', { count: 'exact', head: true })
+    const { count } = await db.from('usuarios').select('id', { count: 'exact', head: true })
       .eq('perfil', 'nutricionista').eq('status', 'ativo');
     totalNutris = count || 0;
   } catch (e) { /* silent */ }
@@ -20740,7 +20740,7 @@ async function _carregarAutoCancelamentosTab(dataInicio) {
   const tempoMedio = fmtTempo(mediaMin);
   let totalNutris = 0;
   try {
-    const { count } = await db.from('usuarios').select('*', { count: 'exact', head: true }).eq('perfil', 'nutricionista').eq('status', 'ativo');
+    const { count } = await db.from('usuarios').select('id', { count: 'exact', head: true }).eq('perfil', 'nutricionista').eq('status', 'ativo');
     totalNutris = count || 0;
   } catch (e) {}
   const statsHtml = `
@@ -37477,7 +37477,7 @@ async function carregarRelatorio(periodo, user) {
   const [instPendRes, objPendRes, equipePendRes] = await Promise.all([
     db.from('instituicoes').select('*', { count: 'exact', head: true }).eq('pendente_aprovacao', true).eq('ativo', true),
     db.from('objetivos_visita').select('*', { count: 'exact', head: true }).eq('pendente_aprovacao', true),
-    db.from('usuarios').select('*', { count: 'exact', head: true }).eq('status', 'pendente').neq('perfil', 'admin'),
+    db.from('usuarios').select('id', { count: 'exact', head: true }).eq('status', 'pendente').neq('perfil', 'admin'),
   ]);
   const pendInst = instPendRes.count || 0;
   const pendObj = objPendRes.count || 0;
@@ -37799,7 +37799,7 @@ async function renderR2Equipe(visitas) {
   if (!db) return;
   // Profissionais ativos (nutris) e instituições ativas — queries paralelas
   const [profsAtivosRes, instAtivasRes, todosNutrisRes] = await Promise.all([
-    db.from('usuarios').select('*', { count: 'exact', head: true }).eq('status', 'ativo').eq('perfil', 'nutricionista'),
+    db.from('usuarios').select('id', { count: 'exact', head: true }).eq('status', 'ativo').eq('perfil', 'nutricionista'),
     db.from('instituicoes').select('*', { count: 'exact', head: true }).eq('ativo', true),
     db.from('usuarios').select('id, nome, foto_url').eq('status', 'ativo').eq('perfil', 'nutricionista'),
   ]);
@@ -38559,7 +38559,7 @@ window.irParaPendenciasInteligente = async function() {
   const [instRes, objRes, equipeRes] = await Promise.all([
     db.from('instituicoes').select('*', { count: 'exact', head: true }).eq('pendente_aprovacao', true).eq('ativo', true),
     db.from('objetivos_visita').select('*', { count: 'exact', head: true }).eq('pendente_aprovacao', true),
-    db.from('usuarios').select('*', { count: 'exact', head: true }).eq('status', 'pendente').neq('perfil', 'admin'),
+    db.from('usuarios').select('id', { count: 'exact', head: true }).eq('status', 'pendente').neq('perfil', 'admin'),
   ]);
   const pendInst = instRes.count || 0;
   const pendObj = objRes.count || 0;
@@ -60173,14 +60173,14 @@ async function contarUsuariosPorStatus() {
   if (!db) return { pendentes: 0, ativos: 0, desativados: 0, arquivados: 0 };
   // Sprint 9.32.364: tenta com filtro arquivado, fallback sem se coluna nao existe
   const queriesComArq = [
-    db.from('usuarios').select('*', { count: 'exact', head: true })
-      .eq('status', 'pendente').neq('super_admin', true).eq('arquivado', false),
-    db.from('usuarios').select('*', { count: 'exact', head: true })
-      .eq('status', 'ativo').neq('super_admin', true).eq('arquivado', false),
-    db.from('usuarios').select('*', { count: 'exact', head: true })
-      .in('status', ['inativo', 'bloqueado']).neq('super_admin', true).eq('arquivado', false),
-    db.from('usuarios').select('*', { count: 'exact', head: true })
-      .neq('super_admin', true).eq('arquivado', true),
+    db.from('usuarios').select('id', { count: 'exact', head: true })
+      .eq('status', 'pendente').not('super_admin', 'is', true).eq('arquivado', false),
+    db.from('usuarios').select('id', { count: 'exact', head: true })
+      .eq('status', 'ativo').not('super_admin', 'is', true).eq('arquivado', false),
+    db.from('usuarios').select('id', { count: 'exact', head: true })
+      .in('status', ['inativo', 'bloqueado']).not('super_admin', 'is', true).eq('arquivado', false),
+    db.from('usuarios').select('id', { count: 'exact', head: true })
+      .not('super_admin', 'is', true).eq('arquivado', true),
   ];
   let results = await Promise.all(queriesComArq);
   // Se a primeira query (pendentes) deu erro de coluna, refaz sem o filtro
@@ -60189,9 +60189,9 @@ async function contarUsuariosPorStatus() {
     if (msg.includes('arquivado') || msg.includes('schema cache') || msg.includes('could not find') || msg.includes('does not exist')) {
       console.warn('[equipe] contagem fallback: coluna arquivado nao existe');
       const queriesSemArq = [
-        db.from('usuarios').select('*', { count: 'exact', head: true }).eq('status', 'pendente').neq('super_admin', true),
-        db.from('usuarios').select('*', { count: 'exact', head: true }).eq('status', 'ativo').neq('super_admin', true),
-        db.from('usuarios').select('*', { count: 'exact', head: true }).in('status', ['inativo', 'bloqueado']).neq('super_admin', true),
+        db.from('usuarios').select('id', { count: 'exact', head: true }).eq('status', 'pendente').not('super_admin', 'is', true),
+        db.from('usuarios').select('id', { count: 'exact', head: true }).eq('status', 'ativo').not('super_admin', 'is', true),
+        db.from('usuarios').select('id', { count: 'exact', head: true }).in('status', ['inativo', 'bloqueado']).not('super_admin', 'is', true),
       ];
       const r2 = await Promise.all(queriesSemArq);
       return { pendentes: r2[0].count || 0, ativos: r2[1].count || 0, desativados: r2[2].count || 0, arquivados: 0 };
@@ -60315,7 +60315,7 @@ async function listarTodasCategoriasComContagem() {
   if (errC || !cats) return [];
   // Pega contagens em paralelo — poderia ser uma view, mas com poucas categorias roda rápido
   const counts = await Promise.all(
-    cats.map(c => db.from('usuarios').select('*', { count: 'exact', head: true }).eq('categoria_id', c.id))
+    cats.map(c => db.from('usuarios').select('id', { count: 'exact', head: true }).eq('categoria_id', c.id))
   );
   return cats.map((c, i) => ({ ...c, total_profissionais: counts[i].count || 0 }));
 }
